@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "vercel-build": "next build"
+    "vercel-build": "next build",
+    "postbuild": "echo 'Build completed successfully!'"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.13.0",
