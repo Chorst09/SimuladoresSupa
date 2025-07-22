@@ -24,7 +24,7 @@ import DREAnalysis from '@/components/dre-analysis';
 
 export default function PrecisionPricingPage() {
   const [operationType, setOperationType] = useState<OperationType>('venda');
-  
+
   // Configuration States
   const [regimes, setRegimes] = useState<Regime[]>(initialRegimes);
   const [activeRegimeId, setActiveRegimeId] = useState<string>(initialRegimes[0].id);
@@ -46,12 +46,12 @@ export default function PrecisionPricingPage() {
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [rentalItems, setRentalItems] = useState<RentalItem[]>([]);
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
-  
+
   const [proposalNumber, setProposalNumber] = useState('');
   const [rentalPeriod, setRentalPeriod] = useState(12);
   const [desiredMarginVenda, setDesiredMarginVenda] = useState(20);
   const [desiredMarginLocacao, setDesiredMarginLocacao] = useState(20);
-  const [desiredMarginServicos, setDesiredMarginServicos] = useState(20);  const [isIcmsContributor, setIsIcmsContributor] = useState(false);
+  const [desiredMarginServicos, setDesiredMarginServicos] = useState(20); const [isIcmsContributor, setIsIcmsContributor] = useState(false);
   const [destinationUF, setDestinationUF] = useState('SP');
   const [proposalStep, setProposalStep] = useState<'initial' | 'client-info' | 'add-items' | 'view-quote'>('initial');
 
@@ -206,7 +206,7 @@ export default function PrecisionPricingPage() {
         console.error("Error loading proposal:", error);
         alert(`Erro ao carregar proposta ${proposalNumber}. O formato dos dados pode estar incorreto.`);
       }
-    }  else {
+    } else {
       console.log("Proposal not found.");
       alert(`Proposta ${proposalNumber} não encontrada.`);
     }
@@ -216,16 +216,16 @@ export default function PrecisionPricingPage() {
   React.useEffect(() => {
     if (!proposalNumber && proposalStep === 'initial') handleNewProposal(); // Generate on initial load only if step is initial
   }, [handleNewProposal, proposalNumber]); // Dependency on handleNewProposal and proposalNumber to avoid infinite loops
-  
+
   const activeRegime = regimes.find(r => r.id === activeRegimeId);
 
   const handleAddToQuote = () => {
     if (!calculationResults) return;
-  
+
     const { itemCalculations, finalPrice } = calculationResults;
-  
+
     let newQuoteItems: QuoteItem[] = [];
-  
+
     switch (operationType) {
       case 'venda':
         newQuoteItems = saleItems.map(item => {
@@ -244,26 +244,26 @@ export default function PrecisionPricingPage() {
         break;
       case 'servicos': {
         const totalBaseCost = serviceItems.reduce((sum, item) => {
-            const itemCalc = itemCalculations?.[item.id] || {};
-            return sum + (itemCalc.totalCost || 0);
+          const itemCalc = itemCalculations?.[item.id] || {};
+          return sum + (itemCalc.totalCost || 0);
         }, 0);
 
         const pricingRatio = totalBaseCost > 0 ? finalPrice / totalBaseCost : 0;
         newQuoteItems = serviceItems.map(item => {
-            const itemCalc = itemCalculations?.[item.id] || {};
-            const itemBaseCost = itemCalc.totalCost || 0;
-            const itemFinalPrice = itemBaseCost * pricingRatio;
-            const pricePerHour = (item.estimatedHours || 0) > 0 ? itemFinalPrice / item.estimatedHours : 0;
-            return {
-                id: uuidv4(),
-                description: item.description,
-                quantity: 1, // Service is a single "package"
-                price: pricePerHour,
-                type: 'servicos',
-                baseCost: itemBaseCost,
-                totalPrice: itemFinalPrice,
-                estimatedHours: item.estimatedHours,
-            };
+          const itemCalc = itemCalculations?.[item.id] || {};
+          const itemBaseCost = itemCalc.totalCost || 0;
+          const itemFinalPrice = itemBaseCost * pricingRatio;
+          const pricePerHour = (item.estimatedHours || 0) > 0 ? itemFinalPrice / item.estimatedHours : 0;
+          return {
+            id: uuidv4(),
+            description: item.description,
+            quantity: 1, // Service is a single "package"
+            price: pricePerHour,
+            type: 'servicos',
+            baseCost: itemBaseCost,
+            totalPrice: itemFinalPrice,
+            estimatedHours: item.estimatedHours,
+          };
         });
         break;
       }
@@ -274,7 +274,7 @@ export default function PrecisionPricingPage() {
           const itemLineMonthlyBaseCost = itemCalc.monthlyCost || 0;
           const totalLineBaseCost = itemLineMonthlyBaseCost * rentalPeriod;
           const totalContractPrice = finalMonthlyPrice * (item.quantity || 0) * rentalPeriod;
-  
+
           return {
             id: uuidv4(),
             description: item.description,
@@ -305,7 +305,8 @@ export default function PrecisionPricingPage() {
           calculationParams={{
             activeRegime,
             rentalPeriod,
-            outrosCustos,
+            desiredMargin: 0,
+            divisor: null,
             isIcmsContributor,
             destinationUF,
             icmsInterstate,
@@ -314,29 +315,29 @@ export default function PrecisionPricingPage() {
         />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-          {operationType === 'locacao' && <InputField label="Período do Contrato (meses)" value={rentalPeriod} onChange={(e) => setRentalPeriod(parseFloat(e.target.value) || 0)} icon={<Briefcase size={16} />} unit="meses" type="number"/>}
+          {operationType === 'locacao' && <InputField label="Período do Contrato (meses)" value={rentalPeriod} onChange={(e) => setRentalPeriod(parseFloat(e.target.value) || 0)} icon={<Briefcase size={16} />} unit="meses" type="number" />}
           {operationType === 'venda' && (
-            <InputField label="Margem de Lucro Desejada" value={desiredMarginVenda} onChange={(e) => setDesiredMarginVenda(parseFloat(e.target.value) || 0)} icon={<Lightbulb size={16}/>} unit="%" step="1" type="number"/>
+            <InputField label="Margem de Lucro Desejada" value={desiredMarginVenda} onChange={(e) => setDesiredMarginVenda(parseFloat(e.target.value) || 0)} icon={<Lightbulb size={16} />} unit="%" step="1" type="number" />
           )}
           {operationType === 'locacao' && (
-            <InputField label="Margem de Lucro Desejada" value={desiredMarginLocacao} onChange={(e) => setDesiredMarginLocacao(parseFloat(e.target.value) || 0)} icon={<Lightbulb size={16}/>} unit="%" step="1" type="number"/>
+            <InputField label="Margem de Lucro Desejada" value={desiredMarginLocacao} onChange={(e) => setDesiredMarginLocacao(parseFloat(e.target.value) || 0)} icon={<Lightbulb size={16} />} unit="%" step="1" type="number" />
           )}
           {operationType === 'servicos' && (
-            <InputField label="Margem de Lucro Desejada" value={desiredMarginServicos} onChange={(e) => setDesiredMarginServicos(parseFloat(e.target.value) || 0)} icon={<Lightbulb size={16}/>} unit="%" step="1" type="number"/>
+            <InputField label="Margem de Lucro Desejada" value={desiredMarginServicos} onChange={(e) => setDesiredMarginServicos(parseFloat(e.target.value) || 0)} icon={<Lightbulb size={16} />} unit="%" step="1" type="number" />
           )}
         </div>
 
         {operationType === 'venda' && (
           <div className="flex flex-wrap items-center gap-4 pt-4 border-t">
             <div className="flex items-center gap-2">
-                <input type="checkbox" id="isIcmsContributor" name="isIcmsContributor" checked={isIcmsContributor} onChange={(e) => setIsIcmsContributor(e.target.checked)} className="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-                <label htmlFor="isIcmsContributor" className="text-sm text-foreground/80">Consumidor Final é Contribuinte do ICMS?</label>
+              <input type="checkbox" id="isIcmsContributor" name="isIcmsContributor" checked={isIcmsContributor} onChange={(e) => setIsIcmsContributor(e.target.checked)} className="form-checkbox h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+              <label htmlFor="isIcmsContributor" className="text-sm text-foreground/80">Consumidor Final é Contribuinte do ICMS?</label>
             </div>
             <div className="flex items-center gap-2">
-                <label htmlFor="destinationUF" className="text-sm text-foreground/80">UF Destino:</label>
-                <select id="destinationUF" name="destinationUF" value={destinationUF} onChange={(e) => setDestinationUF(e.target.value)} className="bg-background border border-input rounded-md text-foreground py-1 px-2 focus:ring-ring focus:border-ring">
-                    {brazilianStates.map(state => <option key={state} value={state}>{state}</option>)}
-                </select>
+              <label htmlFor="destinationUF" className="text-sm text-foreground/80">UF Destino:</label>
+              <select id="destinationUF" name="destinationUF" value={destinationUF} onChange={(e) => setDestinationUF(e.target.value)} className="bg-background border border-input rounded-md text-foreground py-1 px-2 focus:ring-ring focus:border-ring">
+                {brazilianStates.map(state => <option key={state} value={state}>{state}</option>)}
+              </select>
             </div>
           </div>
         )}
@@ -347,11 +348,11 @@ export default function PrecisionPricingPage() {
   const renderClientInfo = () => {
     return (
       <div className="space-y-8">
-         <QuoteInfoPanel 
-            clientInfo={clientInfo} setClientInfo={setClientInfo}
-            accountManagerInfo={accountManagerInfo} setAccountManagerInfo={setAccountManagerInfo}
-          />
-          <Button onClick={() => setProposalStep('add-items')}>Continuar para Adicionar Itens</Button>
+        <QuoteInfoPanel
+          clientInfo={clientInfo} setClientInfo={setClientInfo}
+          accountManagerInfo={accountManagerInfo} setAccountManagerInfo={setAccountManagerInfo}
+        />
+        <Button onClick={() => setProposalStep('add-items')}>Continuar para Adicionar Itens</Button>
       </div>
     );
   };
@@ -377,7 +378,7 @@ export default function PrecisionPricingPage() {
       </>
     );
   };
-  
+
 
   return (
     <main className="min-h-screen bg-background text-foreground font-body p-4 sm:p-6 lg:p-8">
@@ -438,9 +439,9 @@ export default function PrecisionPricingPage() {
             </div>
             {/* Operation Type Buttons */}
             <div className="flex space-x-2 bg-background p-1.5 rounded-lg border shadow-inner mt-4 sm:mt-0 justify-center">
-              <TabButton label="Venda" icon={<Tag />} isActive={operationType === 'venda'} onClick={() => setOperationType('venda')}/>
-              <TabButton label="Locação" icon={<Server />} isActive={operationType === 'locacao'} onClick={() => setOperationType('locacao')}/>
-              <TabButton label="Serviços" icon={<Briefcase />} isActive={operationType === 'servicos'} onClick={() => setOperationType('servicos')}/>
+              <TabButton label="Venda" icon={<Tag />} isActive={operationType === 'venda'} onClick={() => setOperationType('venda')} />
+              <TabButton label="Locação" icon={<Server />} isActive={operationType === 'locacao'} onClick={() => setOperationType('locacao')} />
+              <TabButton label="Serviços" icon={<Briefcase />} isActive={operationType === 'servicos'} onClick={() => setOperationType('servicos')} />
             </div>
           </div>
 
@@ -458,15 +459,15 @@ export default function PrecisionPricingPage() {
             onGenerateQuote={() => setQuoteModalOpen(true)}
           />
           {quoteItems.length > 0 && (
-              <DREAnalysis 
-                quoteItems={quoteItems}
-                activeRegime={activeRegime}
-                outrosCustos={outrosCustos}
-                desiredMarginVenda={desiredMarginVenda}
-                desiredMarginLocacao={desiredMarginLocacao}
-                desiredMarginServicos={desiredMarginServicos}
-              />
-            )}
+            <DREAnalysis
+              quoteItems={quoteItems}
+              activeRegime={activeRegime}
+              outrosCustos={outrosCustos}
+              desiredMarginVenda={desiredMarginVenda}
+              desiredMarginLocacao={desiredMarginLocacao}
+              desiredMarginServicos={desiredMarginServicos}
+            />
+          )}
         </div> {/* Closing mt-8 space-y-8 div */}
 
         <footer className="text-center mt-12 text-muted-foreground text-xs">

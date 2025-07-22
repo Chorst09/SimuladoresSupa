@@ -124,25 +124,25 @@ const ItemsTable = ({ operationType, items, setItems, laborCostConfig, calculati
         totalLabel: 'Custo Base Mensal (Total)'
       }
     };
-    
+
     const currentConfig = config[operationType];
     const currentItems = items[`${operationType}Items` as keyof Items] || [];
-    
+
     const totalCost = currentItems.reduce((sum, item) => {
-        const itemCalc = calculationResults.itemCalculations?.[item.id] || {};
-        const qty = item.quantity || 1;
-        let lineCost = 0;
-        if (operationType === 'venda') {
-            const unitCost = itemCalc.baseCost || 0;
-            lineCost = qty * unitCost;
-        } else if (operationType === 'locacao') {
-            const unitCost = itemCalc.monthlyCost || 0;
-            lineCost = qty * unitCost;
-        } else if (operationType === 'servicos') {
-            const unitCost = itemCalc.totalCost || 0;
-            lineCost = qty * unitCost; // Services are not quantity based in the same way
-        }
-        return sum + lineCost;
+      const itemCalc = calculationResults.itemCalculations?.[item.id] || {};
+      const qty = (item as any).quantity || 1;
+      let lineCost = 0;
+      if (operationType === 'venda') {
+        const unitCost = itemCalc.baseCost || 0;
+        lineCost = qty * unitCost;
+      } else if (operationType === 'locacao') {
+        const unitCost = itemCalc.monthlyCost || 0;
+        lineCost = qty * unitCost;
+      } else if (operationType === 'servicos') {
+        const unitCost = itemCalc.totalCost || 0;
+        lineCost = qty * unitCost; // Services are not quantity based in the same way
+      }
+      return sum + lineCost;
     }, 0);
 
     return (
@@ -159,8 +159,8 @@ const ItemsTable = ({ operationType, items, setItems, laborCostConfig, calculati
               {currentConfig.items.map((item: any) => {
                 const calculated = calculationResults.itemCalculations?.[item.id] || {};
                 const qty = item.quantity || 1;
-                
-                let lineCalculation = {...calculated};
+
+                let lineCalculation = { ...calculated };
                 if (operationType === 'venda') {
                   // For display, scale unit values by quantity
                   lineCalculation.baseCost = (calculated.baseCost || 0) * qty;
@@ -185,10 +185,10 @@ const ItemsTable = ({ operationType, items, setItems, laborCostConfig, calculati
                       <TableCell key={col.accessor} style={{ width: col.width }} className="p-1 align-top">
                         {
                           col.isReadOnly ? <span className="font-mono text-foreground p-2 block text-right h-9">{lineCalculation[col.accessor as keyof typeof lineCalculation] !== undefined && lineCalculation[col.accessor as keyof typeof lineCalculation] !== null ? col.formatter(lineCalculation[col.accessor as keyof typeof lineCalculation]) : '-'}</span> :
-                          col.accessor === 'description' ? <Input {...commonInputProps(item, col.accessor, currentConfig.opType, 'text')} className="text-left" /> :
-                          col.accessor === 'icmsST' ? <div className="flex justify-center items-center h-9"><Checkbox checked={item.icmsST} onCheckedChange={(checked) => handleItemChange(currentConfig.opType, item.id, 'icmsST', !!checked)} /></div> :
-                          col.accessor === 'contractType' ? <Select value={item.contractType} onValueChange={(value) => handleItemChange(currentConfig.opType, item.id, 'contractType', value)}><SelectTrigger className="h-9"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="clt">CLT</SelectItem><SelectItem value="terceiro">Terceiro</SelectItem></SelectContent></Select> :
-                          <Input {...commonInputProps(item, col.accessor, currentConfig.opType, col.type, (col as any).step)} />
+                            col.accessor === 'description' ? <Input {...commonInputProps(item, col.accessor, currentConfig.opType, 'text')} className="text-left" /> :
+                              col.accessor === 'icmsST' ? <div className="flex justify-center items-center h-9"><Checkbox checked={item.icmsST} onCheckedChange={(checked) => handleItemChange(currentConfig.opType, item.id, 'icmsST', !!checked)} /></div> :
+                                col.accessor === 'contractType' ? <Select value={item.contractType} onValueChange={(value) => handleItemChange(currentConfig.opType, item.id, 'contractType', value)}><SelectTrigger className="h-9"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="clt">CLT</SelectItem><SelectItem value="terceiro">Terceiro</SelectItem></SelectContent></Select> :
+                                  <Input {...commonInputProps(item, col.accessor, currentConfig.opType, col.type, (col as any).step)} />
                         }
                       </TableCell>
                     ))}

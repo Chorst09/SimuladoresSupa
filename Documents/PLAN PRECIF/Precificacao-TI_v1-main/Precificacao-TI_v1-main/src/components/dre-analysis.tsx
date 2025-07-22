@@ -12,13 +12,13 @@ interface DREAnalysisProps {
   activeRegime: Regime | undefined;
   outrosCustos: OutrosCustos;
   desiredMarginVenda: number;
- desiredMarginLocacao: number;
- desiredMarginServicos: number;
+  desiredMarginLocacao: number;
+  desiredMarginServicos: number;
 }
 
 interface DREColumnProps {
-    title: string;
-    data: { label: string; value: number; percent: number; isTotal?: boolean; isFinal?: boolean; }[];
+  title: string;
+  data: { label: string; value: number; percent: number; isTotal?: boolean; isFinal?: boolean; }[];
 }
 
 const DREColumn = ({ title, data }: DREColumnProps) => (
@@ -107,7 +107,7 @@ const DREAnalysis = ({ quoteItems, activeRegime, outrosCustos, desiredMarginVend
         case 'locacao': activeCommissionRate = comissaoLocacao / 100; break;
         case 'servicos': activeCommissionRate = comissaoServico / 100; break;
       }
-      
+
       let receitaLiquidaParcial = receitaBruta;
 
       switch (activeRegime.type) {
@@ -122,7 +122,7 @@ const DREAnalysis = ({ quoteItems, activeRegime, outrosCustos, desiredMarginVend
           const { pis = 0, cofins = 0, irpj = 0, csll = 0, icms = 0, iss = 0 } = activeRegime.rates;
           const specificTax = (isSale ? icms : iss) / 100;
           let tempImpostos = receitaBruta * ((pis / 100) + (cofins / 100) + specificTax);
-          
+
           const adminAndOtherExpensesRate = (despesasAdmin / 100) + (outrasDespesas / 100);
           const comissaoValor = (receitaBruta - tempImpostos) * activeCommissionRate;
           const despesasOpValor = (receitaBruta - tempImpostos) * adminAndOtherExpensesRate;
@@ -139,7 +139,7 @@ const DREAnalysis = ({ quoteItems, activeRegime, outrosCustos, desiredMarginVend
         }
         case 'mei': impostos = 0; break;
       }
-      
+
       receitaLiquidaParcial = receitaBruta - impostos;
       const comissaoValor = receitaLiquidaParcial * activeCommissionRate;
 
@@ -159,7 +159,7 @@ const DREAnalysis = ({ quoteItems, activeRegime, outrosCustos, desiredMarginVend
         { label: "= Lucro Bruto", value: lucroBruto, percent: toPercent(lucroBruto), isTotal: true },
         { label: "(-) Despesas Op.", value: -despesasOperacionais, percent: toPercent(-despesasOperacionais) },
       ];
-      
+
       // Add desired margin row for Locação
       if (type === 'locacao') {
         const desiredProfitValue = receitaBruta * (desiredMarginLocacao / 100);
@@ -167,11 +167,11 @@ const DREAnalysis = ({ quoteItems, activeRegime, outrosCustos, desiredMarginVend
           { label: "Margem de Lucro Desejada", value: desiredProfitValue, percent: desiredMarginLocacao }
         );
       }
-      dreRows.push({ label: "= Lucro Líquido", value: lucroLiquido, percent: toPercent(lucroLiquido), isFinal: true, isTotal: true });
+      dreRows.push({ label: "= Lucro Líquido", value: lucroLiquido, percent: toPercent(lucroLiquido), isTotal: true });
 
       return dreRows;
     };
-    
+
     const isSale = quoteItems.some(i => i.type === 'venda');
     const isRental = quoteItems.some(i => i.type === 'locacao');
     const isService = quoteItems.some(i => i.type === 'servicos');
@@ -183,54 +183,54 @@ const DREAnalysis = ({ quoteItems, activeRegime, outrosCustos, desiredMarginVend
     };
   }, [quoteItems, activeRegime, outrosCustos, desiredMarginLocacao]);
 
-    const markupData = useMemo(() => {
-        if (quoteItems.length === 0 || !quoteItems.some(i => i.type === 'venda')) return null;
+  const markupData = useMemo(() => {
+    if (quoteItems.length === 0 || !quoteItems.some(i => i.type === 'venda')) return null;
 
-        const vendaItems = quoteItems.filter(i => i.type === 'venda');
-        const totalCusto = vendaItems.reduce((sum, item) => sum + (item.baseCost * item.quantity), 0);
-        const totalReceita = vendaItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    const vendaItems = quoteItems.filter(i => i.type === 'venda');
+    const totalCusto = vendaItems.reduce((sum, item) => sum + (item.baseCost * item.quantity), 0);
+    const totalReceita = vendaItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
-        let impostos = 0;
-        switch (activeRegime.type) {
-            case 'presumido': {
-              const { pis = 0, cofins = 0, irpj = 0, csll = 0, presuncaoVenda = 0, icms = 0 } = activeRegime.rates;
-              const presumption = presuncaoVenda / 100;
-              impostos = totalReceita * ((pis / 100) + (cofins / 100) + (icms / 100) + (presumption * (irpj / 100)) + (presumption * (csll / 100)));
-              break;
-            }
-            case 'real': {
-              const { pis = 0, cofins = 0, irpj = 0, csll = 0, icms = 0 } = activeRegime.rates;
-              const tempImpostos = totalReceita * ((pis / 100) + (cofins / 100) + (icms/100));
-              const comissaoValor = (totalReceita - tempImpostos) * (outrosCustos.comissaoVenda / 100);
-              const lucroOp = totalReceita - tempImpostos - totalCusto - comissaoValor;
-              impostos = tempImpostos + (lucroOp > 0 ? lucroOp * ((irpj / 100) + (csll / 100)) : 0);
-              break;
-            }
-            case 'simples': {
-              const { anexoI = 0 } = activeRegime.rates;
-              impostos = totalReceita * (anexoI / 100);
-              break;
-            }
-            case 'mei': impostos = 0; break;
-        }
+    let impostos = 0;
+    switch (activeRegime.type) {
+      case 'presumido': {
+        const { pis = 0, cofins = 0, irpj = 0, csll = 0, presuncaoVenda = 0, icms = 0 } = activeRegime.rates;
+        const presumption = presuncaoVenda / 100;
+        impostos = totalReceita * ((pis / 100) + (cofins / 100) + (icms / 100) + (presumption * (irpj / 100)) + (presumption * (csll / 100)));
+        break;
+      }
+      case 'real': {
+        const { pis = 0, cofins = 0, irpj = 0, csll = 0, icms = 0 } = activeRegime.rates;
+        const tempImpostos = totalReceita * ((pis / 100) + (cofins / 100) + (icms / 100));
+        const comissaoValor = (totalReceita - tempImpostos) * (outrosCustos.comissaoVenda / 100);
+        const lucroOp = totalReceita - tempImpostos - totalCusto - comissaoValor;
+        impostos = tempImpostos + (lucroOp > 0 ? lucroOp * ((irpj / 100) + (csll / 100)) : 0);
+        break;
+      }
+      case 'simples': {
+        const { anexoI = 0 } = activeRegime.rates;
+        impostos = totalReceita * (anexoI / 100);
+        break;
+      }
+      case 'mei': impostos = 0; break;
+    }
 
-        const receitaLiquida = totalReceita - impostos;
-        const comissaoValor = receitaLiquida * (outrosCustos.comissaoVenda / 100);
-        
-        const despesasFixasPercent = 0; // Venda não tem despesas fixas/admin
-        const despesasVariaveisPercent = totalReceita > 0 ? (comissaoValor / totalReceita) * 100 : 0;
-        
-        const markup = totalCusto > 0 ? totalReceita / totalCusto : 0;
+    const receitaLiquida = totalReceita - impostos;
+    const comissaoValor = receitaLiquida * (outrosCustos.comissaoVenda / 100);
 
-        return {
-            precoCusto: totalCusto,
-            despesasFixas: despesasFixasPercent,
-            despesasVariaveis: despesasVariaveisPercent,
-            margemLucro: desiredMarginVenda,
-            markup: markup,
-            precoVenda: totalReceita,
-        };
-    }, [quoteItems, outrosCustos, desiredMarginVenda, activeRegime]);
+    const despesasFixasPercent = 0; // Venda não tem despesas fixas/admin
+    const despesasVariaveisPercent = totalReceita > 0 ? (comissaoValor / totalReceita) * 100 : 0;
+
+    const markup = totalCusto > 0 ? totalReceita / totalCusto : 0;
+
+    return {
+      precoCusto: totalCusto,
+      despesasFixas: despesasFixasPercent,
+      despesasVariaveis: despesasVariaveisPercent,
+      margemLucro: desiredMarginVenda,
+      markup: markup,
+      precoVenda: totalReceita,
+    };
+  }, [quoteItems, outrosCustos, desiredMarginVenda, activeRegime]);
 
   if (quoteItems.length === 0) {
     return (
@@ -247,22 +247,22 @@ const DREAnalysis = ({ quoteItems, activeRegime, outrosCustos, desiredMarginVend
 
   return (
     <div className="space-y-6">
-        <Card className="shadow-lg">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-3 font-headline text-2xl"><BarChart2 />Análise DRE do Orçamento</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {dreData.venda && <DREColumn title="DRE Venda" data={dreData.venda} />}
-                    {dreData.locacao && <DREColumn title="DRE Locação (Total Contrato)" data={dreData.locacao} />}
-                    {dreData.servicos && <DREColumn title="DRE Serviços" data={dreData.servicos} />}
-                </div>
-                {!dreData.venda && !dreData.locacao && !dreData.servicos && (
-                    <p className="text-muted-foreground text-center py-8">Não há itens no orçamento para os tipos de operação.</p>
-                )}
-            </CardContent>
-        </Card>
-        {markupData && <MarkupAnalysis data={markupData} />}
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3 font-headline text-2xl"><BarChart2 />Análise DRE do Orçamento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {dreData.venda && <DREColumn title="DRE Venda" data={dreData.venda} />}
+            {dreData.locacao && <DREColumn title="DRE Locação (Total Contrato)" data={dreData.locacao} />}
+            {dreData.servicos && <DREColumn title="DRE Serviços" data={dreData.servicos} />}
+          </div>
+          {!dreData.venda && !dreData.locacao && !dreData.servicos && (
+            <p className="text-muted-foreground text-center py-8">Não há itens no orçamento para os tipos de operação.</p>
+          )}
+        </CardContent>
+      </Card>
+      {markupData && <MarkupAnalysis data={markupData} />}
     </div>
   );
 };
