@@ -18,8 +18,8 @@ interface PriceOptimizerModalProps {
 }
 
 interface Suggestion {
-    suggestedAdjustment: number;
-    reasoning: string;
+  suggestedAdjustment: number;
+  reasoning: string;
 }
 
 const PriceOptimizerModal = ({ isOpen, onClose, currentPrice, productDescription }: PriceOptimizerModalProps) => {
@@ -55,10 +55,10 @@ const PriceOptimizerModal = ({ isOpen, onClose, currentPrice, productDescription
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!open) {
-            onClose();
-            setSuggestion(null); // Reset on close
-        }
+      if (!open) {
+        onClose();
+        setSuggestion(null); // Reset on close
+      }
     }}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
@@ -95,15 +95,15 @@ const PriceOptimizerModal = ({ isOpen, onClose, currentPrice, productDescription
           <div className="p-4 bg-muted rounded-lg space-y-4 border border-primary/20">
             <h4 className="font-semibold text-lg flex items-center gap-2"><Sparkles className="text-primary w-5 h-5" /> Sugestão da IA</h4>
             <div className="text-center bg-background p-4 rounded-md">
-                <p className="text-sm text-muted-foreground">Ajuste Sugerido</p>
-                <p className={`text-2xl font-bold ${suggestion.suggestedAdjustment >= 0 ? 'text-success' : 'text-destructive'}`}>
-                    {formatCurrency(suggestion.suggestedAdjustment)}
-                </p>
+              <p className="text-sm text-muted-foreground">Ajuste Sugerido</p>
+              <p className={`text-2xl font-bold ${suggestion.suggestedAdjustment >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {formatCurrency(suggestion.suggestedAdjustment)}
+              </p>
             </div>
-             <div className="text-center bg-background p-4 rounded-md">
-                <p className="text-sm text-muted-foreground">Novo Preço Final</p>
-                <p className="text-3xl font-bold text-primary">{formatCurrency(newSuggestedPrice)}</p>
-                <p className="text-xs text-muted-foreground">Preço original: {formatCurrency(currentPrice)}</p>
+            <div className="text-center bg-background p-4 rounded-md">
+              <p className="text-sm text-muted-foreground">Novo Preço Final</p>
+              <p className="text-3xl font-bold text-primary">{formatCurrency(newSuggestedPrice)}</p>
+              <p className="text-xs text-muted-foreground">Preço original: {formatCurrency(currentPrice)}</p>
             </div>
             <div>
               <p className="font-semibold mb-1">Justificativa:</p>
