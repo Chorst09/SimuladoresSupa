@@ -1,13 +1,18 @@
-"use server";
-
-import { suggestPriceAdjustments, SuggestPriceAdjustmentsInput } from '@/ai/flows/suggest-price-adjustments';
+// Mock implementation for static export
+export interface SuggestPriceAdjustmentsInput {
+    productDescription: string;
+    currentPrice: number;
+    marketAnalysis: string;
+    competitorPricing: string;
+}
 
 export async function getPriceSuggestion(input: SuggestPriceAdjustmentsInput) {
-    try {
-        const result = await suggestPriceAdjustments(input);
-        return { success: true, data: result };
-    } catch (error) {
-        console.error("Error getting AI price suggestion:", error);
-        return { success: false, error: "Failed to get price suggestion from AI." };
-    }
+    // Mock response for static export
+    return {
+        success: true,
+        data: {
+            suggestedAdjustment: Math.random() * 1000 - 500, // Random adjustment between -500 and +500
+            reasoning: "Esta é uma sugestão simulada. Para usar a IA real, configure o ambiente de desenvolvimento."
+        }
+    };
 }
