@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-export default function PrecisionPricingPage() {
+export default function SimplePage() {
     return (
         <main className="min-h-screen bg-gray-900 text-white p-8">
             <div className="max-w-4xl mx-auto">
@@ -27,11 +27,6 @@ export default function PrecisionPricingPage() {
                             <h3 className="font-semibold">Serviços</h3>
                             <p className="text-sm">Cálculo de preços para serviços</p>
                         </div>
-                    </div>
-                    <div className="mt-6 text-center">
-                        <p className="text-sm text-gray-400">
-                            Sistema em desenvolvimento - Deploy de teste no Vercel
-                        </p>
                     </div>
                 </div>
             </div>
