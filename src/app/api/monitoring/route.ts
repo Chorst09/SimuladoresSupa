@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserContext } from '@/lib/auth-utils';
+import { extractUserContext, isAuthError } from '@/lib/auth-utils';
 import { 
   getPerformanceStats, 
   getRecentLogs, 
@@ -17,8 +17,8 @@ import {
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     // Extract user context for authorization
-    const userContextResult = await getUserContext(request);
-    if (!userContextResult.success || !userContextResult.user) {
+    const userContextResult = await extractUserContext(request);
+    if (isAuthError(userContextResult)) {
       return NextResponse.json(
         { error: 'Authentication required to access monitoring data' },
         { status: 401 }
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     // For now, allow all authenticated users to view monitoring data
     // In production, you might want to restrict this to admin users only
-    const userContext = userContextResult.user;
+    const userContext = userContextResult;
 
     const { searchParams } = new URL(request.url);
     const endpoint = searchParams.get('endpoint') || 'stats';
