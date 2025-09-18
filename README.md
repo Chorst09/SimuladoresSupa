@@ -69,18 +69,13 @@ npm run dev
 
 ### 📝 Formulários de Contato
 - **App Router**: `/contact` - Usa `src/app/api/contact/route.ts`
-- **Pages API**: `/contact-pages-api` - Usa `pages/api/contact.ts`
 
 ### 🎯 API Routes
-1. **App Router** (`src/app/api/contact/route.ts`):
-   - Funções nomeadas (GET, POST)
-   - Next.js 13+ Route Handlers
-   - Mais moderno e performático
-
-2. **Pages API** (`pages/api/contact.ts`):
-   - Função handler única
-   - Compatível com todas as versões
-   - Sintaxe mais simples
+**App Router** (`src/app/api/contact/route.ts`):
+- Funções nomeadas (GET, POST)
+- Next.js 13+ Route Handlers
+- Moderno e performático
+- Integração completa com Supabase
 
 ### 🔒 Validações Implementadas
 - **Client-side**: Campos obrigatórios, formato de email, estados de loading
@@ -90,17 +85,10 @@ npm run dev
 ## 🧪 Testes
 
 ### Testar Formulários
-1. **App Router**: `http://localhost:3000/contact`
-2. **Pages API**: `http://localhost:3000/contact-pages-api`
+**App Router**: `http://localhost:3000/contact`
 
-### Testar APIs Diretamente
+### Testar API Diretamente
 ```bash
-# App Router
-curl -X POST http://localhost:3000/api/contact \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Teste","email":"teste@email.com","message":"Mensagem"}'
-
-# Pages API
 curl -X POST http://localhost:3000/api/contact \
   -H "Content-Type: application/json" \
   -d '{"name":"Teste","email":"teste@email.com","message":"Mensagem"}'
@@ -110,7 +98,7 @@ curl -X POST http://localhost:3000/api/contact \
 
 - **[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)**: Como configurar o Supabase
 - **[SUPABASE_FORMS_GUIDE.md](./SUPABASE_FORMS_GUIDE.md)**: Guia completo de formulários
-- **[PAGES_API_GUIDE.md](./PAGES_API_GUIDE.md)**: Documentação da Pages API
+- **[NEXT_STEPS.md](./NEXT_STEPS.md)**: Próximos passos e troubleshooting
 
 ## 🔄 Migração Firebase → Supabase
 
