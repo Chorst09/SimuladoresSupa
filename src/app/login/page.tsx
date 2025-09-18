@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
 const LoginPage = () => {
@@ -25,22 +24,20 @@ const LoginPage = () => {
     setLoading(true);
     setError(null);
 
-    if (!app) {
-      setError('Firebase não está configurado');
-      toast({ title: 'Erro no login', description: 'Serviço indisponível.', variant: 'destructive' });
-      setLoading(false);
-      return;
-    }
-
-    const auth = getAuth(app);
-
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: 'Login bem-sucedido!', description: 'Você será redirecionado.' });
-      // Aguardar um pouco para o estado de auth atualizar
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 500);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        toast({ title: 'Login bem-sucedido!', description: 'Você será redirecionado.' });
+        router.push('/');
+      }
     } catch (err: any) {
       setError(err.message);
       toast({ title: 'Erro no login', description: 'Verifique suas credenciais.', variant: 'destructive' });

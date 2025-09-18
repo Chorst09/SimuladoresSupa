@@ -72,7 +72,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
           email: email.trim().toLowerCase(),
           message: message.trim(),
           created_at: new Date().toISOString(),
-          status: 'pending' // Status inicial para controle
+          status: 'pending'
         }
       ])
       .select();
