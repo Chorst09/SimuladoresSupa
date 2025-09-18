@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSupabaseAuth } from '@/hooks/use-supabase-auth';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,14 @@ const LoginPage = () => {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useSupabaseAuth();
+
+  // Redirecionar se já estiver logado
+  useEffect(() => {
+    if (user && !authLoading) {
+      router.push('/');
+    }
+  }, [user, authLoading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,8 +44,8 @@ const LoginPage = () => {
       }
 
       if (data.user) {
-        toast({ title: 'Login bem-sucedido!', description: 'Você será redirecionado.' });
-        router.push('/');
+        toast({ title: 'Login bem-sucedido!', description: 'Redirecionando...' });
+        // O useEffect vai detectar a mudança do user e redirecionar automaticamente
       }
     } catch (err: any) {
       setError(err.message);
