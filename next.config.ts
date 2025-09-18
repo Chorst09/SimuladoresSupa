@@ -18,18 +18,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Turbopack configuration for PDF.js
-  turbo: {
-    rules: {
-      '*.worker.js': {
-        loaders: ['file-loader'],
-        as: '*.js',
-      },
-    },
-    resolveAlias: {
-      // Turbopack handles these automatically, but you can add specific aliases if needed
-    },
-  },
   // Keep webpack config for production builds (which still use webpack)
   webpack: (config, { isServer }) => {
     // Configuração para PDF.js
