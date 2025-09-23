@@ -610,7 +610,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     value: totalMonthly,
                     type: 'FIBER',
                     status: currentProposal.status || 'Rascunho',
-                    updatedBy: user.email || user.uid,
+                    updatedBy: user.email || user.id,
                     updatedAt: new Date().toISOString(),
                     // Manter dados originais importantes
                     createdBy: currentProposal.createdBy,
@@ -623,7 +623,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     products: addedProducts,
                     totalSetup: totalSetup,
                     totalMonthly: totalMonthly,
-                    userId: user.uid
+                    userId: user.id
                 };
 
                 const response = await fetch(`/api/proposals?id=${currentProposal.id}`, {
@@ -649,7 +649,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     value: totalMonthly,
                     type: 'FIBER',
                     status: 'Rascunho',
-                    createdBy: user.email || user.uid,
+                    createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
                     version: 1,
                     // Store additional data as metadata
@@ -658,7 +658,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     products: addedProducts,
                     totalSetup: totalSetup,
                     totalMonthly: totalMonthly,
-                    userId: user.uid
+                    userId: user.id
                 };
 
                 const response = await fetch('/api/proposals', {

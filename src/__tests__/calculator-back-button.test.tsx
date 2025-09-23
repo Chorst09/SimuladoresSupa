@@ -48,7 +48,6 @@ import { PABXSIPCalculator } from '@/components/calculators/PABXSIPCalculator';
 import MaquinasVirtuaisCalculator from '@/components/calculators/MaquinasVirtuaisCalculator';
 import RadioInternetCalculator from '@/components/calculators/RadioInternetCalculator';
 import InternetFibraCalculator from '@/components/calculators/InternetFibraCalculator';
-import DoubleFibraRadioCalculator from '@/components/calculators/DoubleFibraRadioCalculator';
 import InternetManCalculator from '@/components/calculators/InternetManCalculator';
 
 describe('Calculator Back Button Functionality', () => {
@@ -163,24 +162,6 @@ describe('Calculator Back Button Functionality', () => {
     });
   });
 
-  describe('DoubleFibraRadioCalculator', () => {
-    it('should render back button in search view and navigate to calculator view', async () => {
-      render(<DoubleFibraRadioCalculator />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Buscar Propostas - Double-Fibra/Radio')).toBeInTheDocument();
-      });
-      
-      const backButton = screen.getByRole('button', { name: /voltar/i });
-      expect(backButton).toBeInTheDocument();
-      
-      fireEvent.click(backButton);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/Double-Fibra/i)).toBeInTheDocument();
-      });
-    });
-  });
 
   describe('InternetManCalculator', () => {
     it('should render back button in search view and navigate to calculator view', async () => {
@@ -207,7 +188,6 @@ describe('Calculator Back Button Functionality', () => {
       { name: 'MaquinasVirtuaisCalculator', component: MaquinasVirtuaisCalculator },
       { name: 'RadioInternetCalculator', component: RadioInternetCalculator },
       { name: 'InternetFibraCalculator', component: InternetFibraCalculator },
-      { name: 'DoubleFibraRadioCalculator', component: DoubleFibraRadioCalculator },
       { name: 'InternetManCalculator', component: InternetManCalculator },
     ];
 

@@ -24,7 +24,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -42,7 +41,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (mountedRef.current) {
             setUser(null);
             setLoading(false);
-            setInitialized(true);
           }
           return;
         }
@@ -57,7 +55,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (mountedRef.current) {
           setLoading(false);
-          setInitialized(true);
         }
 
         // Setup auth state listener
@@ -84,7 +81,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (mountedRef.current) {
           setUser(null);
           setLoading(false);
-          setInitialized(true);
         }
       }
     };
@@ -127,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (mountedRef.current) {
           setUser({
             id: supabaseUser.id,
-            email: supabaseUser.email,
+            email: supabaseUser.email || null,
             role: role
           });
           console.log('✅ Usuário definido:', { email: supabaseUser.email, role });
@@ -137,17 +133,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (mountedRef.current) {
           setUser({
             id: supabaseUser.id,
-            email: supabaseUser.email,
+            email: supabaseUser.email || null,
             role: 'user'
           });
         }
       }
     };
 
-    // Only initialize once
-    if (!initialized) {
-      initializeAuth();
-    }
+    initializeAuth();
 
     return () => {
       mountedRef.current = false;
@@ -155,16 +148,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         authSubscription.unsubscribe();
       }
     };
-  }, [initialized]);
+  }, []);;
 
   const logout = async () => {
     try {
+      if (mountedRef.current) {
+        setLoading(true);
+      }
+      
       await supabase.auth.signOut();
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user_data');
-      setUser(null);
+      
+      // Only manipulate localStorage if we're in the browser
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
+      }
+      
+      if (mountedRef.current) {
+        setUser(null);
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Error signing out:', error);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 

@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/use-auth';
 import { Proposal, Partner } from '@/lib/types';
 import ProposalsView from '@/components/proposals/ProposalsView';
@@ -53,7 +52,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
       maquinasVirtuais: 0,
       radio: 0,
       fibra: 0,
-      doubleFibra: 0,
+      doubleFibraRadio: 0,
       man: 0
     };
     
@@ -72,7 +71,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
         } else if (proposal.baseId?.startsWith('Prop_Fibra_')) {
           counts.fibra++;
         } else if (proposal.baseId?.startsWith('Prop_Double_')) {
-          counts.doubleFibra++;
+          counts.doubleFibraRadio++;
         } else if (proposal.baseId?.startsWith('Prop_InterMan_')) {
           counts.man++;
         }
@@ -87,43 +86,47 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
       if (!user) return;
 
       try {
-        let proposalsQuery;
-        const proposalsCollection = collection(db, 'proposals');
+        let query = supabase.from('proposals').select('*');
 
-        if (user.role === 'admin' || user.role === 'diretor') {
-          // Admin ou Diretor: Busca todas as propostas
-          proposalsQuery = query(proposalsCollection);
-        } else {
-          // Usuário: Busca apenas as propostas criadas por ele
-          proposalsQuery = query(proposalsCollection, where('createdBy', '==', user.uid));
+        // Se não for admin ou diretor, filtra apenas as propostas do usuário
+        if (user.role !== 'admin' && user.role !== 'diretor') {
+          query = query.eq('user_id', user.id);
         }
 
-        const proposalsSnapshot = await getDocs(proposalsQuery);
-        const proposalsList = proposalsSnapshot.docs.map(doc => {
-          const data = doc.data();
+        const { data: proposalsData, error } = await query;
+
+        if (error) {
+          console.error('Erro ao buscar propostas:', error);
+          return;
+        }
+
+        const proposalsList = (proposalsData || []).map(data => {
           let title = "Proposta";
-          if (data.baseId) {
-            if (data.baseId.startsWith("Prop_MV_")) title = `Proposta Máquinas Virtuais - ${data.baseId.split("_")[2]}`;
-            else if (data.baseId.startsWith("Prop_PabxSip_")) title = `Proposta PABX/SIP - ${data.baseId.split("_")[1]}`;
-            else if (data.baseId.startsWith("Prop_InterMan_")) title = `Proposta Internet MAN - ${data.baseId.split("_")[1]}`;
+          if (data.base_id) {
+            if (data.base_id.startsWith("Prop_MV_")) title = `Proposta Máquinas Virtuais - ${data.base_id.split("_")[2]}`;
+            else if (data.base_id.startsWith("Prop_PabxSip_")) title = `Proposta PABX/SIP - ${data.base_id.split("_")[2]}`;
+            else if (data.base_id.startsWith("Prop_InterMan_")) title = `Proposta Internet MAN - ${data.base_id.split("_")[2]}`;
+            else if (data.base_id.startsWith("Prop_Double_")) title = `Proposta Double-Fibra/Radio - ${data.base_id.split("_")[2]}`;
+            else if (data.base_id.startsWith("Prop_Fibra_")) title = `Proposta Internet Fibra - ${data.base_id.split("_")[2]}`;
+            else if (data.base_id.startsWith("Prop_Radio_")) title = `Proposta Internet Rádio - ${data.base_id.split("_")[2]}`;
           }
 
-          const createdAtDate = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : new Date();
+          const createdAtDate = data.created_at ? new Date(data.created_at) : new Date();
           const expiryDate = new Date(createdAtDate);
           expiryDate.setDate(createdAtDate.getDate() + 30); // Default 30 days validity
 
           return {
-            id: doc.id,
-            baseId: data.baseId || '',
+            id: data.id,
+            baseId: data.base_id || '',
             version: data.version || 1,
             title: title,
-            client: data.client?.name || 'N/A',
-            value: data.totalMonthly || 0,
+            client: data.client || 'N/A',
+            value: data.value || 0,
             status: data.status || 'Rascunho',
-            createdBy: data.userId || 'N/A',
-            accountManager: data.accountManager?.name || 'N/A',
-            createdAt: data.createdAt,
-            distributorId: data.distributorId || 'N/A',
+            createdBy: data.created_by || 'N/A',
+            accountManager: data.account_manager || 'N/A',
+            createdAt: data.created_at,
+            distributorId: data.distributor_id || 'N/A',
             date: createdAtDate.toISOString(),
             expiryDate: expiryDate.toISOString(),
           } as Proposal;
@@ -136,31 +139,35 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
 
     const fetchPartners = async () => {
       try {
-        if (db) {
-          const partnersCollection = collection(db, 'partners');
-          const partnersSnapshot = await getDocs(partnersCollection);
-          const partnersList = partnersSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: Number(doc.id) || 0,
-              name: data.name || 'Sem nome',
-              type: 'Cliente', // Default type as per Partner interface
-              contact: data.contact || '',
-              phone: data.phone || '',
-              status: data.status === 'Ativo' ? 'Ativo' : 'Inativo',
-              site: data.site || '',
-              products: data.products || '',
-              sitePartner: data.sitePartner || '',
-              siteRO: data.siteRO || '',
-              templateRO: data.templateRO || '',
-              procedimentoRO: data.procedimentoRO || '',
-              login: data.login || '',
-              password: data.password || '',
-              mainContact: data.mainContact || ''
-            } as Partner;
-          });
-          setPartners(partnersList);
+        const { data: partnersData, error } = await supabase
+          .from('partners')
+          .select('*');
+
+        if (error) {
+          console.error('Erro ao buscar parceiros:', error);
+          return;
         }
+
+        const partnersList = (partnersData || []).map(data => {
+          return {
+            id: data.id || 0,
+            name: data.name || 'Sem nome',
+            type: 'Cliente', // Default type as per Partner interface
+            contact: data.contact || '',
+            phone: data.phone || '',
+            status: data.status === 'Ativo' ? 'Ativo' : 'Inativo',
+            site: data.site || '',
+            products: data.products || '',
+            sitePartner: data.site_partner || '',
+            siteRO: data.site_ro || '',
+            templateRO: data.template_ro || '',
+            procedimentoRO: data.procedimento_ro || '',
+            login: data.login || '',
+            password: data.password || '',
+            mainContact: data.main_contact || ''
+          } as Partner;
+        });
+        setPartners(partnersList);
       } catch (error) {
         console.error("Error fetching partners:", error);
       }
@@ -284,7 +291,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
           <StatCard 
             icon={<Radio className="w-6 h-6 text-red-500" />} 
             title="Propostas Double-Fibra/Radio" 
-            value={countProposalsByType.doubleFibra.toString()} 
+            value={countProposalsByType.doubleFibraRadio.toString()} 
             subtext="Este mês" 
           />
           <StatCard 

@@ -15,8 +15,7 @@ import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManag
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabaseClient';
 
 
 // Interfaces
@@ -106,28 +105,36 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
 
     const fetchProposals = React.useCallback(async () => {
-        if (!user || !user.role || !db) {
+        if (!user || !user.role) {
             setProposals([]);
             return;
         }
 
-        const proposalsCol = collection(db, 'proposals');
-        const prefix = 'Prop_Man_';
-        let q;
-        if (user.role === 'admin' || user.role === 'diretor') {
-            q = query(proposalsCol, where('baseId', '>=', prefix), where('baseId', '<', prefix + 'z'));
-        } else {
-            q = query(proposalsCol, where('userId', '==', user.uid), where('baseId', '>=', prefix), where('baseId', '<', prefix + 'z'));
-        }
-
         try {
-            const querySnapshot = await getDocs(q);
-            const proposalsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Proposal));
-            setProposals(proposalsData);
+            const response = await fetch('/api/proposals', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`,
+                },
+            });
+
+            if (response.ok) {
+                const proposalsData = await response.json();
+                // Filter for MAN proposals
+                const manProposals = proposalsData.filter((p: any) => 
+                    p.type === 'MAN' || p.baseId?.startsWith('Prop_InterMan_')
+                );
+                setProposals(manProposals);
+            } else {
+                console.error('Erro ao buscar propostas:', response.statusText);
+                setProposals([]);
+            }
         } catch (error) {
             console.error("Erro ao buscar propostas: ", error);
+            setProposals([]);
         }
-    }, [user, db]);
+    }, [user]);
 
     useEffect(() => {
         const initialRadioPlans: RadioPlan[] = [
@@ -207,8 +214,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         alert('Preços da tabela Rádio salvos com sucesso!');
     };
 
-    const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
-    const totalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+    const totalSetup = (addedProducts || []).reduce((sum, p) => sum + p.setup, 0);
+    const totalMonthly = (addedProducts || []).reduce((sum, p) => sum + p.monthly, 0);
 
     const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
     
@@ -303,103 +310,6 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         setAddedProducts(addedProducts.filter(p => p.id !== id));
     };
 
-    const saveProposal = async () => {
-        if (!user) return;
-        
-        // Validar dados obrigatórios
-        if (!clientData || !clientData.name) {
-            alert('Por favor, preencha os dados do cliente antes de salvar.');
-            return;
-        }
-        
-        if (!accountManagerData || !accountManagerData.name) {
-            alert('Por favor, preencha os dados do gerente de contas antes de salvar.');
-            return;
-        }
-        
-        if (addedProducts.length === 0) {
-            alert('Por favor, adicione pelo menos um produto antes de salvar.');
-            return;
-        }
-
-        try {
-            if (currentProposal) {
-                const baseId = currentProposal.baseId;
-                const proposalsCol = collection(db, 'proposals');
-                const q = query(proposalsCol, where('baseId', '==', baseId));
-                const querySnapshot = await getDocs(q);
-
-                const newVersion = querySnapshot.size + 1;
-                const newId = `${baseId}_v${newVersion}`;
-
-                const proposalToSave: Proposal = {
-                    id: newId,
-                    baseId,
-                    version: newVersion,
-                    client: clientData,
-                    accountManager: accountManagerData,
-                    products: addedProducts,
-                    totalSetup: finalTotalSetup,
-                    totalMonthly: finalTotalMonthly,
-                    createdAt: serverTimestamp(),
-                    userId: user.uid,
-                };
-
-                const proposalRef = doc(db, 'proposals', newId);
-                await setDoc(proposalRef, proposalToSave);
-                alert('Nova versão da proposta salva com sucesso!');
-                setCurrentProposal({ ...proposalToSave, id: newId, createdAt: new Date().toISOString() });
-
-            } else {
-                const prefix = `Prop_Man_`;
-                const proposalsCol = collection(db, 'proposals');
-                const q = query(proposalsCol, where('baseId', '>=', prefix), where('baseId', '<', prefix + 'z'));
-                const querySnapshot = await getDocs(q);
-
-                let lastNumber = 0;
-                querySnapshot.forEach(d => {
-                    const baseIdFromDoc = d.data().baseId;
-                    if (baseIdFromDoc && baseIdFromDoc.startsWith(prefix)) {
-                        const numPart = baseIdFromDoc.replace(prefix, '');
-                        const num = parseInt(numPart, 10);
-                        if (!isNaN(num) && num > lastNumber) {
-                            lastNumber = num;
-                        }
-                    }
-                });
-
-                const newNumber = lastNumber + 1;
-                const paddedNumber = newNumber.toString().padStart(4, '0');
-                const newBaseId = `${prefix}${paddedNumber}`;
-
-                const proposalToSave: Proposal = {
-                    id: `${newBaseId}_v1`,
-                    baseId: newBaseId,
-                    version: 1,
-                    client: clientData,
-                    accountManager: accountManagerData,
-                    products: addedProducts,
-                    totalSetup: finalTotalSetup,
-                    totalMonthly: finalTotalMonthly,
-                    createdAt: serverTimestamp(),
-                    userId: user.uid,
-                };
-
-                const proposalRef = doc(db, 'proposals', `${newBaseId}_v1`);
-                await setDoc(proposalRef, proposalToSave);
-
-                alert(`Proposta ${proposalToSave.id} salva com sucesso!`);
-                setCurrentProposal({ ...proposalToSave, id: `${newBaseId}_v1`, createdAt: new Date().toISOString() });
-            }
-
-            fetchProposals();
-            setViewMode('search');
-            setAddedProducts([]);
-        } catch (error) {
-            console.error('Erro ao salvar proposta:', error);
-            alert('Erro ao salvar proposta. Tente novamente.');
-        }
-    };
 
     const handlePrint = () => {
         // Add print-specific styles
@@ -495,7 +405,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }, 1000);
     };
 
-    const rawTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+    const rawTotalMonthly = (addedProducts || []).reduce((sum, p) => sum + p.monthly, 0);
 
     const filteredProposals = proposals.filter(proposal => 
         proposal.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -665,6 +575,75 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         paybackMeses: costBreakdown.setupFee > 0 && costBreakdown.netProfit > 0 ? Math.ceil(costBreakdown.setupFee / costBreakdown.netProfit) : 0,
     };
 
+    // Função para salvar proposta
+    const saveProposal = async () => {
+        if (!user) {
+            alert('Erro: Usuário não autenticado');
+            return;
+        }
+        
+        // Validar dados obrigatórios
+        if (!clientData || !clientData.name) {
+            alert('Por favor, preencha os dados do cliente antes de salvar.');
+            return;
+        }
+        
+        if (!accountManagerData || !accountManagerData.name) {
+            alert('Por favor, preencha os dados do gerente de contas antes de salvar.');
+            return;
+        }
+        
+        if (addedProducts.length === 0) {
+            alert('Por favor, adicione pelo menos um produto antes de salvar.');
+            return;
+        }
+
+        try {
+            const totalMonthly = (addedProducts || []).reduce((sum, p) => sum + p.monthly, 0);
+            const totalSetup = (addedProducts || []).reduce((sum, p) => sum + p.setup, 0);
+
+            const proposalToSave = {
+                title: `Proposta Internet MAN - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                client: clientData.companyName || clientData.name || 'Cliente não informado',
+                value: totalMonthly,
+                type: 'MAN',
+                status: 'Rascunho',
+                createdBy: user.email || user.id,
+                createdAt: new Date().toISOString(),
+                version: 1,
+                // Store additional data as metadata
+                clientData: clientData,
+                accountManager: accountManagerData,
+                products: addedProducts,
+                totalSetup: totalSetup,
+                totalMonthly: totalMonthly,
+                userId: user.id
+            };
+
+            const response = await fetch('/api/proposals', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`,
+                },
+                body: JSON.stringify(proposalToSave),
+            });
+
+            if (response.ok) {
+                const savedProposal = await response.json();
+                alert(`Proposta ${savedProposal.baseId || savedProposal.id} salva com sucesso!`);
+                setCurrentProposal(savedProposal);
+                // Limpar formulário após salvar
+                setViewMode('search');
+            } else {
+                throw new Error('Erro ao salvar proposta');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar proposta:', error);
+            alert('Erro ao salvar proposta. Por favor, tente novamente.');
+        }
+    };
+
     if (viewMode === 'search') {
         return (
             <div className="container mx-auto p-4">
@@ -710,7 +689,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 <TableBody>
                                     {filteredProposals.map(p => (
                                         <TableRow key={p.id} className="border-slate-800">
-                                            <TableCell>{p.id}</TableCell>
+                                            <TableCell>{p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Sem nome'} (v{p.version})</TableCell>
                                             <TableCell>{p.createdAt ? (
                                                 (typeof p.createdAt === 'object' && 'toDate' in p.createdAt)
@@ -1120,7 +1099,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
                                     <CardHeader><CardTitle className="flex items-center"><FileText className="mr-2" />Resumo da Proposta</CardTitle></CardHeader>
                                     <CardContent>
-                                        {addedProducts.length === 0 ? (
+                                        {(addedProducts ?? []).length === 0 ? (
                                             <p className="text-slate-400">Nenhum produto adicionado.</p>
                                         ) : (
                                             <div className="space-y-4">

@@ -219,15 +219,17 @@ function generateProposalId(type: string = 'PROP'): string {
   // Generate proposal ID based on type
   switch (type) {
     case 'RADIO':
-      return `Prop_InterRadio_${nextNumber}_v1`;
+      return `Prop_Radio_${nextNumber}_v1`;
     case 'FIBER':
-      return `Prop_InterFibra_${nextNumber}_v1`;
+      return `Prop_Fibra_${nextNumber}_v1`;
     case 'VM':
-      return `Prop_VM_${nextNumber}_v1`;
+      return `Prop_MV_${nextNumber}_v1`;
     case 'PABX':
-      return `Prop_Pabx/Sip_${nextNumber}_v1`;
+      return `Prop_PabxSip_${nextNumber}_v1`;
     case 'MAN':
-      return `Prop_MAN_${nextNumber}_v1`;
+      return `Prop_InterMan_${nextNumber}_v1`;
+    case 'DOUBLE_FIBRA_RADIO':
+      return `Prop_Double_${nextNumber}_v1`;
     default:
       return `Prop_General_${nextNumber}_v1`;
   }
@@ -235,12 +237,13 @@ function generateProposalId(type: string = 'PROP'): string {
 
 // Supported proposal types
 const SUPPORTED_PROPOSAL_TYPES = [
-  'FIBER',      // Fiber Internet proposals
-  'VM',         // Virtual Machines proposals  
-  'RADIO',      // Radio Internet proposals
-  'PABX',       // PABX SIP proposals
-  'MAN',        // Metropolitan Area Network proposals
-  'GENERAL'     // General/Other proposals
+  'FIBER',              // Fiber Internet proposals
+  'VM',                 // Virtual Machines proposals  
+  'RADIO',              // Radio Internet proposals
+  'PABX',               // PABX SIP proposals
+  'MAN',                // Metropolitan Area Network proposals
+  'DOUBLE_FIBRA_RADIO', // Double-Fibra/Radio proposals
+  'GENERAL'             // General/Other proposals
 ] as const;
 
 // Validation function for proposal data
@@ -248,19 +251,26 @@ function validateProposalData(data: any): { isValid: boolean; errors: string[] }
   const errors: string[] = [];
 
   // Required fields validation
-  const requiredFields = ['title', 'client'];
+  const requiredFields = ['title'];
   requiredFields.forEach(field => {
     if (!data[field] || (typeof data[field] === 'string' && data[field].trim() === '')) {
       errors.push(`${field} is required and cannot be empty`);
     }
   });
+  
+  // Client validation - can be string or object
+  if (!data.client) {
+    errors.push('client is required');
+  } else if (typeof data.client === 'object' && !data.client.name) {
+    errors.push('client.name is required when client is an object');
+  }
 
   // Type validation
   if (data.title && typeof data.title !== 'string') {
     errors.push('title must be a string');
   }
-  if (data.client && typeof data.client !== 'string') {
-    errors.push('client must be a string');
+  if (data.client && typeof data.client !== 'string' && typeof data.client !== 'object') {
+    errors.push('client must be a string or object');
   }
   if (data.value !== undefined && (typeof data.value !== 'number' || data.value < 0)) {
     errors.push('value must be a non-negative number');
@@ -315,6 +325,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Validate proposal data
     const validation = validateProposalData(body);
+    
     if (!validation.isValid) {
       return NextResponse.json(
         { error: 'Validation failed', details: validation.errors },
@@ -329,6 +340,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     // Create new proposal and store in mock storage
     const createdProposal: Proposal = {
+      ...body, // Preserve all additional fields from the request body first
+      // Override with the generated/computed fields
       id: `mock_${Date.now()}`,
       baseId,
       title: body.title,
@@ -342,13 +355,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       createdAt: currentDate,
       version: body.version || 1,
       distributorId: body.distributorId || '',
-      accountManager: body.accountManager || '',
-      // Preserve all additional fields from the request body
-      ...body,
-      // Override with the generated/computed fields above
-      id: `mock_${Date.now()}`,
-      baseId,
-      createdAt: currentDate
+      accountManager: body.accountManager || ''
     };
 
     // Add to mock storage

@@ -54,15 +54,6 @@ const verificationResults: BackButtonImplementation[] = [
     navigationFunction: 'setViewMode("calculator")'
   },
   {
-    component: 'DoubleFibraRadioCalculator',
-    hasBackButton: true,
-    hasArrowLeftIcon: true,
-    hasVoltarText: true,
-    hasCorrectOnClick: true,
-    hasConsistentStyling: true,
-    navigationFunction: 'setViewMode("calculator")'
-  },
-  {
     component: 'InternetManCalculator',
     hasBackButton: true,
     hasArrowLeftIcon: true,

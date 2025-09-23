@@ -1,18 +1,43 @@
+export interface ClientData {
+  name: string;
+  projectName?: string;
+  email?: string;
+  phone?: string;
+  contact?: string;
+  companyName?: string;
+}
+
+export interface AccountManagerData {
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
 export interface Proposal {
   id: string; // Unique ID for each version, e.g., Prop_MV_0001/2025_v1
   baseId: string; // Base ID, e.g., Prop_MV_0001/2025
   version: number;
   title: string;
-  client: string;
+  client: string | ClientData;
   type: string; // Proposal type: RADIO, FIBER, VM, etc.
   value: number;
   status: 'Rascunho' | 'Enviada' | 'Em Análise' | 'Aprovada' | 'Rejeitada' | 'Aguardando aprovação desconto Diretoria' | 'Aguardando Aprovação do Cliente' | 'Fechado Ganho' | 'Perdido';
   createdBy: string; // User ID
-  accountManager: string; // User name
+  accountManager: string | AccountManagerData; // User name or object
   createdAt: any; // Firestore Timestamp
   distributorId: string;
   date: string;
   expiryDate: string;
+  // Optional fields for extended proposal data
+  totalSetup?: number;
+  totalMonthly?: number;
+  contractPeriod?: number;
+  clientData?: ClientData;
+  products?: any[];
+  items?: any[];
+  userId?: string;
+  updatedAt?: any;
+  updatedBy?: string;
 }
 
 export type UserRole = 'admin' | 'diretor' | 'usuario';

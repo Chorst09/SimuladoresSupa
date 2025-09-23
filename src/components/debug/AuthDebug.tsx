@@ -1,7 +1,7 @@
 // src/components/debug/AuthDebug.tsx
 'use client';
 
-import { useAuth } from '@/hooks/use-auth-simple';
+import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState } from 'react';
 
 export default function AuthDebug() {
@@ -9,12 +9,15 @@ export default function AuthDebug() {
   const [renderCount, setRenderCount] = useState(0);
 
   useEffect(() => {
-    setRenderCount(prev => prev + 1);
-    console.log(`🔄 AuthDebug render #${renderCount + 1}`, { 
-      user: user ? { email: user.email, role: user.role } : null, 
-      loading 
+    setRenderCount(prev => {
+      const newCount = prev + 1;
+      console.log(`🔄 AuthDebug render #${newCount}`, { 
+        user: user ? { email: user.email, role: user.role } : null, 
+        loading 
+      });
+      return newCount;
     });
-  });
+  }, [user, loading]);
 
   if (process.env.NODE_ENV !== 'development') {
     return null;

@@ -128,7 +128,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [showClientForm, setShowClientForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState<string>('');
 
-    const filteredProposals = proposals.filter((p) => p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
+    const filteredProposals = proposals.filter((p) => {
+        const clientName = typeof p.client === 'string' ? p.client : p.client?.name || '';
+        return clientName.toLowerCase().includes(searchTerm.toLowerCase());
+    })
 
     // Estados dos dados do cliente e gerente
     const [clientData, setClientData] = useState<ClientData>({
@@ -179,30 +182,40 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [sipResult, setSipResult] = useState<SIPResult | null>(null);
 
     const fetchProposals = React.useCallback(async () => {
-        if (!currentUser || !currentUser.role || !db) {
+        console.log('fetchProposals chamado, currentUser:', currentUser);
+        if (!currentUser || !currentUser.role) {
+            console.log('Usuário não encontrado ou sem role');
             setProposals([]);
             return;
         }
 
-        const proposalsCol = collection(db, 'proposals');
-        const prefix = 'Prop_MV_';
-        let q;
-        if (currentUser.role === 'admin' || currentUser.role === 'diretor') {
-            q = query(proposalsCol, where('baseId', '>=', prefix), where('baseId', '<', prefix + 'z'));
-        } else {
-            q = query(proposalsCol, where('userId', '==', currentUser.uid));
-        }
-
         try {
-            const querySnapshot = await getDocs(q);
-            const proposalsData = querySnapshot.docs
-                .map(doc => ({ ...doc.data(), id: doc.id } as Proposal))
-                .filter(p => p.baseId && p.baseId.startsWith(prefix));
-            setProposals(proposalsData);
+            const response = await fetch('/api/proposals', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentUser.token}`,
+                },
+            });
+
+            if (response.ok) {
+                const proposalsData = await response.json();
+                console.log('Todas as propostas:', proposalsData);
+                // Filter for VM proposals
+                const vmProposals = proposalsData.filter((p: any) =>
+                    p.type === 'VM' || p.baseId?.startsWith('Prop_MV_')
+                );
+                console.log('Propostas VM filtradas:', vmProposals);
+                setProposals(vmProposals);
+            } else {
+                console.error('Erro ao buscar propostas:', response.statusText);
+                setProposals([]);
+            }
         } catch (error) {
             console.error("Erro ao buscar propostas: ", error);
+            setProposals([]);
         }
-    }, [currentUser, db]);
+    }, [currentUser]);
 
     useEffect(() => {
         fetchProposals();
@@ -302,7 +315,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             try {
                 const parsedRates = JSON.parse(savedTaxRates);
                 console.log('Loaded tax rates from localStorage:', parsedRates);
-                
+
                 // Only update if the saved rates have valid values for the main tax fields
                 if (parsedRates.pis && parsedRates.cofins && parsedRates.csll && parsedRates.irpj) {
                     setTaxRates(prevRates => ({ ...prevRates, ...parsedRates }));
@@ -379,7 +392,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         return contractDiscounts[vmContractPeriod] || 0;
     }, [vmContractPeriod, contractDiscounts]);
 
-    
+
 
     // Estados para custos de recursos VM
     const [vcpuWindowsCost, setVcpuWindowsCost] = useState<number>(15);
@@ -749,17 +762,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     // Cálculos VM usando useMemo
     const calculateVMCost = useMemo(() => {
         let cost = 0;
-        
+
         // Custo de CPU baseado no SO
         if (vmOperatingSystem.includes('Windows')) {
             cost += vmCpuCores * vcpuWindowsCost;
         } else {
             cost += vmCpuCores * vcpuLinuxCost;
         }
-        
+
         // Custo de RAM
         cost += vmRamGb * ramCost;
-        
+
         // Custo de Storage
         if (vmStorageType === 'HDD SAS') {
             cost += vmStorageSize * hddSasCost;
@@ -768,19 +781,19 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         } else if (vmStorageType === 'NVMe') {
             cost += vmStorageSize * nvmeCost;
         }
-        
+
         // Custo de Network
         if (vmNetworkSpeed === '10 Gbps') {
             cost += network10GbpsCost;
         }
-        
+
         // Custo do Sistema Operacional
         if (vmOperatingSystem === 'Windows Server 2022') {
             cost += windowsServerCost;
         } else if (vmOperatingSystem === 'Windows 10 Pro') {
             cost += windows10ProCost;
         }
-        
+
         // Serviços adicionais
         if (vmBackupSize > 0) {
             cost += vmBackupSize * backupCostPerGb;
@@ -794,7 +807,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         if (vmVpnSiteToSite) {
             cost += vpnSiteToSiteCost;
         }
-        
+
         return cost;
     }, [
         vmCpuCores, vmRamGb, vmStorageType, vmStorageSize, vmNetworkSpeed, vmOperatingSystem,
@@ -835,7 +848,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         const calculatedCommissionValue = finalPrice * Comm;
         const revenueTaxValue = finalPrice * T_rev;
-        
+
         const calculatedReferralPartnerCommission = (() => {
             if (!includeReferralPartner) {
                 return 0;
@@ -852,31 +865,31 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         // Correct DRE calculation structure:
         // 1. Gross Revenue
         const grossRevenue = finalPrice;
-        
+
         // 2. Revenue Taxes (PIS + COFINS)
         const revenueOnlyTaxes = finalPrice * (T_rev);
-        
+
         // 3. Net Revenue (after revenue taxes)
         const netRevenue = grossRevenue - revenueOnlyTaxes;
-        
+
         // 4. Direct Costs (VM operational costs)
         const directCosts = C;
-        
+
         // 5. Gross Profit (after direct costs)
         const grossProfit = netRevenue - directCosts;
-        
+
         // 6. Commercial Expenses (commissions)
         const totalCommissions = calculatedCommissionValue + calculatedReferralPartnerCommission;
-        
+
         // 7. Profit after commercial expenses
         const profitAfterCommissions = grossProfit - totalCommissions;
-        
+
         // 8. Profit Taxes (CSLL + IRPJ) - only on positive profit
         const profitTaxValue = profitAfterCommissions > 0 ? profitAfterCommissions * T_profit : 0;
-        
+
         // 9. Net Profit
         const netProfit = profitAfterCommissions - profitTaxValue;
-        
+
         const calculatedNetMargin = finalPrice > 0 ? (netProfit / finalPrice) * 100 : 0;
         const calculatedMarkupValue = C * M; // This represents the actual markup amount added to cost
 
@@ -919,7 +932,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         };
     }, [calculateVMCost, revenueTaxes, profitTaxes, markup, contractDiscount, commissionPercentage, appliedDirectorDiscountPercentage, includeReferralPartner, setupFee]);
 
-    
+
 
 
 
@@ -955,7 +968,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
     const handleTaxRegimeChange = (regime: string) => {
         setSelectedTaxRegime(regime);
-        
+
         // Definir valores padrão para cada regime
         switch (regime) {
             case 'lucro_real':
@@ -993,27 +1006,27 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
     const editProposal = (proposal: Proposal) => {
         setCurrentProposal(proposal);
-        
+
         // Handle client data - check if it's an object or string
         if (typeof proposal.client === 'object' && proposal.client !== null) {
             setClientData(proposal.client);
         } else if (typeof proposal.client === 'string') {
-            setClientData({ 
-                name: proposal.client, 
-                contact: '', 
-                projectName: '', 
-                email: '', 
-                phone: '' 
+            setClientData({
+                name: proposal.client,
+                contact: '',
+                projectName: '',
+                email: '',
+                phone: ''
             });
         } else if (proposal.clientData) {
             setClientData(proposal.clientData);
         }
-        
+
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
         }
-        
+
         // Handle products - check multiple possible locations and formats
         let products = [];
         if (proposal.products && Array.isArray(proposal.products)) {
@@ -1029,7 +1042,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 details: item.details || {}
             }));
         }
-        
+
         setAddedProducts(products);
         setSelectedStatus(proposal.status); // Load the status
         setViewMode('calculator');
@@ -1037,27 +1050,27 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
     const viewProposal = (proposal: Proposal) => {
         setCurrentProposal(proposal);
-        
+
         // Handle client data - check if it's an object or string
         if (typeof proposal.client === 'object' && proposal.client !== null) {
             setClientData(proposal.client);
         } else if (typeof proposal.client === 'string') {
-            setClientData({ 
-                name: proposal.client, 
-                contact: '', 
-                projectName: '', 
-                email: '', 
-                phone: '' 
+            setClientData({
+                name: proposal.client,
+                contact: '',
+                projectName: '',
+                email: '',
+                phone: ''
             });
         } else if (proposal.clientData) {
             setClientData(proposal.clientData);
         }
-        
+
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
         }
-        
+
         // Handle products - check multiple possible locations and formats
         let products = [];
         if (proposal.products && Array.isArray(proposal.products)) {
@@ -1073,7 +1086,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 details: item.details || {}
             }));
         }
-        
+
         setAddedProducts(products);
         setSelectedStatus(proposal.status);
         setViewMode('proposal-summary');
@@ -1084,7 +1097,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             console.error('Firebase não está disponível');
             return;
         }
-        
+
         if (window.confirm('Tem certeza que deseja excluir esta proposta?')) {
             try {
                 await deleteDoc(doc(db, 'proposals', proposalId));
@@ -1166,21 +1179,21 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 }
             }
         `;
-        
+
         // Create style element
         const styleElement = document.createElement('style');
         styleElement.textContent = printStyles;
         document.head.appendChild(styleElement);
-        
+
         // Add proposal-view class to the proposal summary
         const proposalElement = document.querySelector('.proposal-view');
         if (proposalElement) {
             proposalElement.classList.add('print-area');
         }
-        
+
         // Trigger print
         window.print();
-        
+
         // Clean up
         setTimeout(() => {
             document.head.removeChild(styleElement);
@@ -1192,14 +1205,14 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
     const handleTaxRateChange = (taxType: keyof typeof taxRates, value: number) => {
         console.log(`Changing ${taxType} to ${value}`);
-        
+
         // Ensure the value is a valid number and not negative
         const validValue = isNaN(value) || value < 0 ? 0 : value;
-        
+
         const newTaxRates = { ...taxRates, [taxType]: validValue };
         console.log('New tax rates:', newTaxRates);
         setTaxRates(newTaxRates);
-        
+
         // Save to localStorage
         localStorage.setItem('vmTaxRates', JSON.stringify(newTaxRates));
     };
@@ -1208,7 +1221,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         console.log('handleSaveSettings called');
         console.log('Current setupFee:', setupFee);
         console.log('Current managementAndSupportCost:', managementAndSupportCost);
-        
+
         if (!currentUser) {
             toast.error('Você precisa estar logado para salvar as configurações.');
             return;
@@ -1246,15 +1259,15 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 updatedAt: new Date().toISOString(),
                 userId: currentUser.uid
             };
-            
+
             console.log('Saving settings:', settingsToSave);
             console.log('setupFee in settingsToSave:', settingsToSave.setupFee);
             console.log('managementAndSupportCost in settingsToSave:', settingsToSave.managementAndSupportCost);
-            
+
             // Save to localStorage as fallback
             localStorage.setItem(`vmPricingSettings_${currentUser.uid}`, JSON.stringify(settingsToSave));
             console.log('Saved to localStorage with key:', `vmPricingSettings_${currentUser.uid}`);
-            
+
             // Try to save via API
             const response = await fetch('/api/vm-settings', {
                 method: 'POST',
@@ -1315,12 +1328,79 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         }
     };
 
+    // Funções para gerenciar propostas já implementadas acima
 
-    
 
-    
+    // Função para salvar proposta
+    const saveProposal = async () => {
+        if (!currentUser) {
+            alert('Erro: Usuário não autenticado');
+            return;
+        }
 
-    
+        // Validar dados obrigatórios
+        if (!clientData || !clientData.name) {
+            alert('Por favor, preencha os dados do cliente antes de salvar.');
+            return;
+        }
+
+        if (!accountManagerData || !accountManagerData.name) {
+            alert('Por favor, preencha os dados do gerente de contas antes de salvar.');
+            return;
+        }
+
+        if (addedProducts.length === 0) {
+            alert('Por favor, adicione pelo menos um produto antes de salvar.');
+            return;
+        }
+
+        try {
+            const totalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+            const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
+
+            const proposalToSave = {
+                title: `Proposta Máquinas Virtuais - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                client: clientData.companyName || clientData.name || 'Cliente não informado',
+                value: totalMonthly,
+                type: 'VM',
+                status: 'Rascunho',
+                createdBy: currentUser.email || currentUser.id,
+                createdAt: new Date().toISOString(),
+                version: 1,
+                // Store additional data as metadata
+                clientData: clientData,
+                accountManager: accountManagerData,
+                products: addedProducts,
+                totalSetup: totalSetup,
+                totalMonthly: totalMonthly,
+                userId: currentUser.id
+            };
+
+            const response = await fetch('/api/proposals', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentUser.token}`,
+                },
+                body: JSON.stringify(proposalToSave),
+            });
+
+            if (response.ok) {
+                const savedProposal = await response.json();
+                alert(`Proposta ${savedProposal.baseId || savedProposal.id} salva com sucesso!`);
+                setCurrentProposal(savedProposal);
+                // Atualizar lista de propostas
+                fetchProposals();
+                // Limpar formulário após salvar
+                setViewMode('search');
+            } else {
+                throw new Error('Erro ao salvar proposta');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar proposta:', error);
+            alert('Erro ao salvar proposta. Por favor, tente novamente.');
+        }
+    };
 
     // Tela de resumo da proposta (visualização / impressão)
     if (viewMode === 'proposal-summary' && currentProposal) {
@@ -1421,8 +1501,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 {viewMode === 'search' ? (
                     <Card className="bg-slate-900/80 border-slate-800 text-white">
                         <CardHeader>
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={() => setViewMode('calculator')}
                                 className="flex items-center mb-4 border-slate-600 text-slate-300 hover:bg-slate-700"
                             >
@@ -1466,8 +1546,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                         ) : (
                                             filteredProposals.map((p: Proposal) => (
                                                 <TableRow key={p.id} className="border-slate-800">
-                                                    <TableCell>{p.id}</TableCell>
-                                                    <TableCell>{p.client.name} (v{p.version})</TableCell>
+                                                    <TableCell>{p.baseId || p.id}</TableCell>
+                                                    <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Sem nome'} (v{p.version})</TableCell>
                                                     <TableCell>{p.createdAt ? (
                                                         (typeof p.createdAt === 'object' && 'toDate' in p.createdAt)
                                                             ? new Date(p.createdAt.toDate()).toLocaleDateString('pt-BR')
@@ -1564,1405 +1644,1408 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                         </div>
 
                         {viewMode === 'calculator' && (
-                        <>
-                        <div>
-                            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                <TabsList className={`grid w-full ${currentUser?.role === 'admin' ? 'grid-cols-4' : 'grid-cols-1'} bg-slate-800`}>
-                                    <TabsTrigger value="calculator">Calculadora VM</TabsTrigger>
-                                    {currentUser?.role === 'admin' && (
-                                        <TabsTrigger value="list-price">Tabela de Preços VM/Configurações</TabsTrigger>
-                                    )}
-                                    {currentUser?.role === 'admin' && (
-                                        <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
-                                    )}
-                                    {currentUser?.role === 'admin' && (
-                                        <TabsTrigger value="dre">DRE</TabsTrigger>
-                                    )}
-                                </TabsList>
-                                <TabsContent value="calculator">
-                                    <div className="mt-6">
-                                        {/* Configurar Máquina Virtual */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <div className="flex justify-between items-center">
-                                                    <CardTitle className="text-cyan-400 flex items-center gap-2">
-                                                        <Server className="h-5 w-5" />
-                                                        Configurar Máquina Virtual
-                                                    </CardTitle>
-                                                    <div className="flex gap-2">
-                                                        <Button variant="outline" className="bg-blue-600 text-white border-blue-600">
-                                                            <Brain className="h-4 w-4 mr-2" />
-                                                            Sugestão IA
-                                                        </Button>
-                                                        <Button variant="outline" className="bg-blue-600 text-white border-blue-600">
-                                                            <Plus className="h-4 w-4 mr-2" />
-                                                            Adicionar à Proposta
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="space-y-6">
-                                                {/* Nome da VM */}
-                                                <div>
-                                                    <Label className="flex items-center gap-2 mb-2">
-                                                        <Edit className="h-4 w-4" />
-                                                        Nome da VM
-                                                    </Label>
-                                                    <Input 
-                                                        value={vmName} 
-                                                        onChange={(e) => setVmName(e.target.value)}
-                                                        className="bg-slate-800 border-slate-700 text-white" 
-                                                    />
-                                                </div>
-
-                                                {/* vCPU Cores e Memória RAM */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div>
-                                                        <Label className="flex items-center gap-2 mb-2">
-                                                            <Cpu className="h-4 w-4" />
-                                                            vCPU Cores
-                                                        </Label>
-                                                        <Input 
-                                                            type="number" 
-                                                            value={vmCpuCores} 
-                                                            onChange={(e) => setVmCpuCores(Number(e.target.value))}
-                                                            className="bg-slate-800 border-slate-700 text-white" 
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <Label className="flex items-center gap-2 mb-2">
-                                                            <MemoryStick className="h-4 w-4" />
-                                                            Memória RAM (GB)
-                                                        </Label>
-                                                        <Input 
-                                                            type="number" 
-                                                            value={vmRamGb} 
-                                                            onChange={(e) => setVmRamGb(Number(e.target.value))}
-                                                            className="bg-slate-800 border-slate-700 text-white" 
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {/* Tipo de Armazenamento */}
-                                                <div>
-                                                    <Label className="flex items-center gap-2 mb-2">
-                                                        <HardDrive className="h-4 w-4" />
-                                                        Tipo de Armazenamento
-                                                    </Label>
-                                                    <Select value={vmStorageType} onValueChange={setVmStorageType}>
-                                                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="bg-slate-800 text-white">
-                                                            <SelectItem value="HDD SAS">HDD SAS</SelectItem>
-                                                            <SelectItem value="SSD Performance">SSD Performance</SelectItem>
-                                                            <SelectItem value="NVMe">NVMe</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                {/* Armazenamento */}
-                                                <div>
-                                                    <Label className="flex items-center gap-2 mb-2">
-                                                        <HardDrive className="h-4 w-4" />
-                                                        Armazenamento {vmStorageType} (GB)
-                                                    </Label>
-                                                    <Input 
-                                                        type="number" 
-                                                        value={vmStorageSize} 
-                                                        onChange={(e) => setVmStorageSize(Number(e.target.value))}
-                                                        className="bg-slate-800 border-slate-700 text-white" 
-                                                    />
-                                                </div>
-
-                                                {/* Placa de Rede */}
-                                                <div>
-                                                    <Label className="flex items-center gap-2 mb-2">
-                                                        <Network className="h-4 w-4" />
-                                                        Placa de Rede
-                                                    </Label>
-                                                    <Select value={vmNetworkSpeed} onValueChange={setVmNetworkSpeed}>
-                                                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="bg-slate-800 text-white">
-                                                            <SelectItem value="1 Gbps">1 Gbps</SelectItem>
-                                                            <SelectItem value="10 Gbps">10 Gbps</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                {/* Sistema Operacional */}
-                                                <div>
-                                                    <Label className="flex items-center gap-2 mb-2">
-                                                        <Settings className="h-4 w-4" />
-                                                        Sistema Operacional
-                                                    </Label>
-                                                    <Select value={vmOperatingSystem} onValueChange={setVmOperatingSystem}>
-                                                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="bg-slate-800 text-white">
-                                                            <SelectItem value="Ubuntu Server 22.04 LTS">Ubuntu Server 22.04 LTS</SelectItem>
-                                                            <SelectItem value="Windows Server 2022 Standard">Windows Server 2022 Standard</SelectItem>
-                                                            <SelectItem value="Windows 10 Pro">Windows 10 Pro</SelectItem>
-                                                            <SelectItem value="CentOS Stream 9">CentOS Stream 9</SelectItem>
-                                                            <SelectItem value="Debian 12">Debian 12</SelectItem>
-                                                            <SelectItem value="Rocky Linux 9">Rocky Linux 9</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                {/* Serviços Adicionais */}
-                                                <div>
-                                                    <h3 className="text-cyan-400 text-lg font-semibold mb-4">Serviços Adicionais</h3>
-                                                    
-                                                    {/* Backup em Bloco */}
-                                                    <div className="mb-4">
-                                                        <Label className="mb-2 block">
-                                                            Backup em Bloco: <span className="text-cyan-400">{vmBackupSize} GB</span>
-                                                        </Label>
-                                                        <Input 
-                                                            type="number" 
-                                                            value={vmBackupSize} 
-                                                            onChange={(e) => setVmBackupSize(Number(e.target.value))}
-                                                            className="bg-slate-800 border-slate-700 text-white" 
-                                                            placeholder="0"
-                                                        />
-                                                    </div>
-
-                                                    {/* Checkboxes para serviços adicionais */}
-                                                    <div className="space-y-3">
-                                                        <div className="flex items-center space-x-2">
-                                                            <Checkbox 
-                                                                id="vmAdditionalIp" 
-                                                                checked={vmAdditionalIp} 
-                                                                onCheckedChange={(checked) => setVmAdditionalIp(Boolean(checked))}
-                                                                className="border-cyan-400"
-                                                            />
-                                                            <Label htmlFor="vmAdditionalIp" className="text-white">IP Adicional</Label>
-                                                        </div>
-                                                        <div className="flex items-center space-x-2">
-                                                            <Checkbox 
-                                                                id="vmSnapshot" 
-                                                                checked={vmSnapshot} 
-                                                                onCheckedChange={(checked) => setVmSnapshot(Boolean(checked))}
-                                                                className="border-cyan-400"
-                                                            />
-                                                            <Label htmlFor="vmSnapshot" className="text-white">Snapshot Adicional</Label>
-                                                        </div>
-                                                        <div className="flex items-center space-x-2">
-                                                            <Checkbox 
-                                                                id="vmVpnSiteToSite" 
-                                                                checked={vmVpnSiteToSite} 
-                                                                onCheckedChange={(checked) => setVmVpnSiteToSite(Boolean(checked))}
-                                                                className="border-cyan-400"
-                                                            />
-                                                            <Label htmlFor="vmVpnSiteToSite" className="text-white">VPN Site-to-Site</Label>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Período Contratual */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <Settings className="h-5 w-5" />
-                                                    <span className="text-cyan-400">Período Contratual</span>
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="space-y-4">
-                                                    <div>
-                                                        <Label className="text-white mb-3 block">Selecione o período de contrato:</Label>
-                                                        <div className="grid grid-cols-5 gap-3">
-                                                            {[12, 24, 36, 48, 60].map((months) => (
-                                                                <Button
-                                                                    key={months}
-                                                                    variant={vmContractPeriod === months ? "default" : "outline"}
-                                                                    className={`${
-                                                                        vmContractPeriod === months 
-                                                                            ? "bg-cyan-600 text-white border-cyan-600" 
-                                                                            : "bg-slate-800 text-white border-slate-600 hover:bg-slate-700"
-                                                                    }`}
-                                                                    onClick={() => setVmContractPeriod(months)}
-                                                                >
-                                                                    {months} meses
+                            <>
+                                <div>
+                                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                                        <TabsList className={`grid w-full ${currentUser?.role === 'admin' ? 'grid-cols-4' : 'grid-cols-1'} bg-slate-800`}>
+                                            <TabsTrigger value="calculator">Calculadora VM</TabsTrigger>
+                                            {currentUser?.role === 'admin' && (
+                                                <TabsTrigger value="list-price">Tabela de Preços VM/Configurações</TabsTrigger>
+                                            )}
+                                            {currentUser?.role === 'admin' && (
+                                                <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
+                                            )}
+                                            {currentUser?.role === 'admin' && (
+                                                <TabsTrigger value="dre">DRE</TabsTrigger>
+                                            )}
+                                        </TabsList>
+                                        <TabsContent value="calculator">
+                                            <div className="mt-6">
+                                                {/* Configurar Máquina Virtual */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <div className="flex justify-between items-center">
+                                                            <CardTitle className="text-cyan-400 flex items-center gap-2">
+                                                                <Server className="h-5 w-5" />
+                                                                Configurar Máquina Virtual
+                                                            </CardTitle>
+                                                            <div className="flex gap-2">
+                                                                <Button variant="outline" className="bg-blue-600 text-white border-blue-600">
+                                                                    <Brain className="h-4 w-4 mr-2" />
+                                                                    Sugestão IA
                                                                 </Button>
-                                                            ))}
+                                                                <Button variant="outline" className="bg-blue-600 text-white border-blue-600">
+                                                                    <Plus className="h-4 w-4 mr-2" />
+                                                                    Adicionar à Proposta
+                                                                </Button>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="text-sm text-slate-400">
-                                                        Período selecionado: <span className="text-cyan-400 font-semibold">{vmContractPeriod} meses</span>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Incluir Parceiro Indicador */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <User className="h-5 w-5" />
-                                                    <span className="text-cyan-400">Parceiro Indicador</span>
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="flex items-center space-x-2">
-                                                    <Checkbox
-                                                        id="includeReferralPartner"
-                                                        checked={includeReferralPartner}
-                                                        onCheckedChange={(checked) => setIncludeReferralPartner(Boolean(checked))}
-                                                        className="border-cyan-400"
-                                                    />
-                                                    <Label htmlFor="includeReferralPartner" className="text-white">Incluir Parceiro Indicador</Label>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Resultado do Cálculo da VM */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center">
-                                                    <Calculator className="mr-2" />
-                                                    Resultado da Configuração
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="space-y-4">
-                                                    <div className="grid grid-cols-2 gap-4">
+                                                    </CardHeader>
+                                                    <CardContent className="space-y-6">
+                                                        {/* Nome da VM */}
                                                         <div>
-                                                            <Label className="text-cyan-400">Resumo da VM:</Label>
-                                                            <div className="text-sm space-y-1 mt-2">
-                                                                <div>Nome: {vmName}</div>
-                                                                <div>vCPU: {vmCpuCores} cores</div>
-                                                                <div>RAM: {vmRamGb} GB</div>
-                                                                <div>Armazenamento: {vmStorageSize} GB {vmStorageType}</div>
-                                                                <div>Rede: {vmNetworkSpeed}</div>
-                                                                <div>OS: {vmOperatingSystem}</div>
-                                                                <div>Contrato: {vmContractPeriod} meses</div>
-                                                            </div>
+                                                            <Label className="flex items-center gap-2 mb-2">
+                                                                <Edit className="h-4 w-4" />
+                                                                Nome da VM
+                                                            </Label>
+                                                            <Input
+                                                                value={vmName}
+                                                                onChange={(e) => setVmName(e.target.value)}
+                                                                className="bg-slate-800 border-slate-700 text-white"
+                                                            />
                                                         </div>
-                                                        <div>
-                                                            <Label className="text-cyan-400">Serviços Adicionais:</Label>
-                                                            <div className="text-sm space-y-1 mt-2">
-                                                                {vmBackupSize > 0 && <div>Backup: {vmBackupSize} GB</div>}
-                                                                {vmAdditionalIp && <div>IP Adicional</div>}
-                                                                {vmSnapshot && <div>Snapshot Adicional</div>}
-                                                                {vmVpnSiteToSite && <div>VPN Site-to-Site</div>}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                            <CardFooter className="flex-col items-start">
-                                                <div className="w-full">
-                                                    <Separator className="bg-slate-700 my-4" />
-                                                    <div className="text-lg font-bold mb-2">Cálculo de Preços:</div>
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between"><span>Custo Base:</span> <span>{formatCurrency(calculateVMCost)}</span></div>
-                                                        <div className="flex justify-between"><span>Impostos:</span> <span>{formatCurrency(costBreakdown.taxAmount)}</span></div>
-                                                        <div className="flex justify-between"><span>Lucro (Markup de {markup}%):</span> <span>{formatCurrency(costBreakdown.markupAmount)}</span></div>
-                                                        {contractDiscount > 0 && (
-                                                            <div className="flex justify-between text-orange-400"><span>Desconto Contrato ({contractDiscount}%):</span> <span>-{formatCurrency(costBreakdown.contractDiscount.amount)}</span></div>
-                                                        )}
-                                                        <div className="flex justify-between"><span>Taxa de Setup:</span> <span>R$ {formatBrazilianNumber(setupFee)}</span></div>
-                                                        <div className="flex justify-between text-yellow-400"><span>Comissão ({commissionPercentage}%):</span> <span>{formatCurrency(vmFinalPrice * (commissionPercentage / 100))}</span></div>
-                                                        {includeReferralPartner && (
-                                                            <div className="flex justify-between text-yellow-400"><span>Comissão Parceiro Indicador:</span> <span>{formatCurrency(costBreakdown.referralPartnerCommission)}</span></div>
-                                                        )}
-                                                        <Separator className="bg-slate-700 my-2" />
-                                                        <div className="flex justify-between text-green-400 font-bold text-lg">
-                                                            <span>Total Mensal:</span> 
-                                                            <span>{formatCurrency(vmFinalPrice)}</span>
-                                                        </div>
-                                                        {contractDiscount > 0 && (
-                                                            <div className="text-sm text-orange-400 mt-2">
-                                                                💰 Desconto de {contractDiscount}% aplicado por contrato de {vmContractPeriod} meses
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    {currentUser?.role === 'diretor' && (
-                                                        <div className="space-y-2 mt-4">
-                                                            <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
-                                                            <div className="flex items-center space-x-2">
+
+                                                        {/* vCPU Cores e Memória RAM */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                            <div>
+                                                                <Label className="flex items-center gap-2 mb-2">
+                                                                    <Cpu className="h-4 w-4" />
+                                                                    vCPU Cores
+                                                                </Label>
                                                                 <Input
-                                                                    id="director-discount"
                                                                     type="number"
-                                                                    value={directorDiscountPercentage}
-                                                                    onChange={(e) => setDirectorDiscountPercentage(Number(e.target.value))}
-                                                                    placeholder="0-100"
-                                                                    min="0"
-                                                                    max="100"
+                                                                    value={vmCpuCores}
+                                                                    onChange={(e) => setVmCpuCores(Number(e.target.value))}
                                                                     className="bg-slate-800 border-slate-700 text-white"
                                                                 />
-                                                                <Button
-                                                                    onClick={() => setAppliedDirectorDiscountPercentage(directorDiscountPercentage)}
-                                                                    className="bg-blue-600 hover:bg-blue-700"
-                                                                >
-                                                                    Aplicar
-                                                                </Button>
                                                             </div>
-                                                        </div>
-                                                    )}
-                                                    <div className="space-y-2 mt-4">
-                                                        <Button 
-                                                            className="w-full bg-green-600 hover:bg-green-700"
-                                                            onClick={handleAddVMProduct}
-                                                        >
-                                                            Adicionar à Proposta
-                                                        </Button>
-                                                        {addedProducts.length > 0 && (
-                                                            <Button 
-                                                                variant="outline"
-                                                                className="w-full bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                                                                onClick={() => setActiveTab('proposal')}
-                                                            >
-                                                                Ver Resumo da Proposta ({addedProducts.length} {addedProducts.length === 1 ? 'item' : 'itens'})
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </CardFooter>
-                                        </Card>
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="commissions-table">
-                                    <div className="space-y-6 mt-6">
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center">
-                                                    <div className="w-4 h-4 bg-yellow-500 mr-2"></div>
-                                                    Tabela de Comissões - VM
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <VMCommissionsSection />
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-                                </TabsContent>
-                                <TabsContent value="dre">
-                                    <div className="space-y-6 mt-6">
-                                        {/* Análise Financeira */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center">
-                                                    <div className="w-4 h-4 bg-green-500 mr-2"></div>
-                                                    Análise Financeira
-                                                </CardTitle>
-                                                <CardDescription>Resumo dos cálculos financeiros</CardDescription>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between">
-                                                            <span>Receita Bruta Mensal:</span>
-                                                            <span className="text-green-400">{formatCurrency(costBreakdown.finalPrice)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span>Receita Total do Contrato (12m):</span>
-                                                            <span className="text-green-400">{formatCurrency(costBreakdown.finalPrice * 12)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span>Taxa de Setup:</span>
-                                                            <span className="text-green-400">{formatCurrency(costBreakdown.setupFee)}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between">
-                                                            <span>Receita Líquida Total:</span>
-                                                            <span className={costBreakdown.netProfit >= 0 ? "text-green-400" : "text-red-400"}>
-                                                                {formatCurrency(costBreakdown.netProfit * 12)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span>Receita Líquida Mensal Média:</span>
-                                                            <span className={costBreakdown.netProfit >= 0 ? "text-green-400" : "text-red-400"}>
-                                                                {formatCurrency(costBreakdown.netProfit)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span>Margem Líquida:</span>
-                                                            <span className={costBreakdown.netMargin >= 0 ? "text-green-400" : "text-red-400"}>
-                                                                {costBreakdown.netMargin.toFixed(2)}%
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* DRE - Demonstrativo de Resultado do Exercício */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center">
-                                                    <div className="w-4 h-4 bg-blue-500 mr-2"></div>
-                                                    DRE - Demonstrativo de Resultado do Exercício
-                                                </CardTitle>
-                                                <CardDescription>DRE - Período: 12 Meses</CardDescription>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <Table>
-                                                    <TableHeader>
-                                                        <TableRow className="border-slate-700">
-                                                            <TableHead className="text-white">Descrição</TableHead>
-                                                            <TableHead className="text-right text-white">Valor Mensal</TableHead>
-                                                        </TableRow>
-                                                    </TableHeader>
-                                                    <TableBody>
-                                                        {/* Receita Bruta */}
-                                                        <TableRow className="border-slate-800 bg-blue-900/30">
-                                                            <TableCell className="text-white font-semibold">Receita Bruta</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency(costBreakdown.grossRevenue || costBreakdown.finalPrice)}</TableCell>
-                                                        </TableRow>
-                                                        
-                                                        {/* Impostos sobre Receita */}
-                                                        <TableRow className="border-slate-800 bg-red-900/30">
-                                                            <TableCell className="text-white font-semibold">(-) Impostos sobre Receita</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency(costBreakdown.revenueTaxValue)}</TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="border-slate-800">
-                                                            <TableCell className="text-white pl-8">PIS ({formatBrazilianNumber(taxRates.pis)}%)</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency((costBreakdown.grossRevenue || costBreakdown.finalPrice) * (taxRates.pis / 100))}</TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="border-slate-800">
-                                                            <TableCell className="text-white pl-8">Cofins ({formatBrazilianNumber(taxRates.cofins)}%)</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency((costBreakdown.grossRevenue || costBreakdown.finalPrice) * (taxRates.cofins / 100))}</TableCell>
-                                                        </TableRow>
-                                                        
-                                                        {/* Receita Líquida */}
-                                                        <TableRow className="border-slate-800 bg-green-900/30">
-                                                            <TableCell className="text-white font-semibold">(=) Receita Líquida</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency(costBreakdown.netRevenue || (costBreakdown.finalPrice - costBreakdown.revenueTaxValue))}</TableCell>
-                                                        </TableRow>
-                                                        
-                                                        {/* Custos Diretos */}
-                                                        <TableRow className="border-slate-800 bg-red-900/30">
-                                                            <TableCell className="text-white font-semibold">(-) Custos Diretos</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency(costBreakdown.directCosts || costBreakdown.cost)}</TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="border-slate-800">
-                                                            <TableCell className="text-white pl-8">Custo Operacional da VM</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency(costBreakdown.cost)}</TableCell>
-                                                        </TableRow>
-                                                        
-                                                        {/* Lucro Bruto */}
-                                                        <TableRow className="border-slate-800 bg-blue-900/30">
-                                                            <TableCell className="text-white font-semibold">(=) Lucro Bruto</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency(costBreakdown.grossProfit)}</TableCell>
-                                                        </TableRow>
-                                                        
-                                                        {/* Despesas Comerciais (Comissões) */}
-                                                        <TableRow className="border-slate-800 bg-red-900/30">
-                                                            <TableCell className="text-white font-semibold">(-) Despesas Comerciais</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency(costBreakdown.totalCommissions || (costBreakdown.commissionValue + costBreakdown.referralPartnerCommission))}</TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="border-slate-800">
-                                                            <TableCell className="text-white pl-8">Comissão Vendedor</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency(costBreakdown.commissionValue)}</TableCell>
-                                                        </TableRow>
-                                                        {costBreakdown.referralPartnerCommission > 0 && (
-                                                            <TableRow className="border-slate-800">
-                                                                <TableCell className="text-white pl-8">Comissão Parceiro</TableCell>
-                                                                <TableCell className="text-right text-white">{formatCurrency(costBreakdown.referralPartnerCommission)}</TableCell>
-                                                            </TableRow>
-                                                        )}
-                                                        
-                                                        {/* Lucro após Despesas Comerciais */}
-                                                        <TableRow className="border-slate-800 bg-blue-900/30">
-                                                            <TableCell className="text-white font-semibold">(=) Lucro após Despesas Comerciais</TableCell>
-                                                            <TableCell className="text-right text-white">{formatCurrency(costBreakdown.profitAfterCommissions || (costBreakdown.grossProfit - (costBreakdown.commissionValue + costBreakdown.referralPartnerCommission)))}</TableCell>
-                                                        </TableRow>
-                                                        
-                                                        {/* Taxa Setup (se aplicável) */}
-                                                        {costBreakdown.setupFee > 0 && (
-                                                            <TableRow className="border-slate-800">
-                                                                <TableCell className="text-white">Taxa Setup (única)</TableCell>
-                                                                <TableCell className="text-right text-white">{formatCurrency(costBreakdown.setupFee)}</TableCell>
-                                                            </TableRow>
-                                                        )}
-                                                        
-                                                        {/* Impostos sobre Lucro */}
-                                                        {costBreakdown.profitTaxValue > 0 && (
-                                                            <>
-                                                                <TableRow className="border-slate-800 bg-red-900/30">
-                                                                    <TableCell className="text-white font-semibold">(-) Impostos sobre Lucro</TableCell>
-                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.profitTaxValue)}</TableCell>
-                                                                </TableRow>
-                                                                <TableRow className="border-slate-800">
-                                                                    <TableCell className="text-white pl-8">CSLL ({formatBrazilianNumber(taxRates.csll)}%)</TableCell>
-                                                                    <TableCell className="text-right text-white">{formatCurrency((costBreakdown.profitAfterCommissions || 0) * (taxRates.csll / 100))}</TableCell>
-                                                                </TableRow>
-                                                                <TableRow className="border-slate-800">
-                                                                    <TableCell className="text-white pl-8">IRPJ ({formatBrazilianNumber(taxRates.irpj)}%)</TableCell>
-                                                                    <TableCell className="text-right text-white">{formatCurrency((costBreakdown.profitAfterCommissions || 0) * (taxRates.irpj / 100))}</TableCell>
-                                                                </TableRow>
-                                                            </>
-                                                        )}
-                                                        <TableRow className="border-slate-800 bg-green-900/50">
-                                                            <TableCell className="text-white font-bold">LUCRO LÍQUIDO</TableCell>
-                                                            <TableCell className={`text-right font-bold ${costBreakdown.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {formatCurrency(costBreakdown.netProfit)}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="border-slate-800">
-                                                            <TableCell className="text-white font-semibold">Balance</TableCell>
-                                                            <TableCell className={`text-right font-semibold ${costBreakdown.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {formatCurrency(costBreakdown.netProfit)}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="border-slate-800">
-                                                            <TableCell className="text-white font-semibold">Rentabilidade %</TableCell>
-                                                            <TableCell className={`text-right font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100)}%
-                                                            </TableCell>
-                                                        </TableRow>
-                                                        <TableRow className="border-slate-800">
-                                                            <TableCell className="text-white font-semibold">Lucratividade</TableCell>
-                                                            <TableCell className={`text-right font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100)}%
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    </TableBody>
-                                                </Table>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Tabela de Impostos Editável */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <div className="flex justify-between items-center">
-                                                    <div>
-                                                        <CardTitle className="flex items-center">
-                                                            <div className="w-4 h-4 bg-yellow-500 mr-2"></div>
-                                                            Tabela de Impostos
-                                                        </CardTitle>
-                                                        <CardDescription>Configure as alíquotas de impostos</CardDescription>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                // Reset to default values
-                                                                const defaultTaxRates = {
-                                                                    banda: 2.09,
-                                                                    fundraising: 0,
-                                                                    rate: 24,
-                                                                    pis: 1.65,
-                                                                    cofins: 7.60,
-                                                                    margem: 15,
-                                                                    csll: 9.00,
-                                                                    irpj: 15.00,
-                                                                    custoDesp: 10
-                                                                };
-                                                                setTaxRates(defaultTaxRates);
-                                                                localStorage.setItem('vmTaxRates', JSON.stringify(defaultTaxRates));
-                                                            }}
-                                                            className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                                                        >
-                                                            Resetar
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => setIsEditingTaxes(!isEditingTaxes)}
-                                                            className="border-slate-600 text-slate-300 hover:bg-slate-700"
-                                                        >
-                                                            {isEditingTaxes ? 'Salvar' : 'Editar'}
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="pis-rate">PIS (%)</Label>
-                                                        <Input
-                                                            id="pis-rate"
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={taxRates.pis?.toFixed(2) || "1.65"}
-                                                            onChange={(e) => handleTaxRateChange('pis', parseFloat(e.target.value) || 1.65)}
-                                                            disabled={!isEditingTaxes}
-                                                            className="bg-slate-800 border-slate-700"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="cofins-rate">Cofins (%)</Label>
-                                                        <Input
-                                                            id="cofins-rate"
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={taxRates.cofins?.toFixed(2) || "7.60"}
-                                                            onChange={(e) => handleTaxRateChange('cofins', parseFloat(e.target.value) || 7.60)}
-                                                            disabled={!isEditingTaxes}
-                                                            className="bg-slate-800 border-slate-700"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="csll-rate">CSLL (%)</Label>
-                                                        <Input
-                                                            id="csll-rate"
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={taxRates.csll?.toFixed(2) || "9.00"}
-                                                            onChange={(e) => handleTaxRateChange('csll', parseFloat(e.target.value) || 9.00)}
-                                                            disabled={!isEditingTaxes}
-                                                            className="bg-slate-800 border-slate-700"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="irpj-rate">IRPJ (%)</Label>
-                                                        <Input
-                                                            id="irpj-rate"
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={taxRates.irpj?.toFixed(2) || "15.00"}
-                                                            onChange={(e) => handleTaxRateChange('irpj', parseFloat(e.target.value) || 15.00)}
-                                                            disabled={!isEditingTaxes}
-                                                            className="bg-slate-800 border-slate-700"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Resultado Final */}
-                                        <Card className="border-green-500 bg-gradient-to-r from-slate-900 to-green-900/20">
-                                            <CardHeader className="bg-gradient-to-r from-green-800 to-green-700 py-4">
-                                                <CardTitle className="text-xl font-bold text-white flex items-center">
-                                                    <div className="w-3 h-3 bg-green-400 rounded-full mr-3"></div>
-                                                    Resultado Final
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-6">
-                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                                    {/* RECEITA */}
-                                                    <div className="bg-gradient-to-br from-blue-900/50 to-blue-800/30 p-4 rounded-lg border border-blue-500/30">
-                                                        <h3 className="text-sm font-semibold text-blue-300 mb-3 uppercase tracking-wide">RECEITA</h3>
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">Mensal:</span>
-                                                                <span className="text-blue-300 font-semibold">{formatCurrency(costBreakdown.finalPrice)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">Anual:</span>
-                                                                <span className="text-blue-300 font-semibold">{formatCurrency(costBreakdown.finalPrice * 12)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">Setup:</span>
-                                                                <span className="text-blue-300 font-semibold">{formatCurrency(0)}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* CUSTOS */}
-                                                    <div className="bg-gradient-to-br from-red-900/50 to-red-800/30 p-4 rounded-lg border border-red-500/30">
-                                                        <h3 className="text-sm font-semibold text-red-300 mb-3 uppercase tracking-wide">CUSTOS</h3>
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">VM:</span>
-                                                                <span className="text-red-300 font-semibold">{formatCurrency(costBreakdown.cost)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">Comissão:</span>
-                                                                <span className="text-red-300 font-semibold">{formatCurrency(costBreakdown.commissionValue)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">Impostos:</span>
-                                                                <span className="text-red-300 font-semibold">{formatCurrency(costBreakdown.taxAmount)}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* LUCRO */}
-                                                    <div className="bg-gradient-to-br from-green-900/50 to-green-800/30 p-4 rounded-lg border border-green-500/30">
-                                                        <h3 className="text-sm font-semibold text-green-300 mb-3 uppercase tracking-wide">LUCRO</h3>
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">Operacional:</span>
-                                                                <span className={`font-semibold ${costBreakdown.grossProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                                    {formatCurrency(costBreakdown.grossProfit)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">Líquido:</span>
-                                                                <span className={`font-semibold ${costBreakdown.netProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                                    {formatCurrency(costBreakdown.netProfit)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">Anual:</span>
-                                                                <span className={`font-semibold ${costBreakdown.netProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                                    {formatCurrency(costBreakdown.netProfit * 12)}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* INDICADORES */}
-                                                    <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 p-4 rounded-lg border border-purple-500/30">
-                                                        <h3 className="text-sm font-semibold text-purple-300 mb-3 uppercase tracking-wide">INDICADORES</h3>
-                                                        <div className="space-y-2">
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">Margem:</span>
-                                                                <span className={`font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
-                                                                    {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100)}%
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">Payback:</span>
-                                                                <span className="text-purple-300 font-semibold">
-                                                                    {costBreakdown.netProfit > 0 ? `${Math.ceil(costBreakdown.finalPrice / costBreakdown.netProfit)}m` : 'N/A'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-300">ROI Anual:</span>
-                                                                <span className={`font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
-                                                                    {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100 * 12)}%
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Resumo Executivo */}
-                                                <div className="mt-6 pt-6 border-t border-slate-700">
-                                                    <div className="flex items-center mb-4">
-                                                        <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
-                                                        <h3 className="text-lg font-semibold text-white">Resumo Executivo</h3>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                        <div className="text-center">
-                                                            <div className="text-2xl font-bold text-green-400">
-                                                                {formatCurrency(costBreakdown.finalPrice * 12)}
-                                                            </div>
-                                                            <div className="text-sm text-slate-400">Receita Total (12m)</div>
-                                                        </div>
-                                                        <div className="text-center">
-                                                            <div className={`text-2xl font-bold ${costBreakdown.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {formatCurrency(costBreakdown.netProfit * 12)}
-                                                            </div>
-                                                            <div className="text-sm text-slate-400">Lucro Total (12m)</div>
-                                                        </div>
-                                                        <div className="text-center">
-                                                            <div className={`text-2xl font-bold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100)}%
-                                                            </div>
-                                                            <div className="text-sm text-slate-400">Margem Líquida</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-                                </TabsContent>
-                                <TabsContent value="list-price">
-                                    <div className="space-y-6 mt-6">
-                                        {/* Tributos */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <Calculator className="h-5 w-5" />
-                                                    Tributos
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="flex gap-4 mb-6">
-                                                    <Button 
-                                                        variant="outline" 
-                                                        className={selectedTaxRegime === 'lucro_real' ? "bg-blue-600 text-white border-blue-600" : "bg-slate-700 text-white border-slate-600"}
-                                                        onClick={() => handleTaxRegimeChange('lucro_real')}
-                                                    >
-                                                        Lucro Real
-                                                    </Button>
-                                                    <Button 
-                                                        variant="outline" 
-                                                        className={selectedTaxRegime === 'lucro_presumido' ? "bg-blue-600 text-white border-blue-600" : "bg-slate-700 text-white border-slate-600"}
-                                                        onClick={() => handleTaxRegimeChange('lucro_presumido')}
-                                                    >
-                                                        Lucro Presumido
-                                                    </Button>
-                                                    <Button 
-                                                        variant="outline" 
-                                                        className={selectedTaxRegime === 'lucro_real_reduzido' ? "bg-blue-600 text-white border-blue-600" : "bg-slate-700 text-white border-slate-600"}
-                                                        onClick={() => handleTaxRegimeChange('lucro_real_reduzido')}
-                                                    >
-                                                        Lucro Real Reduzido
-                                                    </Button>
-                                                    <Button 
-                                                        variant="outline" 
-                                                        className={selectedTaxRegime === 'simples_nacional' ? "bg-blue-600 text-white border-blue-600" : "bg-slate-700 text-white border-slate-600"}
-                                                        onClick={() => handleTaxRegimeChange('simples_nacional')}
-                                                    >
-                                                        Simples Nacional
-                                                    </Button>
-                                                </div>
-                                                <div className="grid grid-cols-3 gap-6">
-                                                    <div>
-                                                        <Label>PIS/COFINS (%)</Label>
-                                                        <Input 
-                                                            value={pisCofins} 
-                                                            onChange={(e) => setPisCofins(e.target.value)}
-                                                            className="bg-slate-800 border-slate-700" 
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <Label>ISS (%)</Label>
-                                                        <Input 
-                                                            value={iss} 
-                                                            onChange={(e) => setIss(e.target.value)}
-                                                            className="bg-slate-800 border-slate-700" 
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <Label>CSLL/IR (%)</Label>
-                                                        <Input 
-                                                            value={csllIr} 
-                                                            onChange={(e) => setCsllIr(e.target.value)}
-                                                            className="bg-slate-800 border-slate-700" 
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="mt-4 text-center text-cyan-400 text-lg font-semibold">
-                                                    Total de Impostos do Regime Selecionado: {(revenueTaxes + profitTaxes).toFixed(2).replace('.', ',')}%
-                                                </div>
-                                                <p className="text-sm text-slate-400 mt-2">
-                                                    Edite os impostos de cada regime tributário. Os valores são percentuais e aceitam até 2 casas decimais.
-                                                </p>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Markup e Margem Líquida */}
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                            <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                <CardHeader>
-                                                    <CardTitle className="text-cyan-400">Markup e Margem Líquida</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                        <div>
-                                                            <Label htmlFor="markup-cost">Markup (%)</Label>
-                                                            <Input 
-                                                                id="markup-cost"
-                                                                type="number" 
-                                                                value={markup}
-                                                                onChange={(e) => setMarkup(parseFloat(e.target.value) || 0)}
-                                                                className="bg-slate-800 border-slate-700" 
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <Label htmlFor="estimated-net-margin">Margem Líquida (%)</Label>
-                                                            <Input 
-                                                                id="estimated-net-margin" 
-                                                                type="text" 
-                                                                value={estimatedNetMargin.toFixed(2) + '%'} 
-                                                                readOnly 
-                                                                className="bg-slate-800 border-slate-700 text-white cursor-not-allowed" 
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <Separator className="my-4 bg-slate-700" />
-                                                    <div className="space-y-2 text-sm">
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <div className="text-slate-400">Custo Base:</div>
-                                                            <div className="text-right">{formatCurrency(costBreakdown.baseCost)}</div>
-                                                            
-                                                            <div className="text-slate-400">Impostos ({((costBreakdown.taxAmount / costBreakdown.finalPrice) * 100 || 0).toFixed(2)}%):</div>
-                                                            <div className="text-right">{formatCurrency(costBreakdown.taxAmount)}</div>
-                                                            
-                                                            <div className="text-slate-400">Custo Total c/ Impostos:</div>
-                                                            <div className="text-right font-medium">{formatCurrency(costBreakdown.totalCostWithTaxes)}</div>
-                                                            
-                                                            <div className="text-green-400">Markup ({markup}%):</div>
-                                                            <div className="text-right text-green-400 font-medium">+{formatCurrency(costBreakdown.markupAmount)}</div>
-                                                            
-                                                            {costBreakdown.contractDiscount.percentage > 0 && (
-                                                                <>
-                                                                    <div className="text-orange-400">Desconto Contrato ({costBreakdown.contractDiscount.percentage}%):</div>
-                                                                    <div className="text-right text-orange-400">-{formatCurrency(costBreakdown.contractDiscount.amount)}</div>
-                                                                </>
-                                                            )}
-                                                            
-                                                            {costBreakdown.directorDiscount.percentage > 0 && (
-                                                                <>
-                                                                    <div className="text-orange-400">Desconto Diretor ({costBreakdown.directorDiscount.percentage}%):</div>
-                                                                    <div className="text-right text-orange-400">-{formatCurrency(costBreakdown.directorDiscount.amount)}</div>
-                                                                </>
-                                                            )}
-                                                            
-                                                            <div className="border-t border-slate-700 pt-2 font-semibold">Preço Final:</div>
-                                                            <div className="border-t border-slate-700 pt-2 text-right font-bold">{formatCurrency(costBreakdown.finalPrice)}</div>
-                                                            
-                                                            <div className="text-cyan-400 mt-2">Margem Líquida:</div>
-                                                            <div className="text-right mt-2">
-                                                                <span className={`font-bold ${costBreakdown.netMargin > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                                    {costBreakdown.netMargin.toFixed(2)}%
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-
-                                        </div>
-
-                                        {/* Recursos Base (Custos) */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="text-cyan-400">Recursos Base (Custos)</CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-2">vCPU Windows (por core)</h4>
-                                                        <div>
-                                                            <Label>Custo Mensal</Label>
-                                                            <Input value={formatBrazilianNumber(vcpuWindowsCost)} onChange={(e) => setVcpuWindowsCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-2">vCPU Linux (por core)</h4>
-                                                        <div>
-                                                            <Label>Custo Mensal</Label>
-                                                            <Input value={formatBrazilianNumber(vcpuLinuxCost)} onChange={(e) => setVcpuLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-6">
-                                                    <h4 className="text-cyan-400 mb-4">RAM (por GB)</h4>
-                                                    <div>
-                                                        <Label>Custo Mensal</Label>
-                                                        <Input value={formatBrazilianNumber(ramCost)} onChange={(e) => setRamCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Armazenamento (Custos) */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="text-cyan-400">Armazenamento (Custos)</CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-4">HDD SAS</h4>
-                                                        <div>
-                                                            <Label>Custo Mensal</Label>
-                                                            <Input value={formatBrazilianNumber(hddSasCost)} onChange={(e) => setHddSasCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-4">SSD Performance</h4>
-                                                        <div>
-                                                            <Label>Custo Mensal</Label>
-                                                            <Input value={formatBrazilianNumber(ssdPerformanceCost)} onChange={(e) => setSsdPerformanceCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-4">NVMe</h4>
-                                                        <div>
-                                                            <Label>Custo Mensal</Label>
-                                                            <Input value={formatBrazilianNumber(nvmeCost)} onChange={(e) => setNvmeCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Placa de Rede e Sistema Operacional */}
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                            <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                <CardHeader>
-                                                    <CardTitle className="text-cyan-400">Placa de Rede (Custos)</CardTitle>
-                                                </CardHeader>
-                                                <CardContent className="space-y-4">
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-2">1 Gbps</h4>
-                                                        <div>
-                                                            <Label>Custo Mensal</Label>
-                                                            <Input value={formatBrazilianNumber(network1GbpsCost)} onChange={(e) => setNetwork1GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-2">10 Gbps</h4>
-                                                        <div>
-                                                            <Label>Custo Mensal</Label>
-                                                            <Input value={formatBrazilianNumber(network10GbpsCost)} onChange={(e) => setNetwork10GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-
-                                            <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                <CardHeader>
-                                                    <CardTitle className="text-cyan-400">Sistema Operacional e Serviços (Custos)</CardTitle>
-                                                </CardHeader>
-                                                <CardContent className="space-y-4">
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div>
-                                                            <h4 className="text-cyan-400 mb-2">Windows Server 2022 Standard</h4>
                                                             <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(windowsServerCost)} onChange={(e) => setWindowsServerCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                <Label className="flex items-center gap-2 mb-2">
+                                                                    <MemoryStick className="h-4 w-4" />
+                                                                    Memória RAM (GB)
+                                                                </Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={vmRamGb}
+                                                                    onChange={(e) => setVmRamGb(Number(e.target.value))}
+                                                                    className="bg-slate-800 border-slate-700 text-white"
+                                                                />
                                                             </div>
                                                         </div>
-                                                        <div>
-                                                            <h4 className="text-cyan-400 mb-2">Windows 10 Pro</h4>
-                                                            <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(windows10ProCost)} onChange={(e) => setWindows10ProCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div>
-                                                            <h4 className="text-cyan-400 mb-2">Ubuntu Server 22.04 LTS</h4>
-                                                            <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(ubuntuCost)} onChange={(e) => setUbuntuCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="text-cyan-400 mb-2">CentOS Stream 9</h4>
-                                                            <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(centosCost)} onChange={(e) => setCentosCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div>
-                                                            <h4 className="text-cyan-400 mb-2">Debian 12</h4>
-                                                            <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(debianCost)} onChange={(e) => setDebianCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="text-cyan-400 mb-2">Rocky Linux 9</h4>
-                                                            <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(rockyLinuxCost)} onChange={(e) => setRockyLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
 
-                                        {/* Serviços Adicionais */}
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                            <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                <CardHeader>
-                                                    <CardTitle className="text-cyan-400">Backup (por GB)</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                    <div>
-                                                        <Label>Custo Mensal</Label>
-                                                        <Input value={formatBrazilianNumber(backupCostPerGb)} onChange={(e) => setBackupCostPerGb(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-
-                                            <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                <CardHeader>
-                                                    <CardTitle className="text-cyan-400">IP Adicional</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                    <div>
-                                                        <Label>Custo Mensal</Label>
-                                                        <Input value={formatBrazilianNumber(additionalIpCost)} onChange={(e) => setAdditionalIpCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-
-                                        {/* Snapshot e VPN */}
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                            <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                <CardHeader>
-                                                    <CardTitle className="text-cyan-400">Snapshot Adicional</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                    <div>
-                                                        <Label>Custo Mensal</Label>
-                                                        <Input value={formatBrazilianNumber(snapshotCost)} onChange={(e) => setSnapshotCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-
-                                            <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                <CardHeader>
-                                                    <CardTitle className="text-cyan-400">VPN Site-to-Site</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                    <div>
-                                                        <Label>Custo Mensal</Label>
-                                                        <Input value={formatBrazilianNumber(vpnSiteToSiteCost)} onChange={(e) => setVpnSiteToSiteCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-
-                                        {/* Prazos Contratuais e Descontos */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="text-cyan-400">Prazos Contratuais e Descontos</CardTitle>
-                                                </CardHeader>
-                                            <CardContent>
-                                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-2">12 Meses</h4>
+                                                        {/* Tipo de Armazenamento */}
                                                         <div>
-                                                            <Label>Desconto (%)</Label>
-                                                            <Input value={contractDiscounts[12]} onChange={(e) => setContractDiscounts(prev => ({...prev, 12: parseFloat(e.target.value.replace(",", ".")) || 0}))} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-2">24 Meses</h4>
-                                                        <div>
-                                                            <Label>Desconto (%)</Label>
-                                                            <Input value={contractDiscounts[24]} onChange={(e) => setContractDiscounts(prev => ({...prev, 24: parseFloat(e.target.value.replace(",", ".")) || 0}))} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-2">36 Meses</h4>
-                                                        <div>
-                                                            <Label>Desconto (%)</Label>
-                                                            <Input value={contractDiscounts[36]} onChange={(e) => setContractDiscounts(prev => ({...prev, 36: parseFloat(e.target.value.replace(",", ".")) || 0}))} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-2">48 Meses</h4>
-                                                        <div>
-                                                            <Label>Desconto (%)</Label>
-                                                            <Input value={contractDiscounts[48]} onChange={(e) => setContractDiscounts(prev => ({...prev, 48: parseFloat(e.target.value.replace(",", ".")) || 0}))} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="text-cyan-400 mb-2">60 Meses</h4>
-                                                        <div>
-                                                            <Label>Desconto (%)</Label>
-                                                            <Input value={contractDiscounts[60]} onChange={(e) => setContractDiscounts(prev => ({...prev, 60: parseFloat(e.target.value.replace(",", ".")) || 0}))} className="bg-slate-800 border-slate-700" />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Taxa de Setup */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="text-cyan-400">Taxa de Setup</CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div>
-                                                    <h4 className="text-cyan-400 mb-4">Taxa de Setup Geral</h4>
-                                                    <div>
-                                                        <Label>Valor Base</Label>
-                                                        <Input value={formatBrazilianNumber(setupFee)} onChange={(e) => setSetupFee(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Gestão e Suporte */}
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="text-cyan-400">Gestão e Suporte</CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div>
-                                                    <h4 className="text-cyan-400 mb-4">Serviço Mensal de Gestão e Suporte</h4>
-                                                    <div>
-                                                        <Label>Valor Mensal</Label>
-                                                        <Input value={formatBrazilianNumber(managementAndSupportCost)} onChange={(e) => setManagementAndSupportCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        {/* Botão Salvar */}
-                                        <div className="flex justify-end">
-                                            <Button
-                                                className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
-                                                onClick={handleSaveSettings}
-                                            >
-                                                <Save className="h-4 w-4" />
-                                                Salvar Configurações
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </TabsContent>
-
-                                <TabsContent value="proposal">
-                                    <div className="space-y-6 mt-6">
-                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <FileText className="h-5 w-5" />
-                                                    Resumo da Proposta
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                {addedProducts.length === 0 ? (
-                                                    <div className="text-center py-8 text-slate-400">
-                                                        <Server className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                                        <p>Nenhuma VM adicionada à proposta ainda.</p>
-                                                        <p className="text-sm">Configure uma VM na aba "Calculadora VM" e clique em "Adicionar à Proposta".</p>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <div className="mb-4">
-                                                            <Label htmlFor="proposal-status" className="mb-2 block">Status da Proposta</Label>
-                                                            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                                                                <SelectTrigger id="proposal-status" className="bg-slate-800 border-slate-700 text-white">
-                                                                    <SelectValue placeholder="Selecione o status" />
+                                                            <Label className="flex items-center gap-2 mb-2">
+                                                                <HardDrive className="h-4 w-4" />
+                                                                Tipo de Armazenamento
+                                                            </Label>
+                                                            <Select value={vmStorageType} onValueChange={setVmStorageType}>
+                                                                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                                                                    <SelectValue />
                                                                 </SelectTrigger>
                                                                 <SelectContent className="bg-slate-800 text-white">
-                                                                    <SelectItem value="Aguardando aprovação desconto Diretoria">Aguardando aprovação desconto Diretoria</SelectItem>
-                                                                    <SelectItem value="Aguardando Aprovação do Cliente">Aguardando Aprovação do Cliente</SelectItem>
-                                                                    <SelectItem value="Fechado Ganho">Fechado Ganho</SelectItem>
-                                                                    <SelectItem value="Perdido">Perdido</SelectItem>
+                                                                    <SelectItem value="HDD SAS">HDD SAS</SelectItem>
+                                                                    <SelectItem value="SSD Performance">SSD Performance</SelectItem>
+                                                                    <SelectItem value="NVMe">NVMe</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                         </div>
-                                                        <Table>
-                                                            <TableHeader>
-                                                                <TableRow className="border-slate-700">
-                                                                    <TableHead className="text-white">Descrição</TableHead>
-                                                                    <TableHead className="text-white">Setup</TableHead>
-                                                                    <TableHead className="text-white">Mensal</TableHead>
-                                                                    <TableHead className="text-white w-20">Ações</TableHead>
-                                                                </TableRow>
-                                                            </TableHeader>
-                                                            <TableBody>
-                                                                {addedProducts.map(p => (
-                                                                    <TableRow key={p.id} className="border-slate-800">
-                                                                        <TableCell className="text-white">{p.description}</TableCell>
-                                                                        <TableCell className="text-white">{formatCurrency(p.setup)}</TableCell>
-                                                                        <TableCell className="text-white">{formatCurrency(p.monthly)}</TableCell>
-                                                                        <TableCell>
-                                                                            <Button 
-                                                                                variant="destructive" 
-                                                                                size="sm" 
-                                                                                onClick={() => handleRemoveProduct(p.id)}
-                                                                            >
-                                                                                <Trash2 className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                        </Table>
-                                                        
-                                                        {/* Controles de Desconto */}
-                                                        <div className="space-y-4 p-4 bg-slate-800 rounded-lg mt-4">
-                                                            {(currentUser?.role !== 'diretor' && currentUser?.role !== 'admin') && (
+
+                                                        {/* Armazenamento */}
+                                                        <div>
+                                                            <Label className="flex items-center gap-2 mb-2">
+                                                                <HardDrive className="h-4 w-4" />
+                                                                Armazenamento {vmStorageType} (GB)
+                                                            </Label>
+                                                            <Input
+                                                                type="number"
+                                                                value={vmStorageSize}
+                                                                onChange={(e) => setVmStorageSize(Number(e.target.value))}
+                                                                className="bg-slate-800 border-slate-700 text-white"
+                                                            />
+                                                        </div>
+
+                                                        {/* Placa de Rede */}
+                                                        <div>
+                                                            <Label className="flex items-center gap-2 mb-2">
+                                                                <Network className="h-4 w-4" />
+                                                                Placa de Rede
+                                                            </Label>
+                                                            <Select value={vmNetworkSpeed} onValueChange={setVmNetworkSpeed}>
+                                                                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="bg-slate-800 text-white">
+                                                                    <SelectItem value="1 Gbps">1 Gbps</SelectItem>
+                                                                    <SelectItem value="10 Gbps">10 Gbps</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+
+                                                        {/* Sistema Operacional */}
+                                                        <div>
+                                                            <Label className="flex items-center gap-2 mb-2">
+                                                                <Settings className="h-4 w-4" />
+                                                                Sistema Operacional
+                                                            </Label>
+                                                            <Select value={vmOperatingSystem} onValueChange={setVmOperatingSystem}>
+                                                                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="bg-slate-800 text-white">
+                                                                    <SelectItem value="Ubuntu Server 22.04 LTS">Ubuntu Server 22.04 LTS</SelectItem>
+                                                                    <SelectItem value="Windows Server 2022 Standard">Windows Server 2022 Standard</SelectItem>
+                                                                    <SelectItem value="Windows 10 Pro">Windows 10 Pro</SelectItem>
+                                                                    <SelectItem value="CentOS Stream 9">CentOS Stream 9</SelectItem>
+                                                                    <SelectItem value="Debian 12">Debian 12</SelectItem>
+                                                                    <SelectItem value="Rocky Linux 9">Rocky Linux 9</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+
+                                                        {/* Serviços Adicionais */}
+                                                        <div>
+                                                            <h3 className="text-cyan-400 text-lg font-semibold mb-4">Serviços Adicionais</h3>
+
+                                                            {/* Backup em Bloco */}
+                                                            <div className="mb-4">
+                                                                <Label className="mb-2 block">
+                                                                    Backup em Bloco: <span className="text-cyan-400">{vmBackupSize} GB</span>
+                                                                </Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={vmBackupSize}
+                                                                    onChange={(e) => setVmBackupSize(Number(e.target.value))}
+                                                                    className="bg-slate-800 border-slate-700 text-white"
+                                                                    placeholder="0"
+                                                                />
+                                                            </div>
+
+                                                            {/* Checkboxes para serviços adicionais */}
+                                                            <div className="space-y-3">
                                                                 <div className="flex items-center space-x-2">
                                                                     <Checkbox
-                                                                        id="salesperson-discount-toggle"
-                                                                        checked={applySalespersonDiscount}
-                                                                        onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
+                                                                        id="vmAdditionalIp"
+                                                                        checked={vmAdditionalIp}
+                                                                        onCheckedChange={(checked) => setVmAdditionalIp(Boolean(checked))}
+                                                                        className="border-cyan-400"
                                                                     />
-                                                                    <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
+                                                                    <Label htmlFor="vmAdditionalIp" className="text-white">IP Adicional</Label>
                                                                 </div>
-                                                            )}
-                                                            {(currentUser?.role === 'diretor' || currentUser?.role === 'admin') && (
-                                                                <div className="space-y-2">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id="vmSnapshot"
+                                                                        checked={vmSnapshot}
+                                                                        onCheckedChange={(checked) => setVmSnapshot(Boolean(checked))}
+                                                                        className="border-cyan-400"
+                                                                    />
+                                                                    <Label htmlFor="vmSnapshot" className="text-white">Snapshot Adicional</Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id="vmVpnSiteToSite"
+                                                                        checked={vmVpnSiteToSite}
+                                                                        onCheckedChange={(checked) => setVmVpnSiteToSite(Boolean(checked))}
+                                                                        className="border-cyan-400"
+                                                                    />
+                                                                    <Label htmlFor="vmVpnSiteToSite" className="text-white">VPN Site-to-Site</Label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Período Contratual */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="flex items-center gap-2">
+                                                            <Settings className="h-5 w-5" />
+                                                            <span className="text-cyan-400">Período Contratual</span>
+                                                        </CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="space-y-4">
+                                                            <div>
+                                                                <Label className="text-white mb-3 block">Selecione o período de contrato:</Label>
+                                                                <div className="grid grid-cols-5 gap-3">
+                                                                    {[12, 24, 36, 48, 60].map((months) => (
+                                                                        <Button
+                                                                            key={months}
+                                                                            variant={vmContractPeriod === months ? "default" : "outline"}
+                                                                            className={`${vmContractPeriod === months
+                                                                                ? "bg-cyan-600 text-white border-cyan-600"
+                                                                                : "bg-slate-800 text-white border-slate-600 hover:bg-slate-700"
+                                                                                }`}
+                                                                            onClick={() => setVmContractPeriod(months)}
+                                                                        >
+                                                                            {months} meses
+                                                                        </Button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-sm text-slate-400">
+                                                                Período selecionado: <span className="text-cyan-400 font-semibold">{vmContractPeriod} meses</span>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Incluir Parceiro Indicador */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="flex items-center gap-2">
+                                                            <User className="h-5 w-5" />
+                                                            <span className="text-cyan-400">Parceiro Indicador</span>
+                                                        </CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="flex items-center space-x-2">
+                                                            <Checkbox
+                                                                id="includeReferralPartner"
+                                                                checked={includeReferralPartner}
+                                                                onCheckedChange={(checked) => setIncludeReferralPartner(Boolean(checked))}
+                                                                className="border-cyan-400"
+                                                            />
+                                                            <Label htmlFor="includeReferralPartner" className="text-white">Incluir Parceiro Indicador</Label>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Resultado do Cálculo da VM */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="flex items-center">
+                                                            <Calculator className="mr-2" />
+                                                            Resultado da Configuração
+                                                        </CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="space-y-4">
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <Label className="text-cyan-400">Resumo da VM:</Label>
+                                                                    <div className="text-sm space-y-1 mt-2">
+                                                                        <div>Nome: {vmName}</div>
+                                                                        <div>vCPU: {vmCpuCores} cores</div>
+                                                                        <div>RAM: {vmRamGb} GB</div>
+                                                                        <div>Armazenamento: {vmStorageSize} GB {vmStorageType}</div>
+                                                                        <div>Rede: {vmNetworkSpeed}</div>
+                                                                        <div>OS: {vmOperatingSystem}</div>
+                                                                        <div>Contrato: {vmContractPeriod} meses</div>
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="text-cyan-400">Serviços Adicionais:</Label>
+                                                                    <div className="text-sm space-y-1 mt-2">
+                                                                        {vmBackupSize > 0 && <div>Backup: {vmBackupSize} GB</div>}
+                                                                        {vmAdditionalIp && <div>IP Adicional</div>}
+                                                                        {vmSnapshot && <div>Snapshot Adicional</div>}
+                                                                        {vmVpnSiteToSite && <div>VPN Site-to-Site</div>}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                    <CardFooter className="flex-col items-start">
+                                                        <div className="w-full">
+                                                            <Separator className="bg-slate-700 my-4" />
+                                                            <div className="text-lg font-bold mb-2">Cálculo de Preços:</div>
+                                                            <div className="space-y-2">
+                                                                <div className="flex justify-between"><span>Custo Base:</span> <span>{formatCurrency(calculateVMCost)}</span></div>
+                                                                <div className="flex justify-between"><span>Impostos:</span> <span>{formatCurrency(costBreakdown.taxAmount)}</span></div>
+                                                                <div className="flex justify-between"><span>Lucro (Markup de {markup}%):</span> <span>{formatCurrency(costBreakdown.markupAmount)}</span></div>
+                                                                {contractDiscount > 0 && (
+                                                                    <div className="flex justify-between text-orange-400"><span>Desconto Contrato ({contractDiscount}%):</span> <span>-{formatCurrency(costBreakdown.contractDiscount.amount)}</span></div>
+                                                                )}
+                                                                <div className="flex justify-between"><span>Taxa de Setup:</span> <span>R$ {formatBrazilianNumber(setupFee)}</span></div>
+                                                                <div className="flex justify-between text-yellow-400"><span>Comissão ({commissionPercentage}%):</span> <span>{formatCurrency(vmFinalPrice * (commissionPercentage / 100))}</span></div>
+                                                                {includeReferralPartner && (
+                                                                    <div className="flex justify-between text-yellow-400"><span>Comissão Parceiro Indicador:</span> <span>{formatCurrency(costBreakdown.referralPartnerCommission)}</span></div>
+                                                                )}
+                                                                <Separator className="bg-slate-700 my-2" />
+                                                                <div className="flex justify-between text-green-400 font-bold text-lg">
+                                                                    <span>Total Mensal:</span>
+                                                                    <span>{formatCurrency(vmFinalPrice)}</span>
+                                                                </div>
+                                                                {contractDiscount > 0 && (
+                                                                    <div className="text-sm text-orange-400 mt-2">
+                                                                        💰 Desconto de {contractDiscount}% aplicado por contrato de {vmContractPeriod} meses
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {currentUser?.role === 'diretor' && (
+                                                                <div className="space-y-2 mt-4">
                                                                     <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
                                                                     <div className="flex items-center space-x-2">
                                                                         <Input
                                                                             id="director-discount"
                                                                             type="number"
                                                                             value={directorDiscountPercentage}
-                                                                            onChange={(e) => {
-                                                                                const value = Number(e.target.value);
-                                                                                setDirectorDiscountPercentage(value);
-                                                                                setAppliedDirectorDiscountPercentage(value);
-                                                                            }}
+                                                                            onChange={(e) => setDirectorDiscountPercentage(Number(e.target.value))}
                                                                             placeholder="0-100"
                                                                             min="0"
                                                                             max="100"
-                                                                            className="bg-slate-700 border-slate-600 text-white"
+                                                                            className="bg-slate-800 border-slate-700 text-white"
                                                                         />
+                                                                        <Button
+                                                                            onClick={() => setAppliedDirectorDiscountPercentage(directorDiscountPercentage)}
+                                                                            className="bg-blue-600 hover:bg-blue-700"
+                                                                        >
+                                                                            Aplicar
+                                                                        </Button>
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                            {currentUser?.role === 'admin' && (
-                                                                <div className="flex items-center space-x-2">
-                                                                    <Checkbox
-                                                                        id="admin-salesperson-discount-toggle"
-                                                                        checked={applySalespersonDiscount}
-                                                                        onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
-                                                                    />
-                                                                    <Label htmlFor="admin-salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
-                                                                </div>
-                                                            )}
+                                                            <div className="space-y-2 mt-4">
+                                                                <Button
+                                                                    className="w-full bg-green-600 hover:bg-green-700"
+                                                                    onClick={handleAddVMProduct}
+                                                                >
+                                                                    Adicionar à Proposta
+                                                                </Button>
+                                                                {addedProducts.length > 0 && (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        className="w-full bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                                                        onClick={() => setActiveTab('proposal')}
+                                                                    >
+                                                                        Ver Resumo da Proposta ({addedProducts.length} {addedProducts.length === 1 ? 'item' : 'itens'})
+                                                                    </Button>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                        
-                                                        <div className="space-y-2 pt-4 border-t border-slate-700">
-                                                            {applySalespersonDiscount && (
-                                                                <div className="flex justify-between text-orange-400">
-                                                                    <span>Desconto Vendedor (5%):</span>
-                                                                    <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * 0.05)}</span>
+                                                    </CardFooter>
+                                                </Card>
+                                            </div>
+                                        </TabsContent>
+
+                                        <TabsContent value="commissions-table">
+                                            <div className="space-y-6 mt-6">
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="flex items-center">
+                                                            <div className="w-4 h-4 bg-yellow-500 mr-2"></div>
+                                                            Tabela de Comissões - VM
+                                                        </CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <VMCommissionsSection />
+                                                    </CardContent>
+                                                </Card>
+                                            </div>
+                                        </TabsContent>
+                                        <TabsContent value="dre">
+                                            <div className="space-y-6 mt-6">
+                                                {/* Análise Financeira */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="flex items-center">
+                                                            <div className="w-4 h-4 bg-green-500 mr-2"></div>
+                                                            Análise Financeira
+                                                        </CardTitle>
+                                                        <CardDescription>Resumo dos cálculos financeiros</CardDescription>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                            <div className="space-y-2">
+                                                                <div className="flex justify-between">
+                                                                    <span>Receita Bruta Mensal:</span>
+                                                                    <span className="text-green-400">{formatCurrency(costBreakdown.finalPrice)}</span>
                                                                 </div>
-                                                            )}
-                                                            {appliedDirectorDiscountPercentage > 0 && (
-                                                                <div className="flex justify-between text-orange-400">
-                                                                    <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%):</span>
-                                                                    <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
+                                                                <div className="flex justify-between">
+                                                                    <span>Receita Total do Contrato (12m):</span>
+                                                                    <span className="text-green-400">{formatCurrency(costBreakdown.finalPrice * 12)}</span>
                                                                 </div>
-                                                            )}
-                                                            <div className="flex justify-between items-center font-bold text-lg">
-                                                                <div>
-                                                                    Total Setup: <span className="text-green-400">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
+                                                                <div className="flex justify-between">
+                                                                    <span>Taxa de Setup:</span>
+                                                                    <span className="text-green-400">{formatCurrency(costBreakdown.setupFee)}</span>
                                                                 </div>
-                                                                <div>
-                                                                    Total Mensal: <span className="text-green-400">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <div className="flex justify-between">
+                                                                    <span>Receita Líquida Total:</span>
+                                                                    <span className={costBreakdown.netProfit >= 0 ? "text-green-400" : "text-red-400"}>
+                                                                        {formatCurrency(costBreakdown.netProfit * 12)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span>Receita Líquida Mensal Média:</span>
+                                                                    <span className={costBreakdown.netProfit >= 0 ? "text-green-400" : "text-red-400"}>
+                                                                        {formatCurrency(costBreakdown.netProfit)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span>Margem Líquida:</span>
+                                                                    <span className={costBreakdown.netMargin >= 0 ? "text-green-400" : "text-red-400"}>
+                                                                        {costBreakdown.netMargin.toFixed(2)}%
+                                                                    </span>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        
-                                                        <div className="flex gap-4 pt-4">
-                                                            <Button 
-                                                                className="bg-green-600 hover:bg-green-700"
-                                                                onClick={() => setActiveTab('calculator')}
-                                                            >
-                                                                <Plus className="h-4 w-4 mr-2" />
-                                                                Adicionar Mais VMs
-                                                            </Button>
-                                                            <Button 
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* DRE - Demonstrativo de Resultado do Exercício */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="flex items-center">
+                                                            <div className="w-4 h-4 bg-blue-500 mr-2"></div>
+                                                            DRE - Demonstrativo de Resultado do Exercício
+                                                        </CardTitle>
+                                                        <CardDescription>DRE - Período: 12 Meses</CardDescription>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <Table>
+                                                            <TableHeader>
+                                                                <TableRow className="border-slate-700">
+                                                                    <TableHead className="text-white">Descrição</TableHead>
+                                                                    <TableHead className="text-right text-white">Valor Mensal</TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {/* Receita Bruta */}
+                                                                <TableRow className="border-slate-800 bg-blue-900/30">
+                                                                    <TableCell className="text-white font-semibold">Receita Bruta</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.grossRevenue || costBreakdown.finalPrice)}</TableCell>
+                                                                </TableRow>
+
+                                                                {/* Impostos sobre Receita */}
+                                                                <TableRow className="border-slate-800 bg-red-900/30">
+                                                                    <TableCell className="text-white font-semibold">(-) Impostos sobre Receita</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.revenueTaxValue)}</TableCell>
+                                                                </TableRow>
+                                                                <TableRow className="border-slate-800">
+                                                                    <TableCell className="text-white pl-8">PIS ({formatBrazilianNumber(taxRates.pis)}%)</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency((costBreakdown.grossRevenue || costBreakdown.finalPrice) * (taxRates.pis / 100))}</TableCell>
+                                                                </TableRow>
+                                                                <TableRow className="border-slate-800">
+                                                                    <TableCell className="text-white pl-8">Cofins ({formatBrazilianNumber(taxRates.cofins)}%)</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency((costBreakdown.grossRevenue || costBreakdown.finalPrice) * (taxRates.cofins / 100))}</TableCell>
+                                                                </TableRow>
+
+                                                                {/* Receita Líquida */}
+                                                                <TableRow className="border-slate-800 bg-green-900/30">
+                                                                    <TableCell className="text-white font-semibold">(=) Receita Líquida</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.netRevenue || (costBreakdown.finalPrice - costBreakdown.revenueTaxValue))}</TableCell>
+                                                                </TableRow>
+
+                                                                {/* Custos Diretos */}
+                                                                <TableRow className="border-slate-800 bg-red-900/30">
+                                                                    <TableCell className="text-white font-semibold">(-) Custos Diretos</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.directCosts || costBreakdown.cost)}</TableCell>
+                                                                </TableRow>
+                                                                <TableRow className="border-slate-800">
+                                                                    <TableCell className="text-white pl-8">Custo Operacional da VM</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.cost)}</TableCell>
+                                                                </TableRow>
+
+                                                                {/* Lucro Bruto */}
+                                                                <TableRow className="border-slate-800 bg-blue-900/30">
+                                                                    <TableCell className="text-white font-semibold">(=) Lucro Bruto</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.grossProfit)}</TableCell>
+                                                                </TableRow>
+
+                                                                {/* Despesas Comerciais (Comissões) */}
+                                                                <TableRow className="border-slate-800 bg-red-900/30">
+                                                                    <TableCell className="text-white font-semibold">(-) Despesas Comerciais</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.totalCommissions || (costBreakdown.commissionValue + costBreakdown.referralPartnerCommission))}</TableCell>
+                                                                </TableRow>
+                                                                <TableRow className="border-slate-800">
+                                                                    <TableCell className="text-white pl-8">Comissão Vendedor</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.commissionValue)}</TableCell>
+                                                                </TableRow>
+                                                                {costBreakdown.referralPartnerCommission > 0 && (
+                                                                    <TableRow className="border-slate-800">
+                                                                        <TableCell className="text-white pl-8">Comissão Parceiro</TableCell>
+                                                                        <TableCell className="text-right text-white">{formatCurrency(costBreakdown.referralPartnerCommission)}</TableCell>
+                                                                    </TableRow>
+                                                                )}
+
+                                                                {/* Lucro após Despesas Comerciais */}
+                                                                <TableRow className="border-slate-800 bg-blue-900/30">
+                                                                    <TableCell className="text-white font-semibold">(=) Lucro após Despesas Comerciais</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.profitAfterCommissions || (costBreakdown.grossProfit - (costBreakdown.commissionValue + costBreakdown.referralPartnerCommission)))}</TableCell>
+                                                                </TableRow>
+
+                                                                {/* Taxa Setup (se aplicável) */}
+                                                                {costBreakdown.setupFee > 0 && (
+                                                                    <TableRow className="border-slate-800">
+                                                                        <TableCell className="text-white">Taxa Setup (única)</TableCell>
+                                                                        <TableCell className="text-right text-white">{formatCurrency(costBreakdown.setupFee)}</TableCell>
+                                                                    </TableRow>
+                                                                )}
+
+                                                                {/* Impostos sobre Lucro */}
+                                                                {costBreakdown.profitTaxValue > 0 && (
+                                                                    <>
+                                                                        <TableRow className="border-slate-800 bg-red-900/30">
+                                                                            <TableCell className="text-white font-semibold">(-) Impostos sobre Lucro</TableCell>
+                                                                            <TableCell className="text-right text-white">{formatCurrency(costBreakdown.profitTaxValue)}</TableCell>
+                                                                        </TableRow>
+                                                                        <TableRow className="border-slate-800">
+                                                                            <TableCell className="text-white pl-8">CSLL ({formatBrazilianNumber(taxRates.csll)}%)</TableCell>
+                                                                            <TableCell className="text-right text-white">{formatCurrency((costBreakdown.profitAfterCommissions || 0) * (taxRates.csll / 100))}</TableCell>
+                                                                        </TableRow>
+                                                                        <TableRow className="border-slate-800">
+                                                                            <TableCell className="text-white pl-8">IRPJ ({formatBrazilianNumber(taxRates.irpj)}%)</TableCell>
+                                                                            <TableCell className="text-right text-white">{formatCurrency((costBreakdown.profitAfterCommissions || 0) * (taxRates.irpj / 100))}</TableCell>
+                                                                        </TableRow>
+                                                                    </>
+                                                                )}
+                                                                <TableRow className="border-slate-800 bg-green-900/50">
+                                                                    <TableCell className="text-white font-bold">LUCRO LÍQUIDO</TableCell>
+                                                                    <TableCell className={`text-right font-bold ${costBreakdown.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                        {formatCurrency(costBreakdown.netProfit)}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                                <TableRow className="border-slate-800">
+                                                                    <TableCell className="text-white font-semibold">Balance</TableCell>
+                                                                    <TableCell className={`text-right font-semibold ${costBreakdown.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                        {formatCurrency(costBreakdown.netProfit)}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                                <TableRow className="border-slate-800">
+                                                                    <TableCell className="text-white font-semibold">Rentabilidade %</TableCell>
+                                                                    <TableCell className={`text-right font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                        {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100)}%
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                                <TableRow className="border-slate-800">
+                                                                    <TableCell className="text-white font-semibold">Lucratividade</TableCell>
+                                                                    <TableCell className={`text-right font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                        {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100)}%
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            </TableBody>
+                                                        </Table>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Tabela de Impostos Editável */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <div className="flex justify-between items-center">
+                                                            <div>
+                                                                <CardTitle className="flex items-center">
+                                                                    <div className="w-4 h-4 bg-yellow-500 mr-2"></div>
+                                                                    Tabela de Impostos
+                                                                </CardTitle>
+                                                                <CardDescription>Configure as alíquotas de impostos</CardDescription>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        // Reset to default values
+                                                                        const defaultTaxRates = {
+                                                                            banda: 2.09,
+                                                                            fundraising: 0,
+                                                                            rate: 24,
+                                                                            pis: 1.65,
+                                                                            cofins: 7.60,
+                                                                            margem: 15,
+                                                                            csll: 9.00,
+                                                                            irpj: 15.00,
+                                                                            custoDesp: 10
+                                                                        };
+                                                                        setTaxRates(defaultTaxRates);
+                                                                        localStorage.setItem('vmTaxRates', JSON.stringify(defaultTaxRates));
+                                                                    }}
+                                                                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                                                                >
+                                                                    Resetar
+                                                                </Button>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => setIsEditingTaxes(!isEditingTaxes)}
+                                                                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                                                                >
+                                                                    {isEditingTaxes ? 'Salvar' : 'Editar'}
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="pis-rate">PIS (%)</Label>
+                                                                <Input
+                                                                    id="pis-rate"
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={taxRates.pis?.toFixed(2) || "1.65"}
+                                                                    onChange={(e) => handleTaxRateChange('pis', parseFloat(e.target.value) || 1.65)}
+                                                                    disabled={!isEditingTaxes}
+                                                                    className="bg-slate-800 border-slate-700"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="cofins-rate">Cofins (%)</Label>
+                                                                <Input
+                                                                    id="cofins-rate"
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={taxRates.cofins?.toFixed(2) || "7.60"}
+                                                                    onChange={(e) => handleTaxRateChange('cofins', parseFloat(e.target.value) || 7.60)}
+                                                                    disabled={!isEditingTaxes}
+                                                                    className="bg-slate-800 border-slate-700"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="csll-rate">CSLL (%)</Label>
+                                                                <Input
+                                                                    id="csll-rate"
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={taxRates.csll?.toFixed(2) || "9.00"}
+                                                                    onChange={(e) => handleTaxRateChange('csll', parseFloat(e.target.value) || 9.00)}
+                                                                    disabled={!isEditingTaxes}
+                                                                    className="bg-slate-800 border-slate-700"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="irpj-rate">IRPJ (%)</Label>
+                                                                <Input
+                                                                    id="irpj-rate"
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={taxRates.irpj?.toFixed(2) || "15.00"}
+                                                                    onChange={(e) => handleTaxRateChange('irpj', parseFloat(e.target.value) || 15.00)}
+                                                                    disabled={!isEditingTaxes}
+                                                                    className="bg-slate-800 border-slate-700"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Resultado Final */}
+                                                <Card className="border-green-500 bg-gradient-to-r from-slate-900 to-green-900/20">
+                                                    <CardHeader className="bg-gradient-to-r from-green-800 to-green-700 py-4">
+                                                        <CardTitle className="text-xl font-bold text-white flex items-center">
+                                                            <div className="w-3 h-3 bg-green-400 rounded-full mr-3"></div>
+                                                            Resultado Final
+                                                        </CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="p-6">
+                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                                            {/* RECEITA */}
+                                                            <div className="bg-gradient-to-br from-blue-900/50 to-blue-800/30 p-4 rounded-lg border border-blue-500/30">
+                                                                <h3 className="text-sm font-semibold text-blue-300 mb-3 uppercase tracking-wide">RECEITA</h3>
+                                                                <div className="space-y-2">
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">Mensal:</span>
+                                                                        <span className="text-blue-300 font-semibold">{formatCurrency(costBreakdown.finalPrice)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">Anual:</span>
+                                                                        <span className="text-blue-300 font-semibold">{formatCurrency(costBreakdown.finalPrice * 12)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">Setup:</span>
+                                                                        <span className="text-blue-300 font-semibold">{formatCurrency(0)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* CUSTOS */}
+                                                            <div className="bg-gradient-to-br from-red-900/50 to-red-800/30 p-4 rounded-lg border border-red-500/30">
+                                                                <h3 className="text-sm font-semibold text-red-300 mb-3 uppercase tracking-wide">CUSTOS</h3>
+                                                                <div className="space-y-2">
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">VM:</span>
+                                                                        <span className="text-red-300 font-semibold">{formatCurrency(costBreakdown.cost)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">Comissão:</span>
+                                                                        <span className="text-red-300 font-semibold">{formatCurrency(costBreakdown.commissionValue)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">Impostos:</span>
+                                                                        <span className="text-red-300 font-semibold">{formatCurrency(costBreakdown.taxAmount)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* LUCRO */}
+                                                            <div className="bg-gradient-to-br from-green-900/50 to-green-800/30 p-4 rounded-lg border border-green-500/30">
+                                                                <h3 className="text-sm font-semibold text-green-300 mb-3 uppercase tracking-wide">LUCRO</h3>
+                                                                <div className="space-y-2">
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">Operacional:</span>
+                                                                        <span className={`font-semibold ${costBreakdown.grossProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                                                            {formatCurrency(costBreakdown.grossProfit)}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">Líquido:</span>
+                                                                        <span className={`font-semibold ${costBreakdown.netProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                                                            {formatCurrency(costBreakdown.netProfit)}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">Anual:</span>
+                                                                        <span className={`font-semibold ${costBreakdown.netProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                                                            {formatCurrency(costBreakdown.netProfit * 12)}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* INDICADORES */}
+                                                            <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 p-4 rounded-lg border border-purple-500/30">
+                                                                <h3 className="text-sm font-semibold text-purple-300 mb-3 uppercase tracking-wide">INDICADORES</h3>
+                                                                <div className="space-y-2">
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">Margem:</span>
+                                                                        <span className={`font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
+                                                                            {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100)}%
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">Payback:</span>
+                                                                        <span className="text-purple-300 font-semibold">
+                                                                            {costBreakdown.netProfit > 0 ? `${Math.ceil(costBreakdown.finalPrice / costBreakdown.netProfit)}m` : 'N/A'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-sm">
+                                                                        <span className="text-gray-300">ROI Anual:</span>
+                                                                        <span className={`font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
+                                                                            {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100 * 12)}%
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Resumo Executivo */}
+                                                        <div className="mt-6 pt-6 border-t border-slate-700">
+                                                            <div className="flex items-center mb-4">
+                                                                <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                                                                <h3 className="text-lg font-semibold text-white">Resumo Executivo</h3>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                                <div className="text-center">
+                                                                    <div className="text-2xl font-bold text-green-400">
+                                                                        {formatCurrency(costBreakdown.finalPrice * 12)}
+                                                                    </div>
+                                                                    <div className="text-sm text-slate-400">Receita Total (12m)</div>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <div className={`text-2xl font-bold ${costBreakdown.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                        {formatCurrency(costBreakdown.netProfit * 12)}
+                                                                    </div>
+                                                                    <div className="text-sm text-slate-400">Lucro Total (12m)</div>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <div className={`text-2xl font-bold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                        {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100)}%
+                                                                    </div>
+                                                                    <div className="text-sm text-slate-400">Margem Líquida</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+
+                                                    </CardContent>
+                                                </Card>
+                                            </div>
+                                        </TabsContent>
+                                        <TabsContent value="list-price">
+                                            <div className="space-y-6 mt-6">
+                                                {/* Tributos */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="flex items-center gap-2">
+                                                            <Calculator className="h-5 w-5" />
+                                                            Tributos
+                                                        </CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="flex gap-4 mb-6">
+                                                            <Button
                                                                 variant="outline"
-                                                                className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                                                className={selectedTaxRegime === 'lucro_real' ? "bg-blue-600 text-white border-blue-600" : "bg-slate-700 text-white border-slate-600"}
+                                                                onClick={() => handleTaxRegimeChange('lucro_real')}
                                                             >
-                                                                <Download className="h-4 w-4 mr-2" />
-                                                                Gerar Proposta
+                                                                Lucro Real
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                className={selectedTaxRegime === 'lucro_presumido' ? "bg-blue-600 text-white border-blue-600" : "bg-slate-700 text-white border-slate-600"}
+                                                                onClick={() => handleTaxRegimeChange('lucro_presumido')}
+                                                            >
+                                                                Lucro Presumido
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                className={selectedTaxRegime === 'lucro_real_reduzido' ? "bg-blue-600 text-white border-blue-600" : "bg-slate-700 text-white border-slate-600"}
+                                                                onClick={() => handleTaxRegimeChange('lucro_real_reduzido')}
+                                                            >
+                                                                Lucro Real Reduzido
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                className={selectedTaxRegime === 'simples_nacional' ? "bg-blue-600 text-white border-blue-600" : "bg-slate-700 text-white border-slate-600"}
+                                                                onClick={() => handleTaxRegimeChange('simples_nacional')}
+                                                            >
+                                                                Simples Nacional
                                                             </Button>
                                                         </div>
-                                                    </>
-                                                )}
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-                                </TabsContent>
-                            </Tabs>
-                        </div>
-                        
-                        <div className="flex justify-end gap-4 mt-8">
-                            <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700" disabled={addedProducts.length === 0}><Download className="h-4 w-4 mr-2" />Gerar PDF</Button>
-                            <Button variant="outline" onClick={() => setViewMode('search')}>Cancelar</Button>
-                        </div>
-                        </>
+                                                        <div className="grid grid-cols-3 gap-6">
+                                                            <div>
+                                                                <Label>PIS/COFINS (%)</Label>
+                                                                <Input
+                                                                    value={pisCofins}
+                                                                    onChange={(e) => setPisCofins(e.target.value)}
+                                                                    className="bg-slate-800 border-slate-700"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <Label>ISS (%)</Label>
+                                                                <Input
+                                                                    value={iss}
+                                                                    onChange={(e) => setIss(e.target.value)}
+                                                                    className="bg-slate-800 border-slate-700"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <Label>CSLL/IR (%)</Label>
+                                                                <Input
+                                                                    value={csllIr}
+                                                                    onChange={(e) => setCsllIr(e.target.value)}
+                                                                    className="bg-slate-800 border-slate-700"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-4 text-center text-cyan-400 text-lg font-semibold">
+                                                            Total de Impostos do Regime Selecionado: {(revenueTaxes + profitTaxes).toFixed(2).replace('.', ',')}%
+                                                        </div>
+                                                        <p className="text-sm text-slate-400 mt-2">
+                                                            Edite os impostos de cada regime tributário. Os valores são percentuais e aceitam até 2 casas decimais.
+                                                        </p>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Markup e Margem Líquida */}
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                    <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                        <CardHeader>
+                                                            <CardTitle className="text-cyan-400">Markup e Margem Líquida</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                                <div>
+                                                                    <Label htmlFor="markup-cost">Markup (%)</Label>
+                                                                    <Input
+                                                                        id="markup-cost"
+                                                                        type="number"
+                                                                        value={markup}
+                                                                        onChange={(e) => setMarkup(parseFloat(e.target.value) || 0)}
+                                                                        className="bg-slate-800 border-slate-700"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label htmlFor="estimated-net-margin">Margem Líquida (%)</Label>
+                                                                    <Input
+                                                                        id="estimated-net-margin"
+                                                                        type="text"
+                                                                        value={estimatedNetMargin.toFixed(2) + '%'}
+                                                                        readOnly
+                                                                        className="bg-slate-800 border-slate-700 text-white cursor-not-allowed"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <Separator className="my-4 bg-slate-700" />
+                                                            <div className="space-y-2 text-sm">
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <div className="text-slate-400">Custo Base:</div>
+                                                                    <div className="text-right">{formatCurrency(costBreakdown.baseCost)}</div>
+
+                                                                    <div className="text-slate-400">Impostos ({((costBreakdown.taxAmount / costBreakdown.finalPrice) * 100 || 0).toFixed(2)}%):</div>
+                                                                    <div className="text-right">{formatCurrency(costBreakdown.taxAmount)}</div>
+
+                                                                    <div className="text-slate-400">Custo Total c/ Impostos:</div>
+                                                                    <div className="text-right font-medium">{formatCurrency(costBreakdown.totalCostWithTaxes)}</div>
+
+                                                                    <div className="text-green-400">Markup ({markup}%):</div>
+                                                                    <div className="text-right text-green-400 font-medium">+{formatCurrency(costBreakdown.markupAmount)}</div>
+
+                                                                    {costBreakdown.contractDiscount.percentage > 0 && (
+                                                                        <>
+                                                                            <div className="text-orange-400">Desconto Contrato ({costBreakdown.contractDiscount.percentage}%):</div>
+                                                                            <div className="text-right text-orange-400">-{formatCurrency(costBreakdown.contractDiscount.amount)}</div>
+                                                                        </>
+                                                                    )}
+
+                                                                    {costBreakdown.directorDiscount.percentage > 0 && (
+                                                                        <>
+                                                                            <div className="text-orange-400">Desconto Diretor ({costBreakdown.directorDiscount.percentage}%):</div>
+                                                                            <div className="text-right text-orange-400">-{formatCurrency(costBreakdown.directorDiscount.amount)}</div>
+                                                                        </>
+                                                                    )}
+
+                                                                    <div className="border-t border-slate-700 pt-2 font-semibold">Preço Final:</div>
+                                                                    <div className="border-t border-slate-700 pt-2 text-right font-bold">{formatCurrency(costBreakdown.finalPrice)}</div>
+
+                                                                    <div className="text-cyan-400 mt-2">Margem Líquida:</div>
+                                                                    <div className="text-right mt-2">
+                                                                        <span className={`font-bold ${costBreakdown.netMargin > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                                            {costBreakdown.netMargin.toFixed(2)}%
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+
+                                                </div>
+
+                                                {/* Recursos Base (Custos) */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="text-cyan-400">Recursos Base (Custos)</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-2">vCPU Windows (por core)</h4>
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    <Input value={formatBrazilianNumber(vcpuWindowsCost)} onChange={(e) => setVcpuWindowsCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-2">vCPU Linux (por core)</h4>
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    <Input value={formatBrazilianNumber(vcpuLinuxCost)} onChange={(e) => setVcpuLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-6">
+                                                            <h4 className="text-cyan-400 mb-4">RAM (por GB)</h4>
+                                                            <div>
+                                                                <Label>Custo Mensal</Label>
+                                                                <Input value={formatBrazilianNumber(ramCost)} onChange={(e) => setRamCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Armazenamento (Custos) */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="text-cyan-400">Armazenamento (Custos)</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-4">HDD SAS</h4>
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    <Input value={formatBrazilianNumber(hddSasCost)} onChange={(e) => setHddSasCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-4">SSD Performance</h4>
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    <Input value={formatBrazilianNumber(ssdPerformanceCost)} onChange={(e) => setSsdPerformanceCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-4">NVMe</h4>
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    <Input value={formatBrazilianNumber(nvmeCost)} onChange={(e) => setNvmeCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Placa de Rede e Sistema Operacional */}
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                    <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                        <CardHeader>
+                                                            <CardTitle className="text-cyan-400">Placa de Rede (Custos)</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent className="space-y-4">
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-2">1 Gbps</h4>
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    <Input value={formatBrazilianNumber(network1GbpsCost)} onChange={(e) => setNetwork1GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-2">10 Gbps</h4>
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    <Input value={formatBrazilianNumber(network10GbpsCost)} onChange={(e) => setNetwork10GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+
+                                                    <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                        <CardHeader>
+                                                            <CardTitle className="text-cyan-400">Sistema Operacional e Serviços (Custos)</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent className="space-y-4">
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <h4 className="text-cyan-400 mb-2">Windows Server 2022 Standard</h4>
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        <Input value={formatBrazilianNumber(windowsServerCost)} onChange={(e) => setWindowsServerCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="text-cyan-400 mb-2">Windows 10 Pro</h4>
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        <Input value={formatBrazilianNumber(windows10ProCost)} onChange={(e) => setWindows10ProCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <h4 className="text-cyan-400 mb-2">Ubuntu Server 22.04 LTS</h4>
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        <Input value={formatBrazilianNumber(ubuntuCost)} onChange={(e) => setUbuntuCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="text-cyan-400 mb-2">CentOS Stream 9</h4>
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        <Input value={formatBrazilianNumber(centosCost)} onChange={(e) => setCentosCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <h4 className="text-cyan-400 mb-2">Debian 12</h4>
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        <Input value={formatBrazilianNumber(debianCost)} onChange={(e) => setDebianCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="text-cyan-400 mb-2">Rocky Linux 9</h4>
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        <Input value={formatBrazilianNumber(rockyLinuxCost)} onChange={(e) => setRockyLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+                                                </div>
+
+                                                {/* Serviços Adicionais */}
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                    <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                        <CardHeader>
+                                                            <CardTitle className="text-cyan-400">Backup (por GB)</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent>
+                                                            <div>
+                                                                <Label>Custo Mensal</Label>
+                                                                <Input value={formatBrazilianNumber(backupCostPerGb)} onChange={(e) => setBackupCostPerGb(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+
+                                                    <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                        <CardHeader>
+                                                            <CardTitle className="text-cyan-400">IP Adicional</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent>
+                                                            <div>
+                                                                <Label>Custo Mensal</Label>
+                                                                <Input value={formatBrazilianNumber(additionalIpCost)} onChange={(e) => setAdditionalIpCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+                                                </div>
+
+                                                {/* Snapshot e VPN */}
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                    <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                        <CardHeader>
+                                                            <CardTitle className="text-cyan-400">Snapshot Adicional</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent>
+                                                            <div>
+                                                                <Label>Custo Mensal</Label>
+                                                                <Input value={formatBrazilianNumber(snapshotCost)} onChange={(e) => setSnapshotCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+
+                                                    <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                        <CardHeader>
+                                                            <CardTitle className="text-cyan-400">VPN Site-to-Site</CardTitle>
+                                                        </CardHeader>
+                                                        <CardContent>
+                                                            <div>
+                                                                <Label>Custo Mensal</Label>
+                                                                <Input value={formatBrazilianNumber(vpnSiteToSiteCost)} onChange={(e) => setVpnSiteToSiteCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
+                                                </div>
+
+                                                {/* Prazos Contratuais e Descontos */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="text-cyan-400">Prazos Contratuais e Descontos</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-2">12 Meses</h4>
+                                                                <div>
+                                                                    <Label>Desconto (%)</Label>
+                                                                    <Input value={contractDiscounts[12]} onChange={(e) => setContractDiscounts(prev => ({ ...prev, 12: parseFloat(e.target.value.replace(",", ".")) || 0 }))} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-2">24 Meses</h4>
+                                                                <div>
+                                                                    <Label>Desconto (%)</Label>
+                                                                    <Input value={contractDiscounts[24]} onChange={(e) => setContractDiscounts(prev => ({ ...prev, 24: parseFloat(e.target.value.replace(",", ".")) || 0 }))} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-2">36 Meses</h4>
+                                                                <div>
+                                                                    <Label>Desconto (%)</Label>
+                                                                    <Input value={contractDiscounts[36]} onChange={(e) => setContractDiscounts(prev => ({ ...prev, 36: parseFloat(e.target.value.replace(",", ".")) || 0 }))} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-2">48 Meses</h4>
+                                                                <div>
+                                                                    <Label>Desconto (%)</Label>
+                                                                    <Input value={contractDiscounts[48]} onChange={(e) => setContractDiscounts(prev => ({ ...prev, 48: parseFloat(e.target.value.replace(",", ".")) || 0 }))} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <h4 className="text-cyan-400 mb-2">60 Meses</h4>
+                                                                <div>
+                                                                    <Label>Desconto (%)</Label>
+                                                                    <Input value={contractDiscounts[60]} onChange={(e) => setContractDiscounts(prev => ({ ...prev, 60: parseFloat(e.target.value.replace(",", ".")) || 0 }))} className="bg-slate-800 border-slate-700" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Taxa de Setup */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="text-cyan-400">Taxa de Setup</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div>
+                                                            <h4 className="text-cyan-400 mb-4">Taxa de Setup Geral</h4>
+                                                            <div>
+                                                                <Label>Valor Base</Label>
+                                                                <Input value={formatBrazilianNumber(setupFee)} onChange={(e) => setSetupFee(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Gestão e Suporte */}
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="text-cyan-400">Gestão e Suporte</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div>
+                                                            <h4 className="text-cyan-400 mb-4">Serviço Mensal de Gestão e Suporte</h4>
+                                                            <div>
+                                                                <Label>Valor Mensal</Label>
+                                                                <Input value={formatBrazilianNumber(managementAndSupportCost)} onChange={(e) => setManagementAndSupportCost(parseFloat(e.target.value.replace(",", ".")) || 0)} className="bg-slate-800 border-slate-700" />
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* Botão Salvar */}
+                                                <div className="flex justify-end">
+                                                    <Button
+                                                        className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+                                                        onClick={handleSaveSettings}
+                                                    >
+                                                        <Save className="h-4 w-4" />
+                                                        Salvar Configurações
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </TabsContent>
+
+                                        <TabsContent value="proposal">
+                                            <div className="space-y-6 mt-6">
+                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                                    <CardHeader>
+                                                        <CardTitle className="flex items-center gap-2">
+                                                            <FileText className="h-5 w-5" />
+                                                            Resumo da Proposta
+                                                        </CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        {addedProducts.length === 0 ? (
+                                                            <div className="text-center py-8 text-slate-400">
+                                                                <Server className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                                                <p>Nenhuma VM adicionada à proposta ainda.</p>
+                                                                <p className="text-sm">Configure uma VM na aba "Calculadora VM" e clique em "Adicionar à Proposta".</p>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="mb-4">
+                                                                    <Label htmlFor="proposal-status" className="mb-2 block">Status da Proposta</Label>
+                                                                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                                                                        <SelectTrigger id="proposal-status" className="bg-slate-800 border-slate-700 text-white">
+                                                                            <SelectValue placeholder="Selecione o status" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="bg-slate-800 text-white">
+                                                                            <SelectItem value="Aguardando aprovação desconto Diretoria">Aguardando aprovação desconto Diretoria</SelectItem>
+                                                                            <SelectItem value="Aguardando Aprovação do Cliente">Aguardando Aprovação do Cliente</SelectItem>
+                                                                            <SelectItem value="Fechado Ganho">Fechado Ganho</SelectItem>
+                                                                            <SelectItem value="Perdido">Perdido</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                                <Table>
+                                                                    <TableHeader>
+                                                                        <TableRow className="border-slate-700">
+                                                                            <TableHead className="text-white">Descrição</TableHead>
+                                                                            <TableHead className="text-white">Setup</TableHead>
+                                                                            <TableHead className="text-white">Mensal</TableHead>
+                                                                            <TableHead className="text-white w-20">Ações</TableHead>
+                                                                        </TableRow>
+                                                                    </TableHeader>
+                                                                    <TableBody>
+                                                                        {addedProducts.map(p => (
+                                                                            <TableRow key={p.id} className="border-slate-800">
+                                                                                <TableCell className="text-white">{p.description}</TableCell>
+                                                                                <TableCell className="text-white">{formatCurrency(p.setup)}</TableCell>
+                                                                                <TableCell className="text-white">{formatCurrency(p.monthly)}</TableCell>
+                                                                                <TableCell>
+                                                                                    <Button
+                                                                                        variant="destructive"
+                                                                                        size="sm"
+                                                                                        onClick={() => handleRemoveProduct(p.id)}
+                                                                                    >
+                                                                                        <Trash2 className="h-4 w-4" />
+                                                                                    </Button>
+                                                                                </TableCell>
+                                                                            </TableRow>
+                                                                        ))}
+                                                                    </TableBody>
+                                                                </Table>
+
+                                                                {/* Controles de Desconto */}
+                                                                <div className="space-y-4 p-4 bg-slate-800 rounded-lg mt-4">
+                                                                    {(currentUser?.role !== 'diretor' && currentUser?.role !== 'admin') && (
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <Checkbox
+                                                                                id="salesperson-discount-toggle"
+                                                                                checked={applySalespersonDiscount}
+                                                                                onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
+                                                                            />
+                                                                            <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
+                                                                        </div>
+                                                                    )}
+                                                                    {(currentUser?.role === 'diretor' || currentUser?.role === 'admin') && (
+                                                                        <div className="space-y-2">
+                                                                            <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <Input
+                                                                                    id="director-discount"
+                                                                                    type="number"
+                                                                                    value={directorDiscountPercentage}
+                                                                                    onChange={(e) => {
+                                                                                        const value = Number(e.target.value);
+                                                                                        setDirectorDiscountPercentage(value);
+                                                                                        setAppliedDirectorDiscountPercentage(value);
+                                                                                    }}
+                                                                                    placeholder="0-100"
+                                                                                    min="0"
+                                                                                    max="100"
+                                                                                    className="bg-slate-700 border-slate-600 text-white"
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {currentUser?.role === 'admin' && (
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <Checkbox
+                                                                                id="admin-salesperson-discount-toggle"
+                                                                                checked={applySalespersonDiscount}
+                                                                                onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
+                                                                            />
+                                                                            <Label htmlFor="admin-salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="space-y-2 pt-4 border-t border-slate-700">
+                                                                    {applySalespersonDiscount && (
+                                                                        <div className="flex justify-between text-orange-400">
+                                                                            <span>Desconto Vendedor (5%):</span>
+                                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * 0.05)}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {appliedDirectorDiscountPercentage > 0 && (
+                                                                        <div className="flex justify-between text-orange-400">
+                                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%):</span>
+                                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="flex justify-between items-center font-bold text-lg">
+                                                                        <div>
+                                                                            Total Setup: <span className="text-green-400">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            Total Mensal: <span className="text-green-400">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex gap-4 pt-4">
+                                                                    <Button
+                                                                        className="bg-green-600 hover:bg-green-700"
+                                                                        onClick={() => setActiveTab('calculator')}
+                                                                    >
+                                                                        <Plus className="h-4 w-4 mr-2" />
+                                                                        Adicionar Mais VMs
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                                                    >
+                                                                        <Download className="h-4 w-4 mr-2" />
+                                                                        Gerar Proposta
+                                                                    </Button>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </CardContent>
+                                                </Card>
+                                            </div>
+                                        </TabsContent>
+                                    </Tabs>
+                                </div>
+
+                                <div className="flex justify-end gap-4 mt-8">
+                                    <Button onClick={saveProposal} className="bg-green-600 hover:bg-green-700" disabled={addedProducts.length === 0}>
+                                        <Save className="h-4 w-4 mr-2" />
+                                        Salvar Proposta
+                                    </Button>
+                                    <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700" disabled={addedProducts.length === 0}><Download className="h-4 w-4 mr-2" />Gerar PDF</Button>
+                                    <Button variant="outline" onClick={() => setViewMode('search')}>Cancelar</Button>
+                                </div>
+                            </>
                         )}
                     </>
                 )}

@@ -10,9 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/use-auth-simple';
+import { useAuth } from '@/hooks/use-auth';
 import LoadingSpinner from '@/components/ui/loading-spinner';
-import AuthDebug from '@/components/debug/AuthDebug';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -48,7 +47,6 @@ const LoginPage = () => {
 
       if (data.user) {
         toast({ title: 'Login bem-sucedido!', description: 'Redirecionando...' });
-        // The useEffect will now handle the redirect automatically when the user state changes.
       }
     } catch (err: any) {
       console.error('Login error:', err);
@@ -86,7 +84,6 @@ const LoginPage = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <AuthDebug />
       <Card className="w-[400px]">
         <CardHeader>
           <CardTitle className="text-2xl text-center">Acessar sua Conta</CardTitle>
