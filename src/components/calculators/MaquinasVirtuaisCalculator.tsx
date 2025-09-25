@@ -1113,39 +1113,6 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         setViewMode('proposal-summary');
     };
 
-    // Função para buscar propostas
-    const fetchProposals = React.useCallback(async () => {
-        if (!currentUser || !currentUser.role) {
-            setProposals([]);
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/proposals', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentUser.token}`,
-                },
-            });
-
-            if (response.ok) {
-                const proposalsData = await response.json();
-                // Filter for VM proposals
-                const vmProposals = proposalsData.filter((p: any) => 
-                    p.type === 'VM' || p.baseId?.startsWith('Prop_VM_')
-                );
-                setProposals(vmProposals);
-            } else {
-                console.error('Erro ao buscar propostas:', response.statusText);
-                setProposals([]);
-            }
-        } catch (error) {
-            console.error("Erro ao buscar propostas: ", error);
-            setProposals([]);
-        }
-    }, [currentUser]);
-
     const deleteProposal = async (proposalId: string) => {
         if (!currentUser) {
             console.error('Usuário não autenticado');
