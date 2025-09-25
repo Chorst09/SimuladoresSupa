@@ -393,30 +393,28 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
     useEffect(() => {
         const initialFibraPlans: FibraPlan[] = [
-            { speed: 25, price12: 720.00, price24: 527.00, price36: 474.00, price48: 450.30, price60: 426.60, installationCost: 998.00, description: "25 Mbps", baseCost: 1580.00, fiberCost: 3580.00 },
-            { speed: 30, price12: 740.08, price24: 579.00, price36: 527.00, price48: 500.65, price60: 474.30, installationCost: 998.00, description: "30 Mbps", baseCost: 1580.00, fiberCost: 3580.00 },
-            { speed: 40, price12: 915.01, price24: 632.00, price36: 579.00, price48: 550.05, price60: 521.10, installationCost: 998.00, description: "40 Mbps", baseCost: 1580.00, fiberCost: 3580.00 },
-            { speed: 50, price12: 1103.39, price24: 685.00, price36: 632.00, price48: 600.40, price60: 568.80, installationCost: 998.00, description: "50 Mbps", baseCost: 1580.00, fiberCost: 3580.00 },
-            { speed: 60, price12: 1547.44, price24: 790.00, price36: 737.00, price48: 700.15, price60: 663.30, installationCost: 998.00, description: "60 Mbps", baseCost: 1580.00, fiberCost: 3580.00 },
-            { speed: 80, price12: 1825.98, price24: 1000.00, price36: 948.00, price48: 900.60, price60: 853.20, installationCost: 998.00, description: "80 Mbps", baseCost: 5700.00, fiberCost: 3580.00 },
-            { speed: 100, price12: 2017.05, price24: 1578.00, price36: 1316.00, price48: 1250.20, price60: 1184.40, installationCost: 1996.00, description: "100 Mbps", baseCost: 5700.00, fiberCost: 6700.00 },
-            { speed: 150, price12: 2543.18, price24: 1789.00, price36: 1527.00, price48: 1450.65, price60: 1374.30, installationCost: 1996.00, description: "150 Mbps", baseCost: 5700.00, fiberCost: 6700.00 },
-            { speed: 200, price12: 3215.98, price24: 2053.00, price36: 1737.00, price48: 1650.15, price60: 1563.30, installationCost: 1996.00, description: "200 Mbps", baseCost: 5700.00, fiberCost: 6700.00 },
-            { speed: 300, price12: 7522.00, price24: 4316.00, price36: 4000.00, price48: 3800.00, price60: 3600.00, installationCost: 2500.00, description: "300 Mbps", baseCost: 23300.00, fiberCost: 23200.00 },
-            { speed: 400, price12: 9469.00, price24: 5211.00, price36: 4736.00, price48: 4499.20, price60: 4262.40, installationCost: 2500.00, description: "400 Mbps", baseCost: 23300.00, fiberCost: 25360.00 },
-            { speed: 500, price12: 11174.00, price24: 5789.00, price36: 5253.00, price48: 4990.35, price60: 4727.70, installationCost: 2500.00, description: "500 Mbps", baseCost: 23300.00, fiberCost: 25360.00 },
-            { speed: 600, price12: 12500.00, price24: 6315.00, price36: 5790.00, price48: 5500.50, price60: 5211.00, installationCost: 2500.00, description: "600 Mbps", baseCost: 23300.00, fiberCost: 25360.00 },
-            { speed: 700, price12: 13800.00, price24: 6900.00, price36: 6300.00, price48: 5985.00, price60: 5670.00, installationCost: 2500.00, description: "700 Mbps", baseCost: 23300.00, fiberCost: 25360.00 },
-            { speed: 800, price12: 15000.00, price24: 7500.00, price36: 6800.00, price48: 6460.00, price60: 6120.00, installationCost: 2500.00, description: "800 Mbps", baseCost: 23300.00, fiberCost: 25360.00 },
-            { speed: 900, price12: 16200.00, price24: 8100.00, price36: 7300.00, price48: 6935.00, price60: 6570.00, installationCost: 2500.00, description: "900 Mbps", baseCost: 23300.00, fiberCost: 25360.00 },
-            { speed: 1000, price12: 17500.00, price24: 8750.00, price36: 7900.00, price48: 7505.00, price60: 7110.00, installationCost: 2500.00, description: "1000 Mbps (1 Gbps)", baseCost: 23300.00, fiberCost: 25360.00 }
+            { speed: 25, price12: 720.00, price24: 527.00, price36: 474.00, price48: 450.30, price60: 426.60, installationCost: 998.00, description: "25 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
+            { speed: 30, price12: 740.08, price24: 579.00, price36: 527.00, price48: 500.65, price60: 474.30, installationCost: 998.00, description: "30 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
+            { speed: 40, price12: 915.01, price24: 632.00, price36: 579.00, price48: 550.05, price60: 521.10, installationCost: 998.00, description: "40 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
+            { speed: 50, price12: 1103.39, price24: 685.00, price36: 632.00, price48: 600.40, price60: 568.80, installationCost: 998.00, description: "50 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
+            { speed: 60, price12: 1547.44, price24: 790.00, price36: 737.00, price48: 700.15, price60: 663.30, installationCost: 998.00, description: "60 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
+            { speed: 80, price12: 1825.98, price24: 1000.00, price36: 948.00, price48: 900.60, price60: 853.20, installationCost: 998.00, description: "80 Mbps", baseCost: 5700.00, fiberCost: 3500.00 },
+            { speed: 100, price12: 2017.05, price24: 1578.00, price36: 1316.00, price48: 1250.20, price60: 1184.40, installationCost: 1996.00, description: "100 Mbps", baseCost: 5700.00, fiberCost: 3500.00 },
+            { speed: 150, price12: 2543.18, price24: 1789.00, price36: 1527.00, price48: 1450.65, price60: 1374.30, installationCost: 1996.00, description: "150 Mbps", baseCost: 5700.00, fiberCost: 3500.00 },
+            { speed: 200, price12: 3215.98, price24: 2053.00, price36: 1737.00, price48: 1650.15, price60: 1563.30, installationCost: 1996.00, description: "200 Mbps", baseCost: 5700.00, fiberCost: 3500.00 },
+            { speed: 300, price12: 7522.00, price24: 4316.00, price36: 4000.00, price48: 3800.00, price60: 3600.00, installationCost: 2500.00, description: "300 Mbps", baseCost: 23300.00, fiberCost: 3500.00 },
+            { speed: 400, price12: 9469.00, price24: 5211.00, price36: 4736.00, price48: 4499.20, price60: 4262.40, installationCost: 2500.00, description: "400 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
+            { speed: 500, price12: 11174.00, price24: 5789.00, price36: 5253.00, price48: 4990.35, price60: 4727.70, installationCost: 2500.00, description: "500 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
+            { speed: 600, price12: 12500.00, price24: 6315.00, price36: 5790.00, price48: 5500.50, price60: 5211.00, installationCost: 2500.00, description: "600 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
+            { speed: 700, price12: 13800.00, price24: 6900.00, price36: 6300.00, price48: 5985.00, price60: 5670.00, installationCost: 2500.00, description: "700 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
+            { speed: 800, price12: 15000.00, price24: 7500.00, price36: 6800.00, price48: 6460.00, price60: 6120.00, installationCost: 2500.00, description: "800 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
+            { speed: 900, price12: 16200.00, price24: 8100.00, price36: 7300.00, price48: 6935.00, price60: 6570.00, installationCost: 2500.00, description: "900 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
+            { speed: 1000, price12: 17500.00, price24: 8750.00, price36: 7900.00, price48: 7505.00, price60: 7110.00, installationCost: 2500.00, description: "1000 Mbps (1 Gbps)", baseCost: 23300.00, fiberCost: 7000.00 }
         ];
-        const savedPlans = localStorage.getItem('fibraLinkPrices');
-        if (savedPlans) {
-            setFibraPlans(JSON.parse(savedPlans));
-        } else {
-            setFibraPlans(initialFibraPlans);
-        }
+        // Force update with new fiber cost values
+        setFibraPlans(initialFibraPlans);
+        // Save the updated values to localStorage
+        localStorage.setItem('fibraLinkPrices', JSON.stringify(initialFibraPlans));
 
         fetchProposals();
     }, [fetchProposals]);

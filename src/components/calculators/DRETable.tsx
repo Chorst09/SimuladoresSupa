@@ -17,7 +17,7 @@ interface SIPResult {
   monthly: number;
 }
 
-interface DRETableProps {
+export interface DRETableProps {
   monthlyRevenue: number;
   totalCosts: number;
   commissionVendedor: number;

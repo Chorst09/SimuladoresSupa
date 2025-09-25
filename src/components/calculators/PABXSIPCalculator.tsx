@@ -1580,19 +1580,11 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                         {/* PABX em Nuvem */}
                         <Card className="bg-slate-900/80 border-slate-800 text-white">
-                            <CardHeader className="flex flex-row items-center justify-between">
+                            <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <Phone className="h-5 w-5" />
                                     PABX em Nuvem
                                 </CardTitle>
-                                <Button
-                                    onClick={saveSettings}
-                                    disabled={isSaving}
-                                    className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
-                                >
-                                    <Save className="h-4 w-4" />
-                                    {isSaving ? 'Salvando...' : 'Salvar Configurações'}
-                                </Button>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div>
