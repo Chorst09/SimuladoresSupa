@@ -24,7 +24,6 @@ interface User {
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth();
-  const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -62,11 +61,7 @@ export default function UserManagement() {
     } catch (error: any) {
       console.error('Erro ao carregar usuários:', error);
       const description = error?.message || 'Não foi possível carregar os usuários.';
-      toast({
-        title: 'Erro',
-        description,
-        variant: 'destructive'
-      });
+      alert(`Erro: ${description}`);
     } finally {
       setLoading(false);
     }
@@ -75,11 +70,7 @@ export default function UserManagement() {
   const handleAddUser = async () => {
     setAddUserError(null);
     if (!newUserEmail || !newUserPassword) {
-      toast({
-        title: 'Erro',
-        description: 'Email e senha são obrigatórios.',
-        variant: 'destructive'
-      });
+      alert('Erro: Email e senha são obrigatórios.');
       return;
     }
 
@@ -108,10 +99,7 @@ export default function UserManagement() {
           throw updateError;
         }
 
-        toast({
-          title: 'Usuário já existente',
-          description: 'Email já cadastrado. Role foi atualizada com sucesso.'
-        });
+        alert('Usuário já existente: Email já cadastrado. Role foi atualizada com sucesso.');
       } else {
         // Cria usuário no Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -138,10 +126,7 @@ export default function UserManagement() {
             // Don't throw here as the user was created successfully in auth
           }
 
-          toast({
-            title: 'Sucesso',
-            description: 'Usuário criado com sucesso!'
-          });
+          alert('Sucesso: Usuário criado com sucesso!');
         }
       }
 
@@ -166,11 +151,7 @@ export default function UserManagement() {
         description = 'Senha fraca. Use uma senha com pelo menos 6 caracteres.';
       }
       
-      toast({
-        title: 'Erro',
-        description,
-        variant: 'destructive'
-      });
+      alert(`Erro: ${description}`);
     }
   };
 
@@ -189,10 +170,7 @@ export default function UserManagement() {
         throw error;
       }
 
-      toast({
-        title: 'Sucesso',
-        description: 'Usuário atualizado com sucesso!'
-      });
+      alert('Sucesso: Usuário atualizado com sucesso!');
 
       setIsEditDialogOpen(false);
       setEditingUser(null);
@@ -200,11 +178,7 @@ export default function UserManagement() {
     } catch (error: any) {
       console.error('Erro ao atualizar usuário:', error);
       const description = error?.message || 'Não foi possível atualizar o usuário.';
-      toast({
-        title: 'Erro',
-        description,
-        variant: 'destructive'
-      });
+      alert(`Erro: ${description}`);
     }
   };
 
@@ -224,20 +198,13 @@ export default function UserManagement() {
         throw error;
       }
 
-      toast({
-        title: 'Sucesso',
-        description: 'Usuário excluído com sucesso!'
-      });
+      alert('Sucesso: Usuário excluído com sucesso!');
 
       loadUsers();
     } catch (error: any) {
       console.error('Erro ao excluir usuário:', error);
       const description = error?.message || 'Não foi possível excluir o usuário.';
-      toast({
-        title: 'Erro',
-        description,
-        variant: 'destructive'
-      });
+      alert(`Erro: ${description}`);
     }
   };
 
