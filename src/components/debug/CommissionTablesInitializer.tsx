@@ -25,7 +25,7 @@ export default function CommissionTablesInitializer() {
       // Dados iniciais para as tabelas
       const initialData = {
         channelSeller: {
-          id: 'default-1',
+          id: 'cs_default_001',
           months_12: 0.60,
           months_24: 1.20,
           months_36: 2.00,
@@ -33,7 +33,7 @@ export default function CommissionTablesInitializer() {
           months_60: 2.00
         },
         channelDirector: {
-          id: 'default-1',
+          id: 'cd_default_001',
           months_12: 0,
           months_24: 0,
           months_36: 0,
@@ -41,7 +41,7 @@ export default function CommissionTablesInitializer() {
           months_60: 0
         },
         seller: {
-          id: 'default-1',
+          id: 's_default_001',
           months_12: 1.2,
           months_24: 2.4,
           months_36: 3.6,
@@ -49,20 +49,20 @@ export default function CommissionTablesInitializer() {
           months_60: 3.6
         },
         channelInfluencer: [
-          { id: 'default-1', revenue_range: "Até 500,00", revenue_min: 0, revenue_max: 500, months_12: 1.50, months_24: 2.00, months_36: 2.50, months_48: 2.50, months_60: 2.50 },
-          { id: 'default-2', revenue_range: "500,01 a 1.000,00", revenue_min: 500.01, revenue_max: 1000, months_12: 2.51, months_24: 3.25, months_36: 4.00, months_48: 4.00, months_60: 4.00 },
-          { id: 'default-3', revenue_range: "1.000,01 a 1.500,00", revenue_min: 1000.01, revenue_max: 1500, months_12: 4.01, months_24: 4.50, months_36: 5.00, months_48: 5.00, months_60: 5.00 },
-          { id: 'default-4', revenue_range: "1.500,01 a 3.000,00", revenue_min: 1500.01, revenue_max: 3000, months_12: 5.01, months_24: 5.50, months_36: 6.00, months_48: 6.00, months_60: 6.00 },
-          { id: 'default-5', revenue_range: "3.000,01 a 5.000,00", revenue_min: 3000.01, revenue_max: 5000, months_12: 6.01, months_24: 6.50, months_36: 7.00, months_48: 7.00, months_60: 7.00 },
-          { id: 'default-6', revenue_range: "Acima de 5.000,01", revenue_min: 5000.01, revenue_max: 999999999, months_12: 7.01, months_24: 7.50, months_36: 8.00, months_48: 8.00, months_60: 8.00 }
+          { id: 'ci_range_001', revenue_range: "Até 500,00", revenue_min: 0, revenue_max: 500, months_12: 1.50, months_24: 2.00, months_36: 2.50, months_48: 2.50, months_60: 2.50 },
+          { id: 'ci_range_002', revenue_range: "500,01 a 1.000,00", revenue_min: 500.01, revenue_max: 1000, months_12: 2.51, months_24: 3.25, months_36: 4.00, months_48: 4.00, months_60: 4.00 },
+          { id: 'ci_range_003', revenue_range: "1.000,01 a 1.500,00", revenue_min: 1000.01, revenue_max: 1500, months_12: 4.01, months_24: 4.50, months_36: 5.00, months_48: 5.00, months_60: 5.00 },
+          { id: 'ci_range_004', revenue_range: "1.500,01 a 3.000,00", revenue_min: 1500.01, revenue_max: 3000, months_12: 5.01, months_24: 5.50, months_36: 6.00, months_48: 6.00, months_60: 6.00 },
+          { id: 'ci_range_005', revenue_range: "3.000,01 a 5.000,00", revenue_min: 3000.01, revenue_max: 5000, months_12: 6.01, months_24: 6.50, months_36: 7.00, months_48: 7.00, months_60: 7.00 },
+          { id: 'ci_range_006', revenue_range: "Acima de 5.000,01", revenue_min: 5000.01, revenue_max: 99999999, months_12: 7.01, months_24: 7.50, months_36: 8.00, months_48: 8.00, months_60: 8.00 }
         ],
         channelIndicator: [
-          { id: 'default-1', revenue_range: "Até 500,00", revenue_min: 0, revenue_max: 500, months_12: 0.50, months_24: 0.67, months_36: 0.83, months_48: 0.83, months_60: 0.83 },
-          { id: 'default-2', revenue_range: "500,01 a 1.000,00", revenue_min: 500.01, revenue_max: 1000, months_12: 0.84, months_24: 1.08, months_36: 1.33, months_48: 1.33, months_60: 1.33 },
-          { id: 'default-3', revenue_range: "1.000,01 a 1.500,00", revenue_min: 1000.01, revenue_max: 1500, months_12: 1.34, months_24: 1.50, months_36: 1.67, months_48: 1.67, months_60: 1.67 },
-          { id: 'default-4', revenue_range: "1.500,01 a 3.000,00", revenue_min: 1500.01, revenue_max: 3000, months_12: 1.67, months_24: 1.83, months_36: 2.00, months_48: 2.00, months_60: 2.00 },
-          { id: 'default-5', revenue_range: "3.000,01 a 5.000,00", revenue_min: 3000.01, revenue_max: 5000, months_12: 2.00, months_24: 2.17, months_36: 2.50, months_48: 2.50, months_60: 2.50 },
-          { id: 'default-6', revenue_range: "Acima de 5.000,01", revenue_min: 5000.01, revenue_max: 999999999, months_12: 2.34, months_24: 2.50, months_36: 3.00, months_48: 3.00, months_60: 3.00 }
+          { id: 'cind_range_001', revenue_range: "Até 500,00", revenue_min: 0, revenue_max: 500, months_12: 0.50, months_24: 0.67, months_36: 0.83, months_48: 0.83, months_60: 0.83 },
+          { id: 'cind_range_002', revenue_range: "500,01 a 1.000,00", revenue_min: 500.01, revenue_max: 1000, months_12: 0.84, months_24: 1.08, months_36: 1.33, months_48: 1.33, months_60: 1.33 },
+          { id: 'cind_range_003', revenue_range: "1.000,01 a 1.500,00", revenue_min: 1000.01, revenue_max: 1500, months_12: 1.34, months_24: 1.50, months_36: 1.67, months_48: 1.67, months_60: 1.67 },
+          { id: 'cind_range_004', revenue_range: "1.500,01 a 3.000,00", revenue_min: 1500.01, revenue_max: 3000, months_12: 1.67, months_24: 1.83, months_36: 2.00, months_48: 2.00, months_60: 2.00 },
+          { id: 'cind_range_005', revenue_range: "3.000,01 a 5.000,00", revenue_min: 3000.01, revenue_max: 5000, months_12: 2.00, months_24: 2.17, months_36: 2.50, months_48: 2.50, months_60: 2.50 },
+          { id: 'cind_range_006', revenue_range: "Acima de 5.000,01", revenue_min: 5000.01, revenue_max: 99999999, months_12: 2.34, months_24: 2.50, months_36: 3.00, months_48: 3.00, months_60: 3.00 }
         ]
       };
 
