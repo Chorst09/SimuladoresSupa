@@ -17,6 +17,8 @@ export default function CommissionTablesDebug() {
     channelIndicator, 
     isLoading: hookLoading, 
     error: hookError,
+    retryCount,
+    maxRetries,
     refreshData
   } = useCommissions();
 
@@ -37,7 +39,9 @@ export default function CommissionTablesDebug() {
           channelInfluencer,
           channelIndicator,
           isLoading: hookLoading,
-          error: hookError
+          error: hookError,
+          retryCount,
+          maxRetries
         }
       };
 
@@ -130,6 +134,7 @@ export default function CommissionTablesDebug() {
               <div className="text-sm space-y-2">
                 <div>Loading: {debugInfo.hookData.isLoading ? 'true' : 'false'}</div>
                 <div>Error: {debugInfo.hookData.error || 'null'}</div>
+                <div>Retry Count: {debugInfo.hookData.retryCount}/{debugInfo.hookData.maxRetries}</div>
                 <div>Channel Seller: {debugInfo.hookData.channelSeller ? 'loaded' : 'null'}</div>
                 <div>Channel Director: {debugInfo.hookData.channelDirector ? 'loaded' : 'null'}</div>
                 <div>Seller: {debugInfo.hookData.seller ? 'loaded' : 'null'}</div>

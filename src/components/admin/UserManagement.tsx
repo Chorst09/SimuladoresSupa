@@ -1,44 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/use-auth';
-import { supabase } from '@/lib/supabaseClient';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  UserPlus, 
-  Edit, 
-  Trash2, 
-  Shield, 
-  User, 
-  Users,
-  Loader2 
-} from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/hooks/use-auth';
+import { useUserProfile, UserRole, UserProfile } from '@/hooks/use-user-profile';
+import { Users, UserPlus, Shield, Eye, EyeOff, Trash2, Edit, Crown, User, Briefcase, UserCheck, UserX, Loader2 } from 'lucide-react';
 
 interface User {
   id: string;

@@ -9,10 +9,13 @@ export default function SimpleCommissionTest() {
     error 
   } = useCommissions();
 
-  console.log('SimpleCommissionTest - isLoading:', isLoading);
-  console.log('SimpleCommissionTest - error:', error);
-  console.log('SimpleCommissionTest - channelSeller:', channelSeller);
-  console.log('SimpleCommissionTest - seller:', seller);
+  // Apenas logs em desenvolvimento
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    console.log('SimpleCommissionTest - isLoading:', isLoading);
+    console.log('SimpleCommissionTest - error:', error);
+    console.log('SimpleCommissionTest - channelSeller:', channelSeller);
+    console.log('SimpleCommissionTest - seller:', seller);
+  }
 
   return (
     <div className="bg-slate-800 p-4 rounded text-white">
