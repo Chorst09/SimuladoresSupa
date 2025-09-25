@@ -6,11 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
 import { Shield, UserPlus, Loader2 } from 'lucide-react';
 
 export default function AdminSetup() {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [hasAdmin, setHasAdmin] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -27,7 +25,7 @@ export default function AdminSetup() {
   const checkForAdmin = async () => {
     try {
       const { data: adminUsers, error } = await supabase
-        .from('users')
+        .from('user_profiles')
         .select('id')
         .eq('role', 'admin')
         .limit(1);
@@ -48,20 +46,16 @@ export default function AdminSetup() {
 
   const createFirstAdmin = async () => {
     if (!email || !password) {
-      toast({
-        title: 'Erro',
-        description: 'Email e senha são obrigatórios.',
-        variant: 'destructive'
-      });
+      alert('Erro: Email e senha são obrigatórios.');
       return;
     }
 
     setCreating(true);
 
     try {
-      // Check if user already exists in Supabase users table
+      // Check if user already exists in Supabase user_profiles table
       const { data: existingUsers, error: checkError } = await supabase
-        .from('users')
+        .from('user_profiles')
         .select('id, email')
         .eq('email', email)
         .limit(1);
@@ -71,9 +65,9 @@ export default function AdminSetup() {
       }
       
       if (existingUsers && existingUsers.length > 0) {
-        // User exists in users table, just update to admin
+        // User exists in user_profiles table, just update to admin
         const { error: updateError } = await supabase
-          .from('users')
+          .from('user_profiles')
           .update({
             role: 'admin'
           })
@@ -83,10 +77,7 @@ export default function AdminSetup() {
           throw updateError;
         }
         
-        toast({
-          title: 'Sucesso',
-          description: 'Usuário promovido a administrador! Redirecionando para login...'
-        });
+        alert('Sucesso: Usuário promovido a administrador!');
         
         setHasAdmin(true);
         
@@ -108,24 +99,21 @@ export default function AdminSetup() {
       }
 
       if (authData.user) {
-        // Create admin user document in users table
+        // Create user document in user_profiles table
         const { error: insertError } = await supabase
-          .from('users')
+          .from('user_profiles')
           .insert({
             id: authData.user.id,
             email: email,
-            role: 'admin'
+            role: 'admin',
+            full_name: name || email
           });
 
         if (insertError) {
           console.error('Erro ao inserir usuário na tabela:', insertError);
           // Don't throw here as the user was created successfully in auth
         }
-
-        toast({
-          title: 'Sucesso',
-          description: 'Primeiro administrador criado com sucesso! Verifique seu email para confirmar a conta.'
-        });
+        alert('Sucesso: Primeiro administrador criado com sucesso! Verifique seu email para confirmar a conta.');
 
         setHasAdmin(true);
         
@@ -146,11 +134,7 @@ export default function AdminSetup() {
         errorMessage = 'Email inválido.';
       }
       
-      toast({
-        title: 'Erro',
-        description: errorMessage,
-        variant: 'destructive'
-      });
+      alert(`Erro: ${errorMessage}`);
     } finally {
       setCreating(false);
     }

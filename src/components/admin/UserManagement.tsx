@@ -9,36 +9,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/use-auth';
 import { useUserProfile, UserRole, UserProfile } from '@/hooks/use-user-profile';
 import { Users, UserPlus, Shield, Eye, EyeOff, Trash2, Edit, Crown, User, Briefcase, UserCheck, UserX, Loader2 } from 'lucide-react';
 
-interface User {
-  id: string;
-  email: string;
-  role: 'admin' | 'diretor' | 'user';
-  name?: string;
-  createdAt?: any;
-}
+// Removendo interface User duplicada, usando UserProfile do hook
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
+  const { profile, isAdmin } = useUserProfile();
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   
   // Form states
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserName, setNewUserName] = useState('');
-  const [newUserRole, setNewUserRole] = useState<'admin' | 'diretor' | 'user'>('user');
+  const [newUserRole, setNewUserRole] = useState<UserRole>('user');
   const [addUserError, setAddUserError] = useState<string | null>(null);
-
-  // Check if current user is admin
-  const isAdmin = currentUser?.role === 'admin';
 
   useEffect(() => {
     if (isAdmin) {
@@ -49,7 +42,7 @@ export default function UserManagement() {
   const loadUsers = async () => {
     try {
       const { data: usersData, error } = await supabase
-        .from('users')
+        .from('user_profiles')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -77,7 +70,7 @@ export default function UserManagement() {
     try {
       // Verifica se já existe usuário com este email
       const { data: existingUsers, error: checkError } = await supabase
-        .from('users')
+        .from('user_profiles')
         .select('id, email')
         .eq('email', newUserEmail)
         .limit(1);
@@ -89,7 +82,7 @@ export default function UserManagement() {
       if (existingUsers && existingUsers.length > 0) {
         // Usuário já existe, apenas atualiza
         const { error: updateError } = await supabase
-          .from('users')
+          .from('user_profiles')
           .update({
             role: newUserRole
           })
@@ -114,11 +107,12 @@ export default function UserManagement() {
         if (authData.user) {
           // Cria documento na tabela users
           const { error: insertError } = await supabase
-            .from('users')
+            .from('user_profiles')
             .insert({
               id: authData.user.id,
               email: newUserEmail,
-              role: newUserRole
+              role: newUserRole,
+              full_name: newUserName || newUserEmail
             });
 
           if (insertError) {
@@ -160,9 +154,10 @@ export default function UserManagement() {
 
     try {
       const { error } = await supabase
-        .from('users')
+        .from('user_profiles')
         .update({
-          role: editingUser.role
+          role: editingUser.role,
+          full_name: editingUser.full_name
         })
         .eq('id', editingUser.id);
 
@@ -188,9 +183,9 @@ export default function UserManagement() {
     }
 
     try {
-      // Delete user from users table
+      // Delete user from user_profiles table
       const { error } = await supabase
-        .from('users')
+        .from('user_profiles')
         .delete()
         .eq('id', userId);
 
