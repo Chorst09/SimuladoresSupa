@@ -401,12 +401,12 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
     const [taxRates, setTaxRates] = useState({
         banda: 2.09,
         fundraising: 0,
-        rate: 24,
-        pis: 1.65,
-        cofins: 7.6,
-        margem: 15,
-        csll: 9,
-        irpj: 15,
+        rate: 0,
+        pis: 15.00,
+        cofins: 0.00,
+        margem: 0.00,
+        csll: 0.00,
+        irpj: 0.00,
         custoDesp: 10
     });
 
@@ -510,12 +510,12 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
             setTaxRates({
                 banda: 2.09,
                 fundraising: 0,
-                rate: 24,
-                pis: 1.65,
-                cofins: 7.6,
-                margem: 15,
-                csll: 9,
-                irpj: 15,
+                rate: 0,
+                pis: 15.00,
+                cofins: 0.00,
+                margem: 0.00,
+                csll: 0.00,
+                irpj: 0.00,
                 custoDesp: 10
             });
         }
