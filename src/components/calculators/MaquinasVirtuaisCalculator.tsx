@@ -173,6 +173,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         custoDesp: 10
     });
 
+    // Estados para descontos
+    const [applySalespersonDiscount, setApplySalespersonDiscount] = useState<boolean>(false);
+    const [appliedDirectorDiscountPercentage, setAppliedDirectorDiscountPercentage] = useState<number>(0);
+
     // Estados SIP
     const [selectedSipPlan, setSelectedSipPlan] = useState<string>('');
     const [sipAdditionalChannels, setSipAdditionalChannels] = useState<number>(0);
@@ -1365,6 +1369,33 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
     // Funções para gerenciar propostas já implementadas acima
 
+    // Função para determinar a versão baseada nos descontos aplicados
+    const getProposalVersion = (): number => {
+        if (appliedDirectorDiscountPercentage > 0) {
+            return 3; // V3 para desconto do diretor
+        } else if (applySalespersonDiscount) {
+            return 2; // V2 para desconto do vendedor
+        }
+        return 1; // V1 versão base
+    };
+
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = (baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+        
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+        
+        // Aplicar desconto do diretor (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+        
+        return discountedTotal;
+    };
 
     // Função para salvar proposta
     const saveProposal = async () => {
@@ -1390,24 +1421,31 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         }
 
         try {
-            const totalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+            const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
+            
+            // Aplicar descontos no total mensal
+            const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
+            const proposalVersion = getProposalVersion();
 
             const proposalToSave = {
-                title: `Proposta Máquinas Virtuais - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                title: `Proposta Máquinas Virtuais V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                 client: clientData.companyName || clientData.name || 'Cliente não informado',
-                value: totalMonthly,
+                value: finalTotalMonthly,
                 type: 'VM',
                 status: 'Rascunho',
                 createdBy: currentUser.email || currentUser.id,
                 createdAt: new Date().toISOString(),
-                version: 1,
+                version: proposalVersion,
                 // Store additional data as metadata
                 clientData: clientData,
                 accountManager: accountManagerData,
                 products: addedProducts,
                 totalSetup: totalSetup,
-                totalMonthly: totalMonthly,
+                totalMonthly: finalTotalMonthly,
+                baseTotalMonthly: baseTotalMonthly,
+                applySalespersonDiscount: applySalespersonDiscount,
+                appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
                 userId: currentUser.id
             };
 
