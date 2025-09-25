@@ -62,6 +62,13 @@ export default function UserManagement() {
 
   const handleAddUser = async () => {
     setAddUserError(null);
+    
+    // Verificar se o usuário atual é admin
+    if (!isAdmin) {
+      alert('Erro: Apenas administradores podem criar novos usuários.');
+      return;
+    }
+
     if (!newUserEmail || !newUserPassword) {
       alert('Erro: Email e senha são obrigatórios.');
       return;
@@ -285,13 +292,13 @@ export default function UserManagement() {
               </div>
               <div>
                 <Label htmlFor="role">Função</Label>
-                <Select value={newUserRole} onValueChange={(value: 'admin' | 'diretor' | 'user') => setNewUserRole(value)}>
+                <Select value={newUserRole} onValueChange={(value: 'admin' | 'director' | 'user') => setNewUserRole(value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">Usuário</SelectItem>
-                    <SelectItem value="diretor">Diretor</SelectItem>
+                    <SelectItem value="director">Diretor</SelectItem>
                     <SelectItem value="admin">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
@@ -331,7 +338,7 @@ export default function UserManagement() {
               {users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.email}</TableCell>
-                  <TableCell>{user.name || '-'}</TableCell>
+                  <TableCell>{user.full_name || '-'}</TableCell>
                   <TableCell>
                     <div className="flex items-center">
                       {user.role === 'admin' ? (
@@ -339,12 +346,12 @@ export default function UserManagement() {
                       ) : (
                         <User className="h-4 w-4 mr-1 text-blue-500" />
                       )}
-                      {user.role === 'admin' ? 'Administrador' : user.role === 'diretor' ? 'Diretor' : 'Usuário'}
+                      {user.role === 'admin' ? 'Administrador' : user.role === 'director' ? 'Diretor' : 'Usuário'}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {user.createdAt ? 
-                      new Date(user.createdAt.seconds * 1000).toLocaleDateString('pt-BR') 
+                    {user.created_at ? 
+                      new Date(user.created_at).toLocaleDateString('pt-BR') 
                       : '-'
                     }
                   </TableCell>
@@ -399,10 +406,10 @@ export default function UserManagement() {
                 <Label htmlFor="edit-name">Nome</Label>
                 <Input
                   id="edit-name"
-                  value={editingUser.name || ''}
+                  value={editingUser.full_name || ''}
                   onChange={(e) => setEditingUser({
                     ...editingUser,
-                    name: e.target.value
+                    full_name: e.target.value
                   })}
                   placeholder="Nome do usuário"
                 />
@@ -411,7 +418,7 @@ export default function UserManagement() {
                 <Label htmlFor="edit-role">Função</Label>
                 <Select 
                   value={editingUser.role} 
-                  onValueChange={(value: 'admin' | 'diretor' | 'user') => 
+                  onValueChange={(value: 'admin' | 'director' | 'user') => 
                     setEditingUser({...editingUser, role: value})
                   }
                 >
@@ -420,7 +427,7 @@ export default function UserManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">Usuário</SelectItem>
-                    <SelectItem value="diretor">Diretor</SelectItem>
+                    <SelectItem value="director">Diretor</SelectItem>
                     <SelectItem value="admin">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
