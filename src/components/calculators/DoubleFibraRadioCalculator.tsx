@@ -609,6 +609,34 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     const finalTotalSetup = rawTotalSetup * salespersonDiscountFactor * directorDiscountFactor;
     const finalTotalMonthly = (rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor) - referralPartnerCommissionValue;
 
+    // Função para determinar a versão baseada nos descontos aplicados
+    const getProposalVersion = (): number => {
+        if (appliedDirectorDiscountPercentage > 0) {
+            return 3; // V3 para desconto do diretor
+        } else if (applySalespersonDiscount) {
+            return 2; // V2 para desconto do vendedor
+        }
+        return 1; // V1 versão base
+    };
+
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = (baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+        
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+        
+        // Aplicar desconto do diretor (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+        
+        return discountedTotal;
+    };
+
     const saveProposal = async () => {
         if (!user) {
             alert('Erro: Usuário não autenticado');
@@ -632,11 +660,16 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         }
 
         try {
-            const totalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+            const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
+            
+            // Aplicar descontos no total mensal
+            const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
+            const proposalVersion = getProposalVersion();
 
-            // Se tiver uma proposta atual, atualiza. Caso contrário, cria uma nova
-            if (currentProposal?.id) {
+            // Se tiver uma proposta atual E não há descontos (V1), atualiza. 
+            // Se há descontos (V2/V3), sempre cria uma nova proposta
+            if (currentProposal?.id && proposalVersion === 1) {
                 const proposalToUpdate = {
                     id: currentProposal.id,
                     title: `Proposta Double-Fibra/Radio - ${clientData.companyName || clientData.name || 'Cliente'}`,

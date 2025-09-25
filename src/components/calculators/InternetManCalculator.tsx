@@ -310,6 +310,109 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         setAddedProducts(addedProducts.filter(p => p.id !== id));
     };
 
+    // Função para determinar a versão baseada nos descontos aplicados
+    const getProposalVersion = (): number => {
+        if (appliedDirectorDiscountPercentage > 0) {
+            return 3; // V3 para desconto do diretor
+        } else if (applySalespersonDiscount) {
+            return 2; // V2 para desconto do vendedor
+        }
+        return 1; // V1 versão base
+    };
+
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = (baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+        
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+        
+        // Aplicar desconto do diretor (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+        
+        return discountedTotal;
+    };
+
+    // Função para salvar proposta
+    const saveProposal = async () => {
+        if (!user) {
+            alert('Erro: Usuário não autenticado');
+            return;
+        }
+        
+        // Validar dados obrigatórios
+        if (!clientData || !clientData.name) {
+            alert('Por favor, preencha os dados do cliente antes de salvar.');
+            return;
+        }
+        
+        if (!accountManagerData || !accountManagerData.name) {
+            alert('Por favor, preencha os dados do gerente de contas antes de salvar.');
+            return;
+        }
+        
+        if (addedProducts.length === 0) {
+            alert('Por favor, adicione pelo menos um produto antes de salvar.');
+            return;
+        }
+
+        try {
+            const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+            const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
+            
+            // Aplicar descontos no total mensal
+            const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
+            const proposalVersion = getProposalVersion();
+
+            const proposalToSave = {
+                title: `Proposta Internet Man V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                client: clientData.companyName || clientData.name || 'Cliente não informado',
+                value: finalTotalMonthly,
+                type: 'MAN',
+                status: 'Rascunho',
+                createdBy: user.email || user.id,
+                createdAt: new Date().toISOString(),
+                version: proposalVersion,
+                // Store additional data as metadata
+                clientData: clientData,
+                accountManager: accountManagerData,
+                products: addedProducts,
+                totalSetup: totalSetup,
+                totalMonthly: finalTotalMonthly,
+                baseTotalMonthly: baseTotalMonthly,
+                applySalespersonDiscount: applySalespersonDiscount,
+                appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                userId: user.id
+            };
+
+            const response = await fetch('/api/proposals', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`,
+                },
+                body: JSON.stringify(proposalToSave),
+            });
+
+            if (response.ok) {
+                const savedProposal = await response.json();
+                alert(`Proposta ${savedProposal.id} salva com sucesso!`);
+                setCurrentProposal(savedProposal);
+                fetchProposals();
+                setViewMode('search');
+            } else {
+                throw new Error('Erro ao salvar proposta');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar proposta:', error);
+            alert('Erro ao salvar proposta. Por favor, tente novamente.');
+        }
+    };
 
     const handlePrint = () => {
         // Add print-specific styles
@@ -588,6 +691,37 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         paybackMeses: costBreakdown.setupFee > 0 && costBreakdown.netProfit > 0 ? Math.ceil(costBreakdown.setupFee / costBreakdown.netProfit) : 0,
     };
 
+    // Função para buscar propostas
+    const fetchProposals = async () => {
+        if (!user) {
+            setProposals([]);
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/proposals', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`,
+                },
+            });
+
+            if (response.ok) {
+                const proposalsData = await response.json();
+                const manProposals = proposalsData.filter((p: any) => 
+                    p.type === 'MAN' || p.baseId?.startsWith('Prop_MAN_')
+                );
+                setProposals(manProposals);
+            } else {
+                setProposals([]);
+            }
+        } catch (error) {
+            console.error("Erro ao buscar propostas: ", error);
+            setProposals([]);
+        }
+    };
+
     // Função para salvar proposta
     const saveProposal = async () => {
         if (!user) {
@@ -595,7 +729,6 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             return;
         }
         
-        // Validar dados obrigatórios
         if (!clientData || !clientData.name) {
             alert('Por favor, preencha os dados do cliente antes de salvar.');
             return;
@@ -612,24 +745,29 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }
 
         try {
-            const totalMonthly = (addedProducts || []).reduce((sum, p) => sum + p.monthly, 0);
-            const totalSetup = (addedProducts || []).reduce((sum, p) => sum + p.setup, 0);
+            const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+            const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
+            
+            const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
+            const proposalVersion = getProposalVersion();
 
             const proposalToSave = {
-                title: `Proposta Internet MAN - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                title: `Proposta Internet Man V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                 client: clientData.companyName || clientData.name || 'Cliente não informado',
-                value: totalMonthly,
+                value: finalTotalMonthly,
                 type: 'MAN',
                 status: 'Rascunho',
                 createdBy: user.email || user.id,
                 createdAt: new Date().toISOString(),
-                version: 1,
-                // Store additional data as metadata
+                version: proposalVersion,
                 clientData: clientData,
                 accountManager: accountManagerData,
                 products: addedProducts,
                 totalSetup: totalSetup,
-                totalMonthly: totalMonthly,
+                totalMonthly: finalTotalMonthly,
+                baseTotalMonthly: baseTotalMonthly,
+                applySalespersonDiscount: applySalespersonDiscount,
+                appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
                 userId: user.id
             };
 
@@ -644,9 +782,9 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
             if (response.ok) {
                 const savedProposal = await response.json();
-                alert(`Proposta ${savedProposal.baseId || savedProposal.id} salva com sucesso!`);
+                alert(`Proposta ${savedProposal.id} salva com sucesso!`);
                 setCurrentProposal(savedProposal);
-                // Limpar formulário após salvar
+                fetchProposals();
                 setViewMode('search');
             } else {
                 throw new Error('Erro ao salvar proposta');
