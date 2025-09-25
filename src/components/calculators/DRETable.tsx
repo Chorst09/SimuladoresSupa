@@ -45,9 +45,9 @@ export const DRETable: React.FC<DRETableProps> = ({
 
   // Estados para as alíquotas de impostos editáveis
   const [editableTaxRates, setEditableTaxRates] = useState({
-    pis: 1.65,
-    cofins: 7.60,
-    csll: 9.00,
+    pis: 15.00,
+    cofins: 0.00,
+    csll: 0.00,
     irpj: 0.00
   });
 
