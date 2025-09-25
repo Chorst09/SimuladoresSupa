@@ -600,6 +600,34 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     const finalTotalSetup = rawTotalSetup * salespersonDiscountFactor * directorDiscountFactor;
     const finalTotalMonthly = rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor;
 
+    // Função para determinar a versão baseada nos descontos aplicados
+    const getProposalVersion = (): number => {
+        if (appliedDirectorDiscountPercentage > 0) {
+            return 3; // V3 para desconto do diretor
+        } else if (applySalespersonDiscount) {
+            return 2; // V2 para desconto do vendedor
+        }
+        return 1; // V1 versão base
+    };
+
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = (baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+        
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+        
+        // Aplicar desconto do diretor (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+        
+        return discountedTotal;
+    };
+
     const saveProposal = async () => {
         if (!user) {
             alert('Erro: Usuário não autenticado');
@@ -623,16 +651,20 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         }
 
         try {
-            const totalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+            const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
+            
+            // Aplicar descontos no total mensal
+            const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
+            const proposalVersion = getProposalVersion();
 
             // Se tiver uma proposta atual, atualiza. Caso contrário, cria uma nova
             if (currentProposal?.id) {
                 const proposalToUpdate = {
                     id: currentProposal.id,
-                    title: `Proposta Internet Fibra - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta Internet Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
-                    value: totalMonthly,
+                    value: finalTotalMonthly,
                     type: 'FIBER',
                     status: currentProposal.status || 'Rascunho',
                     updatedBy: user.email || user.id,
@@ -641,13 +673,16 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     createdBy: currentProposal.createdBy,
                     createdAt: currentProposal.createdAt,
                     baseId: currentProposal.baseId,
-                    version: (currentProposal.version || 0) + 1,
+                    version: proposalVersion,
                     // Atualizar dados editáveis
                     clientData: clientData,
                     accountManager: accountManagerData,
                     products: addedProducts,
                     totalSetup: totalSetup,
-                    totalMonthly: totalMonthly,
+                    totalMonthly: finalTotalMonthly,
+                    baseTotalMonthly: baseTotalMonthly,
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
                     userId: user.id
                 };
 
@@ -669,20 +704,23 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 }
             } else {
                 const proposalToSave = {
-                    title: `Proposta Internet Fibra - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta Internet Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
-                    value: totalMonthly,
+                    value: finalTotalMonthly,
                     type: 'FIBER',
                     status: 'Rascunho',
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
-                    version: 1,
+                    version: proposalVersion,
                     // Store additional data as metadata
                     clientData: clientData,
                     accountManager: accountManagerData,
                     products: addedProducts,
                     totalSetup: totalSetup,
-                    totalMonthly: totalMonthly,
+                    totalMonthly: finalTotalMonthly,
+                    baseTotalMonthly: baseTotalMonthly,
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
                     userId: user.id
                 };
 

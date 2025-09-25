@@ -936,6 +936,34 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
         setViewMode('calculator');
     };
 
+    // Função para determinar a versão baseada nos descontos aplicados
+    const getProposalVersion = (): number => {
+        if (appliedDirectorDiscountPercentage > 0) {
+            return 3; // V3 para desconto do diretor
+        } else if (applySalespersonDiscount) {
+            return 2; // V2 para desconto do vendedor
+        }
+        return 1; // V1 versão base
+    };
+
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = (baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+        
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+        
+        // Aplicar desconto do diretor (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+        
+        return discountedTotal;
+    };
+
     const saveProposal = async () => {
         if (addedProducts.length === 0) {
             alert('Adicione pelo menos um produto à proposta.');
@@ -958,22 +986,30 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
         }
 
         const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
-        const totalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+        const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+        
+        // Aplicar descontos no total mensal
+        const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
+        const proposalVersion = getProposalVersion();
 
         try {
             const proposalToSave = {
-                title: `Proposta Internet Rádio - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                title: `Proposta Internet Rádio V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                 client: clientData.companyName || clientData.name || 'Cliente não informado',
                 value: finalTotalMonthly,
                 type: 'RADIO',
                 status: 'Rascunho',
                 createdBy: user.email || user.id,
+                version: proposalVersion,
                 // Store additional data as metadata
                 clientData: clientData,
                 accountManager: accountManagerData,
                 products: addedProducts,
-                totalSetup: finalTotalSetup,
+                totalSetup: totalSetup,
                 totalMonthly: finalTotalMonthly,
+                baseTotalMonthly: baseTotalMonthly,
+                applySalespersonDiscount: applySalespersonDiscount,
+                appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
                 userId: user.id
             };
 
