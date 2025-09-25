@@ -182,18 +182,29 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     const [includeReferralPartner, setIncludeReferralPartner] = useState<boolean>(false);
     const [includeInfluencerPartner, setIncludeInfluencerPartner] = useState<boolean>(false);
     
-    // Hook para comissões editáveis
-    const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
+    // Hook para comissões editáveis com tratamento de erro
+    const commissionsData = useCommissions();
+    const { channelIndicator, channelInfluencer, channelSeller, seller } = commissionsData || {};
     
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
     const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number): number => {
         if (!channelIndicator || !includeReferralPartner) return 0;
-        return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths) / 100;
+        try {
+            return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths) / 100;
+        } catch (error) {
+            console.warn('Erro ao calcular comissão do parceiro indicador:', error);
+            return 0;
+        }
     };
 
     const getPartnerInfluencerRate = (monthlyRevenue: number, contractMonths: number): number => {
         if (!channelInfluencer || !includeInfluencerPartner) return 0;
-        return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths) / 100;
+        try {
+            return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths) / 100;
+        } catch (error) {
+            console.warn('Erro ao calcular comissão do parceiro influenciador:', error);
+            return 0;
+        }
     };
     
     // Estados para DRE e tributação
@@ -637,6 +648,37 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         return discountedTotal;
     };
 
+    // Função para buscar propostas
+    const fetchProposals = async () => {
+        if (!user) {
+            setProposals([]);
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/proposals', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`,
+                },
+            });
+
+            if (response.ok) {
+                const proposalsData = await response.json();
+                const doubleFibraRadioProposals = proposalsData.filter((p: any) => 
+                    p.type === 'DOUBLE_FIBRA_RADIO' || p.baseId?.startsWith('Prop_DOUBLE_')
+                );
+                setProposals(doubleFibraRadioProposals);
+            } else {
+                setProposals([]);
+            }
+        } catch (error) {
+            console.error("Erro ao buscar propostas: ", error);
+            setProposals([]);
+        }
+    };
+
     const saveProposal = async () => {
         if (!user) {
             alert('Erro: Usuário não autenticado');
@@ -660,6 +702,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         }
 
         try {
+            console.log('Iniciando salvamento da proposta Double-Fibra/Radio...');
             const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
             
@@ -672,9 +715,9 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
             if (currentProposal?.id && proposalVersion === 1) {
                 const proposalToUpdate = {
                     id: currentProposal.id,
-                    title: `Proposta Double-Fibra/Radio - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta Double-Fibra/Radio V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
-                    value: totalMonthly,
+                    value: finalTotalMonthly,
                     type: 'DOUBLE_FIBRA_RADIO',
                     status: currentProposal.status || 'Rascunho',
                     updatedBy: user.email || user.id,
@@ -683,13 +726,16 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                     createdBy: currentProposal.createdBy,
                     createdAt: currentProposal.createdAt,
                     baseId: currentProposal.baseId,
-                    version: (currentProposal.version || 0) + 1,
+                    version: proposalVersion,
                     // Atualizar dados editáveis
                     clientData: clientData,
                     accountManager: accountManagerData,
                     products: addedProducts,
                     totalSetup: totalSetup,
-                    totalMonthly: totalMonthly,
+                    totalMonthly: finalTotalMonthly,
+                    baseTotalMonthly: baseTotalMonthly,
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
                     userId: user.id
                 };
 
@@ -711,20 +757,23 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 }
             } else {
                 const proposalToSave = {
-                    title: `Proposta Double-Fibra/Radio - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta Double-Fibra/Radio V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
-                    value: totalMonthly,
+                    value: finalTotalMonthly,
                     type: 'DOUBLE_FIBRA_RADIO',
                     status: 'Rascunho',
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
-                    version: 1,
+                    version: proposalVersion,
                     // Store additional data as metadata
                     clientData: clientData,
                     accountManager: accountManagerData,
                     products: addedProducts,
                     totalSetup: totalSetup,
-                    totalMonthly: totalMonthly,
+                    totalMonthly: finalTotalMonthly,
+                    baseTotalMonthly: baseTotalMonthly,
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
                     userId: user.id
                 };
 
