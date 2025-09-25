@@ -107,8 +107,6 @@ interface Proposal {
 
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 
@@ -1115,19 +1113,66 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         setViewMode('proposal-summary');
     };
 
+    // Função para buscar propostas
+    const fetchProposals = React.useCallback(async () => {
+        if (!currentUser || !currentUser.role) {
+            setProposals([]);
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/proposals', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentUser.token}`,
+                },
+            });
+
+            if (response.ok) {
+                const proposalsData = await response.json();
+                // Filter for VM proposals
+                const vmProposals = proposalsData.filter((p: any) => 
+                    p.type === 'VM' || p.baseId?.startsWith('Prop_VM_')
+                );
+                setProposals(vmProposals);
+            } else {
+                console.error('Erro ao buscar propostas:', response.statusText);
+                setProposals([]);
+            }
+        } catch (error) {
+            console.error("Erro ao buscar propostas: ", error);
+            setProposals([]);
+        }
+    }, [currentUser]);
+
     const deleteProposal = async (proposalId: string) => {
-        if (!db) {
-            console.error('Firebase não está disponível');
+        if (!currentUser) {
+            console.error('Usuário não autenticado');
             return;
         }
 
         if (window.confirm('Tem certeza que deseja excluir esta proposta?')) {
             try {
-                await deleteDoc(doc(db, 'proposals', proposalId));
-                fetchProposals();
+                const response = await fetch(`/api/proposals?id=${proposalId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${currentUser.token}`,
+                    },
+                });
+
+                if (response.ok) {
+                    fetchProposals();
+                    if (currentProposal?.id === proposalId) {
+                        setCurrentProposal(null);
+                    }
+                    toast.success('Proposta excluída com sucesso!');
+                } else {
+                    throw new Error('Erro ao excluir proposta');
+                }
             } catch (error) {
                 console.error('Erro ao excluir proposta:', error);
-                alert('Falha ao excluir a proposta.');
+                toast.error('Falha ao excluir a proposta.');
             }
         }
     };
