@@ -11,3 +11,10 @@ export function formatCurrency(amount: number, locale: string = 'pt-BR', currenc
     currency: currency,
   }).format(amount);
 }
+
+export function formatBrazilianNumber(value: number): string {
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}

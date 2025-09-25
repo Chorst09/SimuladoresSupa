@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from "sonner"; // Added toast import
 import { supabase } from '../../lib/supabaseClient';
-import CommissionTables, { CommissionData } from './CommissionTables';
+import CommissionTablesUnified from './CommissionTablesUnified';
+import { CommissionData } from '@/lib/types';
 import { DRETable, DRETableProps } from './DRETable';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManagerForm';
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { useAuth } from '@/hooks/use-auth';
+import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate, getDirectorCommissionRate } from '@/hooks/use-commissions';
 
 // Interfaces
 interface PABXResult {
@@ -97,6 +99,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     const [pabxDeviceQuantity, setPabxDeviceQuantity] = useState<number>(5);
     const [pabxIncludeAI, setPabxIncludeAI] = useState<boolean>(false);
     const [includeParceiroIndicador, setIncludeParceiroIndicador] = useState<boolean>(false);
+    const [includeInfluencerPartner, setIncludeInfluencerPartner] = useState<boolean>(false);
     const [aiAgentPlan, setAiAgentPlan] = useState<string>('basic');
     const [pabxAIPlan, setPabxAIPlan] = useState<string>('20K');
     const [pabxResult, setPabxResult] = useState<PABXResult | null>(null);
@@ -105,6 +108,9 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     const [pabxPremiumSubPlan, setPabxPremiumSubPlan] = useState<'Ilimitado' | 'Tarifado'>('Ilimitado');
     const [pabxPremiumEquipment, setPabxPremiumEquipment] = useState<'Com' | 'Sem'>('Sem');
     const [contractDuration, setContractDuration] = useState<string>('24');
+
+    // Hook para comissões editáveis
+    const { channelIndicator, channelInfluencer, channelSeller, seller, channelDirector } = useCommissions();
 
     // Estados SIP
     const [sipPlan, setSipPlan] = useState<string>('SIP ILIMITADO 10 Canais');
@@ -675,24 +681,13 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
     // Get partner indicator commission rate based on monthly revenue and contract duration
     const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number) => {
-        if (!commissionData.parceiro || commissionData.parceiro.length === 0) {
-            return 0;
-        }
+        if (!channelIndicator || !includeParceiroIndicador) return 0;
+        return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths) / 100;
+    };
 
-        // Find the matching range for the monthly revenue
-        const matchingRange = commissionData.parceiro.find(range => {
-            const [min, max] = range.range.split('-').map(Number);
-            return monthlyRevenue >= min && (isNaN(max) || monthlyRevenue <= max);
-        });
-
-        if (!matchingRange) {
-            return 0;
-        }
-
-        // Return the appropriate rate based on contract duration
-        return parseFloat(contractMonths <= 24 ?
-            matchingRange.ate24.replace(',', '.') :
-            matchingRange.mais24.replace(',', '.')) / 100; // Convert to decimal
+    const getPartnerInfluencerRate = (monthlyRevenue: number, contractMonths: number) => {
+        if (!channelInfluencer || !includeInfluencerPartner) return 0;
+        return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths) / 100;
     };
 
     // Calculate PABX result
@@ -862,8 +857,12 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     // Aplicar desconto do diretor (personalizável)
     const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
 
+    const partnerIndicatorCommission = getPartnerIndicatorRate(rawTotalMonthly, parseInt(contractDuration, 10)) * rawTotalMonthly;
+
+    const influencerPartnerCommission = getPartnerInfluencerRate(rawTotalMonthly, parseInt(contractDuration, 10)) * rawTotalMonthly;
+
     const finalTotalSetup = rawTotalSetup * salespersonDiscountFactor * directorDiscountFactor;
-    const finalTotalMonthly = rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor;
+    const finalTotalMonthly = (rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor) - partnerIndicatorCommission - influencerPartnerCommission;
 
     const clearForm = () => {
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
@@ -1777,6 +1776,15 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                     <Label htmlFor="include-parceiro-indicador">Incluir Parceiro Indicador</Label>
                                 </div>
 
+                                <div className="flex items-center space-x-2 mt-4">
+                                    <Checkbox
+                                        id="include-influencer-partner"
+                                        checked={includeInfluencerPartner}
+                                        onCheckedChange={(checked) => setIncludeInfluencerPartner(checked as boolean)}
+                                    />
+                                    <Label htmlFor="include-influencer-partner">Incluir Parceiro Influenciador</Label>
+                                </div>
+
                                 {pabxIncludeAI && (
                                     <div>
                                         <Label>Plano de Agente IA</Label>
@@ -2067,19 +2075,42 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 </TabsContent>
 
                 <TabsContent value="commissions-table">
-                    <CommissionTables
-                        commissionData={commissionData}
-                        onCommissionDataChange={setCommissionData}
-                    />
+                    <CommissionTablesUnified />
                 </TabsContent>
 
                 <TabsContent value="dre">
                     {(() => {
                         const dreMonthlyRevenue = (pabxResult?.totalMonthly || 0) + (sipResult?.monthly || 0);
                         const months = parseInt(contractDuration);
-                        const vendedorRate = getCommissionRate('vendedor');
-                        const diretorRate = getCommissionRate('diretor');
-                        const parceiroRate = includeParceiroIndicador ? getPartnerIndicatorRate(dreMonthlyRevenue, months) : 0;
+                        // Cálculo correto das comissões baseado na seleção dos parceiros
+                        const comissaoParceiroIndicador = includeParceiroIndicador 
+                            ? (dreMonthlyRevenue * (getChannelIndicatorCommissionRate(channelIndicator, dreMonthlyRevenue, months) / 100))
+                            : 0;
+                        const comissaoParceiroInfluenciador = includeInfluencerPartner 
+                            ? (dreMonthlyRevenue * (getChannelInfluencerCommissionRate(channelInfluencer, dreMonthlyRevenue, months) / 100))
+                            : 0;
+                        
+                        // Calcular a comissão correta baseado na presença de parceiros
+                        const temParceiros = includeParceiroIndicador || includeInfluencerPartner;
+                        const comissaoVendedor = temParceiros 
+                            ? (dreMonthlyRevenue * (getChannelSellerCommissionRate(channelSeller, months) / 100)) // Canal/Vendedor quando há parceiros
+                            : (dreMonthlyRevenue * (getSellerCommissionRate(seller, months) / 100)); // Vendedor quando não há parceiros
+                        
+                        const vendedorRate = temParceiros 
+                            ? getChannelSellerCommissionRate(channelSeller, months)
+                            : getSellerCommissionRate(seller, months);
+                            
+                        const diretorRate = getDirectorCommissionRate(channelDirector, months);
+                        
+                        const parceiroIndicadorRate = includeParceiroIndicador 
+                            ? getChannelIndicatorCommissionRate(channelIndicator, dreMonthlyRevenue, months) 
+                            : 0;
+                            
+                        const parceiroInfluenciadorRate = includeInfluencerPartner 
+                            ? getChannelInfluencerCommissionRate(channelInfluencer, dreMonthlyRevenue, months) 
+                            : 0;
+
+                        const parceiroRate = parceiroIndicadorRate + parceiroInfluenciadorRate;
 
                         // Calculate operational costs (estimated at 60% of revenue for PABX/SIP services)
                         const estimatedOperationalCosts = dreMonthlyRevenue * 0.60;
@@ -2088,13 +2119,14 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                             receitaBruta: dreMonthlyRevenue,
                             receitaLiquida: dreMonthlyRevenue * 0.9075, // Assuming 9.25% taxes
                             custoServico: estimatedOperationalCosts,
-                            comissaoVendedor: dreMonthlyRevenue * (vendedorRate / 100),
+                            comissaoVendedor: comissaoVendedor,
                             comissaoDiretor: dreMonthlyRevenue * (diretorRate / 100),
-                            comissaoParceiro: dreMonthlyRevenue * (parceiroRate / 100),
+                            comissaoParceiroIndicador: comissaoParceiroIndicador,
+                            comissaoParceiroInfluenciador: comissaoParceiroInfluenciador,
                             totalImpostos: dreMonthlyRevenue * 0.0925,
-                            lucroOperacional: dreMonthlyRevenue - estimatedOperationalCosts - (dreMonthlyRevenue * ((vendedorRate + diretorRate + parceiroRate) / 100)),
-                            lucroLiquido: (dreMonthlyRevenue - estimatedOperationalCosts - (dreMonthlyRevenue * ((vendedorRate + diretorRate + parceiroRate) / 100))) * 0.66, // After profit taxes
-                            rentabilidade: ((dreMonthlyRevenue - estimatedOperationalCosts - (dreMonthlyRevenue * ((vendedorRate + diretorRate + parceiroRate) / 100))) * 0.66 / dreMonthlyRevenue) * 100,
+                            lucroOperacional: dreMonthlyRevenue - estimatedOperationalCosts - (dreMonthlyRevenue * ((vendedorRate + diretorRate + parceiroIndicadorRate + parceiroInfluenciadorRate) / 100)),
+                            lucroLiquido: (dreMonthlyRevenue - estimatedOperationalCosts - (dreMonthlyRevenue * ((vendedorRate + diretorRate + parceiroIndicadorRate + parceiroInfluenciadorRate) / 100))) * 0.66, // After profit taxes
+                            rentabilidade: ((dreMonthlyRevenue - estimatedOperationalCosts - (dreMonthlyRevenue * ((vendedorRate + diretorRate + parceiroIndicadorRate + parceiroInfluenciadorRate) / 100))) * 0.66 / dreMonthlyRevenue) * 100,
                             paybackMeses: 0, // PABX/SIP typically has no setup fee
                             taxaInstalacao: pabxResult?.setupFee || 0
                         };
@@ -2110,6 +2142,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                     pabxResult={pabxResult}
                                     sipResult={sipResult}
                                     contractDuration={months}
+                                    hasPartners={temParceiros}
                                 />
 
                                 {/* Resultado Final */}
@@ -2150,9 +2183,23 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                         <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.custoServico)}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-300">Comissões:</span>
-                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoVendedor + dreCalculations.comissaoDiretor + dreCalculations.comissaoParceiro)}</span>
+                                                        <span className="text-gray-300">
+                                                            {(includeParceiroIndicador || includeInfluencerPartner) ? 'Comissão Canal/Vendedor:' : 'Comissão Vendedor:'}
+                                                        </span>
+                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoVendedor)}</span>
                                                     </div>
+                                                    {includeParceiroIndicador && (
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-gray-300">Comissão Parceiro Indicador:</span>
+                                                            <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</span>
+                                                        </div>
+                                                    )}
+                                                    {includeInfluencerPartner && (
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-gray-300">Comissão Parceiro Influenciador:</span>
+                                                            <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroInfluenciador)}</span>
+                                                        </div>
+                                                    )}
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-300">Impostos:</span>
                                                         <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.totalImpostos)}</span>
@@ -2550,8 +2597,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                         <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.setup['30']} onChange={(e) => setPabxPrices(prev => ({ ...prev, setup: { ...prev.setup, '30': parseFloat(e.target.value) || 0 } }))} /></TableCell>
                                                         <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.setup['50']} onChange={(e) => setPabxPrices(prev => ({ ...prev, setup: { ...prev.setup, '50': parseFloat(e.target.value) || 0 } }))} /></TableCell>
                                                         <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.setup['100']} onChange={(e) => setPabxPrices(prev => ({ ...prev, setup: { ...prev.setup, '100': parseFloat(e.target.value) || 0 } }))} /></TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
+                                                        <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.setup['500']} onChange={(e) => setPabxPrices(prev => ({ ...prev, setup: { ...prev.setup, '500': parseFloat(e.target.value) || 0 } }))} /></TableCell>
+                                                        <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.setup['1000']} onChange={(e) => setPabxPrices(prev => ({ ...prev, setup: { ...prev.setup, '1000': parseFloat(e.target.value) || 0 } }))} /></TableCell>
                                                     </>
                                                 ) : (
                                                     <>
@@ -2560,8 +2607,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                         <TableCell className="text-center">{formatCurrency(pabxPrices.setup['30'])}</TableCell>
                                                         <TableCell className="text-center">{formatCurrency(pabxPrices.setup['50'])}</TableCell>
                                                         <TableCell className="text-center">{formatCurrency(pabxPrices.setup['100'])}</TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
+                                                        <TableCell className="text-center">{formatCurrency(pabxPrices.setup['500'])}</TableCell>
+                                                        <TableCell className="text-center">{formatCurrency(pabxPrices.setup['1000'])}</TableCell>
                                                     </>
                                                 )}
                                             </TableRow>
@@ -2598,8 +2645,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                         <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.hosting['30']} onChange={(e) => setPabxPrices(prev => ({ ...prev, hosting: { ...prev.hosting, '30': parseFloat(e.target.value) || 0 } }))} /></TableCell>
                                                         <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.hosting['50']} onChange={(e) => setPabxPrices(prev => ({ ...prev, hosting: { ...prev.hosting, '50': parseFloat(e.target.value) || 0 } }))} /></TableCell>
                                                         <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.hosting['100']} onChange={(e) => setPabxPrices(prev => ({ ...prev, hosting: { ...prev.hosting, '100': parseFloat(e.target.value) || 0 } }))} /></TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
+                                                        <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.hosting['500']} onChange={(e) => setPabxPrices(prev => ({ ...prev, hosting: { ...prev.hosting, '500': parseFloat(e.target.value) || 0 } }))} /></TableCell>
+                                                        <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.hosting['1000']} onChange={(e) => setPabxPrices(prev => ({ ...prev, hosting: { ...prev.hosting, '1000': parseFloat(e.target.value) || 0 } }))} /></TableCell>
                                                     </>
                                                 ) : (
                                                     <>
@@ -2608,8 +2655,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                         <TableCell className="text-center">{formatCurrency(pabxPrices.hosting['30'])}</TableCell>
                                                         <TableCell className="text-center">{formatCurrency(pabxPrices.hosting['50'])}</TableCell>
                                                         <TableCell className="text-center">{formatCurrency(pabxPrices.hosting['100'])}</TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
+                                                        <TableCell className="text-center">{formatCurrency(pabxPrices.hosting['500'])}</TableCell>
+                                                        <TableCell className="text-center">{formatCurrency(pabxPrices.hosting['1000'])}</TableCell>
                                                     </>
                                                 )}
                                             </TableRow>
@@ -2622,8 +2669,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                         <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.device['30']} onChange={(e) => setPabxPrices(prev => ({ ...prev, device: { ...prev.device, '30': parseFloat(e.target.value) || 0 } }))} /></TableCell>
                                                         <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.device['50']} onChange={(e) => setPabxPrices(prev => ({ ...prev, device: { ...prev.device, '50': parseFloat(e.target.value) || 0 } }))} /></TableCell>
                                                         <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.device['100']} onChange={(e) => setPabxPrices(prev => ({ ...prev, device: { ...prev.device, '100': parseFloat(e.target.value) || 0 } }))} /></TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
+                                                        <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.device['500']} onChange={(e) => setPabxPrices(prev => ({ ...prev, device: { ...prev.device, '500': parseFloat(e.target.value) || 0 } }))} /></TableCell>
+                                                        <TableCell><Input className="bg-slate-800 text-center" value={pabxPrices.device['1000']} onChange={(e) => setPabxPrices(prev => ({ ...prev, device: { ...prev.device, '1000': parseFloat(e.target.value) || 0 } }))} /></TableCell>
                                                     </>
                                                 ) : (
                                                     <>
@@ -2632,8 +2679,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                         <TableCell className="text-center">{formatCurrency(pabxPrices.device['30'])}</TableCell>
                                                         <TableCell className="text-center">{formatCurrency(pabxPrices.device['50'])}</TableCell>
                                                         <TableCell className="text-center">{formatCurrency(pabxPrices.device['100'])}</TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
-                                                        <TableCell className="text-center text-blue-400">Valor a combinar</TableCell>
+                                                        <TableCell className="text-center">{formatCurrency(pabxPrices.device['500'])}</TableCell>
+                                                        <TableCell className="text-center">{formatCurrency(pabxPrices.device['1000'])}</TableCell>
                                                     </>
                                                 )}
                                             </TableRow>

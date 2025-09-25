@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ManCommissionsSection from './ManCommissionsSection';
 import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManagerForm';
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { supabase } from '@/lib/supabaseClient';
+import { useCommissions, getCommissionRate, getSellerCommissionRate, getChannelSellerCommissionRate } from '@/hooks/use-commissions';
+import CommissionTablesUnified from './CommissionTablesUnified';
 
 
 // Interfaces
@@ -85,6 +86,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     const [appliedDirectorDiscountPercentage, setAppliedDirectorDiscountPercentage] = useState<number>(0); // New state for applied director discount
     const [applySalespersonDiscount, setApplySalespersonDiscount] = useState<boolean>(false); // New state
     const [includeReferralPartner, setIncludeReferralPartner] = useState<boolean>(false);
+    const [includeInfluencerPartner, setIncludeInfluencerPartner] = useState<boolean>(false);
     const [taxRates, setTaxRates] = useState({ pis: 0.65, cofins: 3.00, csll: 9.00, irpj: 15.00, banda: 2.09, fundraising: 0, rate: 24, margem: 0, custoDesp: 10 });
     const [isEditingTaxes, setIsEditingTaxes] = useState(false);
     const [markup, setMarkup] = useState(100);
@@ -178,23 +180,14 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }
     }, [proposals]);
 
-    // Tabela de Comissão do Parceiro Indicador (Valores - Receita Mensal) com ate24/mais24
-    const PARTNER_INDICATOR_RANGES = [
-        { min: 0,      max: 500,    ate24: 1.5,  mais24: 2.5 },
-        { min: 500.01, max: 1000,   ate24: 2.5,  mais24: 4.0 },
-        { min: 1000.01,max: 1500,   ate24: 4.01, mais24: 5.5 },
-        { min: 1500.01,max: 3000,   ate24: 5.51, mais24: 7.0 },
-        { min: 3000.01,max: 5000,   ate24: 7.01, mais24: 8.5 },
-        { min: 5000.01,max: 6500,   ate24: 8.51, mais24: 10.0 },
-        { min: 6500.01,max: 9000,   ate24: 10.01,mais24: 11.5 },
-        { min: 9000.01,max: Infinity,ate24: 11.51,mais24: 13.0 }
-    ];
+    const { channelIndicator, channelInfluencer, channelSeller, seller, isLoading: isLoadingCommissions } = useCommissions();
 
     const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number): number => {
-        const range = PARTNER_INDICATOR_RANGES.find(r => monthlyRevenue >= r.min && monthlyRevenue <= r.max);
-        if (!range) return 0;
-        const pct = contractMonths <= 24 ? range.ate24 : range.mais24;
-        return (pct || 0) / 100;
+        return getCommissionRate(channelIndicator, monthlyRevenue, contractMonths);
+    };
+
+    const getPartnerInfluencerRate = (monthlyRevenue: number, contractMonths: number): number => {
+        return getCommissionRate(channelInfluencer, monthlyRevenue, contractMonths);
     };
 
     // Funções
@@ -228,8 +221,15 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         return monthlyRevenue * rate;
     })();
 
+    const influencerPartnerCommission = (() => {
+        if (!includeInfluencerPartner) return 0;
+        const monthlyRevenue = totalMonthly * salespersonDiscountFactor * directorDiscountFactor;
+        const rate = getPartnerInfluencerRate(monthlyRevenue, contractTerm);
+        return monthlyRevenue * rate;
+    })();
+
     const finalTotalSetup = totalSetup * salespersonDiscountFactor * directorDiscountFactor;
-    const finalTotalMonthly = (totalMonthly * salespersonDiscountFactor * directorDiscountFactor) - referralPartnerCommission;
+    const finalTotalMonthly = (totalMonthly * salespersonDiscountFactor * directorDiscountFactor) - referralPartnerCommission - influencerPartnerCommission;
 
     const handleClientFormSubmit = () => {
         console.log('Client data already set:', clientData);
@@ -303,7 +303,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             }
         };
 
-        setAddedProducts([...addedProducts, newProduct]);
+        setAddedProducts(prev => [...(prev || []), newProduct]);
     };
 
     const handleRemoveProduct = (id: string) => {
@@ -563,11 +563,24 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }
     }, [costBreakdown]);
 
+    // Cálculo correto das comissões baseado na seleção dos parceiros
+    const comissaoParceiroIndicador = includeReferralPartner ? (referralPartnerCommission || 0) : 0;
+    const comissaoParceiroInfluenciador = includeInfluencerPartner ? (influencerPartnerCommission || 0) : 0;
+    
+    // Calcular a comissão correta baseado na presença de parceiros
+    const temParceiros = includeReferralPartner || includeInfluencerPartner;
+    const comissaoVendedor = temParceiros 
+        ? (costBreakdown.finalPrice * (getChannelSellerCommissionRate(channelSeller, 12) / 100)) // Canal/Vendedor quando há parceiros
+        : (costBreakdown.finalPrice * (getSellerCommissionRate(seller, 12) / 100)); // Vendedor quando não há parceiros
+
     // DRE calculations
     const dreCalculations = {
         receitaBruta: costBreakdown.finalPrice,
         receitaLiquida: costBreakdown.finalPrice - costBreakdown.revenueTaxValue,
         custoServico: costBreakdown.cost,
+        comissaoVendedor: comissaoVendedor,
+        comissaoParceiroIndicador: comissaoParceiroIndicador,
+        comissaoParceiroInfluenciador: comissaoParceiroInfluenciador,
         lucroOperacional: costBreakdown.grossProfit,
         lucroLiquido: costBreakdown.netProfit,
         rentabilidade: costBreakdown.netMargin,
@@ -996,6 +1009,14 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 />
                                                 <Label htmlFor="include-referral-partner" className="text-sm">Incluir Parceiro Indicador</Label>
                                             </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox 
+                                                    id="include-influencer-partner" 
+                                                    checked={includeInfluencerPartner} 
+                                                    onCheckedChange={(c) => setIncludeInfluencerPartner(c as boolean)} 
+                                                />
+                                                <Label htmlFor="include-influencer-partner" className="text-sm">Incluir Parceiro Influenciador</Label>
+                                            </div>
                                         </div>
                                         
                                         <div className="space-y-2">
@@ -1181,14 +1202,6 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         </div>
                                                     )}
                                                     <div className="flex justify-between"><span>Total Instalação:</span><span>{formatCurrency(finalTotalSetup)}</span></div>
-                                                    {includeReferralPartner && (
-                                                        <div className="flex justify-between text-yellow-400">
-                                                            <span>
-                                                                Comissão Parceiro Indicador ({(getPartnerIndicatorRate(rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor, contractTerm) * 100).toFixed(2)}%):
-                                                            </span>
-                                                            <span>{formatCurrency(referralPartnerCommission)}</span>
-                                                        </div>
-                                                    )}
                                                     <div className="flex justify-between text-green-400"><span>Total Mensal:</span><span>{formatCurrency(finalTotalMonthly)}</span></div>
                                                     
                                                     {/* Payback Information */}
@@ -1235,148 +1248,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                         </TabsContent>
                         <TabsContent value="commissions-table">
                             <div className="space-y-6">
-                                {/* Tabela de Comissão Vendedor */}
-                                <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader>
-                                        <CardTitle>Comissão Vendedor</CardTitle>
-                                        <CardDescription>Valores de comissão baseados no prazo contratual</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Prazo (meses)</TableHead>
-                                                    <TableHead className="text-right">Comissão</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                <TableRow>
-                                                    <TableCell>12 meses</TableCell>
-                                                    <TableCell className="text-right">1,5%</TableCell>
-                                                </TableRow>
-                                                <TableRow>
-                                                    <TableCell>24 meses</TableCell>
-                                                    <TableCell className="text-right">2%</TableCell>
-                                                </TableRow>
-                                                <TableRow>
-                                                    <TableCell>36 meses</TableCell>
-                                                    <TableCell className="text-right">2,5%</TableCell>
-                                                </TableRow>
-                                                <TableRow>
-                                                    <TableCell>48 meses</TableCell>
-                                                    <TableCell className="text-right">3%</TableCell>
-                                                </TableRow>
-                                                <TableRow>
-                                                    <TableCell>60 meses</TableCell>
-                                                    <TableCell className="text-right">3,5%</TableCell>
-                                                </TableRow>
-                                            </TableBody>
-                                        </Table>
-                                    </CardContent>
-                                </Card>
-
-                                {/* Tabela de Comissão Diretor */}
-                                <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader>
-                                        <CardTitle>Comissão Diretor</CardTitle>
-                                        <CardDescription>Valores de comissão baseados no prazo contratual</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead>Prazo (meses)</TableHead>
-                                                    <TableHead className="text-right">Comissão</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                <TableRow>
-                                                    <TableCell>12 meses</TableCell>
-                                                    <TableCell className="text-right">0,5%</TableCell>
-                                                </TableRow>
-                                                <TableRow>
-                                                    <TableCell>24 meses</TableCell>
-                                                    <TableCell className="text-right">0,75%</TableCell>
-                                                </TableRow>
-                                                <TableRow>
-                                                    <TableCell>36 meses</TableCell>
-                                                    <TableCell className="text-right">1%</TableCell>
-                                                </TableRow>
-                                                <TableRow>
-                                                    <TableCell>48 meses</TableCell>
-                                                    <TableCell className="text-right">1,25%</TableCell>
-                                                </TableRow>
-                                                <TableRow>
-                                                    <TableCell>60 meses</TableCell>
-                                                    <TableCell className="text-right">1,5%</TableCell>
-                                                </TableRow>
-                                            </TableBody>
-                                        </Table>
-                                    </CardContent>
-                                </Card>
-
-                                {/* Tabela de Comissão Parceiro Indicador */}
-                                <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader>
-                                        <CardTitle>Comissão Parceiro Indicador</CardTitle>
-                                        <CardDescription>Valores de comissão baseados na receita mensal</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="overflow-x-auto">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Valores - Receita Mensal</TableHead>
-                                                        <TableHead className="text-right">Até 24 Meses</TableHead>
-                                                        <TableHead className="text-right">24 Meses ou Mais</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    <TableRow>
-                                                        <TableCell>R$ 0,00 a R$ 500,00</TableCell>
-                                                        <TableCell className="text-right">1,5%</TableCell>
-                                                        <TableCell className="text-right">2,5%</TableCell>
-                                                    </TableRow>
-                                                    <TableRow>
-                                                        <TableCell>R$ 500,01 a R$ 1.000,00</TableCell>
-                                                        <TableCell className="text-right">2,5%</TableCell>
-                                                        <TableCell className="text-right">4%</TableCell>
-                                                    </TableRow>
-                                                    <TableRow>
-                                                        <TableCell>R$ 1.000,01 a R$ 1.500,00</TableCell>
-                                                        <TableCell className="text-right">4,01%</TableCell>
-                                                        <TableCell className="text-right">5,5%</TableCell>
-                                                    </TableRow>
-                                                    <TableRow>
-                                                        <TableCell>R$ 1.500,01 a R$ 3.000,00</TableCell>
-                                                        <TableCell className="text-right">5,51%</TableCell>
-                                                        <TableCell className="text-right">7%</TableCell>
-                                                    </TableRow>
-                                                    <TableRow>
-                                                        <TableCell>R$ 3.000,01 a R$ 5.000,00</TableCell>
-                                                        <TableCell className="text-right">7,01%</TableCell>
-                                                        <TableCell className="text-right">8,5%</TableCell>
-                                                    </TableRow>
-                                                    <TableRow>
-                                                        <TableCell>R$ 5.000,01 a R$ 6.500,00</TableCell>
-                                                        <TableCell className="text-right">8,51%</TableCell>
-                                                        <TableCell className="text-right">10%</TableCell>
-                                                    </TableRow>
-                                                    <TableRow>
-                                                        <TableCell>R$ 6.500,01 a R$ 9.000,00</TableCell>
-                                                        <TableCell className="text-right">10,01%</TableCell>
-                                                        <TableCell className="text-right">11,5%</TableCell>
-                                                    </TableRow>
-                                                    <TableRow>
-                                                        <TableCell>Acima de R$ 9.000,01</TableCell>
-                                                        <TableCell className="text-right">11,51%</TableCell>
-                                                        <TableCell className="text-right">13%</TableCell>
-                                                    </TableRow>
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                <CommissionTablesUnified />
                             </div>
                         </TabsContent>
                         
@@ -1471,13 +1343,21 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     <TableCell className="text-right text-white">{formatCurrency(costBreakdown.cost)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Comissão Vendedor</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.commissionValue)}</TableCell>
+                                                    <TableCell className="text-white">
+                                                        {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations.comissaoVendedor)}</TableCell>
                                                 </TableRow>
-                                                {costBreakdown.referralPartnerCommission > 0 && (
+                                                {referralPartnerCommission > 0 && (
                                                     <TableRow className="border-slate-800">
-                                                        <TableCell className="text-white">Comissão Parceiro</TableCell>
-                                                        <TableCell className="text-right text-white">{formatCurrency(costBreakdown.referralPartnerCommission)}</TableCell>
+                                                        <TableCell className="text-white">Comissão Parceiro Indicador</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(referralPartnerCommission)}</TableCell>
+                                                    </TableRow>
+                                                )}
+                                                {influencerPartnerCommission > 0 && (
+                                                    <TableRow className="border-slate-800">
+                                                        <TableCell className="text-white">Comissão Parceiro Influenciador</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(influencerPartnerCommission)}</TableCell>
                                                     </TableRow>
                                                 )}
                                                 <TableRow className="border-slate-800 bg-red-900/30">

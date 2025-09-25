@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import RadioCommissionsSection from './RadioCommissionsSection';
+import CommissionTablesUnified from './CommissionTablesUnified';
 import { Separator } from '@/components/ui/separator';
 import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManagerForm';
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
+import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
 import { 
     Radio, 
     Calculator, 
@@ -298,10 +299,14 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
     const [appliedDirectorDiscountPercentage, setAppliedDirectorDiscountPercentage] = useState<number>(0);
     const [applySalespersonDiscount, setApplySalespersonDiscount] = useState<boolean>(false);
     const [includeReferralPartner, setIncludeReferralPartner] = useState<boolean>(false);
+    const [includeInfluencerPartner, setIncludeInfluencerPartner] = useState<boolean>(false);
     const [isEditingTaxes, setIsEditingTaxes] = useState<boolean>(false);
     const [markup, setMarkup] = useState(100);
     const [estimatedNetMargin, setEstimatedNetMargin] = useState(0);
     const [commissionPercentage, setCommissionPercentage] = useState<number>(0);
+
+    // Hook para comissões editáveis
+    const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
 
     // Tabela de comissão do Parceiro Indicador (por Receita Mensal) com ate24/mais24
     const PARTNER_INDICATOR_RANGES = [
@@ -316,10 +321,13 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
     ];
 
     const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number): number => {
-        const range = PARTNER_INDICATOR_RANGES.find(r => monthlyRevenue >= r.min && monthlyRevenue <= r.max);
-        if (!range) return 0;
-        const pct = contractMonths <= 24 ? range.ate24 : range.mais24;
-        return (pct || 0) / 100;
+        if (!channelIndicator || !includeReferralPartner) return 0;
+        return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths) / 100;
+    };
+
+    const getPartnerInfluencerRate = (monthlyRevenue: number, contractMonths: number): number => {
+        if (!channelInfluencer || !includeInfluencerPartner) return 0;
+        return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths) / 100;
     };
 
     const getMonthlyPrice = (plan: RadioPlan | undefined, term: number): number => {
@@ -562,9 +570,23 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
     const salespersonDiscountFactor = 1; // Add your discount logic here
     const directorDiscountFactor = 1; // Add your discount logic here
 
-    // Calculate final totals
+
+
+    // Calculate final totals (moved outside costBreakdown to avoid circular dependency)
+
+
+
+
+
+
+
+
+
+
+
+
     const finalTotalSetup = rawTotalSetup * salespersonDiscountFactor * directorDiscountFactor;
-    const finalTotalMonthly = rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor;
+    const finalTotalMonthly = (rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor);
 
     const costBreakdown = useMemo(() => {
         if (!result) return {
@@ -577,6 +599,7 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
             profitTaxValue: 0,
             commissionValue: 0,
             referralPartnerCommission: 0,
+            influencerPartnerCommission: 0,
             setupFee: 0,
             baseCost: 0,
             taxAmount: 0,
@@ -601,16 +624,20 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
         const priceAfterSalespersonDiscount = priceWithMarkup * (applySalespersonDiscount ? 0.95 : 1);
         const priceAfterDirectorDiscount = priceAfterSalespersonDiscount * (1 - (appliedDirectorDiscountPercentage / 100));
 
-        const finalPrice = priceAfterDirectorDiscount;
+        const calculatedReferralPartnerCommission = includeReferralPartner
+            ? priceAfterDirectorDiscount * getPartnerIndicatorRate(priceAfterDirectorDiscount, contractTerm)
+            : 0;
+
+        const calculatedInfluencerPartnerCommission = includeInfluencerPartner
+            ? priceAfterDirectorDiscount * getPartnerInfluencerRate(priceAfterDirectorDiscount, contractTerm)
+            : 0;
+
+        const finalPrice = priceAfterDirectorDiscount - calculatedReferralPartnerCommission - calculatedInfluencerPartnerCommission;
 
         const calculatedCommissionValue = finalPrice * Comm;
         const revenueTaxValue = finalPrice * T_rev;
         
-        const calculatedReferralPartnerCommission = includeReferralPartner
-            ? finalPrice * getPartnerIndicatorRate(finalPrice, contractTerm)
-            : 0;
-
-        const grossProfit = finalPrice - C - calculatedCommissionValue - revenueTaxValue - calculatedReferralPartnerCommission;
+        const grossProfit = finalPrice - C - calculatedCommissionValue - revenueTaxValue;
         const profitTaxValue = grossProfit > 0 ? grossProfit * T_profit : 0;
         const netProfit = grossProfit - profitTaxValue;
         
@@ -626,6 +653,7 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
             profitTaxValue,
             commissionValue: calculatedCommissionValue,
             referralPartnerCommission: calculatedReferralPartnerCommission,
+            influencerPartnerCommission: calculatedInfluencerPartnerCommission,
             setupFee: result.installationCost,
             baseCost: C,
             taxAmount: revenueTaxValue + profitTaxValue,
@@ -642,7 +670,9 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
             },
             totalCost: C + calculatedCommissionValue,
         };
-    }, [result, markup, commissionPercentage, taxRates, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, contractTerm]);
+    }, [result, markup, commissionPercentage, taxRates, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, contractTerm]);
+
+
 
     // Update estimated net margin when costBreakdown changes
     useEffect(() => {
@@ -671,6 +701,8 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
                 csll: 0,
                 irpj: 0,
                 comissaoVendedor: 0,
+                comissaoParceiroIndicador: 0,
+                comissaoParceiroInfluenciador: 0,
                 custosDespesas: 0,
                 balance: 0,
                 rentabilidade: 0,
@@ -701,13 +733,21 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
         const impostoLucro = csll + irpj;
         
         const totalImpostos = impostoReceita + impostoLucro;
-        const comissaoVendedor = costBreakdown.commissionValue || 0;
-        const referralPartnerCommission = costBreakdown.referralPartnerCommission || 0;
+        
+        // Cálculo das comissões baseado na seleção dos parceiros
+        const comissaoParceiroIndicador = includeReferralPartner ? (costBreakdown.referralPartnerCommission || 0) : 0;
+        const comissaoParceiroInfluenciador = includeInfluencerPartner ? (costBreakdown.influencerPartnerCommission || 0) : 0;
+        
+        // Calcular a comissão correta baseado na presença de parceiros
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        const comissaoVendedor = temParceiros 
+            ? (receitaMensal * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
+            : (receitaMensal * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
         
         // Cálculos DRE
         const receitaBruta = receitaMensal;
         const receitaLiquida = receitaBruta - impostoReceita;
-        const totalCustos = custoBanda + comissaoVendedor + referralPartnerCommission;
+        const totalCustos = custoBanda + comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
         const lucroOperacional = receitaLiquida - totalCustos;
         const lucroLiquido = lucroOperacional - impostoLucro;
         
@@ -728,6 +768,8 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
             csll,
             irpj,
             comissaoVendedor,
+            comissaoParceiroIndicador,
+            comissaoParceiroInfluenciador,
             custosDespesas: totalCustos,
             balance: lucroLiquido,
             rentabilidade,
@@ -1404,6 +1446,14 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
                                                 />
                                                 <Label htmlFor="includeReferralPartner">Incluir Parceiro Indicador</Label>
                                             </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox 
+                                                    id="includeInfluencerPartner" 
+                                                    checked={includeInfluencerPartner} 
+                                                    onCheckedChange={(checked) => setIncludeInfluencerPartner(Boolean(checked))} 
+                                                />
+                                                <Label htmlFor="includeInfluencerPartner">Incluir Parceiro Influenciador</Label>
+                                            </div>
                                         </div>
                                         {/* Seção de Resultado e Validação de Payback */}
                                         {result && (
@@ -1542,9 +1592,6 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
                                                         </div>
                                                     )}
                                                     <div className="flex justify-between"><span>Total Instalação:</span><span>{formatCurrency(finalTotalSetup)}</span></div>
-                                                    {includeReferralPartner && (
-                                                        <div className="flex justify-between text-yellow-400"><span>Comissão Parceiro Indicador:</span> <span>{formatCurrency(costBreakdown.referralPartnerCommission)}</span></div>
-                                                    )}
                                                     <div className="flex justify-between text-green-400"><span>Total Mensal:</span><span>{formatCurrency(finalTotalMonthly)}</span></div>
                                                     
                                                     {/* Payback Information */}
@@ -1613,7 +1660,7 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
                             </div>
                         </TabsContent>
                         <TabsContent value="commissions-table">
-                    <RadioCommissionsSection />
+                    <CommissionTablesUnified />
                 </TabsContent>
 
                 <TabsContent value="dre">
@@ -1730,8 +1777,22 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
                                                         <TableCell className="text-white">IRPJ</TableCell>
                                                         <TableCell className="text-right text-white">{formatCurrency(dreCalculations.irpj)}</TableCell>
                                                     </TableRow>
+                                                    {includeReferralPartner && (
+                                                        <TableRow className="border-slate-800">
+                                                            <TableCell className="text-white">Comissão Parceiro Indicador</TableCell>
+                                                            <TableCell className="text-right text-white">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                    {includeInfluencerPartner && (
+                                                        <TableRow className="border-slate-800">
+                                                            <TableCell className="text-white">Comissão Parceiro Influenciador</TableCell>
+                                                            <TableCell className="text-right text-white">{formatCurrency(dreCalculations.comissaoParceiroInfluenciador)}</TableCell>
+                                                        </TableRow>
+                                                    )}
                                                     <TableRow className="border-slate-800">
-                                                        <TableCell className="text-white">Comissão Vendedor (1,2%)</TableCell>
+                                                        <TableCell className="text-white">
+                                                            {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
+                                                        </TableCell>
                                                         <TableCell className="text-right text-white">{formatCurrency(dreCalculations.comissaoVendedor)}</TableCell>
                                                     </TableRow>
                                                     <TableRow className="border-slate-800">
@@ -2066,9 +2127,23 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
                                                         <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.custoBanda)}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-300">Comissão:</span>
+                                                        <span className="text-gray-300">
+                                                            {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor:' : 'Comissão Vendedor:'}
+                                                        </span>
                                                         <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoVendedor)}</span>
                                                     </div>
+                                                    {includeReferralPartner && (
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-gray-300">Comissão P. Indicador:</span>
+                                                            <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</span>
+                                                        </div>
+                                                    )}
+                                                    {includeInfluencerPartner && (
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-gray-300">Comissão P. Influenciador:</span>
+                                                            <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroInfluenciador)}</span>
+                                                        </div>
+                                                    )}
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-300">Impostos:</span>
                                                         <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.totalImpostos)}</span>

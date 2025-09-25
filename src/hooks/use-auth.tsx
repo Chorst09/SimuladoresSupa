@@ -60,12 +60,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Setup auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('🔔 Auth state change:', event, session ? 'User present' : 'No user');
+          console.log('Session details:', session?.user);
           
           if (!mountedRef.current) return;
 
           if (event === 'SIGNED_IN' && session?.user) {
+            console.log('Checking user role in auth state change...');
             await processUser(session.user);
           } else if (event === 'SIGNED_OUT' || !session?.user) {
+            console.log('User signed out or no user present');
             setUser(null);
           }
           

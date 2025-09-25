@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import DoubleFibraRadioCommissionsSection from './DoubleFibraRadioCommissionsSection';
+import CommissionTablesUnified from './CommissionTablesUnified';
 import { Separator } from '@/components/ui/separator';
 import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManagerForm';
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
+import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
 import { 
     Radio, 
     Calculator, 
@@ -138,12 +139,7 @@ const PARTNER_INDICATOR_RANGES = [
     { min: 9000.01,max: Infinity,ate24: 11.51,mais24: 13.0 },
 ];
 
-const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number): number => {
-    const range = PARTNER_INDICATOR_RANGES.find(r => monthlyRevenue >= r.min && monthlyRevenue <= r.max);
-    if (!range) return 0;
-    const pct = contractMonths <= 24 ? range.ate24 : range.mais24;
-    return (pct || 0) / 100;
-};
+// Função movida para dentro do componente para acessar o hook useCommissions
 
 // Function to handle tax rate changes
 const handleTaxRateChange = (taxType: string, value: string) => {
@@ -184,6 +180,21 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     const [appliedDirectorDiscountPercentage, setAppliedDirectorDiscountPercentage] = useState<number>(0);
     const [applySalespersonDiscount, setApplySalespersonDiscount] = useState<boolean>(false);
     const [includeReferralPartner, setIncludeReferralPartner] = useState<boolean>(false);
+    const [includeInfluencerPartner, setIncludeInfluencerPartner] = useState<boolean>(false);
+    
+    // Hook para comissões editáveis
+    const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
+    
+    // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
+    const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number): number => {
+        if (!channelIndicator || !includeReferralPartner) return 0;
+        return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths) / 100;
+    };
+
+    const getPartnerInfluencerRate = (monthlyRevenue: number, contractMonths: number): number => {
+        if (!channelInfluencer || !includeInfluencerPartner) return 0;
+        return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths) / 100;
+    };
     
     // Estados para DRE e tributação
     const [isEditingTaxes, setIsEditingTaxes] = useState<boolean>(false);
@@ -301,7 +312,11 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
             ? finalPrice * getPartnerIndicatorRate(finalPrice, contractTerm)
             : 0;
 
-        const grossProfit = finalPrice - C - calculatedCommissionValue - revenueTaxValue - calculatedReferralPartnerCommission;
+        const calculatedInfluencerPartnerCommission = includeInfluencerPartner
+            ? finalPrice * getPartnerInfluencerRate(finalPrice, contractTerm)
+            : 0;
+
+        const grossProfit = finalPrice - C - calculatedCommissionValue - revenueTaxValue - calculatedReferralPartnerCommission - calculatedInfluencerPartnerCommission;
         const profitTaxValue = grossProfit > 0 ? grossProfit * T_profit : 0;
         const netProfit = grossProfit - profitTaxValue;
         
@@ -332,6 +347,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 grossProfit,
                 netMargin: calculatedNetMargin,
                 referralPartnerCommission: calculatedReferralPartnerCommission,
+                influencerPartnerCommission: calculatedInfluencerPartnerCommission,
                 netProfit,
                 revenueTaxValue,
                 profitTaxValue,
@@ -343,7 +359,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         };
     }, [
         result, revenueTaxes, profitTaxes, markup, commissionPercentage,
-        applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner
+        applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner
     ]);
 
     // Efeitos
@@ -504,11 +520,27 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         };
     }, [result, commissionPercentage, revenueTaxes, profitTaxes, appliedDirectorDiscountPercentage, includeReferralPartner]);
 
+    // Cálculo correto das comissões baseado na seleção dos parceiros
+    const comissaoParceiroIndicador = includeReferralPartner ? (costBreakdown.referralPartnerCommission || 0) : 0;
+    const comissaoParceiroInfluenciador = includeInfluencerPartner ? (costBreakdown.influencerPartnerCommission || 0) : 0;
+    
+    // Calcular a comissão correta baseado na presença de parceiros
+    const temParceiros = includeReferralPartner || includeInfluencerPartner;
+    const comissaoVendedor = temParceiros 
+        ? (costBreakdown.finalPrice * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
+        : (costBreakdown.finalPrice * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
+
     // DRE calculations
     const dreCalculations = {
         receitaBruta: costBreakdown.finalPrice,
         receitaLiquida: costBreakdown.finalPrice - costBreakdown.revenueTaxValue,
         custoServico: costBreakdown.cost,
+        custoBanda: costBreakdown.cost,
+        taxaInstalacao: costBreakdown.setupFee,
+        comissaoVendedor: comissaoVendedor,
+        comissaoParceiroIndicador: comissaoParceiroIndicador,
+        comissaoParceiroInfluenciador: comissaoParceiroInfluenciador,
+        totalImpostos: costBreakdown.revenueTaxValue + costBreakdown.profitTaxValue,
         lucroOperacional: costBreakdown.grossProfit,
         lucroLiquido: costBreakdown.netProfit,
         rentabilidade: costBreakdown.netMargin,
@@ -1294,6 +1326,14 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                 />
                                                 <Label htmlFor="includeReferralPartner">Incluir Parceiro Indicador</Label>
                                             </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="includeInfluencerPartner"
+                                                    checked={includeInfluencerPartner}
+                                                    onCheckedChange={(checked) => setIncludeInfluencerPartner(Boolean(checked))}
+                                                />
+                                                <Label htmlFor="includeInfluencerPartner">Incluir Parceiro Influenciador</Label>
+                                            </div>
                                         </div>
                                         
                                         {/* Seção de Resultado e Validação de Payback */}
@@ -1450,9 +1490,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                         <span>Total Mensal:</span>
                                                         <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
                                                     </div>
-                                                    {includeReferralPartner && (
-                                                        <div className="flex justify-between text-yellow-400"><span>Comissão Parceiro Indicador:</span> <span>{formatCurrency(referralPartnerCommissionValue)}</span></div>
-                                                    )}
+
                                                     <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-700">
                                                         <span>Total Anual:</span>
                                                         <span>{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly * 12, 0))}</span>
@@ -1586,13 +1624,21 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                     <TableCell className="text-right text-white">{formatCurrency(costBreakdown.cost)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Comissão Vendedor</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.commissionValue)}</TableCell>
+                                                    <TableCell className="text-white">
+                                                        {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations.comissaoVendedor)}</TableCell>
                                                 </TableRow>
-                                                {costBreakdown.referralPartnerCommission > 0 && (
+                                                {includeReferralPartner && (
                                                     <TableRow className="border-slate-800">
-                                                        <TableCell className="text-white">Comissão Parceiro</TableCell>
-                                                        <TableCell className="text-right text-white">{formatCurrency(costBreakdown.referralPartnerCommission)}</TableCell>
+                                                        <TableCell className="text-white">Comissão Parceiro Indicador</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</TableCell>
+                                                    </TableRow>
+                                                )}
+                                                {includeInfluencerPartner && (
+                                                    <TableRow className="border-slate-800">
+                                                        <TableCell className="text-white">Comissão Parceiro Influenciador</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations.comissaoParceiroInfluenciador)}</TableCell>
                                                     </TableRow>
                                                 )}
                                                 <TableRow className="border-slate-800 bg-red-900/30">
@@ -1961,9 +2007,23 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                     <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.custoBanda)}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-300">Comissão:</span>
+                                                    <span className="text-gray-300">
+                                                        {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor:' : 'Comissão Vendedor:'}
+                                                    </span>
                                                     <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoVendedor)}</span>
                                                 </div>
+                                                {includeReferralPartner && (
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-gray-300">Comissão P. Indicador:</span>
+                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</span>
+                                                    </div>
+                                                )}
+                                                {includeInfluencerPartner && (
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-gray-300">Comissão P. Influenciador:</span>
+                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroInfluenciador)}</span>
+                                                    </div>
+                                                )}
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Impostos:</span>
                                                     <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.totalImpostos)}</span>
@@ -2162,7 +2222,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                             </TabsContent>
                         )}
                         <TabsContent value="commissions-table">
-                            <DoubleFibraRadioCommissionsSection />
+                            <CommissionTablesUnified />
                         </TabsContent>
                     </Tabs>
                 </>

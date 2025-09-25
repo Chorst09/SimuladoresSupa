@@ -26,6 +26,7 @@ interface DRETableProps {
   pabxResult: PABXResult | null;
   sipResult: SIPResult | null;
   contractDuration: number;
+  hasPartners?: boolean;
 }
 
 export const DRETable: React.FC<DRETableProps> = ({
@@ -36,7 +37,8 @@ export const DRETable: React.FC<DRETableProps> = ({
   commissionParceiro,
   pabxResult,
   sipResult,
-  contractDuration
+  contractDuration,
+  hasPartners = false
 }) => {
   // Estado para controlar edição de impostos
   const [isEditingTaxes, setIsEditingTaxes] = useState<boolean>(false);
@@ -143,9 +145,9 @@ export const DRETable: React.FC<DRETableProps> = ({
   const receitaLiquidaPercentual = monthlyRevenue > 0 ? (receitaLiquida / monthlyRevenue) * 100 : 0;
 
   // Calculate commission amounts based on gross revenue (receita bruta)
-  const comissaoVendedor = monthlyRevenue * commissionVendedor;
-  const comissaoDiretor = monthlyRevenue * commissionDiretor;
-  const comissaoParceiro = monthlyRevenue * commissionParceiro;
+  const comissaoVendedor = monthlyRevenue * (commissionVendedor / 100);
+  const comissaoDiretor = monthlyRevenue * (commissionDiretor / 100);
+  const comissaoParceiro = monthlyRevenue * (commissionParceiro / 100);
 
   // Calculate gross profit (after operational costs)
   const lucroBruto = receitaLiquida - totalCosts;
@@ -310,7 +312,9 @@ export const DRETable: React.FC<DRETableProps> = ({
 
               {comissaoVendedor > 0 && (
                 <TableRow className="bg-slate-800/30">
-                  <TableCell className="pl-8">Comissão Vendedor ({formatPercent(commissionVendedor * 100)})</TableCell>
+                  <TableCell className="pl-8">
+                    {hasPartners ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'} ({formatPercent(commissionVendedor)})
+                  </TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(comissaoVendedor)}
                   </TableCell>
@@ -320,7 +324,7 @@ export const DRETable: React.FC<DRETableProps> = ({
 
               {comissaoDiretor > 0 && (
                 <TableRow className="bg-slate-800/30">
-                  <TableCell className="pl-8">Comissão Diretor ({formatPercent(commissionDiretor * 100)})</TableCell>
+                  <TableCell className="pl-8">Comissão Diretor ({formatPercent(commissionDiretor)})</TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(comissaoDiretor)}
                   </TableCell>
@@ -330,7 +334,7 @@ export const DRETable: React.FC<DRETableProps> = ({
 
               {comissaoParceiro > 0 && (
                 <TableRow className="bg-slate-800/30">
-                  <TableCell className="pl-8">Comissão Parceiro ({formatPercent(commissionParceiro * 100)})</TableCell>
+                  <TableCell className="pl-8">Comissão Parceiro ({formatPercent(commissionParceiro)})</TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(comissaoParceiro)}
                   </TableCell>

@@ -217,3 +217,10 @@ export interface QueryFallbackResult {
   performanceImpact?: 'LOW' | 'MEDIUM' | 'HIGH';
   recommendedAction?: string;
 }
+
+// Commission data types for legacy PABX calculator
+export interface CommissionData {
+  vendedor: Array<{ meses: string; comissao: string }>;
+  diretor: Array<{ meses: string; comissao: string }>;
+  parceiro: Array<{ range: string; ate24: string; mais24: string }>;
+}

@@ -10,7 +10,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from '@/components/ui/checkbox';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import VMCommissionsSection from './VMCommissionsSection';
+import CommissionTablesUnified from './CommissionTablesUnified';
+import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -367,7 +368,11 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [vmSnapshot, setVmSnapshot] = useState<boolean>(false);
     const [vmVpnSiteToSite, setVmVpnSiteToSite] = useState<boolean>(false);
     const [includeReferralPartner, setIncludeReferralPartner] = useState<boolean>(false);
+    const [includeInfluencerPartner, setIncludeInfluencerPartner] = useState<boolean>(false);
     const [vmContractPeriod, setVmContractPeriod] = useState<number>(12);
+
+    // Hook para comissões editáveis
+    const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
 
     // Estados para configurações de preço
     const [markup, setMarkup] = useState<number>(30);
@@ -817,11 +822,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         additionalIpCost, snapshotCost, vpnSiteToSiteCost
     ]);
 
-    const referralPartnerCommissions = [
-        { minRevenue: 0, maxRevenue: 1000, percentage: 5 },
-        { minRevenue: 1000.01, maxRevenue: 5000, percentage: 7 },
-        { minRevenue: 5000.01, maxRevenue: Infinity, percentage: 10 },
-    ];
+    // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
+    const getReferralPartnerCommissionRate = (monthlyRevenue: number, contractMonths: number): number => {
+        if (!channelIndicator || !includeReferralPartner) return 0;
+        return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths);
+    };
+
+    // Função para obter taxa de comissão do Parceiro Influenciador usando as tabelas editáveis
+    const getInfluencerPartnerCommissionRate = (monthlyRevenue: number, contractMonths: number): number => {
+        if (!channelInfluencer || !includeInfluencerPartner) return 0;
+        return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths);
+    };
 
     // Cálculo detalhado de custos e margens
     const {
@@ -844,23 +855,34 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         const priceAfterContractDiscount = priceBeforeDiscounts - contractDiscountAmount;
 
         const directorDiscountAmount = priceAfterContractDiscount * (appliedDirectorDiscountPercentage / 100);
-        const finalPrice = priceAfterContractDiscount - directorDiscountAmount;
+        const priceAfterDirectorDiscount = priceAfterContractDiscount - directorDiscountAmount;
 
-        const calculatedCommissionValue = finalPrice * Comm;
-        const revenueTaxValue = finalPrice * T_rev;
+        // Calcular a comissão correta baseado na presença de parceiros
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        const calculatedCommissionValue = temParceiros 
+            ? (priceAfterDirectorDiscount * (getChannelSellerCommissionRate(channelSeller, vmContractPeriod) / 100)) // Canal/Vendedor quando há parceiros
+            : (priceAfterDirectorDiscount * (getSellerCommissionRate(seller, vmContractPeriod) / 100)); // Vendedor quando não há parceiros
+        const revenueTaxValue = priceAfterDirectorDiscount * T_rev;
 
         const calculatedReferralPartnerCommission = (() => {
             if (!includeReferralPartner) {
                 return 0;
             }
-            const monthlyRevenue = finalPrice;
-            for (const tier of referralPartnerCommissions) {
-                if (monthlyRevenue >= tier.minRevenue && monthlyRevenue <= tier.maxRevenue) {
-                    return monthlyRevenue * (tier.percentage / 100);
-                }
-            }
-            return 0;
+            const monthlyRevenue = priceAfterDirectorDiscount;
+            const commissionRate = getReferralPartnerCommissionRate(monthlyRevenue, vmContractPeriod);
+            return monthlyRevenue * (commissionRate / 100);
         })();
+
+        const calculatedInfluencerPartnerCommission = (() => {
+            if (!includeInfluencerPartner) {
+                return 0;
+            }
+            const monthlyRevenue = priceAfterDirectorDiscount;
+            const commissionRate = getInfluencerPartnerCommissionRate(monthlyRevenue, vmContractPeriod);
+            return monthlyRevenue * (commissionRate / 100);
+        })();
+
+        const finalPrice = priceAfterDirectorDiscount - calculatedReferralPartnerCommission - calculatedInfluencerPartnerCommission;
 
         // Correct DRE calculation structure:
         // 1. Gross Revenue
@@ -879,7 +901,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         const grossProfit = netRevenue - directCosts;
 
         // 6. Commercial Expenses (commissions)
-        const totalCommissions = calculatedCommissionValue + calculatedReferralPartnerCommission;
+        const totalCommissions = calculatedCommissionValue + calculatedReferralPartnerCommission + calculatedInfluencerPartnerCommission;
 
         // 7. Profit after commercial expenses
         const profitAfterCommissions = grossProfit - totalCommissions;
@@ -922,6 +944,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 grossProfit,
                 netMargin: calculatedNetMargin,
                 referralPartnerCommission: calculatedReferralPartnerCommission,
+                influencerPartnerCommission: calculatedInfluencerPartnerCommission,
                 netProfit,
                 revenueTaxValue: revenueOnlyTaxes,
                 profitTaxValue,
@@ -930,7 +953,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 setupFee: setupFee
             }
         };
-    }, [calculateVMCost, revenueTaxes, profitTaxes, markup, contractDiscount, commissionPercentage, appliedDirectorDiscountPercentage, includeReferralPartner, setupFee]);
+    }, [calculateVMCost, revenueTaxes, profitTaxes, markup, contractDiscount, commissionPercentage, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, setupFee]);
 
 
 
@@ -1898,8 +1921,19 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             />
                                                             <Label htmlFor="includeReferralPartner" className="text-white">Incluir Parceiro Indicador</Label>
                                                         </div>
+                                                        <div className="flex items-center space-x-2 mt-4">
+                                                            <Checkbox
+                                                                id="includeInfluencerPartner"
+                                                                checked={includeInfluencerPartner}
+                                                                onCheckedChange={(checked) => setIncludeInfluencerPartner(Boolean(checked))}
+                                                                className="border-purple-400"
+                                                            />
+                                                            <Label htmlFor="includeInfluencerPartner" className="text-white">Incluir Parceiro Influenciador</Label>
+                                                        </div>
                                                     </CardContent>
                                                 </Card>
+
+
 
                                                 {/* Resultado do Cálculo da VM */}
                                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
@@ -1948,10 +1982,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <div className="flex justify-between text-orange-400"><span>Desconto Contrato ({contractDiscount}%):</span> <span>-{formatCurrency(costBreakdown.contractDiscount.amount)}</span></div>
                                                                 )}
                                                                 <div className="flex justify-between"><span>Taxa de Setup:</span> <span>R$ {formatBrazilianNumber(setupFee)}</span></div>
-                                                                <div className="flex justify-between text-yellow-400"><span>Comissão ({commissionPercentage}%):</span> <span>{formatCurrency(vmFinalPrice * (commissionPercentage / 100))}</span></div>
-                                                                {includeReferralPartner && (
-                                                                    <div className="flex justify-between text-yellow-400"><span>Comissão Parceiro Indicador:</span> <span>{formatCurrency(costBreakdown.referralPartnerCommission)}</span></div>
-                                                                )}
+
                                                                 <Separator className="bg-slate-700 my-2" />
                                                                 <div className="flex justify-between text-green-400 font-bold text-lg">
                                                                     <span>Total Mensal:</span>
@@ -2019,7 +2050,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                         </CardTitle>
                                                     </CardHeader>
                                                     <CardContent>
-                                                        <VMCommissionsSection />
+                                                        <CommissionTablesUnified />
                                                     </CardContent>
                                                 </Card>
                                             </div>
@@ -2141,20 +2172,28 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <TableCell className="text-right text-white">{formatCurrency(costBreakdown.totalCommissions || (costBreakdown.commissionValue + costBreakdown.referralPartnerCommission))}</TableCell>
                                                                 </TableRow>
                                                                 <TableRow className="border-slate-800">
-                                                                    <TableCell className="text-white pl-8">Comissão Vendedor</TableCell>
+                                                                    <TableCell className="text-white pl-8">
+                                                                        {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
+                                                                    </TableCell>
                                                                     <TableCell className="text-right text-white">{formatCurrency(costBreakdown.commissionValue)}</TableCell>
                                                                 </TableRow>
-                                                                {costBreakdown.referralPartnerCommission > 0 && (
+                                                                {includeReferralPartner && (
                                                                     <TableRow className="border-slate-800">
-                                                                        <TableCell className="text-white pl-8">Comissão Parceiro</TableCell>
+                                                                        <TableCell className="text-white pl-8">Comissão Parceiro Indicador</TableCell>
                                                                         <TableCell className="text-right text-white">{formatCurrency(costBreakdown.referralPartnerCommission)}</TableCell>
+                                                                    </TableRow>
+                                                                )}
+                                                                {includeInfluencerPartner && (
+                                                                    <TableRow className="border-slate-800">
+                                                                        <TableCell className="text-white pl-8">Comissão Parceiro Influenciador</TableCell>
+                                                                        <TableCell className="text-right text-white">{formatCurrency(costBreakdown.influencerPartnerCommission)}</TableCell>
                                                                     </TableRow>
                                                                 )}
 
                                                                 {/* Lucro após Despesas Comerciais */}
                                                                 <TableRow className="border-slate-800 bg-blue-900/30">
                                                                     <TableCell className="text-white font-semibold">(=) Lucro após Despesas Comerciais</TableCell>
-                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.profitAfterCommissions || (costBreakdown.grossProfit - (costBreakdown.commissionValue + costBreakdown.referralPartnerCommission)))}</TableCell>
+                                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.profitAfterCommissions || (costBreakdown.grossProfit - (costBreakdown.commissionValue + costBreakdown.referralPartnerCommission + (costBreakdown.influencerPartnerCommission || 0))))}</TableCell>
                                                                 </TableRow>
 
                                                                 {/* Taxa Setup (se aplicável) */}
