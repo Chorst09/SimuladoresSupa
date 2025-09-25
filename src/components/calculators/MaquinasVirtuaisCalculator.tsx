@@ -167,11 +167,11 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         banda: 2.09,
         fundraising: 0,
         rate: 24,
-        pis: 1.65,
-        cofins: 7.60,
-        margem: 15,
-        csll: 9.00,
-        irpj: 15.00,
+        pis: 15.00,
+        cofins: 0.00,
+        margem: 0.00,
+        csll: 0.00,
+        irpj: 0.00,
         custoDesp: 10
     });
 
@@ -2271,11 +2271,11 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                             banda: 2.09,
                                                                             fundraising: 0,
                                                                             rate: 24,
-                                                                            pis: 1.65,
-                                                                            cofins: 7.60,
+                                                                            pis: 15.00,
+                                                                            cofins: 0,
                                                                             margem: 15,
-                                                                            csll: 9.00,
-                                                                            irpj: 15.00,
+                                                                            csll: 0,
+                                                                            irpj: 0,
                                                                             custoDesp: 10
                                                                         };
                                                                         setTaxRates(defaultTaxRates);
@@ -2304,8 +2304,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     id="pis-rate"
                                                                     type="number"
                                                                     step="0.01"
-                                                                    value={taxRates.pis?.toFixed(2) || "1.65"}
-                                                                    onChange={(e) => handleTaxRateChange('pis', parseFloat(e.target.value) || 1.65)}
+                                                                    value={taxRates.pis?.toFixed(2) || "15.00"}
+                                                                    onChange={(e) => handleTaxRateChange('pis', parseFloat(e.target.value) || 15.00)}
                                                                     disabled={!isEditingTaxes}
                                                                     className="bg-slate-800 border-slate-700"
                                                                 />
@@ -2316,8 +2316,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     id="cofins-rate"
                                                                     type="number"
                                                                     step="0.01"
-                                                                    value={taxRates.cofins?.toFixed(2) || "7.60"}
-                                                                    onChange={(e) => handleTaxRateChange('cofins', parseFloat(e.target.value) || 7.60)}
+                                                                    value={taxRates.cofins?.toFixed(2) || "0.00"}
+                                                                    onChange={(e) => handleTaxRateChange('cofins', parseFloat(e.target.value) || 0.00)}
                                                                     disabled={!isEditingTaxes}
                                                                     className="bg-slate-800 border-slate-700"
                                                                 />
@@ -2328,8 +2328,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     id="csll-rate"
                                                                     type="number"
                                                                     step="0.01"
-                                                                    value={taxRates.csll?.toFixed(2) || "9.00"}
-                                                                    onChange={(e) => handleTaxRateChange('csll', parseFloat(e.target.value) || 9.00)}
+                                                                    value={taxRates.csll?.toFixed(2) || "0.00"}
+                                                                    onChange={(e) => handleTaxRateChange('csll', parseFloat(e.target.value) || 0.00)}
                                                                     disabled={!isEditingTaxes}
                                                                     className="bg-slate-800 border-slate-700"
                                                                 />
@@ -2340,8 +2340,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     id="irpj-rate"
                                                                     type="number"
                                                                     step="0.01"
-                                                                    value={taxRates.irpj?.toFixed(2) || "15.00"}
-                                                                    onChange={(e) => handleTaxRateChange('irpj', parseFloat(e.target.value) || 15.00)}
+                                                                    value={taxRates.irpj?.toFixed(2) || "0.00"}
+                                                                    onChange={(e) => handleTaxRateChange('irpj', parseFloat(e.target.value) || 0.00)}
                                                                     disabled={!isEditingTaxes}
                                                                     className="bg-slate-800 border-slate-700"
                                                                 />
