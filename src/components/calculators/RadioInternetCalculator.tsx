@@ -444,10 +444,32 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
     }, [user]);
 
     useEffect(() => {
-        // Carregar impostos salvos
+        // Forçar novos valores de impostos (limpar localStorage antigo)
+        const newTaxRates = {
+            banda: 2.09,
+            fundraising: 0,
+            rate: 0,
+            pis: 15.00,
+            cofins: 0.00,
+            margem: 0.00,
+            csll: 0.00,
+            irpj: 0.00,
+            custoDesp: 10
+        };
+        
+        // Verificar se os valores salvos estão desatualizados
         const savedTaxes = localStorage.getItem('radioTaxRates');
         if (savedTaxes) {
-            setTaxRates(JSON.parse(savedTaxes));
+            const parsed = JSON.parse(savedTaxes);
+            // Se PIS não for 15 ou Rate não for 0, forçar novos valores
+            if (parsed.pis !== 15.00 || parsed.rate !== 0) {
+                localStorage.setItem('radioTaxRates', JSON.stringify(newTaxRates));
+                setTaxRates(newTaxRates);
+            } else {
+                setTaxRates(parsed);
+            }
+        } else {
+            setTaxRates(newTaxRates);
         }
 
         fetchProposals();
