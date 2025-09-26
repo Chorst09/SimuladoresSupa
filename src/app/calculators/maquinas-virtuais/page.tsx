@@ -1,5 +1,5 @@
-import MaquinasVirtuaisCalculator from '@/components/calculators/MaquinasVirtuaisCalculator';
+import MaquinasVirtuaisCalculatorSimple from '@/components/calculators/MaquinasVirtuaisCalculatorSimple';
 
 export default function MaquinasVirtuaisPage() {
-  return <MaquinasVirtuaisCalculator />;
+    return <MaquinasVirtuaisCalculatorSimple />;
 }
