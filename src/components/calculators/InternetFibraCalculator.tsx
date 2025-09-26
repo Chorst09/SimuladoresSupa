@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -244,6 +244,21 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     // Hooks
     const { user } = useAuth();
 
+    // Estado para debounce do contractTerm
+    const [debouncedContractTerm, setDebouncedContractTerm] = useState(contractTerm);
+
+    // Debounce effect para contractTerm
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedContractTerm(contractTerm);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [contractTerm]);
+
+    // Funções otimizadas com useCallback para evitar re-renders
+    const handleContractTermChange = useCallback((value: string) => {
+        setContractTerm(Number(value));
+    }, []);
 
     // Cálculos com useMemo
     const revenueTaxes = useMemo(() => {
@@ -258,12 +273,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
     // Partner indicator ranges handled by getPartnerIndicatorRate
 
-    // Calculate the selected fiber plan based on the chosen speed
+    // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const result = useMemo(() => {
         if (!selectedSpeed) return null;
         const plan = fibraPlans.find(p => p.speed === selectedSpeed);
         if (!plan) return null;
-        const monthlyPrice = getMonthlyPrice(plan, contractTerm);
+        
+        const monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
         return {
             ...plan,
             monthlyPrice,
@@ -273,10 +289,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             paybackValidation: validatePayback(
                 includeInstallation ? plan.installationCost : 0,
                 monthlyPrice,
-                contractTerm
+                debouncedContractTerm
             )
         };
-    }, [selectedSpeed, fibraPlans, contractTerm]);
+    }, [selectedSpeed, fibraPlans, debouncedContractTerm]);
 
     // Cálculo detalhado de custos e margens (DRE)
     const {
@@ -1362,7 +1378,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label htmlFor="contract-term">Prazo Contratual</Label>
-                                                <Select onValueChange={(v) => setContractTerm(Number(v))} value={contractTerm.toString()}>
+                                                <Select onValueChange={handleContractTermChange} value={contractTerm.toString()}>
                                                     <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                                                     <SelectContent>
                                                         <SelectItem value="12">12 meses</SelectItem>
