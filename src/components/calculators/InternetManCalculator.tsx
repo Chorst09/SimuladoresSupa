@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { supabase } from '@/lib/supabaseClient';
 import { useCommissions, getCommissionRate, getSellerCommissionRate, getChannelSellerCommissionRate } from '@/hooks/use-commissions';
 import CommissionTablesUnified from './CommissionTablesUnified';
+import { logError, logSuccess, type LogContext } from '@/lib/logging-utils';
 
 
 // Interfaces
@@ -47,17 +48,699 @@ interface Proposal {
     baseId: string;
     version: number;
     client: ClientData;
+    clientData?: ClientData; // For backward compatibility
     accountManager: AccountManagerData;
     products: Product[];
     totalSetup: number;
     totalMonthly: number;
     createdAt: string;
     userId: string;
+    contractPeriod?: number;
+    // Additional fields that may be saved at top level
+    applySalespersonDiscount?: boolean;
+    appliedDirectorDiscountPercentage?: number;
+    includeReferralPartner?: boolean;
+    includeInfluencerPartner?: boolean;
+    baseTotalMonthly?: number;
+    // Enhanced metadata object for complete calculator state
+    metadata?: {
+        // Core calculator state
+        applySalespersonDiscount?: boolean;
+        appliedDirectorDiscountPercentage?: number;
+        includeReferralPartner?: boolean;
+        includeInfluencerPartner?: boolean;
+        contractTerm?: number;
+        includeInstallation?: boolean;
+        selectedSpeed?: number;
+        
+        // Customer and project state
+        isExistingCustomer?: boolean;
+        previousMonthly?: number;
+        includeLastMile?: boolean;
+        lastMileCost?: number;
+        projectValue?: number;
+        
+        // Discount and pricing state
+        directorDiscountPercentage?: number;
+        taxRates?: {
+            pis: number;
+            cofins: number;
+            csll: number;
+            irpj: number;
+            banda: number;
+            fundraising: number;
+            rate: number;
+            margem: number;
+            custoDesp: number;
+        };
+        markup?: number;
+        estimatedNetMargin?: number;
+        
+        // UI state that affects calculations
+        isEditingTaxes?: boolean;
+        
+        // Calculated values for verification
+        baseTotalMonthly?: number;
+        finalTotalSetup?: number;
+        finalTotalMonthly?: number;
+        referralPartnerCommission?: number;
+        influencerPartnerCommission?: number;
+        
+        // Version tracking and audit trail
+        metadataVersion?: number;
+        savedAt?: string;
+        savedBy?: string;
+        calculatorVersion?: string;
+        dataStructureVersion?: string;
+    };
 }
 
 interface InternetManCalculatorProps {
     onBackToDashboard?: () => void;
 }
+
+// Enhanced validation functions for proposal data structure
+interface ValidationResult {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+}
+
+const validateProposalStructure = (proposal: any): ValidationResult => {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Basic existence check
+    if (!proposal) {
+        errors.push('No proposal data provided');
+        return { isValid: false, errors, warnings };
+    }
+
+    // Type validation
+    if (typeof proposal !== 'object') {
+        errors.push('Proposal data is not a valid object');
+        return { isValid: false, errors, warnings };
+    }
+
+    // Required fields validation
+    if (!proposal.id) {
+        errors.push('Proposal ID is missing');
+    }
+
+    // Client data validation
+    if (!proposal.clientData && !proposal.client) {
+        errors.push('Client information is missing');
+    } else {
+        // Validate client data structure
+        const clientData = proposal.clientData || proposal.client;
+        if (typeof clientData === 'object') {
+            if (!clientData.name && !clientData.companyName) {
+                warnings.push('Client name is missing');
+            }
+        } else if (typeof clientData === 'string') {
+            if (!clientData.trim()) {
+                warnings.push('Client name is empty');
+            }
+        }
+    }
+
+    // Account manager validation
+    if (!proposal.accountManager) {
+        warnings.push('Account manager information is missing');
+    } else if (typeof proposal.accountManager === 'object' && !proposal.accountManager.name) {
+        warnings.push('Account manager name is missing');
+    }
+
+    // Products validation
+    if (!proposal.products) {
+        errors.push('Products list is missing');
+    } else if (!Array.isArray(proposal.products)) {
+        errors.push('Products data is not in valid format');
+    } else if (proposal.products.length === 0) {
+        warnings.push('No products found in proposal');
+    } else {
+        // Validate individual products
+        proposal.products.forEach((product: any, index: number) => {
+            if (!product || typeof product !== 'object') {
+                errors.push(`Product ${index + 1} has invalid structure`);
+            } else {
+                if (!product.id) {
+                    warnings.push(`Product ${index + 1} is missing ID`);
+                }
+                if (!product.description) {
+                    warnings.push(`Product ${index + 1} is missing description`);
+                }
+                if (typeof product.setup !== 'number') {
+                    errors.push(`Product ${index + 1} has invalid setup cost`);
+                }
+                if (typeof product.monthly !== 'number') {
+                    errors.push(`Product ${index + 1} has invalid monthly cost`);
+                }
+            }
+        });
+    }
+
+    // Metadata validation (optional but important for state restoration)
+    if (proposal.metadata && typeof proposal.metadata !== 'object') {
+        warnings.push('Metadata is present but not in valid format');
+    }
+
+    // Financial data validation
+    if (proposal.totalSetup !== undefined && typeof proposal.totalSetup !== 'number') {
+        warnings.push('Total setup cost is not a valid number');
+    }
+    if (proposal.totalMonthly !== undefined && typeof proposal.totalMonthly !== 'number') {
+        warnings.push('Total monthly cost is not a valid number');
+    }
+
+    return {
+        isValid: errors.length === 0,
+        errors,
+        warnings
+    };
+};
+
+const createUserFriendlyErrorMessage = (errors: string[]): string => {
+    if (errors.length === 0) {
+        return 'Erro desconhecido ao carregar proposta.';
+    }
+
+    let message = 'Não foi possível carregar a proposta devido aos seguintes problemas:\n\n';
+    
+    errors.forEach((error, index) => {
+        message += `${index + 1}. ${translateErrorToPortuguese(error)}\n`;
+    });
+
+    message += '\nVocê pode:\n';
+    message += '• Tentar criar uma nova proposta\n';
+    message += '• Verificar se a proposta foi salva corretamente\n';
+    message += '• Contatar o suporte técnico se o problema persistir';
+
+    return message;
+};
+
+const translateErrorToPortuguese = (error: string): string => {
+    const translations: Record<string, string> = {
+        'No proposal data provided': 'Nenhum dado de proposta foi fornecido',
+        'Proposal data is not a valid object': 'Os dados da proposta estão em formato inválido',
+        'Proposal ID is missing': 'ID da proposta não encontrado',
+        'Client information is missing': 'Informações do cliente estão ausentes',
+        'Products list is missing': 'Lista de produtos não encontrada',
+        'Products data is not in valid format': 'Dados dos produtos estão em formato inválido'
+    };
+
+    // Check for pattern matches
+    if (error.includes('Product') && error.includes('invalid structure')) {
+        return error.replace('Product', 'Produto').replace('has invalid structure', 'tem estrutura inválida');
+    }
+    if (error.includes('Product') && error.includes('invalid setup cost')) {
+        return error.replace('Product', 'Produto').replace('has invalid setup cost', 'tem custo de instalação inválido');
+    }
+    if (error.includes('Product') && error.includes('invalid monthly cost')) {
+        return error.replace('Product', 'Produto').replace('has invalid monthly cost', 'tem custo mensal inválido');
+    }
+
+    return translations[error] || error;
+};
+
+// Enhanced error classification for proposal editing
+interface EditProposalErrorInfo {
+    errorMessage: string;
+    recoveryGuidance: string;
+    canContinue: boolean;
+}
+
+const classifyEditProposalError = (error: any): EditProposalErrorInfo => {
+    const errorMessage = error?.message || error?.toString() || '';
+    const errorType = error?.constructor?.name || 'Unknown';
+
+    // Type-specific error handling
+    if (error instanceof TypeError) {
+        return {
+            errorMessage: 'Erro de formato nos dados da proposta.',
+            recoveryGuidance: 'Os dados podem estar corrompidos ou em formato incompatível. Verifique se a proposta foi salva corretamente.',
+            canContinue: true
+        };
+    }
+
+    if (error instanceof ReferenceError) {
+        return {
+            errorMessage: 'Referência de dados não encontrada.',
+            recoveryGuidance: 'Alguns campos obrigatórios podem estar ausentes. O sistema tentará usar valores padrão.',
+            canContinue: true
+        };
+    }
+
+    if (error instanceof SyntaxError) {
+        return {
+            errorMessage: 'Estrutura de dados corrompida.',
+            recoveryGuidance: 'A proposta pode ter sido salva com erro. Recomendamos criar uma nova proposta.',
+            canContinue: false
+        };
+    }
+
+    // Message-based error classification
+    if (errorMessage.includes('JSON') || errorMessage.includes('parse')) {
+        return {
+            errorMessage: 'Erro ao processar dados da proposta.',
+            recoveryGuidance: 'Os dados estão em formato inválido. Tente criar uma nova proposta.',
+            canContinue: false
+        };
+    }
+
+    if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+        return {
+            errorMessage: 'Erro de conexão ao carregar proposta.',
+            recoveryGuidance: 'Verifique sua conexão com a internet e tente novamente.',
+            canContinue: true
+        };
+    }
+
+    if (errorMessage.includes('permission') || errorMessage.includes('access')) {
+        return {
+            errorMessage: 'Sem permissão para acessar esta proposta.',
+            recoveryGuidance: 'Verifique se você tem permissão para editar esta proposta.',
+            canContinue: false
+        };
+    }
+
+    // Default error handling
+    return {
+        errorMessage: 'Erro inesperado ao carregar proposta.',
+        recoveryGuidance: 'Tente novamente em alguns instantes. Se o problema persistir, contate o suporte técnico.',
+        canContinue: true
+    };
+};
+
+// Data recovery interface
+interface RecoveryResult {
+    success: boolean;
+    recoveredData: {
+        clientData: ClientData;
+        accountManagerData: AccountManagerData;
+        products: Product[];
+        calculatorState: Partial<{
+            applySalespersonDiscount: boolean;
+            appliedDirectorDiscountPercentage: number;
+            contractTerm: number;
+            includeInstallation: boolean;
+            selectedSpeed: number;
+            includeReferralPartner: boolean;
+            includeInfluencerPartner: boolean;
+        }>;
+    };
+    error?: any;
+}
+
+const attemptProposalDataRecovery = (proposal: any): RecoveryResult => {
+    try {
+        console.log('🔄 Attempting proposal data recovery...');
+
+        // Initialize with safe defaults
+        const recoveredData = {
+            clientData: { name: '', contact: '', projectName: '', email: '', phone: '' } as ClientData,
+            accountManagerData: { name: '', email: '', phone: '' } as AccountManagerData,
+            products: [] as Product[],
+            calculatorState: {}
+        };
+
+        // Attempt client data recovery
+        try {
+            if (proposal?.clientData && typeof proposal.clientData === 'object') {
+                recoveredData.clientData = {
+                    name: proposal.clientData.name || '',
+                    contact: proposal.clientData.contact || '',
+                    projectName: proposal.clientData.projectName || '',
+                    email: proposal.clientData.email || '',
+                    phone: proposal.clientData.phone || '',
+                    companyName: (proposal.clientData as any).companyName || '',
+                    address: (proposal.clientData as any).address || '',
+                    cnpj: (proposal.clientData as any).cnpj || ''
+                };
+                console.log('✅ Client data recovered from clientData field');
+            } else if (proposal?.client) {
+                if (typeof proposal.client === 'object') {
+                    recoveredData.clientData = {
+                        name: (proposal.client as any).name || '',
+                        contact: (proposal.client as any).contact || '',
+                        projectName: (proposal.client as any).projectName || '',
+                        email: (proposal.client as any).email || '',
+                        phone: (proposal.client as any).phone || '',
+                        companyName: (proposal.client as any).companyName || '',
+                        address: (proposal.client as any).address || '',
+                        cnpj: (proposal.client as any).cnpj || ''
+                    };
+                    console.log('✅ Client data recovered from client object');
+                } else if (typeof proposal.client === 'string') {
+                    recoveredData.clientData.name = proposal.client;
+                    recoveredData.clientData.companyName = proposal.client;
+                    console.log('✅ Client data recovered from client string');
+                }
+            }
+        } catch (clientError) {
+            console.warn('⚠️ Client data recovery failed:', clientError);
+        }
+
+        // Attempt account manager recovery
+        try {
+            if (proposal?.accountManager && typeof proposal.accountManager === 'object') {
+                recoveredData.accountManagerData = {
+                    name: proposal.accountManager.name || '',
+                    email: proposal.accountManager.email || '',
+                    phone: proposal.accountManager.phone || '',
+                    department: (proposal.accountManager as any).department || '',
+                    role: (proposal.accountManager as any).role || ''
+                };
+                console.log('✅ Account manager data recovered');
+            } else if (typeof proposal.accountManager === 'string') {
+                recoveredData.accountManagerData.name = proposal.accountManager;
+                console.log('✅ Account manager name recovered from string');
+            }
+        } catch (accountManagerError) {
+            console.warn('⚠️ Account manager data recovery failed:', accountManagerError);
+        }
+
+        // Attempt products recovery
+        try {
+            if (proposal?.products && Array.isArray(proposal.products)) {
+                const validProducts = proposal.products.filter((product: any) => {
+                    return product && 
+                           typeof product === 'object' && 
+                           product.id && 
+                           product.description &&
+                           typeof product.setup === 'number' &&
+                           typeof product.monthly === 'number';
+                });
+
+                if (validProducts.length > 0) {
+                    recoveredData.products = [...validProducts];
+                    console.log(`✅ ${validProducts.length} products recovered`);
+                }
+            }
+        } catch (productsError) {
+            console.warn('⚠️ Products recovery failed:', productsError);
+        }
+
+        // Attempt calculator state recovery
+        try {
+            const metadata = proposal?.metadata;
+            if (metadata && typeof metadata === 'object') {
+                recoveredData.calculatorState = {
+                    applySalespersonDiscount: metadata.applySalespersonDiscount || false,
+                    appliedDirectorDiscountPercentage: metadata.appliedDirectorDiscountPercentage || 0,
+                    contractTerm: metadata.contractTerm || 12,
+                    includeInstallation: metadata.includeInstallation !== false,
+                    selectedSpeed: metadata.selectedSpeed || 0,
+                    includeReferralPartner: metadata.includeReferralPartner || false,
+                    includeInfluencerPartner: metadata.includeInfluencerPartner || false
+                };
+                console.log('✅ Calculator state recovered from metadata');
+            } else {
+                // Try to recover from top-level fields
+                recoveredData.calculatorState = {
+                    applySalespersonDiscount: (proposal as any)?.applySalespersonDiscount || false,
+                    appliedDirectorDiscountPercentage: (proposal as any)?.appliedDirectorDiscountPercentage || 0,
+                    contractTerm: proposal?.contractPeriod || 12,
+                    includeInstallation: true,
+                    selectedSpeed: 0,
+                    includeReferralPartner: (proposal as any)?.includeReferralPartner || false,
+                    includeInfluencerPartner: (proposal as any)?.includeInfluencerPartner || false
+                };
+                console.log('✅ Calculator state recovered from top-level fields');
+            }
+        } catch (calculatorStateError) {
+            console.warn('⚠️ Calculator state recovery failed:', calculatorStateError);
+        }
+
+        console.log('🎉 Data recovery completed successfully');
+        return { success: true, recoveredData };
+
+    } catch (recoveryError) {
+        console.error('❌ Data recovery failed completely:', recoveryError);
+        return { 
+            success: false, 
+            recoveredData: {
+                clientData: { name: '', contact: '', projectName: '', email: '', phone: '' },
+                accountManagerData: { name: '', email: '', phone: '' },
+                products: [],
+                calculatorState: {}
+            },
+            error: recoveryError 
+        };
+    }
+};
+
+// Apply calculator state with fallback to defaults
+const applyCalculatorStateWithFallback = (calculatorState: any) => {
+    try {
+        // Apply each state with individual error handling
+        const stateSetters = [
+            { setter: setApplySalespersonDiscount, value: calculatorState.applySalespersonDiscount, default: false },
+            { setter: setAppliedDirectorDiscountPercentage, value: calculatorState.appliedDirectorDiscountPercentage, default: 0 },
+            { setter: setContractTerm, value: calculatorState.contractTerm, default: 12 },
+            { setter: setIncludeInstallation, value: calculatorState.includeInstallation, default: true },
+            { setter: setSelectedSpeed, value: calculatorState.selectedSpeed, default: 0 },
+            { setter: setIncludeReferralPartner, value: calculatorState.includeReferralPartner, default: false },
+            { setter: setIncludeInfluencerPartner, value: calculatorState.includeInfluencerPartner, default: false }
+        ];
+
+        stateSetters.forEach(({ setter, value, default: defaultValue }) => {
+            try {
+                setter(value !== undefined ? value : defaultValue);
+            } catch (setterError) {
+                console.warn('Error setting calculator state, using default:', setterError);
+                setter(defaultValue);
+            }
+        });
+
+        // Set additional states to safe defaults
+        setIsExistingCustomer(false);
+        setPreviousMonthly(0);
+        setIncludeLastMile(false);
+        setLastMileCost(0);
+        setProjectValue(0);
+        setDirectorDiscountPercentage(0);
+        setTaxRates({ pis: 15.00, cofins: 0.00, csll: 0.00, irpj: 0.00, banda: 2.09, fundraising: 0.00, rate: 0.00, margem: 0.00, custoDesp: 10.00 });
+        setMarkup(100);
+        setEstimatedNetMargin(0);
+        setIsEditingTaxes(false);
+
+        console.log('✅ Calculator state applied with fallback');
+    } catch (error) {
+        console.error('❌ Failed to apply calculator state, using all defaults:', error);
+        
+        // Apply all defaults as last resort
+        setApplySalespersonDiscount(false);
+        setAppliedDirectorDiscountPercentage(0);
+        setContractTerm(12);
+        setIncludeInstallation(true);
+        setSelectedSpeed(0);
+        setIncludeReferralPartner(false);
+        setIncludeInfluencerPartner(false);
+        setIsExistingCustomer(false);
+        setPreviousMonthly(0);
+        setIncludeLastMile(false);
+        setLastMileCost(0);
+        setProjectValue(0);
+        setDirectorDiscountPercentage(0);
+        setTaxRates({ pis: 15.00, cofins: 0.00, csll: 0.00, irpj: 0.00, banda: 2.09, fundraising: 0.00, rate: 0.00, margem: 0.00, custoDesp: 10.00 });
+        setMarkup(100);
+        setEstimatedNetMargin(0);
+        setIsEditingTaxes(false);
+    }
+};
+
+// Create user-friendly warning for partial data loading
+const createPartialLoadingWarning = (clientLoaded: boolean, accountManagerLoaded: boolean, productsLoaded: boolean): string | null => {
+    const issues: string[] = [];
+    
+    if (!clientLoaded) {
+        issues.push('• Dados do cliente podem estar incompletos');
+    }
+    if (!accountManagerLoaded) {
+        issues.push('• Informações do gerente de contas podem estar ausentes');
+    }
+    if (!productsLoaded) {
+        issues.push('• Lista de produtos pode estar vazia ou corrompida');
+    }
+    
+    if (issues.length === 0) {
+        return null;
+    }
+    
+    return `Atenção: Alguns dados da proposta não puderam ser carregados completamente:\n\n${issues.join('\n')}\n\nO sistema usou valores padrão onde necessário.`;
+};
+
+// Validation function for saving proposals
+const validateProposalForSaving = (): ValidationResult => {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // User authentication check
+    if (!user) {
+        errors.push('• Usuário não autenticado');
+        return { isValid: false, errors, warnings };
+    }
+
+    // Client data validation
+    if (!clientData || !clientData.name?.trim()) {
+        errors.push('• Nome do cliente é obrigatório');
+    }
+    if (clientData?.email && !isValidEmail(clientData.email)) {
+        warnings.push('• Email do cliente parece inválido');
+    }
+
+    // Account manager validation
+    if (!accountManagerData || !accountManagerData.name?.trim()) {
+        errors.push('• Nome do gerente de contas é obrigatório');
+    }
+    if (accountManagerData?.email && !isValidEmail(accountManagerData.email)) {
+        warnings.push('• Email do gerente de contas parece inválido');
+    }
+
+    // Products validation
+    if (!addedProducts || addedProducts.length === 0) {
+        errors.push('• Pelo menos um produto deve ser adicionado');
+    } else {
+        // Validate individual products
+        addedProducts.forEach((product, index) => {
+            if (!product.description?.trim()) {
+                warnings.push(`• Produto ${index + 1} não tem descrição`);
+            }
+            if (product.setup < 0) {
+                errors.push(`• Produto ${index + 1} tem custo de instalação inválido`);
+            }
+            if (product.monthly <= 0) {
+                errors.push(`• Produto ${index + 1} tem custo mensal inválido`);
+            }
+        });
+    }
+
+    // Financial validation
+    const totalSetup = addedProducts.reduce((sum, p) => sum + (p.setup || 0), 0);
+    const totalMonthly = addedProducts.reduce((sum, p) => sum + (p.monthly || 0), 0);
+    
+    if (totalMonthly <= 0) {
+        errors.push('• Total mensal deve ser maior que zero');
+    }
+    
+    if (totalSetup < 0) {
+        errors.push('• Total de instalação não pode ser negativo');
+    }
+
+    // Contract term validation
+    if (contractTerm < 12 || contractTerm > 60) {
+        warnings.push('• Prazo do contrato fora do intervalo recomendado (12-60 meses)');
+    }
+
+    // Discount validation
+    if (appliedDirectorDiscountPercentage < 0 || appliedDirectorDiscountPercentage > 50) {
+        warnings.push('• Desconto do diretor fora do intervalo recomendado (0-50%)');
+    }
+
+    return {
+        isValid: errors.length === 0,
+        errors,
+        warnings
+    };
+};
+
+// Email validation helper
+const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+};
+
+// Error classification for save proposal errors
+interface SaveProposalErrorInfo {
+    errorMessage: string;
+    recoveryGuidance: string;
+    canRetry: boolean;
+}
+
+const classifySaveProposalError = (error: any): SaveProposalErrorInfo => {
+    const errorMessage = error?.message || error?.toString() || '';
+    const errorType = error?.constructor?.name || 'Unknown';
+
+    // Network-related errors
+    if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('NetworkError')) {
+        return {
+            errorMessage: 'Erro de conexão ao salvar proposta.',
+            recoveryGuidance: 'Verifique sua conexão com a internet.',
+            canRetry: true
+        };
+    }
+
+    // Authentication errors
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('authentication')) {
+        return {
+            errorMessage: 'Sessão expirada ou não autorizada.',
+            recoveryGuidance: 'Faça login novamente e tente salvar.',
+            canRetry: true
+        };
+    }
+
+    // Permission errors
+    if (errorMessage.includes('403') || errorMessage.includes('Forbidden') || errorMessage.includes('permission')) {
+        return {
+            errorMessage: 'Sem permissão para salvar propostas.',
+            recoveryGuidance: 'Verifique suas permissões com o administrador.',
+            canRetry: false
+        };
+    }
+
+    // Server errors
+    if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+        return {
+            errorMessage: 'Erro interno do servidor.',
+            recoveryGuidance: 'Tente novamente em alguns instantes. Se persistir, contate o suporte.',
+            canRetry: true
+        };
+    }
+
+    // Quota/limit errors
+    if (errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('limit')) {
+        return {
+            errorMessage: 'Limite de requisições excedido.',
+            recoveryGuidance: 'Aguarde alguns minutos antes de tentar novamente.',
+            canRetry: true
+        };
+    }
+
+    // Data validation errors
+    if (errorMessage.includes('400') || errorMessage.includes('Bad Request') || errorMessage.includes('validation')) {
+        return {
+            errorMessage: 'Dados da proposta inválidos.',
+            recoveryGuidance: 'Verifique se todos os campos estão preenchidos corretamente.',
+            canRetry: true
+        };
+    }
+
+    // JSON/parsing errors
+    if (errorMessage.includes('JSON') || errorMessage.includes('parse') || errorMessage.includes('SyntaxError')) {
+        return {
+            errorMessage: 'Erro no formato dos dados.',
+            recoveryGuidance: 'Os dados podem estar corrompidos. Tente recarregar a página.',
+            canRetry: false
+        };
+    }
+
+    // Timeout errors
+    if (errorMessage.includes('timeout') || errorMessage.includes('TimeoutError')) {
+        return {
+            errorMessage: 'Tempo limite excedido ao salvar.',
+            recoveryGuidance: 'A operação demorou muito. Tente novamente.',
+            canRetry: true
+        };
+    }
+
+    // Default error handling
+    return {
+        errorMessage: 'Erro inesperado ao salvar proposta.',
+        recoveryGuidance: 'Verifique os dados e tente novamente. Se o problema persistir, contate o suporte técnico.',
+        canRetry: true
+    };
+};
 
 const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToDashboard }) => {
     // Estados
@@ -112,7 +795,16 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             return;
         }
 
+        const requestId = `fetch_${Date.now()}`;
+        const logContext: LogContext = {
+            operation: 'fetchProposals',
+            userId: user.id,
+            requestId
+        };
+
         try {
+            console.log('🔄 Fetching proposals...');
+            
             const response = await fetch('/api/proposals', {
                 method: 'GET',
                 headers: {
@@ -123,18 +815,61 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
             if (response.ok) {
                 const proposalsData = await response.json();
-                // Filter for MAN proposals
-                const manProposals = proposalsData.filter((p: any) => 
-                    p.type === 'MAN' || p.baseId?.startsWith('Prop_InterMan_')
-                );
+                
+                // Validate proposals data structure
+                if (!Array.isArray(proposalsData)) {
+                    throw new Error('Invalid proposals data format received from server');
+                }
+                
+                // Filter for MAN proposals with validation
+                const manProposals = proposalsData.filter((p: any) => {
+                    try {
+                        return (p.type === 'MAN' || p.baseId?.startsWith('Prop_InterMan_')) && 
+                               p.id && 
+                               typeof p === 'object';
+                    } catch (filterError) {
+                        console.warn('Invalid proposal data filtered out:', p, filterError);
+                        return false;
+                    }
+                });
+                
                 setProposals(manProposals);
+                
+                // Log successful fetch
+                logSuccess('Proposals fetched successfully', logContext, {
+                    resultCount: manProposals.length,
+                    duration: Date.now() - parseInt(requestId.split('_')[1])
+                });
+                
+                console.log(`✅ ${manProposals.length} MAN proposals loaded successfully`);
+                
             } else {
-                console.error('Erro ao buscar propostas:', response.statusText);
-                setProposals([]);
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
             }
         } catch (error) {
             console.error("Erro ao buscar propostas: ", error);
+            
+            // Log error with structured logging
+            logError('Failed to fetch proposals', error, logContext, {
+                severity: 'MEDIUM',
+                suggestedActions: [
+                    'Check network connection',
+                    'Verify authentication token',
+                    'Try refreshing the page',
+                    'Contact support if issue persists'
+                ]
+            });
+            
             setProposals([]);
+            
+            // Show user-friendly error message
+            const errorMessage = error?.message || 'Erro desconhecido';
+            if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+                console.warn('⚠️ Network error detected, user may need to check connection');
+            } else if (errorMessage.includes('401') || errorMessage.includes('403')) {
+                console.warn('⚠️ Authentication error detected, user may need to login again');
+            }
         }
     }, [user]);
 
@@ -160,13 +895,22 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         ];
         const savedPlans = localStorage.getItem('radioLinkPrices');
         if (savedPlans) {
-            const plans = JSON.parse(savedPlans);
-            // Adicionar manCost aos planos antigos que não têm essa propriedade
-            const updatedPlans = plans.map((plan: RadioPlan) => ({
-                ...plan,
-                manCost: plan.manCost || 0
-            }));
-            setRadioPlans(updatedPlans);
+            try {
+                const plans = JSON.parse(savedPlans);
+                if (Array.isArray(plans)) {
+                    // Adicionar manCost aos planos antigos que não têm essa propriedade
+                    const updatedPlans = plans.map((plan: RadioPlan) => ({
+                        ...plan,
+                        manCost: plan.manCost || 0
+                    }));
+                    setRadioPlans(updatedPlans);
+                } else {
+                    setRadioPlans(initialRadioPlans);
+                }
+            } catch (e) {
+                console.error("Error parsing radio plans from localStorage", e);
+                setRadioPlans(initialRadioPlans);
+            }
         } else {
             setRadioPlans(initialRadioPlans);
         }
@@ -228,7 +972,9 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         return monthlyRevenue * rate;
     })();
 
-    const finalTotalSetup = totalSetup * salespersonDiscountFactor * directorDiscountFactor;
+    // Setup costs should NOT be discounted - they remain at full price
+    const finalTotalSetup = totalSetup;
+    // Only monthly totals should have discounts applied
     const finalTotalMonthly = (totalMonthly * salespersonDiscountFactor * directorDiscountFactor) - referralPartnerCommission - influencerPartnerCommission;
 
     const handleClientFormSubmit = () => {
@@ -338,36 +1084,94 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         return discountedTotal;
     };
 
-    // Função para salvar proposta
+    // Enhanced proposal saving function with comprehensive validation and error handling
     const saveProposal = async () => {
-        if (!user) {
-            alert('Erro: Usuário não autenticado');
-            return;
-        }
-        
-        // Validar dados obrigatórios
-        if (!clientData || !clientData.name) {
-            alert('Por favor, preencha os dados do cliente antes de salvar.');
-            return;
-        }
-        
-        if (!accountManagerData || !accountManagerData.name) {
-            alert('Por favor, preencha os dados do gerente de contas antes de salvar.');
-            return;
-        }
-        
-        if (addedProducts.length === 0) {
-            alert('Por favor, adicione pelo menos um produto antes de salvar.');
+        const requestId = `save_${Date.now()}`;
+        const logContext: LogContext = {
+            operation: 'saveProposal',
+            userId: user?.id,
+            requestId
+        };
+
+        // Enhanced validation with detailed error messages
+        const validationResult = validateProposalForSaving();
+        if (!validationResult.isValid) {
+            const errorMessage = `Não é possível salvar a proposta:\n\n${validationResult.errors.join('\n')}`;
+            alert(errorMessage);
+            
+            // Log validation errors
+            logError('Proposal validation failed before saving', new Error(validationResult.errors.join('; ')), logContext, {
+                severity: 'LOW',
+                suggestedActions: ['Complete required fields', 'Add at least one product']
+            });
+            
             return;
         }
 
         try {
+            console.log('🔄 Starting proposal save process...');
+            
             const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
             
             // Aplicar descontos no total mensal
             const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
             const proposalVersion = getProposalVersion();
+
+            // Enhanced metadata with complete calculator state
+            const currentTimestamp = new Date().toISOString();
+            const completeMetadata = {
+                // Core calculator state
+                applySalespersonDiscount: applySalespersonDiscount,
+                appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                includeReferralPartner: includeReferralPartner,
+                includeInfluencerPartner: includeInfluencerPartner,
+                contractTerm: contractTerm,
+                includeInstallation: includeInstallation,
+                selectedSpeed: selectedSpeed,
+                
+                // Customer and project state
+                isExistingCustomer: isExistingCustomer,
+                previousMonthly: previousMonthly,
+                includeLastMile: includeLastMile,
+                lastMileCost: lastMileCost,
+                projectValue: projectValue,
+                
+                // Discount and pricing state
+                directorDiscountPercentage: directorDiscountPercentage,
+                taxRates: {
+                    pis: taxRates.pis,
+                    cofins: taxRates.cofins,
+                    csll: taxRates.csll,
+                    irpj: taxRates.irpj,
+                    banda: taxRates.banda,
+                    fundraising: taxRates.fundraising,
+                    rate: taxRates.rate,
+                    margem: taxRates.margem,
+                    custoDesp: taxRates.custoDesp
+                },
+                markup: markup,
+                estimatedNetMargin: estimatedNetMargin,
+                
+                // UI state that affects calculations
+                isEditingTaxes: isEditingTaxes,
+                
+                // Calculated values for verification
+                baseTotalMonthly: baseTotalMonthly,
+                finalTotalSetup: totalSetup,
+                finalTotalMonthly: finalTotalMonthly,
+                referralPartnerCommission: referralPartnerCommission,
+                influencerPartnerCommission: influencerPartnerCommission,
+                
+                // Version tracking for data structure changes
+                metadataVersion: 2, // Incremented to indicate enhanced metadata structure
+                savedAt: currentTimestamp,
+                savedBy: user.email || user.id,
+                
+                // Additional context for debugging and auditing
+                calculatorVersion: 'InternetManCalculator_v2.0',
+                dataStructureVersion: '2024-01-01'
+            };
 
             const proposalToSave = {
                 title: `Proposta Internet Man V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
@@ -376,9 +1180,11 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 type: 'MAN',
                 status: 'Rascunho',
                 createdBy: user.email || user.id,
-                createdAt: new Date().toISOString(),
+                createdAt: currentTimestamp,
                 version: proposalVersion,
-                // Store additional data as metadata
+                contractPeriod: contractTerm,
+                
+                // Store additional data as top-level fields for backward compatibility
                 clientData: clientData,
                 accountManager: accountManagerData,
                 products: addedProducts,
@@ -387,8 +1193,20 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 baseTotalMonthly: baseTotalMonthly,
                 applySalespersonDiscount: applySalespersonDiscount,
                 appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                userId: user.id
+                includeReferralPartner: includeReferralPartner,
+                includeInfluencerPartner: includeInfluencerPartner,
+                userId: user.id,
+                
+                // Store complete calculator state in enhanced metadata structure
+                metadata: completeMetadata
             };
+
+            console.log('Saving proposal with enhanced metadata:', {
+                proposalId: proposalToSave.title,
+                metadataVersion: completeMetadata.metadataVersion,
+                stateVariableCount: Object.keys(completeMetadata).length,
+                timestamp: currentTimestamp
+            });
 
             const response = await fetch('/api/proposals', {
                 method: 'POST',
@@ -401,16 +1219,39 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
             if (response.ok) {
                 const savedProposal = await response.json();
+                
+                // Log successful save
+                logSuccess('Proposal saved successfully', logContext, {
+                    duration: Date.now() - parseInt(requestId.split('_')[1]),
+                    resultCount: 1
+                });
+                
+                console.log('✅ Proposal saved successfully with enhanced metadata:', savedProposal.id);
                 alert(`Proposta ${savedProposal.id} salva com sucesso!`);
                 setCurrentProposal(savedProposal);
                 fetchProposals();
                 setViewMode('search');
             } else {
-                throw new Error('Erro ao salvar proposta');
+                const errorText = await response.text();
+                const errorMessage = `HTTP ${response.status}: ${errorText || response.statusText}`;
+                throw new Error(errorMessage);
             }
         } catch (error) {
-            console.error('Erro ao salvar proposta:', error);
-            alert('Erro ao salvar proposta. Por favor, tente novamente.');
+            console.error('❌ Erro ao salvar proposta:', error);
+            
+            // Enhanced error handling with classification
+            const { errorMessage, recoveryGuidance, canRetry } = classifySaveProposalError(error);
+            
+            // Log error with structured logging
+            logError('Failed to save proposal', error, logContext, {
+                severity: 'HIGH',
+                suggestedActions: canRetry ? 
+                    ['Try saving again', 'Check network connection', 'Verify data integrity'] :
+                    ['Check data format', 'Contact support', 'Try creating new proposal']
+            });
+            
+            const fullErrorMessage = `${errorMessage}\n\n${recoveryGuidance}${canRetry ? '\n\nTente salvar novamente.' : ''}`;
+            alert(fullErrorMessage);
         }
     };
 
@@ -516,11 +1357,69 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     );
 
     const viewProposal = (proposal: Proposal) => {
-        setCurrentProposal(proposal);
-        setClientData(proposal.client);
-        setAccountManagerData(proposal.accountManager);
-        setAddedProducts(proposal.products);
-        setViewMode('proposal-summary');
+        try {
+            console.log('🔄 Loading proposal for viewing:', proposal?.id);
+            
+            // Validate proposal structure before viewing
+            const validationResult = validateProposalStructure(proposal);
+            if (!validationResult.isValid) {
+                console.error('Proposal validation failed for viewing:', validationResult.errors);
+                alert(`Não é possível visualizar a proposta:\n\n${validationResult.errors.join('\n')}`);
+                return;
+            }
+
+            // Log warnings if any
+            if (validationResult.warnings.length > 0) {
+                console.warn('Proposal viewing warnings:', validationResult.warnings);
+            }
+
+            setCurrentProposal(proposal);
+            
+            // Safe data loading with fallbacks
+            try {
+                const clientDataToSet = proposal.clientData || proposal.client || { name: '', contact: '', projectName: '', email: '', phone: '' };
+                setClientData(clientDataToSet);
+            } catch (clientError) {
+                console.warn('Error loading client data for viewing, using defaults:', clientError);
+                setClientData({ name: 'Cliente não informado', contact: '', projectName: '', email: '', phone: '' });
+            }
+
+            try {
+                const accountManagerToSet = proposal.accountManager || { name: '', email: '', phone: '' };
+                setAccountManagerData(accountManagerToSet);
+            } catch (accountManagerError) {
+                console.warn('Error loading account manager data for viewing, using defaults:', accountManagerError);
+                setAccountManagerData({ name: 'Gerente não informado', email: '', phone: '' });
+            }
+
+            try {
+                const productsToSet = Array.isArray(proposal.products) ? proposal.products : [];
+                setAddedProducts(productsToSet);
+            } catch (productsError) {
+                console.warn('Error loading products for viewing, using empty array:', productsError);
+                setAddedProducts([]);
+            }
+
+            setViewMode('proposal-summary');
+            
+            console.log('✅ Proposal loaded for viewing successfully');
+            
+        } catch (error) {
+            console.error('❌ Critical error viewing proposal:', error);
+            
+            // Log error with structured logging
+            logError('Failed to view proposal', error, {
+                operation: 'viewProposal',
+                userId: user?.id,
+                requestId: `view_${Date.now()}`,
+                metadata: { proposalId: proposal?.id }
+            }, {
+                severity: 'MEDIUM',
+                suggestedActions: ['Try refreshing the page', 'Check proposal data integrity']
+            });
+            
+            alert('Erro ao visualizar proposta. Tente novamente ou contate o suporte.');
+        }
     };
 
     const createNewProposal = () => {
@@ -552,26 +1451,572 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     };
 
     const editProposal = (proposal: Proposal) => {
-        setCurrentProposal(proposal);
-        setClientData(proposal.client);
-        setAccountManagerData(proposal.accountManager);
-        setAddedProducts(proposal.products);
+        console.log('Starting proposal edit process for proposal:', proposal?.id);
         
-        // Load all calculation parameters from the first product if available
-        if (proposal.products && proposal.products.length > 0) {
-            const firstProduct = proposal.products[0];
-            if (firstProduct.details) {
-                // Set calculator parameters based on saved product details
-                if (firstProduct.details.speed) setSelectedSpeed(firstProduct.details.speed);
-                if (firstProduct.details.contractTerm) setContractTerm(firstProduct.details.contractTerm);
-                if (firstProduct.details.includeInstallation !== undefined) setIncludeInstallation(firstProduct.details.includeInstallation);
-                if (firstProduct.details.applySalespersonDiscount !== undefined) setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
-                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
-                if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
+        // Enhanced validation of proposal data structure before loading
+        const validationResult = validateProposalStructure(proposal);
+        if (!validationResult.isValid) {
+            console.error('editProposal: Proposal validation failed:', validationResult.errors);
+            
+            // User-friendly error message based on validation failure
+            const errorMessage = createUserFriendlyErrorMessage(validationResult.errors);
+            alert(errorMessage);
+            
+            // Log error for debugging with structured logging
+            logError('Proposal validation failed', new Error(validationResult.errors.join('; ')), {
+                operation: 'editProposal',
+                userId: user?.id,
+                requestId: `edit_${Date.now()}`
+            }, {
+                severity: 'MEDIUM',
+                suggestedActions: ['Verify proposal data integrity', 'Try creating a new proposal']
+            });
+            
+            return;
+        }
+
+        // Log proposal structure for debugging
+        console.log('Proposal structure validation:', {
+            hasClientData: !!proposal.clientData,
+            hasClient: !!proposal.client,
+            hasAccountManager: !!proposal.accountManager,
+            hasProducts: !!proposal.products,
+            productsCount: proposal.products?.length || 0,
+            hasMetadata: !!proposal.metadata,
+            metadataKeys: proposal.metadata ? Object.keys(proposal.metadata).length : 0
+        });
+
+        try {
+            console.log('Loading proposal for editing:', proposal);
+            
+            // Set current proposal
+            setCurrentProposal(proposal);
+            
+            // Enhanced client data loading with comprehensive backward compatibility
+            let clientDataToLoad: ClientData = { name: '', contact: '', projectName: '', email: '', phone: '' };
+            let clientDataLoadSuccess = false;
+            
+            try {
+                // Priority 1: Use clientData field (new format)
+                if (proposal.clientData && typeof proposal.clientData === 'object') {
+                    clientDataToLoad = {
+                        name: proposal.clientData.name || '',
+                        contact: proposal.clientData.contact || '',
+                        projectName: proposal.clientData.projectName || '',
+                        email: proposal.clientData.email || '',
+                        phone: proposal.clientData.phone || '',
+                        // Handle additional fields that might exist
+                        companyName: (proposal.clientData as any).companyName || '',
+                        address: (proposal.clientData as any).address || '',
+                        cnpj: (proposal.clientData as any).cnpj || ''
+                    };
+                    clientDataLoadSuccess = true;
+                    console.log('Client data loaded from clientData field');
+                }
+                // Priority 2: Use client field for backward compatibility
+                else if (proposal.client) {
+                    if (typeof proposal.client === 'object') {
+                        clientDataToLoad = {
+                            name: (proposal.client as any).name || '',
+                            contact: (proposal.client as any).contact || '',
+                            projectName: (proposal.client as any).projectName || '',
+                            email: (proposal.client as any).email || '',
+                            phone: (proposal.client as any).phone || '',
+                            companyName: (proposal.client as any).companyName || '',
+                            address: (proposal.client as any).address || '',
+                            cnpj: (proposal.client as any).cnpj || ''
+                        };
+                        clientDataLoadSuccess = true;
+                        console.log('Client data loaded from client object field');
+                    } else if (typeof proposal.client === 'string') {
+                        clientDataToLoad = { 
+                            name: proposal.client, 
+                            contact: '', 
+                            projectName: '', 
+                            email: '', 
+                            phone: '',
+                            companyName: proposal.client,
+                            address: '',
+                            cnpj: ''
+                        };
+                        clientDataLoadSuccess = true;
+                        console.log('Client data loaded from client string field');
+                    }
+                }
+                
+                if (!clientDataLoadSuccess) {
+                    console.warn('No valid client data found in proposal, using defaults');
+                }
+            } catch (clientError) {
+                console.error('Error loading client data:', clientError);
+                clientDataLoadSuccess = false;
+            }
+            
+            setClientData(clientDataToLoad);
+            
+            // Enhanced account manager data loading with error handling
+            let accountManagerToLoad: AccountManagerData = { name: '', email: '', phone: '' };
+            let accountManagerLoadSuccess = false;
+            
+            try {
+                if (proposal.accountManager) {
+                    if (typeof proposal.accountManager === 'object') {
+                        accountManagerToLoad = {
+                            name: proposal.accountManager.name || '',
+                            email: proposal.accountManager.email || '',
+                            phone: proposal.accountManager.phone || '',
+                            // Handle additional fields
+                            department: (proposal.accountManager as any).department || '',
+                            role: (proposal.accountManager as any).role || ''
+                        };
+                        accountManagerLoadSuccess = true;
+                        console.log('Account manager data loaded from object');
+                    } else if (typeof proposal.accountManager === 'string') {
+                        accountManagerToLoad = { 
+                            name: proposal.accountManager, 
+                            email: '', 
+                            phone: '',
+                            department: '',
+                            role: ''
+                        };
+                        accountManagerLoadSuccess = true;
+                        console.log('Account manager data loaded from string');
+                    }
+                }
+                
+                if (!accountManagerLoadSuccess) {
+                    console.warn('No valid account manager data found in proposal, using defaults');
+                }
+            } catch (accountManagerError) {
+                console.error('Error loading account manager data:', accountManagerError);
+                accountManagerLoadSuccess = false;
+            }
+            
+            setAccountManagerData(accountManagerToLoad);
+            
+            // Enhanced products loading with validation
+            let productsLoadSuccess = false;
+            try {
+                if (proposal.products && Array.isArray(proposal.products)) {
+                    // Validate each product has required fields
+                    const validProducts = proposal.products.filter(product => {
+                        return product && 
+                               typeof product === 'object' && 
+                               product.id && 
+                               product.description &&
+                               typeof product.setup === 'number' &&
+                               typeof product.monthly === 'number';
+                    });
+                    
+                    if (validProducts.length > 0) {
+                        setAddedProducts([...validProducts]);
+                        productsLoadSuccess = true;
+                        console.log(`Loaded ${validProducts.length} valid products`);
+                        
+                        if (validProducts.length < proposal.products.length) {
+                            console.warn(`${proposal.products.length - validProducts.length} invalid products were filtered out`);
+                        }
+                    } else {
+                        console.warn('No valid products found in proposal');
+                        setAddedProducts([]);
+                    }
+                } else {
+                    console.warn('No products array found in proposal, setting empty array');
+                    setAddedProducts([]);
+                }
+            } catch (productsError) {
+                console.error('Error loading products:', productsError);
+                setAddedProducts([]);
+                productsLoadSuccess = false;
+            }
+            
+            // Enhanced calculator state restoration with comprehensive metadata handling
+            const metadata = (proposal as any).metadata;
+            const firstProduct = proposal.products && proposal.products.length > 0 ? proposal.products[0] : null;
+            
+            console.log('Loading calculator state from metadata:', {
+                hasMetadata: !!metadata,
+                metadataVersion: metadata?.metadataVersion,
+                metadataKeys: metadata ? Object.keys(metadata) : [],
+                hasFirstProduct: !!firstProduct,
+                firstProductDetails: firstProduct?.details
+            });
+            
+            // Restore discount settings with multiple fallback sources
+            try {
+                // Salesperson discount
+                if (metadata?.applySalespersonDiscount !== undefined) {
+                    setApplySalespersonDiscount(metadata.applySalespersonDiscount);
+                    console.log('Salesperson discount loaded from metadata:', metadata.applySalespersonDiscount);
+                } else if ((proposal as any).applySalespersonDiscount !== undefined) {
+                    setApplySalespersonDiscount((proposal as any).applySalespersonDiscount);
+                    console.log('Salesperson discount loaded from top-level field:', (proposal as any).applySalespersonDiscount);
+                } else {
+                    setApplySalespersonDiscount(false);
+                    console.log('Salesperson discount set to default: false');
+                }
+                
+                // Director discount
+                if (metadata?.appliedDirectorDiscountPercentage !== undefined) {
+                    setAppliedDirectorDiscountPercentage(metadata.appliedDirectorDiscountPercentage);
+                    console.log('Director discount loaded from metadata:', metadata.appliedDirectorDiscountPercentage);
+                } else if ((proposal as any).appliedDirectorDiscountPercentage !== undefined) {
+                    setAppliedDirectorDiscountPercentage((proposal as any).appliedDirectorDiscountPercentage);
+                    console.log('Director discount loaded from top-level field:', (proposal as any).appliedDirectorDiscountPercentage);
+                } else {
+                    setAppliedDirectorDiscountPercentage(0);
+                    console.log('Director discount set to default: 0');
+                }
+            } catch (discountError) {
+                console.error('Error loading discount settings:', discountError);
+                setApplySalespersonDiscount(false);
+                setAppliedDirectorDiscountPercentage(0);
+            }
+            
+            // Contract term with comprehensive fallback chain
+            try {
+                let contractTermLoaded = false;
+                if (metadata?.contractTerm && typeof metadata.contractTerm === 'number') {
+                    setContractTerm(metadata.contractTerm);
+                    contractTermLoaded = true;
+                    console.log('Contract term loaded from metadata:', metadata.contractTerm);
+                } else if (firstProduct?.details?.contractTerm && typeof firstProduct.details.contractTerm === 'number') {
+                    setContractTerm(firstProduct.details.contractTerm);
+                    contractTermLoaded = true;
+                    console.log('Contract term loaded from first product contractTerm:', firstProduct.details.contractTerm);
+                } else if (firstProduct?.details?.term && typeof firstProduct.details.term === 'number') {
+                    setContractTerm(firstProduct.details.term);
+                    contractTermLoaded = true;
+                    console.log('Contract term loaded from first product term:', firstProduct.details.term);
+                } else if (proposal.contractPeriod && typeof proposal.contractPeriod === 'number') {
+                    setContractTerm(proposal.contractPeriod);
+                    contractTermLoaded = true;
+                    console.log('Contract term loaded from proposal contractPeriod:', proposal.contractPeriod);
+                }
+                
+                if (!contractTermLoaded) {
+                    setContractTerm(12);
+                    console.log('Contract term set to default: 12');
+                }
+            } catch (contractTermError) {
+                console.error('Error loading contract term:', contractTermError);
+                setContractTerm(12);
+            }
+            
+            // Installation setting
+            try {
+                if (metadata?.includeInstallation !== undefined) {
+                    setIncludeInstallation(metadata.includeInstallation);
+                    console.log('Include installation loaded from metadata:', metadata.includeInstallation);
+                } else if (firstProduct?.details?.includeInstallation !== undefined) {
+                    setIncludeInstallation(firstProduct.details.includeInstallation);
+                    console.log('Include installation loaded from first product:', firstProduct.details.includeInstallation);
+                } else {
+                    setIncludeInstallation(true);
+                    console.log('Include installation set to default: true');
+                }
+            } catch (installationError) {
+                console.error('Error loading installation setting:', installationError);
+                setIncludeInstallation(true);
+            }
+            
+            // Selected speed
+            try {
+                if (metadata?.selectedSpeed && typeof metadata.selectedSpeed === 'number') {
+                    setSelectedSpeed(metadata.selectedSpeed);
+                    console.log('Selected speed loaded from metadata:', metadata.selectedSpeed);
+                } else if (firstProduct?.details?.speed && typeof firstProduct.details.speed === 'number') {
+                    setSelectedSpeed(firstProduct.details.speed);
+                    console.log('Selected speed loaded from first product:', firstProduct.details.speed);
+                } else {
+                    setSelectedSpeed(0);
+                    console.log('Selected speed set to default: 0');
+                }
+            } catch (speedError) {
+                console.error('Error loading selected speed:', speedError);
+                setSelectedSpeed(0);
+            }
+            
+            // Partner settings with comprehensive fallback
+            try {
+                // Referral partner
+                if (metadata?.includeReferralPartner !== undefined) {
+                    setIncludeReferralPartner(metadata.includeReferralPartner);
+                    console.log('Include referral partner loaded from metadata:', metadata.includeReferralPartner);
+                } else if ((proposal as any).includeReferralPartner !== undefined) {
+                    setIncludeReferralPartner((proposal as any).includeReferralPartner);
+                    console.log('Include referral partner loaded from top-level field:', (proposal as any).includeReferralPartner);
+                } else {
+                    setIncludeReferralPartner(false);
+                    console.log('Include referral partner set to default: false');
+                }
+                
+                // Influencer partner
+                if (metadata?.includeInfluencerPartner !== undefined) {
+                    setIncludeInfluencerPartner(metadata.includeInfluencerPartner);
+                    console.log('Include influencer partner loaded from metadata:', metadata.includeInfluencerPartner);
+                } else if ((proposal as any).includeInfluencerPartner !== undefined) {
+                    setIncludeInfluencerPartner((proposal as any).includeInfluencerPartner);
+                    console.log('Include influencer partner loaded from top-level field:', (proposal as any).includeInfluencerPartner);
+                } else {
+                    setIncludeInfluencerPartner(false);
+                    console.log('Include influencer partner set to default: false');
+                }
+            } catch (partnerError) {
+                console.error('Error loading partner settings:', partnerError);
+                setIncludeReferralPartner(false);
+                setIncludeInfluencerPartner(false);
+            }
+            
+            // Additional calculator state variables with error handling
+            try {
+                // Existing customer
+                if (metadata?.isExistingCustomer !== undefined) {
+                    setIsExistingCustomer(metadata.isExistingCustomer);
+                } else {
+                    setIsExistingCustomer(false);
+                }
+                
+                // Previous monthly
+                if (metadata?.previousMonthly !== undefined && typeof metadata.previousMonthly === 'number') {
+                    setPreviousMonthly(metadata.previousMonthly);
+                } else {
+                    setPreviousMonthly(0);
+                }
+                
+                // Last mile settings
+                if (metadata?.includeLastMile !== undefined) {
+                    setIncludeLastMile(metadata.includeLastMile);
+                } else {
+                    setIncludeLastMile(false);
+                }
+                
+                if (metadata?.lastMileCost !== undefined && typeof metadata.lastMileCost === 'number') {
+                    setLastMileCost(metadata.lastMileCost);
+                } else {
+                    setLastMileCost(0);
+                }
+                
+                // Project value
+                if (metadata?.projectValue !== undefined && typeof metadata.projectValue === 'number') {
+                    setProjectValue(metadata.projectValue);
+                } else {
+                    setProjectValue(0);
+                }
+                
+                // Director discount percentage (different from applied)
+                if (metadata?.directorDiscountPercentage !== undefined && typeof metadata.directorDiscountPercentage === 'number') {
+                    setDirectorDiscountPercentage(metadata.directorDiscountPercentage);
+                } else {
+                    setDirectorDiscountPercentage(0);
+                }
+                
+                console.log('Additional calculator state loaded successfully');
+            } catch (additionalStateError) {
+                console.error('Error loading additional calculator state:', additionalStateError);
+                // Set defaults for all additional state
+                setIsExistingCustomer(false);
+                setPreviousMonthly(0);
+                setIncludeLastMile(false);
+                setLastMileCost(0);
+                setProjectValue(0);
+                setDirectorDiscountPercentage(0);
+            }
+            
+            // Tax rates with validation
+            try {
+                if (metadata?.taxRates && typeof metadata.taxRates === 'object') {
+                    // Validate tax rates structure
+                    const defaultTaxRates = { pis: 15.00, cofins: 0.00, csll: 0.00, irpj: 0.00, banda: 2.09, fundraising: 0.00, rate: 0.00, margem: 0.00, custoDesp: 10.00 };
+                    const loadedTaxRates = { ...defaultTaxRates, ...metadata.taxRates };
+                    
+                    // Ensure all values are numbers
+                    Object.keys(loadedTaxRates).forEach(key => {
+                        if (typeof loadedTaxRates[key] !== 'number' || isNaN(loadedTaxRates[key])) {
+                            loadedTaxRates[key] = defaultTaxRates[key] || 0;
+                        }
+                    });
+                    
+                    setTaxRates(loadedTaxRates);
+                    console.log('Tax rates loaded from metadata:', loadedTaxRates);
+                } else {
+                    const defaultTaxRates = { pis: 15.00, cofins: 0.00, csll: 0.00, irpj: 0.00, banda: 2.09, fundraising: 0.00, rate: 0.00, margem: 0.00, custoDesp: 10.00 };
+                    setTaxRates(defaultTaxRates);
+                    console.log('Tax rates set to default values');
+                }
+            } catch (taxRatesError) {
+                console.error('Error loading tax rates:', taxRatesError);
+                setTaxRates({ pis: 15.00, cofins: 0.00, csll: 0.00, irpj: 0.00, banda: 2.09, fundraising: 0.00, rate: 0.00, margem: 0.00, custoDesp: 10.00 });
+            }
+            
+            // Markup with validation
+            try {
+                if (metadata?.markup !== undefined && typeof metadata.markup === 'number' && !isNaN(metadata.markup)) {
+                    setMarkup(metadata.markup);
+                    console.log('Markup loaded from metadata:', metadata.markup);
+                } else {
+                    setMarkup(100);
+                    console.log('Markup set to default: 100');
+                }
+            } catch (markupError) {
+                console.error('Error loading markup:', markupError);
+                setMarkup(100);
+            }
+            
+            // Estimated net margin
+            try {
+                if (metadata?.estimatedNetMargin !== undefined && typeof metadata.estimatedNetMargin === 'number' && !isNaN(metadata.estimatedNetMargin)) {
+                    setEstimatedNetMargin(metadata.estimatedNetMargin);
+                    console.log('Estimated net margin loaded from metadata:', metadata.estimatedNetMargin);
+                } else {
+                    setEstimatedNetMargin(0);
+                    console.log('Estimated net margin set to default: 0');
+                }
+            } catch (marginError) {
+                console.error('Error loading estimated net margin:', marginError);
+                setEstimatedNetMargin(0);
+            }
+            
+            // UI state restoration
+            try {
+                if (metadata?.isEditingTaxes !== undefined) {
+                    setIsEditingTaxes(metadata.isEditingTaxes);
+                    console.log('Is editing taxes loaded from metadata:', metadata.isEditingTaxes);
+                } else {
+                    setIsEditingTaxes(false);
+                    console.log('Is editing taxes set to default: false');
+                }
+            } catch (editingTaxesError) {
+                console.error('Error loading isEditingTaxes state:', editingTaxesError);
+                setIsEditingTaxes(false);
+            }
+            
+            // Log successful completion with detailed summary
+            const loadingSummary = {
+                proposalId: proposal.id,
+                clientDataLoaded: clientDataLoadSuccess,
+                accountManagerLoaded: accountManagerLoadSuccess,
+                productsLoaded: productsLoadSuccess,
+                productsCount: proposal.products?.length || 0,
+                metadataLoaded: !!metadata,
+                discountsRestored: {
+                    salesperson: applySalespersonDiscount,
+                    director: appliedDirectorDiscountPercentage
+                },
+                contractTerm: contractTerm,
+                selectedSpeed: selectedSpeed
+            };
+            
+            console.log('Proposal loaded successfully for editing:', loadingSummary);
+            
+            // Log successful proposal loading with structured logging
+            const successContext: LogContext = {
+                operation: 'editProposal',
+                userId: user?.id,
+                requestId: `edit_${Date.now()}`,
+                metadata: {
+                    proposalId: proposal.id,
+                    clientDataLoaded: clientDataLoadSuccess,
+                    accountManagerLoaded: accountManagerLoadSuccess,
+                    productsLoaded: productsLoadSuccess,
+                    productsCount: proposal.products?.length || 0,
+                    metadataLoaded: !!metadata
+                }
+            };
+
+            logSuccess('Proposal loaded for editing', successContext, {
+                resultCount: proposal.products?.length || 0,
+                fallbackUsed: !clientDataLoadSuccess || !accountManagerLoadSuccess || !productsLoadSuccess
+            });
+            
+            // Provide user feedback for successful loading
+            if (clientDataLoadSuccess && accountManagerLoadSuccess && productsLoadSuccess) {
+                console.log('✅ All proposal data loaded successfully');
+            } else {
+                console.warn('⚠️ Some proposal data used fallback values');
+                
+                // Show user-friendly warning for partial data loading
+                const warningMessage = createPartialLoadingWarning(clientDataLoadSuccess, accountManagerLoadSuccess, productsLoadSuccess);
+                if (warningMessage) {
+                    setTimeout(() => {
+                        if (confirm(`${warningMessage}\n\nDeseja continuar mesmo assim?`)) {
+                            console.log('User confirmed to continue with partial data');
+                        }
+                    }, 500);
+                }
+            }
+            
+            setViewMode('calculator');
+            
+        } catch (error) {
+            console.error('Critical error loading proposal for editing:', error);
+            
+            // Enhanced error handling with comprehensive logging and user feedback
+            const errorContext: LogContext = {
+                operation: 'editProposal',
+                userId: user?.id,
+                requestId: `edit_${Date.now()}`,
+                metadata: {
+                    proposalId: proposal?.id,
+                    proposalStructure: Object.keys(proposal || {}),
+                    errorType: error?.constructor?.name || 'Unknown'
+                }
+            };
+
+            // Log error with structured logging
+            logError('Critical error in proposal editing', error, errorContext, {
+                severity: 'HIGH',
+                suggestedActions: [
+                    'Check proposal data integrity',
+                    'Verify database connection',
+                    'Try creating a new proposal',
+                    'Contact support if issue persists'
+                ]
+            });
+            
+            // Enhanced error classification and user-friendly messaging
+            const { errorMessage, recoveryGuidance, canContinue } = classifyEditProposalError(error);
+            
+            const fullMessage = `${errorMessage}\n\n${recoveryGuidance}${canContinue ? '\n\nVocê pode continuar editando, mas talvez precise reinserir algumas informações.' : ''}`;
+            
+            alert(fullMessage);
+            
+            // Implement intelligent fallback behavior
+            const fallbackResult = attemptProposalDataRecovery(proposal);
+            
+            if (fallbackResult.success) {
+                console.log('✅ Partial data recovery successful:', fallbackResult.recoveredData);
+                
+                // Apply recovered data
+                setCurrentProposal(proposal);
+                setClientData(fallbackResult.recoveredData.clientData);
+                setAccountManagerData(fallbackResult.recoveredData.accountManagerData);
+                setAddedProducts(fallbackResult.recoveredData.products);
+                
+                // Apply recovered calculator state or safe defaults
+                applyCalculatorStateWithFallback(fallbackResult.recoveredData.calculatorState);
+                
+                // Log successful recovery
+                logSuccess('Proposal data partially recovered', errorContext, {
+                    resultCount: fallbackResult.recoveredData.products.length,
+                    fallbackUsed: true
+                });
+                
+                setViewMode('calculator');
+                
+            } else {
+                console.error('❌ Data recovery failed:', fallbackResult.error);
+                
+                // Log recovery failure
+                logError('Proposal data recovery failed', fallbackResult.error, errorContext, {
+                    severity: 'CRITICAL',
+                    suggestedActions: ['Create new proposal', 'Contact support']
+                });
+                
+                alert('Não foi possível recuperar os dados da proposta. Por favor, crie uma nova proposta.');
+                setViewMode('search');
             }
         }
-        
-        setViewMode('calculator');
     };
 
     const selectedPlan = radioPlans.find(p => p.speed === selectedSpeed);
@@ -618,19 +2063,23 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         const markupAmount = cost * M;
         const priceWithMarkup = cost + markupAmount;
         
-        // Usar o preço com markup como base (sem descontos por enquanto)
-        const finalPrice = priceWithMarkup;
-        const setupFee = setup;
-        const commissionValue = finalPrice * 0.1; // 10% commission as example
-        const referralPartnerCommission = 0; // No referral partner by default
+        // DRE should show discounted monthly revenue BEFORE commission deductions
+        // This is the revenue that appears in DRE calculations
+        const discountedMonthlyRevenue = totalMonthly * salespersonDiscountFactor * directorDiscountFactor;
+        const finalPrice = discountedMonthlyRevenue; // Monthly revenue with discounts applied, before commissions
+        const setupFee = finalTotalSetup; // Setup cost without discounts (correct)
         
-        // Calculate taxes on revenue
+        // Calculate actual commission values for DRE display
+        const referralPartnerCommissionValue = referralPartnerCommission + influencerPartnerCommission;
+        const commissionValue = finalPrice * 0.1; // Example commission rate
+        
+        // Calculate taxes on the discounted revenue
         const pisTax = finalPrice * (taxRates.pis / 100);
         const cofinsTax = finalPrice * (taxRates.cofins / 100);
         const revenueTaxValue = pisTax + cofinsTax;
         
-        // Calculate gross profit
-        const grossProfit = finalPrice - cost - commissionValue - referralPartnerCommission - revenueTaxValue;
+        // Calculate gross profit: revenue minus costs, taxes, and commissions
+        const grossProfit = finalPrice - cost - revenueTaxValue - referralPartnerCommissionValue;
         
         // Calculate profit taxes
         const csllTax = grossProfit > 0 ? grossProfit * (taxRates.csll / 100) : 0;
@@ -639,14 +2088,14 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         
         // Calculate final net profit
         const netProfit = grossProfit - profitTaxValue;
-        const netMargin = (netProfit / finalPrice) * 100;
+        const netMargin = finalPrice > 0 ? (netProfit / finalPrice) * 100 : 0;
 
         return {
-            finalPrice,
-            setupFee,
+            finalPrice, // This is now the discounted monthly revenue for DRE display
+            setupFee, // Setup costs without discounts
             cost,
             commissionValue,
-            referralPartnerCommission,
+            referralPartnerCommission: referralPartnerCommissionValue,
             revenueTaxValue,
             profitTaxValue,
             grossProfit,
@@ -656,7 +2105,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             markupAmount,
             priceBeforeDiscounts: priceWithMarkup
         };
-    }, [selectedPlan, monthly, setup, taxRates, markup]);
+    }, [selectedPlan, monthly, setup, taxRates, markup, finalTotalMonthly, finalTotalSetup, totalMonthly, salespersonDiscountFactor, directorDiscountFactor, referralPartnerCommission, influencerPartnerCommission]);
 
     // Calculate estimated net margin based on current values
     useEffect(() => {
@@ -671,24 +2120,41 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     const comissaoParceiroInfluenciador = includeInfluencerPartner ? (influencerPartnerCommission || 0) : 0;
     
     // Calcular a comissão correta baseado na presença de parceiros
+    // Commission should be calculated on the discounted monthly revenue
     const temParceiros = includeReferralPartner || includeInfluencerPartner;
     const comissaoVendedor = temParceiros 
         ? (costBreakdown.finalPrice * (getChannelSellerCommissionRate(channelSeller, 12) / 100)) // Canal/Vendedor quando há parceiros
         : (costBreakdown.finalPrice * (getSellerCommissionRate(seller, 12) / 100)); // Vendedor quando não há parceiros
 
-    // DRE calculations
+    // DRE calculations - properly reflecting corrected discount application
     const dreCalculations = {
-        receitaBruta: costBreakdown.finalPrice,
+        // Revenue shows discounted monthly total (correct)
+        receitaBruta: costBreakdown.finalPrice, // This is the discounted monthly revenue (after salesperson and director discounts)
         receitaLiquida: costBreakdown.finalPrice - costBreakdown.revenueTaxValue,
+        
+        // Costs and commissions (all calculated on discounted revenue)
         custoServico: costBreakdown.cost,
-        comissaoVendedor: comissaoVendedor,
+        comissaoVendedor: comissaoVendedor, // Commission calculated on discounted monthly revenue
         comissaoParceiroIndicador: comissaoParceiroIndicador,
         comissaoParceiroInfluenciador: comissaoParceiroInfluenciador,
-        lucroOperacional: costBreakdown.grossProfit,
-        lucroLiquido: costBreakdown.netProfit,
-        rentabilidade: costBreakdown.netMargin,
+        
+        // Profit calculations (based on discounted revenue)
+        lucroOperacional: costBreakdown.grossProfit, // Revenue - costs - taxes - commissions
+        lucroLiquido: costBreakdown.netProfit, // Gross profit - profit taxes
+        rentabilidade: costBreakdown.netMargin, // Net profit / discounted revenue
         lucratividade: costBreakdown.netMargin,
+        
+        // Payback calculation using UNDISCOUNTED setup costs and net profit from discounted revenue
         paybackMeses: costBreakdown.setupFee > 0 && costBreakdown.netProfit > 0 ? Math.ceil(costBreakdown.setupFee / costBreakdown.netProfit) : 0,
+        
+        // Setup costs WITHOUT discounts applied (correct - setup costs are never discounted)
+        taxaInstalacao: costBreakdown.setupFee, // This remains undiscounted regardless of salesperson/director discounts
+        
+        // Tax breakdown
+        custoBanda: costBreakdown.cost,
+        totalImpostos: costBreakdown.revenueTaxValue + costBreakdown.profitTaxValue,
+        impostosReceita: costBreakdown.revenueTaxValue, // PIS + COFINS on discounted revenue
+        impostosLucro: costBreakdown.profitTaxValue, // CSLL + IRPJ on gross profit
     };
 
 
@@ -847,7 +2313,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {currentProposal.products.map((product, index) => (
+                                    {(currentProposal.products || []).map((product, index) => (
                                         <TableRow key={index}>
                                             <TableCell>{product.description}</TableCell>
                                             <TableCell>{formatCurrency(product.setup)}</TableCell>
@@ -884,7 +2350,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
+                                    <p><strong>Total Setup:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
                                     <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
                                 </div>
                                 <div>
@@ -896,7 +2362,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                         </div>
 
                         {/* Payback Info se disponível */}
-                        {currentProposal.products.some(p => p.setup > 0) && (
+                        {(currentProposal.products || []).some(p => p.setup > 0) && (
                             <div className="border-t pt-4 print:pt-2">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Análise de Payback</h3>
                                 {(() => {
@@ -983,7 +2449,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 <Select onValueChange={(v) => setSelectedSpeed(Number(v))} value={selectedSpeed.toString()}>
                                                     <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                                                     <SelectContent>
-                                                        {radioPlans.filter(p => getMonthlyPrice(p, contractTerm) > 0).map(plan => (
+                                                        {(radioPlans || []).filter(p => getMonthlyPrice(p, contractTerm) > 0).map(plan => (
                                                             <SelectItem key={plan.speed} value={plan.speed.toString()}>{plan.description}</SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -1089,7 +2555,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 } 
                                                 onChange={(e) => {
                                                     const newManCost = Number(e.target.value);
-                                                    const updatedPlans = radioPlans.map(plan => 
+                                                    const updatedPlans = (radioPlans || []).map(plan => 
                                                         plan.speed === selectedSpeed 
                                                             ? { ...plan, manCost: newManCost }
                                                             : plan
@@ -1248,19 +2714,27 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 
                                                 <Separator className="bg-slate-700" />
                                                 <div className="space-y-2 font-bold">
-                                                    {applySalespersonDiscount && (
-                                                        <div className="flex justify-between text-orange-400">
-                                                            <span>Desconto Vendedor (5%):</span>
-                                                            <span>-{formatCurrency(totalSetup * 0.05)}</span>
-                                                        </div>
-                                                    )}
-                                                    {appliedDirectorDiscountPercentage > 0 && (
-                                                        <div className="flex justify-between text-orange-400">
-                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%):</span>
-                                                            <span>-{formatCurrency(totalSetup * salespersonDiscountFactor * (appliedDirectorDiscountPercentage / 100))}</span>
-                                                        </div>
-                                                    )}
+                                                    {/* Setup costs are not discounted - show full price */}
                                                     <div className="flex justify-between"><span>Total Instalação:</span><span>{formatCurrency(finalTotalSetup)}</span></div>
+                                                    
+                                                    {/* Monthly costs show discounts applied */}
+                                                    {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) && (
+                                                        <div className="text-sm text-slate-400 mt-2">
+                                                            <div>Valor mensal base: {formatCurrency(totalMonthly)}</div>
+                                                            {applySalespersonDiscount && (
+                                                                <div className="flex justify-between text-orange-400">
+                                                                    <span>Desconto Vendedor (5%):</span>
+                                                                    <span>-{formatCurrency(totalMonthly * 0.05)}</span>
+                                                                </div>
+                                                            )}
+                                                            {appliedDirectorDiscountPercentage > 0 && (
+                                                                <div className="flex justify-between text-orange-400">
+                                                                    <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%):</span>
+                                                                    <span>-{formatCurrency(totalMonthly * salespersonDiscountFactor * (appliedDirectorDiscountPercentage / 100))}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                     <div className="flex justify-between text-green-400"><span>Total Mensal:</span><span>{formatCurrency(finalTotalMonthly)}</span></div>
                                                     
                                                     {/* Payback Information */}
@@ -1431,14 +2905,6 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     <TableCell className="text-white">Cofins ({taxRates.cofins.toFixed(2)}%)</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(costBreakdown.finalPrice * (taxRates.cofins / 100))}</TableCell>
                                                 </TableRow>
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">CSLL ({taxRates.csll.toFixed(2)}%)</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.finalPrice * (taxRates.csll / 100))}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">IRPJ ({taxRates.irpj.toFixed(2)}%)</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.finalPrice * (taxRates.irpj / 100))}</TableCell>
-                                                </TableRow>
                                                 <TableRow className="border-slate-800 bg-blue-900/30">
                                                     <TableCell className="text-white font-semibold">Lucro Bruto</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(costBreakdown.grossProfit)}</TableCell>
@@ -1446,6 +2912,14 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 <TableRow className="border-slate-800 bg-red-900/30">
                                                     <TableCell className="text-white font-semibold">(-) Impostos sobre Lucro</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(costBreakdown.profitTaxValue)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">CSLL ({taxRates.csll.toFixed(2)}%)</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.grossProfit > 0 ? costBreakdown.grossProfit * (taxRates.csll / 100) : 0)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">IRPJ ({taxRates.irpj.toFixed(2)}%)</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.grossProfit > 0 ? costBreakdown.grossProfit * (taxRates.irpj / 100) : 0)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800 bg-green-900/50">
                                                     <TableCell className="text-white font-bold">LUCRO LÍQUIDO</TableCell>
@@ -1877,7 +3351,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {radioPlans.map((plan, index) => (
+                                                    {(radioPlans || []).map((plan, index) => (
                                                         <TableRow key={plan.speed} className="border-slate-800">
                                                             <TableCell>{plan.description}</TableCell>
                                                             <TableCell className="text-right">
