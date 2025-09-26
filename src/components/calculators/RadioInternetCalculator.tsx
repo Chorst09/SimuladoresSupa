@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,48 @@ interface Proposal {
     totalMonthly: number;
     createdAt: string;
     userId: string;
+}
+
+// DRE-related interfaces
+interface DRECalculation {
+    receitaMensal: number;
+    receitaInstalacao: number;
+    receitaTotalPrimeiromes: number;
+    custoRadio: number;  // Equivalent to custoFibra in Fibra calculator
+    custoBanda: number;
+    fundraising: number;
+    lastMile: number;
+    pis: number;
+    cofins: number;
+    csll: number;
+    irpj: number;
+    comissaoVendedor: number;
+    comissaoParceiroIndicador: number;
+    comissaoParceiroInfluenciador: number;
+    totalComissoes: number;
+    custoDespesa: number;
+    balance: number;
+    rentabilidade: number;
+    lucratividade: number;
+}
+
+interface RadioTaxRates {
+    banda: number;        // Bandwidth cost multiplier (2.09)
+    fundraising: number;  // Fundraising costs
+    rate: number;         // Additional rate
+    pis: number;          // PIS tax rate
+    cofins: number;       // COFINS tax rate
+    margem: number;       // Margin for CSLL/IRPJ calculation
+    csll: number;         // CSLL tax rate
+    irpj: number;         // IRPJ tax rate
+    custoDesp: number;    // Cost/Expense percentage
+}
+
+interface TaxRegime {
+    name: string;
+    pisCofins: string;
+    iss: string;
+    csllIr: string;
 }
 
 const initialRadioPlans: RadioPlan[] = [
@@ -305,6 +347,14 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
     const [estimatedNetMargin, setEstimatedNetMargin] = useState(0);
     const [commissionPercentage, setCommissionPercentage] = useState<number>(0);
 
+    // Estados para regime tributário (DRE functionality)
+    const [selectedTaxRegime, setSelectedTaxRegime] = useState<string>('lucro_real');
+    const [taxRegimeValues, setTaxRegimeValues] = useState({
+        pisCofins: '9.25',
+        iss: '5.00',
+        csllIr: '34'
+    });
+
     // Hook para comissões editáveis
     const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
 
@@ -472,6 +522,17 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
             setTaxRates(newTaxRates);
         }
 
+        // Carregar regime tributário salvo
+        const savedTaxRegime = localStorage.getItem('radioTaxRegime');
+        if (savedTaxRegime) {
+            setSelectedTaxRegime(savedTaxRegime);
+        }
+
+        const savedTaxRegimeValues = localStorage.getItem('radioTaxRegimeValues');
+        if (savedTaxRegimeValues) {
+            setTaxRegimeValues(JSON.parse(savedTaxRegimeValues));
+        }
+
         fetchProposals();
     }, [fetchProposals]);
 
@@ -553,6 +614,67 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
             }));
         }
     };
+
+    const handleTaxRegimeChange = (regime: string) => {
+        setSelectedTaxRegime(regime);
+
+        // Definir valores padrão para cada regime tributário
+        let newTaxRegimeValues;
+        switch (regime) {
+            case 'lucro_real':
+                newTaxRegimeValues = {
+                    pisCofins: '9.25',
+                    iss: '5.00',
+                    csllIr: '34'
+                };
+                break;
+            case 'lucro_presumido':
+                newTaxRegimeValues = {
+                    pisCofins: '9.25',
+                    iss: '5.00',
+                    csllIr: '25'
+                };
+                break;
+            case 'lucro_real_reduzido':
+                newTaxRegimeValues = {
+                    pisCofins: '1.65',
+                    iss: '2.00',
+                    csllIr: '25'
+                };
+                break;
+            case 'simples_nacional':
+                newTaxRegimeValues = {
+                    pisCofins: '0.00',
+                    iss: '2.00',
+                    csllIr: '0'
+                };
+                break;
+            default:
+                newTaxRegimeValues = {
+                    pisCofins: '9.25',
+                    iss: '5.00',
+                    csllIr: '34'
+                };
+                break;
+        }
+
+        setTaxRegimeValues(newTaxRegimeValues);
+
+        // Salvar no localStorage
+        localStorage.setItem('radioTaxRegime', regime);
+        localStorage.setItem('radioTaxRegimeValues', JSON.stringify(newTaxRegimeValues));
+    };
+
+    // Cálculos de impostos baseados no regime tributário selecionado
+    const revenueTaxes = useMemo(() => {
+        const pisCofinsParsed = parseFloat(taxRegimeValues.pisCofins.replace(',', '.')) || 0;
+        const issParsed = parseFloat(taxRegimeValues.iss.replace(',', '.')) || 0;
+        return pisCofinsParsed + issParsed;
+    }, [taxRegimeValues.pisCofins, taxRegimeValues.iss]);
+
+    const profitTaxes = useMemo(() => {
+        return parseFloat(taxRegimeValues.csllIr.replace(',', '.')) || 0;
+    }, [taxRegimeValues.csllIr]);
 
     const handleAddProduct = () => {
         if (!result || !selectedPlan) return;
@@ -709,46 +831,30 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
         console.log('Products:', addedProducts);
     }, [addedProducts]);
 
-    // Função para calcular DRE para um período específico
+    // Função para calcular DRE por período de contrato - Adaptada do InternetFibraCalculator
     const calculateDREForPeriod = useCallback((months: number) => {
-        if (!costBreakdown || costBreakdown.finalPrice === 0) {
-            return {
-                receitaMensal: 0,
-                receitaInstalacao: 0,
-                receitaTotalPrimeiromes: 0,
-                custoFibra: 0,
-                custoBanda: 0,
-                fundraising: 0,
-                lastMile: 0,
-                pis: 0,
-                cofins: 0,
-                csll: 0,
-                irpj: 0,
-                comissaoVendedor: 0,
-                comissaoParceiroIndicador: 0,
-                comissaoParceiroInfluenciador: 0,
-                totalComissoes: 0,
-                custoDespesa: 0,
-                balance: 0,
-                rentabilidade: 0,
-                lucratividade: 0
-            };
+        // CORREÇÃO: Receita mensal = valor mensal × número de meses do período
+        // Ex: Para 12 meses = 12 × R$ 5.211,00 = R$ 62.532,00
+        let monthlyValue = 0;
+        let totalRevenue = 0;
+
+        if (result && selectedPlan) {
+            // Usar sempre o valor mensal do período selecionado atualmente (contractTerm)
+            monthlyValue = getMonthlyPrice(selectedPlan, contractTerm);
+            // Calcular receita total do período: valor mensal × meses
+            totalRevenue = monthlyValue * months;
         }
 
-        const monthlyValue = costBreakdown.finalPrice;
-        let totalRevenue = monthlyValue * months;
-        const taxaInstalacao = costBreakdown.setupFee;
-
-        const receitaInstalacao = taxaInstalacao;
+        const receitaInstalacao = includeInstallation ? (selectedPlan?.installationCost || 0) : 0;
         const receitaTotalPrimeiromes = totalRevenue + receitaInstalacao;
         
         // CORREÇÃO: Custo de banda = velocidade × 2,09 × meses do período
-        const velocidade = result?.speed || 0; // Velocidade em Mbps
+        const velocidade = selectedPlan?.speed || 0; // Velocidade em Mbps
         const custoBandaMensal = velocidade * taxRates.banda; // 600 × 2,09 = 1.254,00
         const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00
         
-        // Custo Fibra vem da calculadora conforme prazo contratual e velocidade
-        const custoFibraCalculadora = result?.fiberCost || 0;
+        // Custo Radio vem da calculadora conforme prazo contratual e velocidade
+        const custoRadioCalculadora = selectedPlan?.radioCost || 0;
         
         const fundraising = 0; // Conforme tabela
         const lastMile = 0; // Conforme tabela
@@ -781,18 +887,18 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
 
         // CORREÇÃO: Cálculo das comissões seguindo o modelo do Internet Rádio
         const comissaoParceiroIndicador = includeReferralPartner 
-            ? receitaTotalPrimeiromes * (getPartnerIndicatorRate(monthlyValue, months))
+            ? receitaTotalPrimeiromes * (getPartnerIndicatorRate(monthlyValue, contractTerm))
             : 0;
         
         const comissaoParceiroInfluenciador = includeInfluencerPartner 
-            ? receitaTotalPrimeiromes * (getPartnerInfluencerRate(monthlyValue, months))
+            ? receitaTotalPrimeiromes * (getPartnerInfluencerRate(monthlyValue, contractTerm))
             : 0;
         
         // Calcular a comissão do vendedor baseado na presença de parceiros
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
         const comissaoVendedor = temParceiros 
-            ? (receitaTotalPrimeiromes * (getChannelSellerCommissionRate(channelSeller, months) / 100)) // Canal/Vendedor quando há parceiros
-            : (receitaTotalPrimeiromes * (getSellerCommissionRate(seller, months) / 100)); // Vendedor quando não há parceiros
+            ? (receitaTotalPrimeiromes * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
+            : (receitaTotalPrimeiromes * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
         
         // Total das comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
@@ -800,7 +906,7 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
         const custoDespesa = receitaTotalPrimeiromes * 0.10; // 10% conforme padrão
 
         // Balance (Lucro Líquido) - Receita total (incluindo instalação) menos todos os custos
-        const balance = receitaTotalPrimeiromes - custoBanda - custoFibraCalculadora - pis - cofins - csll - irpj - totalComissoes - custoDespesa;
+        const balance = receitaTotalPrimeiromes - custoBanda - custoRadioCalculadora - pis - cofins - csll - irpj - totalComissoes - custoDespesa;
 
         // Rentabilidade e Lucratividade baseadas na receita total (incluindo instalação)
         const rentabilidade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
@@ -810,7 +916,7 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
             receitaMensal: totalRevenue, // Agora é receita total do período
             receitaInstalacao,
             receitaTotalPrimeiromes,
-            custoFibra: custoFibraCalculadora, // Custo Fibra da calculadora
+            custoRadio: custoRadioCalculadora, // Custo Radio da calculadora
             custoBanda, // Custo de banda calculado como 2,09% da receita
             fundraising,
             lastMile,
@@ -827,31 +933,51 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
             rentabilidade,
             lucratividade
         };
-    }, [costBreakdown, taxRates, includeReferralPartner, includeInfluencerPartner, channelSeller, seller, result]);
+    }, [
+        result,
+        selectedPlan,
+        includeInstallation,
+        taxRates.pis,
+        taxRates.cofins,
+        taxRates.csll,
+        taxRates.irpj,
+        taxRates.banda,
+        contractTerm,
+        includeReferralPartner,
+        includeInfluencerPartner,
+        channelSeller,
+        seller
+    ]);
 
-    // Calculate DRE metrics para múltiplos períodos
+    // Calcular DRE para todos os períodos usando useMemo
     const dreCalculations = useMemo(() => {
-        const periods = [12, 24, 36, 48, 60];
-        const calculations: any = {};
-        
-        periods.forEach(months => {
-            calculations[months] = calculateDREForPeriod(months);
-        });
+        const dre12 = calculateDREForPeriod(12);
+        const dre24 = calculateDREForPeriod(24);
+        const dre36 = calculateDREForPeriod(36);
+        const dre48 = calculateDREForPeriod(48);
+        const dre60 = calculateDREForPeriod(60);
 
-        // Manter compatibilidade com código existente
-        const dre12 = calculations[12];
         return {
-            ...dre12,
-            // Adicionar cálculos para todos os períodos
-            ...calculations,
-            // Campos de compatibilidade
-            receitaBruta: dre12.receitaTotalPrimeiromes,
-            receitaLiquida: dre12.receitaTotalPrimeiromes - dre12.pis - dre12.cofins,
-            custoServico: dre12.custoFibra,
+            12: dre12,
+            24: dre24,
+            36: dre36,
+            48: dre48,
+            60: dre60,
+            // Manter compatibilidade com código existente
+            receitaBruta: dre12.receitaMensal,
+            receitaLiquida: dre12.receitaMensal - dre12.pis - dre12.cofins,
+            custoServico: dre12.custoRadio,
+            custoBanda: dre12.custoBanda,
             taxaInstalacao: dre12.receitaInstalacao,
+            comissaoVendedor: dre12.comissaoVendedor,
+            comissaoParceiroIndicador: dre12.comissaoParceiroIndicador,
+            comissaoParceiroInfluenciador: dre12.comissaoParceiroInfluenciador,
+            totalComissoes: dre12.totalComissoes,
             totalImpostos: dre12.pis + dre12.cofins + dre12.csll + dre12.irpj,
             lucroOperacional: dre12.balance,
             lucroLiquido: dre12.balance,
+            rentabilidade: dre12.rentabilidade,
+            lucratividade: dre12.lucratividade,
             paybackMeses: dre12.receitaInstalacao > 0 && dre12.balance > 0 ? Math.ceil(dre12.receitaInstalacao / dre12.balance) : 0,
         };
     }, [calculateDREForPeriod]);
