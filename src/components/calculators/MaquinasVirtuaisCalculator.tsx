@@ -391,8 +391,6 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
     // Descontos
     const [directorDiscountPercentage, setDirectorDiscountPercentage] = useState<number>(0);
-    const [appliedDirectorDiscountPercentage, setAppliedDirectorDiscountPercentage] = useState<number>(0);
-    const [applySalespersonDiscount, setApplySalespersonDiscount] = useState<boolean>(false);
 
     // Cálculo do desconto contratual baseado no período
     const contractDiscount = useMemo(() => {
