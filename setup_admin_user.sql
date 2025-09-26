@@ -15,7 +15,7 @@ SELECT
     'admin' as role,
     'Administrador Sistema' as full_name
 FROM auth.users 
-WHERE email = 'SEU_EMAIL@DOMINIO.COM'  -- ALTERE ESTE EMAIL PARA O SEU
+WHERE email = 'carlos.horst@doubletelecom.com.br'  -- ALTERE ESTE EMAIL PARA O SEU
 ON CONFLICT (id) DO UPDATE SET
     role = 'admin',
     updated_at = NOW();

@@ -320,11 +320,11 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         const revenueTaxValue = finalPrice * T_rev;
         
         const calculatedReferralPartnerCommission = includeReferralPartner
-            ? finalPrice * getPartnerIndicatorRate(finalPrice, contractTerm)
+            ? finalPrice * (getPartnerIndicatorRate(finalPrice, contractTerm) / 100)
             : 0;
 
         const calculatedInfluencerPartnerCommission = includeInfluencerPartner
-            ? finalPrice * getPartnerInfluencerRate(finalPrice, contractTerm)
+            ? finalPrice * (getPartnerInfluencerRate(finalPrice, contractTerm) / 100)
             : 0;
 
         const grossProfit = finalPrice - C - calculatedCommissionValue - revenueTaxValue - calculatedReferralPartnerCommission - calculatedInfluencerPartnerCommission;
@@ -506,7 +506,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         
         // Calculate referral partner commission if applicable
         const calculatedReferralPartnerCommission = includeReferralPartner
-            ? priceAfterDirectorDiscount * getPartnerIndicatorRate(priceAfterDirectorDiscount, contractTerm)
+            ? priceAfterDirectorDiscount * (getPartnerIndicatorRate(priceAfterDirectorDiscount, contractTerm) / 100)
             : 0;
         
         // Calculate final net profit after referral partner commission
@@ -539,22 +539,43 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         ? (costBreakdown.finalPrice * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
         : (costBreakdown.finalPrice * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
 
+    // Cálculo do DRE seguindo o modelo contábil correto
+    const receitaOperacionalBruta = costBreakdown.finalPrice;
+    
+    // Deduções da Receita Bruta (Impostos sobre a Receita - 15% conforme solicitado)
+    const impostosSobreReceita = receitaOperacionalBruta * 0.15;
+    
+    // Receita Operacional Líquida
+    const receitaOperacionalLiquida = receitaOperacionalBruta - impostosSobreReceita;
+    
+    // Despesas Operacionais (Comissões)
+    const despesasComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+    
+    // Lucro/Prejuízo Operacional
+    const lucroOperacional = receitaOperacionalLiquida - despesasComissoes - costBreakdown.cost;
+    
+    // Lucro/Prejuízo Líquido (considerando que não há outras despesas/receitas financeiras)
+    const lucroLiquido = lucroOperacional;
+    
+    // Rentabilidade (Margem Líquida)
+    const rentabilidade = receitaOperacionalBruta > 0 ? (lucroLiquido / receitaOperacionalBruta) * 100 : 0;
+    
     // DRE calculations
     const dreCalculations = {
-        receitaBruta: costBreakdown.finalPrice,
-        receitaLiquida: costBreakdown.finalPrice - costBreakdown.revenueTaxValue,
+        receitaBruta: receitaOperacionalBruta,
+        receitaLiquida: receitaOperacionalLiquida,
         custoServico: costBreakdown.cost,
         custoBanda: costBreakdown.cost,
         taxaInstalacao: costBreakdown.setupFee,
         comissaoVendedor: comissaoVendedor,
         comissaoParceiroIndicador: comissaoParceiroIndicador,
         comissaoParceiroInfluenciador: comissaoParceiroInfluenciador,
-        totalImpostos: costBreakdown.revenueTaxValue + costBreakdown.profitTaxValue,
-        lucroOperacional: costBreakdown.grossProfit,
-        lucroLiquido: costBreakdown.netProfit,
-        rentabilidade: costBreakdown.netMargin,
-        lucratividade: costBreakdown.netMargin,
-        paybackMeses: costBreakdown.setupFee > 0 && costBreakdown.netProfit > 0 ? Math.ceil(costBreakdown.setupFee / costBreakdown.netProfit) : 0,
+        totalImpostos: impostosSobreReceita,
+        lucroOperacional: lucroOperacional,
+        lucroLiquido: lucroLiquido,
+        rentabilidade: rentabilidade,
+        lucratividade: rentabilidade,
+        paybackMeses: costBreakdown.setupFee > 0 && lucroLiquido > 0 ? Math.ceil(costBreakdown.setupFee / lucroLiquido) : 0,
     };
 
     const handleSavePrices = () => {
@@ -617,7 +638,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         return monthlyRevenue * rate;
     })();
 
-    const finalTotalSetup = rawTotalSetup * salespersonDiscountFactor * directorDiscountFactor;
+    // Desconto do vendedor e diretor aplicado apenas sobre o valor mensal, não sobre o setup
+    const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
     const finalTotalMonthly = (rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor) - referralPartnerCommissionValue;
 
     // Função para determinar a versão baseada nos descontos aplicados
@@ -1545,18 +1567,18 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                     {applySalespersonDiscount && (
                                                         <div className="flex justify-between text-orange-400">
                                                             <span>Desconto Vendedor (5%):</span>
-                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * 0.05)}</span>
+                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.monthly, 0)) * 0.05)}</span>
                                                         </div>
                                                     )}
                                                     {appliedDirectorDiscountPercentage > 0 && (
                                                         <div className="flex justify-between text-orange-400">
                                                             <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%):</span>
-                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
+                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.monthly, 0)) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
                                                         </div>
                                                     )}
                                                     <div className="flex justify-between">
                                                         <span>Total de Instalação:</span>
-                                                        <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
+                                                        <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0))}</span>
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span>Total Mensal:</span>
@@ -1692,7 +1714,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                     <TableCell className="text-right text-white"></TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Custo da VM</TableCell>
+                                                    <TableCell className="text-white">Custo Double</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(costBreakdown.cost)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">

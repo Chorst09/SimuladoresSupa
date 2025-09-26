@@ -18,6 +18,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { useCommissions, getCommissionRate, getSellerCommissionRate, getChannelSellerCommissionRate } from '@/hooks/use-commissions';
 import CommissionTablesUnified from './CommissionTablesUnified';
 import { logError, logSuccess, type LogContext } from '@/lib/logging-utils';
+import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 
 // Interfaces
@@ -571,79 +573,7 @@ const createPartialLoadingWarning = (clientLoaded: boolean, accountManagerLoaded
     return `Atenção: Alguns dados da proposta não puderam ser carregados completamente:\n\n${issues.join('\n')}\n\nO sistema usou valores padrão onde necessário.`;
 };
 
-// Validation function for saving proposals
-const validateProposalForSaving = (): ValidationResult => {
-    const errors: string[] = [];
-    const warnings: string[] = [];
 
-    // User authentication check
-    if (!user) {
-        errors.push('• Usuário não autenticado');
-        return { isValid: false, errors, warnings };
-    }
-
-    // Client data validation
-    if (!clientData || !clientData.name?.trim()) {
-        errors.push('• Nome do cliente é obrigatório');
-    }
-    if (clientData?.email && !isValidEmail(clientData.email)) {
-        warnings.push('• Email do cliente parece inválido');
-    }
-
-    // Account manager validation
-    if (!accountManagerData || !accountManagerData.name?.trim()) {
-        errors.push('• Nome do gerente de contas é obrigatório');
-    }
-    if (accountManagerData?.email && !isValidEmail(accountManagerData.email)) {
-        warnings.push('• Email do gerente de contas parece inválido');
-    }
-
-    // Products validation
-    if (!addedProducts || addedProducts.length === 0) {
-        errors.push('• Pelo menos um produto deve ser adicionado');
-    } else {
-        // Validate individual products
-        addedProducts.forEach((product, index) => {
-            if (!product.description?.trim()) {
-                warnings.push(`• Produto ${index + 1} não tem descrição`);
-            }
-            if (product.setup < 0) {
-                errors.push(`• Produto ${index + 1} tem custo de instalação inválido`);
-            }
-            if (product.monthly <= 0) {
-                errors.push(`• Produto ${index + 1} tem custo mensal inválido`);
-            }
-        });
-    }
-
-    // Financial validation
-    const totalSetup = addedProducts.reduce((sum, p) => sum + (p.setup || 0), 0);
-    const totalMonthly = addedProducts.reduce((sum, p) => sum + (p.monthly || 0), 0);
-    
-    if (totalMonthly <= 0) {
-        errors.push('• Total mensal deve ser maior que zero');
-    }
-    
-    if (totalSetup < 0) {
-        errors.push('• Total de instalação não pode ser negativo');
-    }
-
-    // Contract term validation
-    if (contractTerm < 12 || contractTerm > 60) {
-        warnings.push('• Prazo do contrato fora do intervalo recomendado (12-60 meses)');
-    }
-
-    // Discount validation
-    if (appliedDirectorDiscountPercentage < 0 || appliedDirectorDiscountPercentage > 50) {
-        warnings.push('• Desconto do diretor fora do intervalo recomendado (0-50%)');
-    }
-
-    return {
-        isValid: errors.length === 0,
-        errors,
-        warnings
-    };
-};
 
 // Email validation helper
 const isValidEmail = (email: string): boolean => {
@@ -743,6 +673,8 @@ const classifySaveProposalError = (error: any): SaveProposalErrorInfo => {
 };
 
 const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToDashboard }) => {
+    const { user } = useAuth();
+
     // Estados
     const [viewMode, setViewMode] = useState<'search' | 'client-form' | 'calculator' | 'proposal-summary'>('search');
     const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -775,6 +707,80 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     const [markup, setMarkup] = useState(100);
     const [estimatedNetMargin, setEstimatedNetMargin] = useState(0);
 
+    // Validation function for saving proposals
+    const validateProposalForSaving = (user: any, clientData: ClientData, accountManagerData: AccountManagerData, addedProducts: Product[], contractTerm: number, appliedDirectorDiscountPercentage: number): ValidationResult => {
+        const errors: string[] = [];
+        const warnings: string[] = [];
+
+        // User authentication check
+        if (!user) {
+            errors.push('• Usuário não autenticado');
+            return { isValid: false, errors, warnings };
+        }
+
+        // Client data validation
+        if (!clientData || !clientData.name?.trim()) {
+            errors.push('• Nome do cliente é obrigatório');
+        }
+        if (clientData?.email && !isValidEmail(clientData.email)) {
+            warnings.push('• Email do cliente parece inválido');
+        }
+
+        // Account manager validation
+        if (!accountManagerData || !accountManagerData.name?.trim()) {
+            errors.push('• Nome do gerente de contas é obrigatório');
+        }
+        if (accountManagerData?.email && !isValidEmail(accountManagerData.email)) {
+            warnings.push('• Email do gerente de contas parece inválido');
+        }
+
+        // Products validation
+        if (!addedProducts || addedProducts.length === 0) {
+            errors.push('• Pelo menos um produto deve ser adicionado');
+        } else {
+            // Validate individual products
+            addedProducts.forEach((product, index) => {
+                if (!product.description?.trim()) {
+                    warnings.push(`• Produto ${index + 1} não tem descrição`);
+                }
+                if (product.setup < 0) {
+                    errors.push(`• Produto ${index + 1} tem custo de instalação inválido`);
+                }
+                if (product.monthly <= 0) {
+                    errors.push(`• Produto ${index + 1} tem custo mensal inválido`);
+                }
+            });
+        }
+
+        // Financial validation
+        const totalSetup = addedProducts.reduce((sum, p) => sum + (p.setup || 0), 0);
+        const totalMonthly = addedProducts.reduce((sum, p) => sum + (p.monthly || 0), 0);
+        
+        if (totalMonthly <= 0) {
+            errors.push('• Total mensal deve ser maior que zero');
+        }
+        
+        if (totalSetup < 0) {
+            errors.push('• Total de instalação não pode ser negativo');
+        }
+
+        // Contract term validation
+        if (contractTerm < 12 || contractTerm > 60) {
+            warnings.push('• Prazo do contrato fora do intervalo recomendado (12-60 meses)');
+        }
+
+        // Discount validation
+        if (appliedDirectorDiscountPercentage < 0 || appliedDirectorDiscountPercentage > 50) {
+            warnings.push('• Desconto do diretor fora do intervalo recomendado (0-50%)');
+        }
+
+        return {
+            isValid: errors.length === 0,
+            errors,
+            warnings
+        };
+    };
+
     // Função para atualizar as taxas de impostos
     const handleTaxRateChange = (taxType: string, value: string) => {
         const newValue = parseFloat(value) || 0;
@@ -783,8 +789,6 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             [taxType]: newValue
         }));
     };
-
-    const { user } = useAuth();
 
     // Efeitos
 
@@ -961,14 +965,16 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     const referralPartnerCommission = (() => {
         if (!includeReferralPartner) return 0;
         const monthlyRevenue = totalMonthly * salespersonDiscountFactor * directorDiscountFactor;
-        const rate = getPartnerIndicatorRate(monthlyRevenue, contractTerm);
+        // Corrigindo o cálculo da comissão do Canal Indicador
+        const rate = 0.05; // Taxa fixa de 5% para Canal Indicador
         return monthlyRevenue * rate;
     })();
 
     const influencerPartnerCommission = (() => {
         if (!includeInfluencerPartner) return 0;
         const monthlyRevenue = totalMonthly * salespersonDiscountFactor * directorDiscountFactor;
-        const rate = getPartnerInfluencerRate(monthlyRevenue, contractTerm);
+        // Corrigindo o cálculo da comissão do Canal Influenciador
+        const rate = 0.03; // Taxa fixa de 3% para Canal Influenciador
         return monthlyRevenue * rate;
     })();
 
@@ -1094,7 +1100,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         };
 
         // Enhanced validation with detailed error messages
-        const validationResult = validateProposalForSaving();
+        const validationResult = validateProposalForSaving(user, clientData, accountManagerData, addedProducts, contractTerm, appliedDirectorDiscountPercentage);
         if (!validationResult.isValid) {
             const errorMessage = `Não é possível salvar a proposta:\n\n${validationResult.errors.join('\n')}`;
             alert(errorMessage);
@@ -2064,10 +2070,13 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         const priceWithMarkup = cost + markupAmount;
         
         // DRE should show discounted monthly revenue BEFORE commission deductions
-        // This is the revenue that appears in DRE calculations
-        const discountedMonthlyRevenue = totalMonthly * salespersonDiscountFactor * directorDiscountFactor;
-        const finalPrice = discountedMonthlyRevenue; // Monthly revenue with discounts applied, before commissions
+    // This is the revenue that appears in DRE calculations
+    // A taxa de instalação deve ser considerada como receita
+        // Incluir a taxa de instalação na receita (distribuída ao longo do contrato)
         const setupFee = finalTotalSetup; // Setup cost without discounts (correct)
+    const setupFeeMonthly = contractTerm > 0 ? setupFee / contractTerm : 0;
+    const discountedMonthlyRevenue = (totalMonthly * salespersonDiscountFactor * directorDiscountFactor) + setupFeeMonthly;
+    const finalPrice = discountedMonthlyRevenue; // Monthly revenue with discounts applied, before commissions
         
         // Calculate actual commission values for DRE display
         const referralPartnerCommissionValue = referralPartnerCommission + influencerPartnerCommission;
@@ -2126,11 +2135,32 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         ? (costBreakdown.finalPrice * (getChannelSellerCommissionRate(channelSeller, 12) / 100)) // Canal/Vendedor quando há parceiros
         : (costBreakdown.finalPrice * (getSellerCommissionRate(seller, 12) / 100)); // Vendedor quando não há parceiros
 
+    // Cálculo do DRE seguindo o modelo contábil correto
+    const receitaOperacionalBruta = costBreakdown.finalPrice;
+    
+    // Deduções da Receita Bruta (Impostos sobre a Receita - 15% conforme solicitado)
+    const impostosSobreReceita = receitaOperacionalBruta * 0.15;
+    
+    // Receita Operacional Líquida
+    const receitaOperacionalLiquida = receitaOperacionalBruta - impostosSobreReceita;
+    
+    // Despesas Operacionais (Comissões)
+    const despesasComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+    
+    // Lucro/Prejuízo Operacional
+    const lucroOperacional = receitaOperacionalLiquida - despesasComissoes - costBreakdown.cost;
+    
+    // Lucro/Prejuízo Líquido (considerando que não há outras despesas/receitas financeiras)
+    const lucroLiquido = lucroOperacional;
+    
+    // Rentabilidade (Margem Líquida)
+    const rentabilidade = receitaOperacionalBruta > 0 ? (lucroLiquido / receitaOperacionalBruta) * 100 : 0;
+    
     // DRE calculations - properly reflecting corrected discount application
     const dreCalculations = {
         // Revenue shows discounted monthly total (correct)
-        receitaBruta: costBreakdown.finalPrice, // This is the discounted monthly revenue (after salesperson and director discounts)
-        receitaLiquida: costBreakdown.finalPrice - costBreakdown.revenueTaxValue,
+        receitaBruta: receitaOperacionalBruta, // This is the discounted monthly revenue (after salesperson and director discounts)
+        receitaLiquida: receitaOperacionalLiquida,
         
         // Costs and commissions (all calculated on discounted revenue)
         custoServico: costBreakdown.cost,
@@ -2139,13 +2169,13 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         comissaoParceiroInfluenciador: comissaoParceiroInfluenciador,
         
         // Profit calculations (based on discounted revenue)
-        lucroOperacional: costBreakdown.grossProfit, // Revenue - costs - taxes - commissions
-        lucroLiquido: costBreakdown.netProfit, // Gross profit - profit taxes
-        rentabilidade: costBreakdown.netMargin, // Net profit / discounted revenue
-        lucratividade: costBreakdown.netMargin,
+        lucroOperacional: lucroOperacional, // Revenue - costs - taxes - commissions
+        lucroLiquido: lucroLiquido, // Gross profit - profit taxes
+        rentabilidade: rentabilidade, // Net profit / discounted revenue
+        lucratividade: rentabilidade,
         
         // Payback calculation using UNDISCOUNTED setup costs and net profit from discounted revenue
-        paybackMeses: costBreakdown.setupFee > 0 && costBreakdown.netProfit > 0 ? Math.ceil(costBreakdown.setupFee / costBreakdown.netProfit) : 0,
+        paybackMeses: costBreakdown.setupFee > 0 && lucroLiquido > 0 ? Math.ceil(costBreakdown.setupFee / lucroLiquido) : 0,
         
         // Setup costs WITHOUT discounts applied (correct - setup costs are never discounted)
         taxaInstalacao: costBreakdown.setupFee, // This remains undiscounted regardless of salesperson/director discounts
@@ -2872,7 +2902,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     <TableCell className="text-right text-white"></TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Custo da VM</TableCell>
+                                                    <TableCell className="text-white">Custo Man</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(costBreakdown.cost)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
