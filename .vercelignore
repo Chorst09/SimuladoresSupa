@@ -1,0 +1,20 @@
+# Ignore test files during Vercel build
+src/__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Ignore problematic components that are not used in production
+src/components/price-records/
+src/components/quotes/
+src/components/rfp/
+src/components/ro-management/
+src/components/training-management/
+src/components/topology/
+src/components/bids/
+src/components/edital-analysis/
+
+# Ignore development and testing utilities
+src/lib/__tests__/
+scripts/
