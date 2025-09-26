@@ -530,9 +530,41 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     const taxaInstalacao = includeInstallation ? (result?.installationCost || 2500) : 0;
     const custoFibra = result?.fiberCost || 7000;
     
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = (baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+        
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+        
+        // Aplicar desconto do diretor (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+        
+        return discountedTotal;
+    };
+    
     // Função para calcular DRE por período de contrato
     const calculateDREForPeriod = (months: number) => {
-        const monthlyRevenue = result ? getMonthlyPrice(result, months) : 0;
+        // CORREÇÃO: Usar sempre o valor mensal do projeto atual (velocidade e prazo selecionados)
+        // Se o período for diferente do selecionado, usar o preço do período específico
+        // Se for o mesmo período selecionado, usar o valor já calculado
+        let monthlyRevenue = 0;
+        
+        if (result) {
+            if (months === contractTerm) {
+                // Se for o período selecionado, usar o valor já calculado com descontos aplicados
+                monthlyRevenue = applyDiscounts(getMonthlyPrice(result, months));
+            } else {
+                // Para outros períodos, calcular o preço base sem descontos específicos do período selecionado
+                monthlyRevenue = getMonthlyPrice(result, months);
+            }
+        }
+        
         const receitaInstalacao = taxaInstalacao;
         const receitaTotalPrimeiromes = monthlyRevenue + receitaInstalacao;
         const custoBanda = custoFibra / months; // Amortização do custo da fibra
@@ -554,8 +586,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const comissoesAB = monthlyRevenue * (commissionPercentage / 100);
         const custoDespesa = monthlyRevenue * 0.10; // 10% conforme padrão
         
-        // Balance (Lucro Líquido)
-        const balance = monthlyRevenue - receitaInstalacao - custoFibra - custoBanda - pis - cofins - csll - irpj - comissoesAB - custoDespesa;
+        // Balance (Lucro Líquido) - CORREÇÃO: não subtrair receitaInstalacao e custoFibra total do balance mensal
+        const balance = monthlyRevenue - custoBanda - pis - cofins - csll - irpj - comissoesAB - custoDespesa;
         
         // Rentabilidade e Lucratividade
         const rentabilidade = monthlyRevenue > 0 ? (balance / monthlyRevenue) * 100 : 0;
@@ -676,24 +708,6 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             return 2; // V2 para desconto do vendedor
         }
         return 1; // V1 versão base
-    };
-
-    // Função para aplicar descontos no total mensal
-    const applyDiscounts = (baseTotal: number): number => {
-        let discountedTotal = baseTotal;
-        
-        // Aplicar desconto do vendedor (5%)
-        if (applySalespersonDiscount) {
-            discountedTotal = discountedTotal * 0.95;
-        }
-        
-        // Aplicar desconto do diretor (percentual configurado)
-        if (appliedDirectorDiscountPercentage > 0) {
-            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
-            discountedTotal = discountedTotal * directorDiscountFactor;
-        }
-        
-        return discountedTotal;
     };
 
     const saveProposal = async () => {
