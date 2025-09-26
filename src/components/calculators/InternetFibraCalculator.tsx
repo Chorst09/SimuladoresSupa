@@ -524,53 +524,89 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         };
     }, [result, commissionPercentage, revenueTaxes, profitTaxes, appliedDirectorDiscountPercentage, includeReferralPartner]);
 
-    // DRE calculations
-    // Cálculo correto das comissões baseado na seleção dos parceiros
-    const comissaoParceiroIndicador = includeReferralPartner ? (costBreakdown.referralPartnerCommission || 0) : 0;
-    const comissaoParceiroInfluenciador = includeInfluencerPartner ? (costBreakdown.influencerPartnerCommission || 0) : 0;
+    // DRE calculations - Melhorado conforme solicitação
+    // Dados base: Velocidade 600 Mbps, Taxa de instalação = 2500,00, Custo Fibra = 7000,00
+    const velocidade = result?.speed || 600;
+    const taxaInstalacao = includeInstallation ? (result?.installationCost || 2500) : 0;
+    const custoFibra = result?.fiberCost || 7000;
     
-    // Calcular a comissão correta baseado na presença de parceiros
-    const temParceiros = includeReferralPartner || includeInfluencerPartner;
-    const comissaoVendedor = temParceiros 
-        ? (costBreakdown.finalPrice * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
-        : (costBreakdown.finalPrice * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
-
-    // Cálculo do DRE seguindo o modelo contábil correto
-    const receitaOperacionalBruta = costBreakdown.finalPrice;
+    // Função para calcular DRE por período de contrato
+    const calculateDREForPeriod = (months: number) => {
+        const monthlyRevenue = result ? getMonthlyPrice(result, months) : 0;
+        const receitaInstalacao = taxaInstalacao;
+        const receitaTotalPrimeiromes = monthlyRevenue + receitaInstalacao;
+        const custoBanda = custoFibra / months; // Amortização do custo da fibra
+        const fundraising = 0; // Conforme tabela
+        const lastMile = 0; // Conforme tabela
+        
+        // Impostos baseados na Tabela de Impostos
+        const pisRate = taxRates.pis / 100;
+        const cofinsRate = taxRates.cofins / 100;
+        const csllRate = taxRates.csll / 100;
+        const irpjRate = taxRates.irpj / 100;
+        
+        const pis = monthlyRevenue * pisRate;
+        const cofins = monthlyRevenue * cofinsRate;
+        const csll = monthlyRevenue * csllRate;
+        const irpj = monthlyRevenue * irpjRate;
+        
+        // Comissões A+B (baseado no markup e margem líquida)
+        const comissoesAB = monthlyRevenue * (commissionPercentage / 100);
+        const custoDespesa = monthlyRevenue * 0.10; // 10% conforme padrão
+        
+        // Balance (Lucro Líquido)
+        const balance = monthlyRevenue - receitaInstalacao - custoFibra - custoBanda - pis - cofins - csll - irpj - comissoesAB - custoDespesa;
+        
+        // Rentabilidade e Lucratividade
+        const rentabilidade = monthlyRevenue > 0 ? (balance / monthlyRevenue) * 100 : 0;
+        const lucratividade = rentabilidade; // Mesmo valor conforme tabela
+        
+        return {
+            receitaMensal: monthlyRevenue,
+            receitaInstalacao,
+            receitaTotalPrimeiromes,
+            custoFibra,
+            custoBanda,
+            fundraising,
+            lastMile,
+            pis,
+            cofins,
+            csll,
+            irpj,
+            comissoesAB,
+            custoDespesa,
+            balance,
+            rentabilidade,
+            lucratividade
+        };
+    };
     
-    // Deduções da Receita Bruta (Impostos sobre a Receita)
-    const impostosSobreReceita = receitaOperacionalBruta * 0.15; // 15% de impostos conforme solicitado
-    
-    // Receita Operacional Líquida
-    const receitaOperacionalLiquida = receitaOperacionalBruta - impostosSobreReceita;
-    
-    // Despesas Operacionais (Comissões)
-    const despesasComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
-    
-    // Lucro/Prejuízo Operacional
-    const lucroOperacional = receitaOperacionalLiquida - despesasComissoes - costBreakdown.cost;
-    
-    // Lucro/Prejuízo Líquido (considerando que não há outras despesas/receitas financeiras)
-    const lucroLiquido = lucroOperacional;
-    
-    // Rentabilidade (Margem Líquida)
-    const rentabilidade = receitaOperacionalBruta > 0 ? (lucroLiquido / receitaOperacionalBruta) * 100 : 0;
+    // Calcular DRE para todos os períodos
+    const dre12 = calculateDREForPeriod(12);
+    const dre24 = calculateDREForPeriod(24);
+    const dre36 = calculateDREForPeriod(36);
+    const dre48 = calculateDREForPeriod(48);
+    const dre60 = calculateDREForPeriod(60);
     
     const dreCalculations = {
-        receitaBruta: receitaOperacionalBruta,
-        receitaLiquida: receitaOperacionalLiquida,
-        custoServico: costBreakdown.cost,
-        custoBanda: costBreakdown.cost,
-        taxaInstalacao: costBreakdown.setupFee,
-        comissaoVendedor: comissaoVendedor,
-        comissaoParceiroIndicador: comissaoParceiroIndicador,
-        comissaoParceiroInfluenciador: comissaoParceiroInfluenciador,
-        totalImpostos: impostosSobreReceita,
-        lucroOperacional: lucroOperacional,
-        lucroLiquido: lucroLiquido,
-        rentabilidade: rentabilidade,
-        lucratividade: rentabilidade,
-        paybackMeses: costBreakdown.setupFee > 0 && lucroLiquido > 0 ? Math.ceil(costBreakdown.setupFee / lucroLiquido) : 0,
+        12: dre12,
+        24: dre24,
+        36: dre36,
+        48: dre48,
+        60: dre60,
+        // Manter compatibilidade com código existente
+        receitaBruta: dre12.receitaMensal,
+        receitaLiquida: dre12.receitaMensal - dre12.pis - dre12.cofins,
+        custoServico: dre12.custoFibra,
+        custoBanda: dre12.custoBanda,
+        taxaInstalacao: dre12.receitaInstalacao,
+        comissaoVendedor: dre12.comissoesAB,
+        totalImpostos: dre12.pis + dre12.cofins + dre12.csll + dre12.irpj,
+        lucroOperacional: dre12.balance,
+        lucroLiquido: dre12.balance,
+        rentabilidade: dre12.rentabilidade,
+        lucratividade: dre12.lucratividade,
+        paybackMeses: dre12.receitaInstalacao > 0 && dre12.balance > 0 ? Math.ceil(dre12.receitaInstalacao / dre12.balance) : 0,
     };
 
     const handleSavePrices = () => {
@@ -1677,101 +1713,169 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                             <div className="w-4 h-4 bg-blue-500 mr-2"></div>
                                             DRE - Demonstrativo de Resultado do Exercício
                                         </CardTitle>
-                                        <CardDescription>DRE - Período: 12 Meses</CardDescription>
+                                        <CardDescription>Internet Fibra {velocidade} Mbps - Análise por Período de Contrato</CardDescription>
                                     </CardHeader>
-                                    <CardContent>
+                                    <CardContent className="overflow-x-auto">
                                         <Table>
                                             <TableHeader>
                                                 <TableRow className="border-slate-700">
                                                     <TableHead className="text-white">Descrição</TableHead>
-                                                    <TableHead className="text-right text-white">Valor Mensal</TableHead>
+                                                    <TableHead className="text-right text-white">12 Meses</TableHead>
+                                                    <TableHead className="text-right text-white">24 Meses</TableHead>
+                                                    <TableHead className="text-right text-white">36 Meses</TableHead>
+                                                    <TableHead className="text-right text-white">48 Meses</TableHead>
+                                                    <TableHead className="text-right text-white">60 Meses</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 <TableRow className="border-slate-800 bg-green-900/30">
-                                                    <TableCell className="text-white font-semibold">Receita Mensal</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.finalPrice)}</TableCell>
+                                                    <TableCell className="text-white font-semibold">Receita mensal</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].receitaMensal)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].receitaMensal)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].receitaMensal)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].receitaMensal)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].receitaMensal)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Taxa Setup</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.setupFee)}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="border-slate-800 bg-red-900/30">
-                                                    <TableCell className="text-white font-semibold">(-) Custos Diretos</TableCell>
-                                                    <TableCell className="text-right text-white"></TableCell>
-                                                </TableRow>
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Custo Fibra</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.cost)}</TableCell>
-                                                </TableRow>
-                                                {includeReferralPartner && (
-                                                    <TableRow className="border-slate-800">
-                                                        <TableCell className="text-white">Comissão Parceiro Indicador</TableCell>
-                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</TableCell>
-                                                    </TableRow>
-                                                )}
-                                                {includeInfluencerPartner && (
-                                                    <TableRow className="border-slate-800">
-                                                        <TableCell className="text-white">Comissão Parceiro Influenciador</TableCell>
-                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations.comissaoParceiroInfluenciador)}</TableCell>
-                                                    </TableRow>
-                                                )}
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">
-                                                        {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
-                                                    </TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations.comissaoVendedor)}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="border-slate-800 bg-red-900/30">
-                                                    <TableCell className="text-white font-semibold">(-) Impostos sobre Receita</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.revenueTaxValue)}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">PIS ({taxRates.pis.toFixed(2)}%)</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.finalPrice * (taxRates.pis / 100))}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Cofins ({taxRates.cofins.toFixed(2)}%)</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.finalPrice * (taxRates.cofins / 100))}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">CSLL ({taxRates.csll.toFixed(2)}%)</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.finalPrice * (taxRates.csll / 100))}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">IRPJ ({taxRates.irpj.toFixed(2)}%)</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.finalPrice * (taxRates.irpj / 100))}</TableCell>
+                                                    <TableCell className="text-white">Receita - Taxa Instalação</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].receitaInstalacao)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].receitaInstalacao)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].receitaInstalacao)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].receitaInstalacao)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].receitaInstalacao)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800 bg-blue-900/30">
-                                                    <TableCell className="text-white font-semibold">Lucro Bruto</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.grossProfit)}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="border-slate-800 bg-red-900/30">
-                                                    <TableCell className="text-white font-semibold">(-) Impostos sobre Lucro</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(costBreakdown.profitTaxValue)}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="border-slate-800 bg-green-900/50">
-                                                    <TableCell className="text-white font-bold">LUCRO LÍQUIDO</TableCell>
-                                                    <TableCell className={`text-right font-bold ${costBreakdown.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {formatCurrency(costBreakdown.netProfit)}
-                                                    </TableCell>
+                                                    <TableCell className="text-white font-semibold">Total</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].receitaTotalPrimeiromes)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].receitaTotalPrimeiromes)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].receitaTotalPrimeiromes)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].receitaTotalPrimeiromes)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].receitaTotalPrimeiromes)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white font-semibold">Balance</TableCell>
-                                                    <TableCell className={`text-right font-semibold ${costBreakdown.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {formatCurrency(costBreakdown.netProfit)}
+                                                    <TableCell className="text-white">Custo de banda</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].custoBanda)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].custoBanda)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].custoBanda)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].custoBanda)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].custoBanda)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">Fundraising</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].fundraising)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].fundraising)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].fundraising)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].fundraising)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].fundraising)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">Last Mile</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].lastMile)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].lastMile)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].lastMile)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].lastMile)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].lastMile)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">Pis</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].pis)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].pis)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].pis)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].pis)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].pis)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">Cofins</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].cofins)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].cofins)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].cofins)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].cofins)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].cofins)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">CSLL</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].csll)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].csll)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].csll)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].csll)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].csll)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">IRPJ</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].irpj)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].irpj)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].irpj)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].irpj)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].irpj)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">Comissões A+B</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].comissoesAB)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].comissoesAB)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].comissoesAB)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].comissoesAB)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].comissoesAB)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">Custo / Despesa</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].custoDespesa)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].custoDespesa)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].custoDespesa)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].custoDespesa)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].custoDespesa)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800 bg-green-900/50">
+                                                    <TableCell className="text-white font-bold">Balance</TableCell>
+                                                    <TableCell className={`text-right font-bold ${dreCalculations[12].balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {formatCurrency(dreCalculations[12].balance)}
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-bold ${dreCalculations[24].balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {formatCurrency(dreCalculations[24].balance)}
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-bold ${dreCalculations[36].balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {formatCurrency(dreCalculations[36].balance)}
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-bold ${dreCalculations[48].balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {formatCurrency(dreCalculations[48].balance)}
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-bold ${dreCalculations[60].balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {formatCurrency(dreCalculations[60].balance)}
                                                     </TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Rentabilidade %</TableCell>
-                                                    <TableCell className={`text-right font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {((costBreakdown.netProfit / costBreakdown.finalPrice) * 100).toFixed(2)}%
+                                                    <TableCell className={`text-right font-semibold ${dreCalculations[12].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {dreCalculations[12].rentabilidade.toFixed(2)}%
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-semibold ${dreCalculations[24].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {dreCalculations[24].rentabilidade.toFixed(2)}%
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-semibold ${dreCalculations[36].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {dreCalculations[36].rentabilidade.toFixed(2)}%
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-semibold ${dreCalculations[48].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {dreCalculations[48].rentabilidade.toFixed(2)}%
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-semibold ${dreCalculations[60].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {dreCalculations[60].rentabilidade.toFixed(2)}%
                                                     </TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Lucratividade</TableCell>
-                                                    <TableCell className={`text-right font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                        {((costBreakdown.netProfit / costBreakdown.finalPrice) * 100).toFixed(2)}%
+                                                    <TableCell className={`text-right font-semibold ${dreCalculations[12].lucratividade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {dreCalculations[12].lucratividade.toFixed(2)}%
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-semibold ${dreCalculations[24].lucratividade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {dreCalculations[24].lucratividade.toFixed(2)}%
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-semibold ${dreCalculations[36].lucratividade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {dreCalculations[36].lucratividade.toFixed(2)}%
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-semibold ${dreCalculations[48].lucratividade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {dreCalculations[48].lucratividade.toFixed(2)}%
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-semibold ${dreCalculations[60].lucratividade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        {dreCalculations[60].lucratividade.toFixed(2)}%
                                                     </TableCell>
                                                 </TableRow>
                                             </TableBody>
