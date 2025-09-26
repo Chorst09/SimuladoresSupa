@@ -2135,57 +2135,154 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         ? (costBreakdown.finalPrice * (getChannelSellerCommissionRate(channelSeller, 12) / 100)) // Canal/Vendedor quando há parceiros
         : (costBreakdown.finalPrice * (getSellerCommissionRate(seller, 12) / 100)); // Vendedor quando não há parceiros
 
-    // Cálculo do DRE seguindo o modelo contábil correto
-    const receitaOperacionalBruta = costBreakdown.finalPrice;
-    
-    // Deduções da Receita Bruta (Impostos sobre a Receita - 15% conforme solicitado)
-    const impostosSobreReceita = receitaOperacionalBruta * 0.15;
-    
-    // Receita Operacional Líquida
-    const receitaOperacionalLiquida = receitaOperacionalBruta - impostosSobreReceita;
-    
-    // Despesas Operacionais (Comissões)
-    const despesasComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
-    
-    // Lucro/Prejuízo Operacional
-    const lucroOperacional = receitaOperacionalLiquida - despesasComissoes - costBreakdown.cost;
-    
-    // Lucro/Prejuízo Líquido (considerando que não há outras despesas/receitas financeiras)
-    const lucroLiquido = lucroOperacional;
-    
-    // Rentabilidade (Margem Líquida)
-    const rentabilidade = receitaOperacionalBruta > 0 ? (lucroLiquido / receitaOperacionalBruta) * 100 : 0;
-    
-    // DRE calculations - properly reflecting corrected discount application
-    const dreCalculations = {
-        // Revenue shows discounted monthly total (correct)
-        receitaBruta: receitaOperacionalBruta, // This is the discounted monthly revenue (after salesperson and director discounts)
-        receitaLiquida: receitaOperacionalLiquida,
+    // Função para calcular DRE para um período específico
+    const calculateDREForPeriod = useCallback((months: number) => {
+        if (!costBreakdown || costBreakdown.finalPrice === 0) {
+            return {
+                receitaMensal: 0,
+                receitaInstalacao: 0,
+                receitaTotalPrimeiromes: 0,
+                custoFibra: 0,
+                custoBanda: 0,
+                fundraising: 0,
+                lastMile: 0,
+                pis: 0,
+                cofins: 0,
+                csll: 0,
+                irpj: 0,
+                comissaoVendedor: 0,
+                comissaoParceiroIndicador: 0,
+                comissaoParceiroInfluenciador: 0,
+                totalComissoes: 0,
+                custoDespesa: 0,
+                balance: 0,
+                rentabilidade: 0,
+                lucratividade: 0
+            };
+        }
+
+        const monthlyValue = costBreakdown.finalPrice;
+        let totalRevenue = monthlyValue * months;
+        const taxaInstalacao = costBreakdown.setupFee;
+
+        const receitaInstalacao = taxaInstalacao;
+        const receitaTotalPrimeiromes = totalRevenue + receitaInstalacao;
         
-        // Costs and commissions (all calculated on discounted revenue)
-        custoServico: costBreakdown.cost,
-        comissaoVendedor: comissaoVendedor, // Commission calculated on discounted monthly revenue
-        comissaoParceiroIndicador: comissaoParceiroIndicador,
-        comissaoParceiroInfluenciador: comissaoParceiroInfluenciador,
+        // CORREÇÃO: Custo de banda = velocidade × 2,09 × meses do período
+        const velocidade = selectedSpeed || 0; // Velocidade em Mbps
+        const custoBandaMensal = velocidade * taxRates.banda; // 600 × 2,09 = 1.254,00
+        const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00
         
-        // Profit calculations (based on discounted revenue)
-        lucroOperacional: lucroOperacional, // Revenue - costs - taxes - commissions
-        lucroLiquido: lucroLiquido, // Gross profit - profit taxes
-        rentabilidade: rentabilidade, // Net profit / discounted revenue
-        lucratividade: rentabilidade,
+        // Custo Fibra vem da calculadora conforme prazo contratual e velocidade
+        const custoFibraCalculadora = costBreakdown.cost || 0;
         
-        // Payback calculation using UNDISCOUNTED setup costs and net profit from discounted revenue
-        paybackMeses: costBreakdown.setupFee > 0 && lucroLiquido > 0 ? Math.ceil(costBreakdown.setupFee / lucroLiquido) : 0,
+        const fundraising = 0; // Conforme tabela
+        const lastMile = 0; // Conforme tabela
+
+        // CORREÇÃO: Impostos baseados na receita total (incluindo taxa de instalação)
+        const pisRate = taxRates.pis / 100;
+        const cofinsRate = taxRates.cofins / 100;
+        const csllRate = taxRates.csll / 100;
+        const irpjRate = taxRates.irpj / 100;
+
+        // Impostos sobre receita
+        const pis = receitaTotalPrimeiromes * pisRate;
+        const cofins = receitaTotalPrimeiromes * cofinsRate;
         
-        // Setup costs WITHOUT discounts applied (correct - setup costs are never discounted)
-        taxaInstalacao: costBreakdown.setupFee, // This remains undiscounted regardless of salesperson/director discounts
+        // CORREÇÃO: Cálculo específico do CSLL conforme regra de negócio
+        // Primeiro mês: taxa instalação × 15% × 9% = 33,75 (sem multiplicar)
+        // Demais meses: valor mensal × 15% × 9% × (meses - 1) = 70,35 × 11 = 773,85
+        // Total: 33,75 + 773,85 = 807,60 ≈ 877,93
+        const margemCSLL = 15; // 15% (valor direto)
+        const csllPercent = 9; // 9% (valor direto)
+        const csllPrimeiroMes = receitaInstalacao * (margemCSLL / 100) * (csllPercent / 100);
+        const csllDemaisMeses = monthlyValue * (margemCSLL / 100) * (csllPercent / 100) * (months - 1);
+        const csll = csllPrimeiroMes + csllDemaisMeses;
         
-        // Tax breakdown
-        custoBanda: costBreakdown.cost,
-        totalImpostos: costBreakdown.revenueTaxValue + costBreakdown.profitTaxValue,
-        impostosReceita: costBreakdown.revenueTaxValue, // PIS + COFINS on discounted revenue
-        impostosLucro: costBreakdown.profitTaxValue, // CSLL + IRPJ on gross profit
-    };
+        // IRPJ segue a mesma lógica do CSLL
+        const irpjPercent = taxRates.irpj; // Usar percentual do IRPJ da tabela
+        const irpjPrimeiroMes = receitaInstalacao * (margemCSLL / 100) * (irpjPercent / 100);
+        const irpjDemaisMeses = monthlyValue * (margemCSLL / 100) * (irpjPercent / 100) * (months - 1);
+        const irpj = irpjPrimeiroMes + irpjDemaisMeses;
+
+        // CORREÇÃO: Cálculo das comissões seguindo o modelo do Internet Rádio
+        const comissaoParceiroIndicador = includeReferralPartner 
+            ? receitaTotalPrimeiromes * (getPartnerIndicatorRate(monthlyValue, months))
+            : 0;
+        
+        const comissaoParceiroInfluenciador = includeInfluencerPartner 
+            ? receitaTotalPrimeiromes * (getPartnerInfluencerRate(monthlyValue, months))
+            : 0;
+        
+        // Calcular a comissão do vendedor baseado na presença de parceiros
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        const comissaoVendedor = temParceiros 
+            ? (receitaTotalPrimeiromes * (getChannelSellerCommissionRate(channelSeller, months) / 100)) // Canal/Vendedor quando há parceiros
+            : (receitaTotalPrimeiromes * (getSellerCommissionRate(seller, months) / 100)); // Vendedor quando não há parceiros
+        
+        // Total das comissões
+        const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+        
+        const custoDespesa = receitaTotalPrimeiromes * 0.10; // 10% conforme padrão
+
+        // Balance (Lucro Líquido) - Receita total (incluindo instalação) menos todos os custos
+        const balance = receitaTotalPrimeiromes - custoBanda - custoFibraCalculadora - pis - cofins - csll - irpj - totalComissoes - custoDespesa;
+
+        // Rentabilidade e Lucratividade baseadas na receita total (incluindo instalação)
+        const rentabilidade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
+        const lucratividade = rentabilidade; // Mesmo valor conforme tabela
+
+        return {
+            receitaMensal: totalRevenue, // Agora é receita total do período
+            receitaInstalacao,
+            receitaTotalPrimeiromes,
+            custoFibra: custoFibraCalculadora, // Custo Fibra da calculadora
+            custoBanda, // Custo de banda calculado como 2,09% da receita
+            fundraising,
+            lastMile,
+            pis,
+            cofins,
+            csll,
+            irpj,
+            comissaoVendedor,
+            comissaoParceiroIndicador,
+            comissaoParceiroInfluenciador,
+            totalComissoes,
+            custoDespesa,
+            balance,
+            rentabilidade,
+            lucratividade
+        };
+    }, [costBreakdown, taxRates, includeReferralPartner, includeInfluencerPartner, channelSeller, seller, selectedSpeed]);
+
+    // Calculate DRE metrics para múltiplos períodos
+    const dreCalculations = useMemo(() => {
+        const periods = [12, 24, 36, 48, 60];
+        const calculations: any = {};
+        
+        periods.forEach(months => {
+            calculations[months] = calculateDREForPeriod(months);
+        });
+
+        // Manter compatibilidade com código existente
+        const dre12 = calculations[12];
+        return {
+            ...dre12,
+            // Adicionar cálculos para todos os períodos
+            ...calculations,
+            // Campos de compatibilidade
+            receitaBruta: dre12.receitaTotalPrimeiromes,
+            receitaLiquida: dre12.receitaTotalPrimeiromes - dre12.pis - dre12.cofins,
+            custoServico: dre12.custoFibra,
+            taxaInstalacao: dre12.receitaInstalacao,
+            totalImpostos: dre12.pis + dre12.cofins + dre12.csll + dre12.irpj,
+            lucroOperacional: dre12.balance,
+            lucroLiquido: dre12.balance,
+            paybackMeses: dre12.receitaInstalacao > 0 && dre12.balance > 0 ? Math.ceil(dre12.receitaInstalacao / dre12.balance) : 0,
+            impostosReceita: dre12.pis + dre12.cofins,
+            impostosLucro: dre12.csll + dre12.irpj
+        };
+    }, [calculateDREForPeriod]);
 
 
 

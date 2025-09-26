@@ -15,10 +15,10 @@ import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
-import { 
-    Wifi, 
-    Calculator, 
-    FileText, 
+import {
+    Wifi,
+    Calculator,
+    FileText,
     Plus,
     Edit,
     Save,
@@ -135,7 +135,7 @@ const calculatePayback = (installationCost: number, monthlyRevenue: number): num
 const validatePayback = (installationCost: number, monthlyRevenue: number, contractTerm: number): { isValid: boolean, actualPayback: number, maxPayback: number } => {
     const actualPayback = calculatePayback(installationCost, monthlyRevenue);
     const maxPayback = getMaxPaybackMonths(contractTerm);
-    
+
     return {
         isValid: actualPayback <= maxPayback,
         actualPayback,
@@ -146,14 +146,14 @@ const validatePayback = (installationCost: number, monthlyRevenue: number, contr
 // Tabela de Comissão do Parceiro Indicador (Valores - Receita Mensal)
 // Usa ate24% até 24 meses e mais24% acima de 24 meses
 const PARTNER_INDICATOR_RANGES = [
-    { min: 0,      max: 500,    ate24: 1.5,  mais24: 2.5 },
-    { min: 500.01, max: 1000,   ate24: 2.5,  mais24: 4.0 },
-    { min: 1000.01,max: 1500,   ate24: 4.01, mais24: 5.5 },
-    { min: 1500.01,max: 3000,   ate24: 5.51, mais24: 7.0 },
-    { min: 3000.01,max: 5000,   ate24: 7.01, mais24: 8.5 },
-    { min: 5000.01,max: 6500,   ate24: 8.51, mais24: 10.0 },
-    { min: 6500.01,max: 9000,   ate24: 10.01,mais24: 11.5 },
-    { min: 9000.01,max: Infinity,ate24: 11.51,mais24: 13.0 },
+    { min: 0, max: 500, ate24: 1.5, mais24: 2.5 },
+    { min: 500.01, max: 1000, ate24: 2.5, mais24: 4.0 },
+    { min: 1000.01, max: 1500, ate24: 4.01, mais24: 5.5 },
+    { min: 1500.01, max: 3000, ate24: 5.51, mais24: 7.0 },
+    { min: 3000.01, max: 5000, ate24: 7.01, mais24: 8.5 },
+    { min: 5000.01, max: 6500, ate24: 8.51, mais24: 10.0 },
+    { min: 6500.01, max: 9000, ate24: 10.01, mais24: 11.5 },
+    { min: 9000.01, max: Infinity, ate24: 11.51, mais24: 13.0 },
 ];
 
 // Função movida para dentro do componente para acessar o hook useCommissions
@@ -175,15 +175,15 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     const [proposals, setProposals] = useState<Proposal[]>([]);
     const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
     const [searchTerm, setSearchTerm] = useState<string>('');
-    
+
     // Estados do cliente
     const [clientData, setClientData] = useState<ClientData>({ name: '', contact: '', projectName: '', email: '', phone: '' });
     const [accountManagerData, setAccountManagerData] = useState<AccountManagerData>({ name: '', email: '', phone: '' });
-    
+
     // Estados do produto
     const [addedProducts, setAddedProducts] = useState<Product[]>([]);
     const [fibraPlans, setFibraPlans] = useState<FibraPlan[]>([]);
-    
+
     // Estados da calculadora
     const [selectedSpeed, setSelectedSpeed] = useState<number>(0);
     const [contractTerm, setContractTerm] = useState<number>(12);
@@ -198,10 +198,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     const [applySalespersonDiscount, setApplySalespersonDiscount] = useState<boolean>(false);
     const [includeReferralPartner, setIncludeReferralPartner] = useState<boolean>(false);
     const [includeInfluencerPartner, setIncludeInfluencerPartner] = useState<boolean>(false);
-    
+
     // Hook para comissões editáveis
     const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
-    
+
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
     // Usa apenas o valor mensal para buscar o percentual na tabela de comissões
     const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number): number => {
@@ -215,14 +215,14 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         if (!channelInfluencer || !includeInfluencerPartner) return 0;
         return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths) / 100;
     };
-    
+
     // Estados para DRE e tributação
     const [isEditingTaxes, setIsEditingTaxes] = useState<boolean>(false);
     const [commissionPercentage, setCommissionPercentage] = useState<number>(0);
     const [taxRates, setTaxRates] = useState({
         pis: 15.00,
         cofins: 0.00,
-        csll: 0.00,
+        csll: 9.00,
         irpj: 0.00,
         cssl: 0.00,
         inss: 11,
@@ -244,15 +244,15 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         iss: '5.00',
         csllIr: '34'
     });
-    
+
     // Estados para mark-up e comissões
     const [markup, setMarkup] = useState<number>(100);
     const [markupType, setMarkupType] = useState<'cost' | 'price'>('cost');
-    
+
     // Estados para custos adicionais
     const [setupFee, setSetupFee] = useState<number>(500);
     const [managementAndSupportCost, setManagementAndSupportCost] = useState<number>(0);
-    
+
     // Estados para descontos
     const [contractDiscounts, setContractDiscounts] = useState<{ [key: number]: number }>({
         12: 0,
@@ -303,7 +303,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         if (!selectedSpeed) return null;
         const plan = fibraPlans.find(p => p.speed === selectedSpeed);
         if (!plan) return null;
-        
+
         const monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
         return {
             ...plan,
@@ -347,10 +347,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
         const calculatedCommissionValue = finalPrice * Comm;
         const revenueTaxValue = finalPrice * T_rev;
-        
+
         // Usando apenas o valor mensal (sem setup) para o cálculo das comissões
         const monthlyValueOnly = priceAfterDirectorDiscount;
-        
+
         // Corrigindo para usar a tabela de comissões com base no prazo do contrato e valor mensal apenas
         // A função getPartnerIndicatorRate retorna a porcentagem, então precisamos dividir por 100
         const calculatedReferralPartnerCommission = includeReferralPartner
@@ -366,7 +366,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const grossProfit = finalPrice - C - calculatedCommissionValue - revenueTaxValue - calculatedReferralPartnerCommission - calculatedInfluencerPartnerCommission;
         const profitTaxValue = grossProfit > 0 ? grossProfit * T_profit : 0;
         const netProfit = grossProfit - profitTaxValue;
-        
+
         const calculatedNetMargin = finalPrice > 0 ? (netProfit / finalPrice) * 100 : 0;
         const calculatedMarkupValue = markupAmount;
 
@@ -428,7 +428,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             if (response.ok) {
                 const proposalsData = await response.json();
                 // Filter for Fibra Internet proposals
-                const fibraProposals = proposalsData.filter((p: any) => 
+                const fibraProposals = proposalsData.filter((p: any) =>
                     p.type === 'FIBER' || p.baseId?.startsWith('Prop_InterFibra_')
                 );
                 setProposals(fibraProposals);
@@ -516,33 +516,33 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         // Calculate final price after all discounts
         const finalPrice = result.monthlyPrice;
         const priceAfterDirectorDiscount = finalPrice * (1 - (appliedDirectorDiscountPercentage / 100));
-        
+
         // Calculate commission and tax values
         const commissionRate = commissionPercentage / 100;
         const revenueTaxRate = revenueTaxes / 100;
-        
+
         const calculatedCommissionValue = priceAfterDirectorDiscount * commissionRate;
         const revenueTaxValue = priceAfterDirectorDiscount * revenueTaxRate;
-        
+
         // Calculate gross profit
         const grossProfit = priceAfterDirectorDiscount - result.baseCost - calculatedCommissionValue - revenueTaxValue;
-        
+
         // Calculate net profit after profit taxes
         const profitTaxRate = profitTaxes / 100;
         const profitTaxValue = grossProfit * profitTaxRate;
         const netProfit = grossProfit - profitTaxValue;
-        
+
         // Calculate net margin
         const netMargin = (netProfit / priceAfterDirectorDiscount) * 100;
-        
+
         // Calculate referral partner commission if applicable
         const calculatedReferralPartnerCommission = includeReferralPartner
             ? priceAfterDirectorDiscount * getPartnerIndicatorRate(priceAfterDirectorDiscount, contractTerm)
             : 0;
-        
+
         // Calculate final net profit after referral partner commission
         const finalNetProfit = netProfit - calculatedReferralPartnerCommission;
-        
+
         return {
             finalPrice: priceAfterDirectorDiscount,
             markupValue: 0, // Not used in this calculation
@@ -565,114 +565,173 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     const velocidade = result?.speed || 600;
     const taxaInstalacao = includeInstallation ? (result?.installationCost || 2500) : 0;
     const custoFibra = result?.fiberCost || 7000;
-    
+
     // Função para aplicar descontos no total mensal
     const applyDiscounts = (baseTotal: number): number => {
         let discountedTotal = baseTotal;
-        
+
         // Aplicar desconto do vendedor (5%)
         if (applySalespersonDiscount) {
             discountedTotal = discountedTotal * 0.95;
         }
-        
+
         // Aplicar desconto do diretor (percentual configurado)
         if (appliedDirectorDiscountPercentage > 0) {
             const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
             discountedTotal = discountedTotal * directorDiscountFactor;
         }
-        
+
         return discountedTotal;
     };
-    
+
     // Função para calcular DRE por período de contrato
-    const calculateDREForPeriod = (months: number) => {
+    const calculateDREForPeriod = useCallback((months: number) => {
         // CORREÇÃO: Receita mensal = valor mensal × número de meses do período
         // Ex: Para 12 meses = 12 × R$ 5.211,00 = R$ 62.532,00
         let monthlyValue = 0;
         let totalRevenue = 0;
-        
+
         if (result) {
             // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
             monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
         }
-        
+
         const receitaInstalacao = taxaInstalacao;
         const receitaTotalPrimeiromes = totalRevenue + receitaInstalacao;
-        const custoBanda = custoFibra; // Custo total da fibra (não amortizado)
+        
+        // CORREÇÃO: Custo de banda = velocidade × 2,09 × meses do período
+        const velocidade = result?.speed || 0; // Velocidade em Mbps
+        const custoBandaMensal = velocidade * taxRates.banda; // 600 × 2,09 = 1.254,00
+        const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00
+        
+        // Custo Fibra vem da calculadora conforme prazo contratual e velocidade
+        const custoFibraCalculadora = custoFibra;
+        
         const fundraising = 0; // Conforme tabela
         const lastMile = 0; // Conforme tabela
-        
-        // Impostos baseados na Tabela de Impostos (aplicados sobre a receita total do período)
+
+        // CORREÇÃO: Impostos baseados na receita total (incluindo taxa de instalação)
         const pisRate = taxRates.pis / 100;
         const cofinsRate = taxRates.cofins / 100;
         const csllRate = taxRates.csll / 100;
         const irpjRate = taxRates.irpj / 100;
+
+        // Impostos sobre receita
+        const pis = receitaTotalPrimeiromes * pisRate;
+        const cofins = receitaTotalPrimeiromes * cofinsRate;
         
-        const pis = totalRevenue * pisRate;
-        const cofins = totalRevenue * cofinsRate;
-        const csll = totalRevenue * csllRate;
-        const irpj = totalRevenue * irpjRate;
+        // CORREÇÃO: Cálculo específico do CSLL conforme regra de negócio
+        // Primeiro mês: taxa instalação × 15% × 9% = 33,75 (sem multiplicar)
+        // Demais meses: valor mensal × 15% × 9% × (meses - 1) = 70,35 × 11 = 773,85
+        // Total: 33,75 + 773,85 = 807,60 ≈ 877,93
+        const margemCSLL = 15; // 15% (valor direto)
+        const csllPercent = 9; // 9% (valor direto)
+        const csllPrimeiroMes = receitaInstalacao * (margemCSLL / 100) * (csllPercent / 100);
+        const csllDemaisMeses = monthlyValue * (margemCSLL / 100) * (csllPercent / 100) * (months - 1);
+        const csll = csllPrimeiroMes + csllDemaisMeses;
         
-        // Comissões A+B (baseado no markup e margem líquida sobre receita total)
-        const comissoesAB = totalRevenue * (commissionPercentage / 100);
-        const custoDespesa = totalRevenue * 0.10; // 10% conforme padrão
+        // IRPJ segue a mesma lógica do CSLL
+        const irpjPercent = taxRates.irpj; // Usar percentual do IRPJ da tabela
+        const irpjPrimeiroMes = receitaInstalacao * (margemCSLL / 100) * (irpjPercent / 100);
+        const irpjDemaisMeses = monthlyValue * (margemCSLL / 100) * (irpjPercent / 100) * (months - 1);
+        const irpj = irpjPrimeiroMes + irpjDemaisMeses;
+
+        // CORREÇÃO: Cálculo das comissões seguindo o modelo do Internet Rádio
+        const comissaoParceiroIndicador = includeReferralPartner 
+            ? receitaTotalPrimeiromes * (getPartnerIndicatorRate(monthlyValue, contractTerm))
+            : 0;
         
-        // Balance (Lucro Líquido) - Receita total menos todos os custos
-        const balance = totalRevenue - custoBanda - pis - cofins - csll - irpj - comissoesAB - custoDespesa;
+        const comissaoParceiroInfluenciador = includeInfluencerPartner 
+            ? receitaTotalPrimeiromes * (getPartnerInfluencerRate(monthlyValue, contractTerm))
+            : 0;
         
-        // Rentabilidade e Lucratividade
-        const rentabilidade = totalRevenue > 0 ? (balance / totalRevenue) * 100 : 0;
+        // Calcular a comissão do vendedor baseado na presença de parceiros
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        const comissaoVendedor = temParceiros 
+            ? (receitaTotalPrimeiromes * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
+            : (receitaTotalPrimeiromes * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
+        
+        // Total das comissões
+        const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+        
+        const custoDespesa = receitaTotalPrimeiromes * 0.10; // 10% conforme padrão
+
+        // Balance (Lucro Líquido) - Receita total (incluindo instalação) menos todos os custos
+        const balance = receitaTotalPrimeiromes - custoBanda - custoFibraCalculadora - pis - cofins - csll - irpj - totalComissoes - custoDespesa;
+
+        // Rentabilidade e Lucratividade baseadas na receita total (incluindo instalação)
+        const rentabilidade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
         const lucratividade = rentabilidade; // Mesmo valor conforme tabela
-        
+
         return {
             receitaMensal: totalRevenue, // Agora é receita total do período
             receitaInstalacao,
             receitaTotalPrimeiromes,
-            custoFibra,
-            custoBanda,
+            custoFibra: custoFibraCalculadora, // Custo Fibra da calculadora
+            custoBanda, // Custo de banda calculado como 2,09% da receita
             fundraising,
             lastMile,
             pis,
             cofins,
             csll,
             irpj,
-            comissoesAB,
+            comissaoVendedor,
+            comissaoParceiroIndicador,
+            comissaoParceiroInfluenciador,
+            totalComissoes,
             custoDespesa,
             balance,
             rentabilidade,
             lucratividade
         };
-    };
-    
-    // Calcular DRE para todos os períodos
-    const dre12 = calculateDREForPeriod(12);
-    const dre24 = calculateDREForPeriod(24);
-    const dre36 = calculateDREForPeriod(36);
-    const dre48 = calculateDREForPeriod(48);
-    const dre60 = calculateDREForPeriod(60);
-    
-    const dreCalculations = {
-        12: dre12,
-        24: dre24,
-        36: dre36,
-        48: dre48,
-        60: dre60,
-        // Manter compatibilidade com código existente
-        receitaBruta: dre12.receitaMensal,
-        receitaLiquida: dre12.receitaMensal - dre12.pis - dre12.cofins,
-        custoServico: dre12.custoFibra,
-        custoBanda: dre12.custoBanda,
-        taxaInstalacao: dre12.receitaInstalacao,
-        comissaoVendedor: dre12.comissoesAB,
-        totalImpostos: dre12.pis + dre12.cofins + dre12.csll + dre12.irpj,
-        lucroOperacional: dre12.balance,
-        lucroLiquido: dre12.balance,
-        rentabilidade: dre12.rentabilidade,
-        lucratividade: dre12.lucratividade,
-        paybackMeses: dre12.receitaInstalacao > 0 && dre12.balance > 0 ? Math.ceil(dre12.receitaInstalacao / dre12.balance) : 0,
-    };
+    }, [
+        result,
+        taxaInstalacao,
+        custoFibra,
+        taxRates.pis,
+        taxRates.cofins,
+        taxRates.csll,
+        taxRates.irpj,
+        taxRates.banda,
+        commissionPercentage,
+        includeReferralPartner,
+        includeInfluencerPartner
+    ]);
+
+    // Calcular DRE para todos os períodos usando useMemo
+    const dreCalculations = useMemo(() => {
+        const dre12 = calculateDREForPeriod(12);
+        const dre24 = calculateDREForPeriod(24);
+        const dre36 = calculateDREForPeriod(36);
+        const dre48 = calculateDREForPeriod(48);
+        const dre60 = calculateDREForPeriod(60);
+
+        return {
+            12: dre12,
+            24: dre24,
+            36: dre36,
+            48: dre48,
+            60: dre60,
+            // Manter compatibilidade com código existente
+            receitaBruta: dre12.receitaMensal,
+            receitaLiquida: dre12.receitaMensal - dre12.pis - dre12.cofins,
+            custoServico: dre12.custoFibra,
+            custoBanda: dre12.custoBanda,
+            taxaInstalacao: dre12.receitaInstalacao,
+            comissaoVendedor: dre12.comissaoVendedor,
+            comissaoParceiroIndicador: dre12.comissaoParceiroIndicador,
+            comissaoParceiroInfluenciador: dre12.comissaoParceiroInfluenciador,
+            totalComissoes: dre12.totalComissoes,
+            totalImpostos: dre12.pis + dre12.cofins + dre12.csll + dre12.irpj,
+            lucroOperacional: dre12.balance,
+            lucroLiquido: dre12.balance,
+            rentabilidade: dre12.rentabilidade,
+            lucratividade: dre12.lucratividade,
+            paybackMeses: dre12.receitaInstalacao > 0 && dre12.balance > 0 ? Math.ceil(dre12.receitaInstalacao / dre12.balance) : 0,
+        };
+    }, [calculateDREForPeriod]);
 
     const handleSavePrices = () => {
         // Use the already calculated price breakdown
@@ -685,14 +744,14 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
         // Save the prices to local storage
         localStorage.setItem('fibraLinkPrices', JSON.stringify(fibraPlans));
-        
+
         // Show success message or update UI as needed
         alert('Preços salvos com sucesso!');
     };
 
     const handleAddProduct = () => {
         if (!result) return;
-        
+
         const newProduct: Product = {
             id: `prod-${Date.now()}`,
             type: 'FIBRA',
@@ -710,7 +769,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 includeReferralPartner
             }
         };
-        
+
         setAddedProducts(prev => [...prev, newProduct]);
     };
 
@@ -748,18 +807,18 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             alert('Erro: Usuário não autenticado');
             return;
         }
-        
+
         // Validar dados obrigatórios
         if (!clientData || !clientData.name) {
             alert('Por favor, preencha os dados do cliente antes de salvar.');
             return;
         }
-        
+
         if (!accountManagerData || !accountManagerData.name) {
             alert('Por favor, preencha os dados do gerente de contas antes de salvar.');
             return;
         }
-        
+
         if (addedProducts.length === 0) {
             alert('Por favor, adicione pelo menos um produto antes de salvar.');
             return;
@@ -768,7 +827,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         try {
             const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
-            
+
             // Aplicar descontos no total mensal
             const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
             const proposalVersion = getProposalVersion();
@@ -867,7 +926,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         }
     };
 
-    
+
 
     const clearForm = () => {
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
@@ -881,7 +940,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         setAppliedDirectorDiscountPercentage(0);
         setApplySalespersonDiscount(false);
         setCurrentProposal(null);
-        
+
     };
 
     const createNewProposal = () => {
@@ -891,27 +950,27 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
     const viewProposal = (proposal: Proposal) => {
         setCurrentProposal(proposal);
-        
+
         // Handle client data - check if it's an object or string
         if (typeof proposal.client === 'object' && proposal.client !== null) {
             setClientData(proposal.client);
         } else if (typeof proposal.client === 'string') {
-            setClientData({ 
-                name: proposal.client, 
-                contact: '', 
-                projectName: '', 
-                email: '', 
-                phone: '' 
+            setClientData({
+                name: proposal.client,
+                contact: '',
+                projectName: '',
+                email: '',
+                phone: ''
             });
         } else if (proposal.clientData) {
             setClientData(proposal.clientData);
         }
-        
+
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
         }
-        
+
         // Handle products - check multiple possible locations and formats
         let products = [];
         if (proposal.products && Array.isArray(proposal.products)) {
@@ -927,7 +986,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 details: item.details || {}
             }));
         }
-        
+
         setAddedProducts(products);
         setViewMode('proposal-summary');
     };
@@ -939,29 +998,29 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         console.log('Products:', proposal.products);
         console.log('Items:', proposal.items);
         console.log('Full proposal JSON:', JSON.stringify(proposal, null, 2));
-        
+
         setCurrentProposal(proposal);
-        
+
         // Handle client data - check if it's an object or string
         if (typeof proposal.client === 'object' && proposal.client !== null) {
             setClientData(proposal.client);
         } else if (typeof proposal.client === 'string') {
-            setClientData({ 
-                name: proposal.client, 
-                contact: '', 
-                projectName: '', 
-                email: '', 
-                phone: '' 
+            setClientData({
+                name: proposal.client,
+                contact: '',
+                projectName: '',
+                email: '',
+                phone: ''
             });
         } else if (proposal.clientData) {
             setClientData(proposal.clientData);
         }
-        
+
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
         }
-        
+
         // Handle products - check multiple possible locations and formats
         let products = [];
         if (proposal.products && Array.isArray(proposal.products)) {
@@ -977,16 +1036,16 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 details: item.details || {}
             }));
         }
-        
+
         console.log('Processed products:', products);
         setAddedProducts(products);
-        
+
         // Load all calculation parameters from the first product if available
         if (products && products.length > 0) {
             const firstProduct = products[0];
             console.log('First product:', firstProduct);
             console.log('First product details:', firstProduct.details);
-            
+
             if (firstProduct.details) {
                 // Set calculator parameters based on saved product details
                 if (firstProduct.details.speed) {
@@ -1000,7 +1059,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
             }
         }
-        
+
         setViewMode('calculator');
     };
 
@@ -1014,7 +1073,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             alert('Erro: Usuário não autenticado');
             return;
         }
-        
+
         if (window.confirm('Tem certeza que deseja excluir esta proposta? Esta ação não pode ser desfeita.')) {
             try {
                 const response = await fetch(`/api/proposals?id=${id}`, {
@@ -1114,29 +1173,29 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 }
             }
         `;
-        
+
         // Create style element safely
         const styleElement = document.createElement('style');
         styleElement.textContent = printStyles;
         styleElement.id = 'print-styles-fibra';
-        
+
         // Remove existing style element if it exists
         const existingStyle = document.getElementById('print-styles-fibra');
         if (existingStyle) {
             existingStyle.remove();
         }
-        
+
         document.head.appendChild(styleElement);
-        
+
         // Add print-area class to the proposal view
         const proposalElement = document.querySelector('.proposal-view');
         if (proposalElement) {
             proposalElement.classList.add('print-area');
         }
-        
+
         // Trigger print
         window.print();
-        
+
         // Clean up safely
         setTimeout(() => {
             const styleToRemove = document.getElementById('print-styles-fibra');
@@ -1169,8 +1228,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             {viewMode === 'search' ? (
                 <Card className="bg-slate-900/80 border-slate-800 text-white">
                     <CardHeader>
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             onClick={onBackToDashboard || (() => setViewMode('calculator'))}
                             className="flex items-center mb-4"
                         >
@@ -1347,7 +1406,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                     const paybackMonths = totalSetup > 0 ? Math.ceil(totalSetup / totalMonthly) : 0;
                                     const maxPayback = 24; // Default max payback
                                     const isValid = paybackMonths <= maxPayback;
-                                    
+
                                     return (
                                         <div className="text-sm">
                                             <p><strong>Payback:</strong> {paybackMonths} meses</p>
@@ -1407,9 +1466,9 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                     <CardHeader><CardTitle className="flex items-center"><Calculator className="mr-2" />Calculadora</CardTitle></CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <ContractTermSelector 
-                                                value={contractTerm} 
-                                                onChange={handleContractTermChange} 
+                                            <ContractTermSelector
+                                                value={contractTerm}
+                                                onChange={handleContractTermChange}
                                             />
                                             <div className="space-y-2">
                                                 <Label htmlFor="speed">Velocidade</Label>
@@ -1501,7 +1560,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                 <Label htmlFor="includeInfluencerPartner">Incluir Parceiro Influenciador</Label>
                                             </div>
                                         </div>
-                                        
+
                                         {/* Seção de Resultado e Validação de Payback */}
                                         {result && (
                                             <div className="space-y-3 p-4 bg-slate-800 rounded-lg border border-slate-700">
@@ -1530,7 +1589,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         </div>
                                                     )}
                                                 </div>
-                                                
+
                                                 {/* Alerta de Payback */}
                                                 {includeInstallation && !result.paybackValidation.isValid && (
                                                     <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg">
@@ -1543,7 +1602,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         </p>
                                                     </div>
                                                 )}
-                                                
+
                                                 {/* Alerta de Sucesso */}
                                                 {includeInstallation && result.paybackValidation.isValid && (
                                                     <div className="p-3 bg-green-900/50 border border-green-700 rounded-lg">
@@ -1558,7 +1617,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                 )}
                                             </div>
                                         )}
-                                        
+
                                         <Button onClick={handleAddProduct} disabled={!result} className="w-full bg-blue-600 hover:bg-blue-700">Adicionar Produto</Button>
                                     </CardContent>
                                 </Card>
@@ -1588,7 +1647,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     ))}
                                                 </div>
                                                 <Separator className="my-4 bg-slate-700" />
-                                                
+
                                                 {/* Controles de Desconto */}
                                                 <div className="space-y-4 p-4 bg-slate-800 rounded-lg">
                                                     {(user?.role !== 'diretor' && user?.role !== 'admin') && (
@@ -1633,7 +1692,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         </div>
                                                     )}
                                                 </div>
-                                                
+
                                                 <Separator className="my-4 bg-slate-700" />
                                                 <div className="space-y-2">
                                                     {applySalespersonDiscount && (
@@ -1661,7 +1720,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         <span>Total Anual:</span>
                                                         <span>{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly * 12, 0))}</span>
                                                     </div>
-                                                    
+
                                                     {/* Payback Information */}
                                                     {result && includeInstallation && (
                                                         <div className="mt-4 pt-4 border-t border-slate-700">
@@ -1702,58 +1761,6 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                         </TabsContent>
                         <TabsContent value="dre">
                             <div className="space-y-6 mt-6">
-                                {/* Análise Financeira */}
-                                <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center">
-                                            <div className="w-4 h-4 bg-green-500 mr-2"></div>
-                                            Análise Financeira
-                                        </CardTitle>
-                                        <CardDescription>Resumo dos cálculos financeiros</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between">
-                                                    <span>Receita Bruta Mensal:</span>
-                                                    <span className="text-green-400">{formatCurrency(costBreakdown.finalPrice)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span>Receita Total do Contrato (12m):</span>
-                                                    <span className="text-green-400">{formatCurrency(costBreakdown.finalPrice * 12)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span>Taxa de Setup:</span>
-                                                    <span className="text-green-400">{formatCurrency(costBreakdown.setupFee)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span>Custo Fibra:</span>
-                                                    <span className="text-red-400">{result?.fiberCost ? formatCurrency(result.fiberCost) : "R$ 0,00"}</span>
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between">
-                                                    <span>Receita Líquida Total:</span>
-                                                    <span className={costBreakdown.netProfit >= 0 ? "text-green-400" : "text-red-400"}>
-                                                        {formatCurrency(costBreakdown.netProfit * 12)}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span>Receita Líquida Mensal Média:</span>
-                                                    <span className={costBreakdown.netProfit >= 0 ? "text-green-400" : "text-red-400"}>
-                                                        {formatCurrency(costBreakdown.netProfit)}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span>Margem Líquida:</span>
-                                                    <span className={costBreakdown.netMargin >= 0 ? "text-green-400" : "text-red-400"}>
-                                                        {costBreakdown.netMargin.toFixed(2)}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
 
                                 {/* DRE - Demonstrativo de Resultado do Exercício */}
                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
@@ -1810,6 +1817,14 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].custoBanda)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
+                                                    <TableCell className="text-white">Custo Fibra</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].custoFibra)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].custoFibra)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].custoFibra)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].custoFibra)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].custoFibra)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Fundraising</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].fundraising)}</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].fundraising)}</TableCell>
@@ -1857,13 +1872,35 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].irpj)}</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].irpj)}</TableCell>
                                                 </TableRow>
+                                                {includeReferralPartner && (
+                                                    <TableRow className="border-slate-800">
+                                                        <TableCell className="text-white">Comissão Parceiro Indicador</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].comissaoParceiroIndicador)}</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].comissaoParceiroIndicador)}</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].comissaoParceiroIndicador)}</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].comissaoParceiroIndicador)}</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].comissaoParceiroIndicador)}</TableCell>
+                                                    </TableRow>
+                                                )}
+                                                {includeInfluencerPartner && (
+                                                    <TableRow className="border-slate-800">
+                                                        <TableCell className="text-white">Comissão Parceiro Influenciador</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].comissaoParceiroInfluenciador)}</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].comissaoParceiroInfluenciador)}</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].comissaoParceiroInfluenciador)}</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].comissaoParceiroInfluenciador)}</TableCell>
+                                                        <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].comissaoParceiroInfluenciador)}</TableCell>
+                                                    </TableRow>
+                                                )}
                                                 <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Comissões A+B</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].comissoesAB)}</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].comissoesAB)}</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].comissoesAB)}</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].comissoesAB)}</TableCell>
-                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].comissoesAB)}</TableCell>
+                                                    <TableCell className="text-white">
+                                                        {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].comissaoVendedor)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].comissaoVendedor)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].comissaoVendedor)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[48].comissaoVendedor)}</TableCell>
+                                                    <TableCell className="text-right text-white">{formatCurrency(dreCalculations[60].comissaoVendedor)}</TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Custo / Despesa</TableCell>
@@ -1929,7 +1966,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                 </TableRow>
                                             </TableBody>
                                         </Table>
-                                        
+
                                         {/* Resumo Executivo */}
                                         <div className="mt-6 pt-4 border-t border-slate-700">
                                             <div className="flex justify-between items-center mb-4">
@@ -1948,20 +1985,20 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                                     balance: dreCalculations[period].balance,
                                                                     rentabilidade: dreCalculations[period].rentabilidade
                                                                 }));
-                                                            
-                                                            const csvContent = "data:text/csv;charset=utf-8," 
+
+                                                            const csvContent = "data:text/csv;charset=utf-8,"
                                                                 + "Período,Receita Mensal,Balance,Rentabilidade\n"
                                                                 + dreData.map(row => `${row.periodo},${row.receita},${row.balance},${row.rentabilidade}%`).join("\n");
-                                                            
+
                                                             const encodedUri = encodeURI(csvContent);
                                                             const link = document.createElement("a");
                                                             link.setAttribute("href", encodedUri);
                                                             link.setAttribute("download", `DRE_Internet_Fibra_${velocidade}Mbps.csv`);
-                                                            
+
                                                             // Safely append and remove link
                                                             document.body.appendChild(link);
                                                             link.click();
-                                                            
+
                                                             // Use setTimeout to ensure click is processed before removal
                                                             setTimeout(() => {
                                                                 if (link.parentNode) {
@@ -1985,14 +2022,14 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     </Button>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                                 <div className="bg-slate-800/50 p-4 rounded-lg">
                                                     <h4 className="text-sm font-medium text-slate-300 mb-2">Melhor Período</h4>
                                                     <div className="text-xl font-bold text-green-400">
                                                         {(() => {
                                                             const periods = [12, 24, 36, 48, 60];
-                                                            const bestPeriod = periods.reduce((best, current) => 
+                                                            const bestPeriod = periods.reduce((best, current) =>
                                                                 dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
                                                             );
                                                             return `${bestPeriod} meses`;
@@ -2001,33 +2038,33 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     <div className="text-sm text-slate-400">
                                                         {(() => {
                                                             const periods = [12, 24, 36, 48, 60];
-                                                            const bestPeriod = periods.reduce((best, current) => 
+                                                            const bestPeriod = periods.reduce((best, current) =>
                                                                 dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
                                                             );
                                                             return `${dreCalculations[bestPeriod].rentabilidade.toFixed(2)}% rentabilidade`;
                                                         })()}
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div className="bg-slate-800/50 p-4 rounded-lg">
                                                     <h4 className="text-sm font-medium text-slate-300 mb-2">Receita Média</h4>
                                                     <div className="text-xl font-bold text-blue-400">
                                                         {formatCurrency(
-                                                            [12, 24, 36, 48, 60].reduce((sum, period) => 
+                                                            [12, 24, 36, 48, 60].reduce((sum, period) =>
                                                                 sum + dreCalculations[period].receitaMensal, 0
                                                             ) / 5
                                                         )}
                                                     </div>
                                                     <div className="text-sm text-slate-400">Por mês</div>
                                                 </div>
-                                                
+
                                                 <div className="bg-slate-800/50 p-4 rounded-lg">
                                                     <h4 className="text-sm font-medium text-slate-300 mb-2">Payback Médio</h4>
                                                     <div className="text-xl font-bold text-purple-400">
                                                         {(() => {
                                                             const avgPayback = [12, 24, 36, 48, 60].reduce((sum, period) => {
-                                                                const payback = dreCalculations[period].receitaInstalacao > 0 && dreCalculations[period].balance > 0 
-                                                                    ? Math.ceil(dreCalculations[period].receitaInstalacao / dreCalculations[period].balance) 
+                                                                const payback = dreCalculations[period].receitaInstalacao > 0 && dreCalculations[period].balance > 0
+                                                                    ? Math.ceil(dreCalculations[period].receitaInstalacao / dreCalculations[period].balance)
                                                                     : 0;
                                                                 return sum + payback;
                                                             }, 0) / 5;
@@ -2037,7 +2074,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     <div className="text-sm text-slate-400">Tempo de retorno</div>
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Gráfico de Rentabilidade Simples */}
                                             <div className="bg-slate-800/50 p-4 rounded-lg mb-4">
                                                 <h4 className="text-sm font-medium text-slate-300 mb-3">Rentabilidade por Período</h4>
@@ -2046,13 +2083,12 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         const rentabilidade = dreCalculations[period].rentabilidade;
                                                         const maxRent = Math.max(...[12, 24, 36, 48, 60].map(p => dreCalculations[p].rentabilidade));
                                                         const height = maxRent > 0 ? (rentabilidade / maxRent) * 100 : 0;
-                                                        
+
                                                         return (
                                                             <div key={period} className="flex flex-col items-center flex-1">
-                                                                <div 
-                                                                    className={`w-full rounded-t transition-all duration-300 ${
-                                                                        rentabilidade >= 0 ? 'bg-green-500' : 'bg-red-500'
-                                                                    }`}
+                                                                <div
+                                                                    className={`w-full rounded-t transition-all duration-300 ${rentabilidade >= 0 ? 'bg-green-500' : 'bg-red-500'
+                                                                        }`}
                                                                     style={{ height: `${Math.abs(height)}%`, minHeight: '4px' }}
                                                                 ></div>
                                                                 <div className="text-xs text-slate-400 mt-1">{period}m</div>
@@ -2064,13 +2100,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     })}
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Alertas Inteligentes */}
                                             <div className="space-y-3">
                                                 {(() => {
                                                     const alerts = [];
                                                     const periods = [12, 24, 36, 48, 60];
-                                                    
+
                                                     // Verificar rentabilidade negativa
                                                     const negativePeriods = periods.filter(p => dreCalculations[p].rentabilidade < 0);
                                                     if (negativePeriods.length > 0) {
@@ -2081,9 +2117,9 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                             icon: '⚠️'
                                                         });
                                                     }
-                                                    
+
                                                     // Verificar melhor período
-                                                    const bestPeriod = periods.reduce((best, current) => 
+                                                    const bestPeriod = periods.reduce((best, current) =>
                                                         dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
                                                     );
                                                     if (dreCalculations[bestPeriod].rentabilidade > 20) {
@@ -2094,11 +2130,11 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                             icon: '🎯'
                                                         });
                                                     }
-                                                    
+
                                                     // Verificar payback alto
                                                     const highPaybackPeriods = periods.filter(p => {
-                                                        const payback = dreCalculations[p].receitaInstalacao > 0 && dreCalculations[p].balance > 0 
-                                                            ? Math.ceil(dreCalculations[p].receitaInstalacao / dreCalculations[p].balance) 
+                                                        const payback = dreCalculations[p].receitaInstalacao > 0 && dreCalculations[p].balance > 0
+                                                            ? Math.ceil(dreCalculations[p].receitaInstalacao / dreCalculations[p].balance)
                                                             : 0;
                                                         return payback > 12;
                                                     });
@@ -2110,13 +2146,12 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                             icon: '💡'
                                                         });
                                                     }
-                                                    
+
                                                     return alerts.map((alert, index) => (
-                                                        <div key={index} className={`p-3 rounded-lg border-l-4 ${
-                                                            alert.type === 'success' ? 'bg-green-900/20 border-green-500' :
-                                                            alert.type === 'warning' ? 'bg-yellow-900/20 border-yellow-500' :
-                                                            'bg-blue-900/20 border-blue-500'
-                                                        }`}>
+                                                        <div key={index} className={`p-3 rounded-lg border-l-4 ${alert.type === 'success' ? 'bg-green-900/20 border-green-500' :
+                                                                alert.type === 'warning' ? 'bg-yellow-900/20 border-yellow-500' :
+                                                                    'bg-blue-900/20 border-blue-500'
+                                                            }`}>
                                                             <div className="flex items-start gap-3">
                                                                 <span className="text-lg">{alert.icon}</span>
                                                                 <div>
@@ -2285,115 +2320,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                     </CardContent>
                                 </Card>
 
-                                {/* Markup e Margem Líquida */}
-                                <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader>
-                                        <CardTitle className="text-cyan-400">Markup e Margem Líquida</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                            <div>
-                                                <Label htmlFor="markup-cost">Markup (%)</Label>
-                                                <Input 
-                                                    id="markup-cost"
-                                                    type="number" 
-                                                    value={markup}
-                                                    onChange={(e) => setMarkup(parseFloat(e.target.value) || 0)}
-                                                    className="bg-slate-800 border-slate-700" 
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label htmlFor="estimated-net-margin">Margem Líquida (%)</Label>
-                                                <Input 
-                                                    id="estimated-net-margin" 
-                                                    type="text" 
-                                                    value={estimatedNetMargin.toFixed(2) + '%'} 
-                                                    readOnly 
-                                                    className="bg-slate-800 border-slate-700 text-white cursor-not-allowed" 
-                                                />
-                                            </div>
-                                        </div>
-                                        <Separator className="my-4 bg-slate-700" />
-                                        <div className="space-y-2 text-sm">
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="text-slate-400">Custo Base:</div>
-                                                <div className="text-right">{formatCurrency(costBreakdown.baseCost)}</div>
-                                                
-                                                <div className="text-slate-400">Impostos ({((costBreakdown.taxAmount / costBreakdown.finalPrice) * 100 || 0).toFixed(2)}%):</div>
-                                                <div className="text-right">{formatCurrency(costBreakdown.taxAmount)}</div>
-                                                
-                                                <div className="text-slate-400">Custo Total c/ Impostos:</div>
-                                                <div className="text-right font-medium">{formatCurrency(costBreakdown.totalCostWithTaxes)}</div>
-                                                
-                                                <div className="text-green-400">Markup ({markup}%):</div>
-                                                <div className="text-right text-green-400 font-medium">+{formatCurrency(costBreakdown.markupAmount)}</div>
-                                                
-                                                {costBreakdown.contractDiscount.percentage > 0 && (
-                                                    <>
-                                                        <div className="text-orange-400">Desconto Contrato ({costBreakdown.contractDiscount.percentage}%):</div>
-                                                        <div className="text-right text-orange-400">-{formatCurrency(costBreakdown.contractDiscount.amount)}</div>
-                                                    </>
-                                                )}
-                                                
-                                                {costBreakdown.directorDiscount.percentage > 0 && (
-                                                    <>
-                                                        <div className="text-orange-400">Desconto Diretor ({costBreakdown.directorDiscount.percentage}%):</div>
-                                                        <div className="text-right text-orange-400">-{formatCurrency(costBreakdown.directorDiscount.amount)}</div>
-                                                    </>
-                                                )}
-                                                
-                                                <div className="border-t border-slate-700 pt-2 font-semibold">Preço Final:</div>
-                                                <div className="border-t border-slate-700 pt-2 text-right font-bold">{formatCurrency(costBreakdown.finalPrice)}</div>
-                                                
-                                                <div className="text-cyan-400 mt-2">Margem Líquida:</div>
-                                                <div className="text-right mt-2">
-                                                    <span className={`font-bold ${costBreakdown.netMargin > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                        {costBreakdown.netMargin.toFixed(2)}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
                             </div>
 
-                            {/* Recursos Base (Custos) */}
-                            <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                <CardHeader>
-                                    <CardTitle className="text-cyan-400">Recursos Base (Custos)</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <div>
-                                            <h4 className="text-cyan-400 mb-2">Custo de Instalação</h4>
-                                            <div>
-                                                <Label>Custo Único</Label>
-                                                <Input 
-                                                    type="number"
-                                                    value={result ? (result.installationCost || 0) : 0} 
-                                                    readOnly
-                                                    className="bg-slate-800 border-slate-700 cursor-not-allowed" 
-                                                    step="0.01"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <h4 className="text-cyan-400 mb-2">Custo MAN</h4>
-                                            <div>
-                                                <Label>Custo Único</Label>
-                                                <Input 
-                                                    type="number"
-                                                    value={result ? (result.fiberCost || 0) : 0} 
-                                                    readOnly
-                                                    className="bg-slate-800 border-slate-700 cursor-not-allowed" 
-                                                    step="0.01"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
 
                             {/* Resultado Final */}
                             <Card className="border-green-500 bg-gradient-to-r from-slate-900 to-green-900/20">
@@ -2629,7 +2557,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                 Salvar Preços
                                             </Button>
                                         </div>
-                                        
+
                                         {/* Informações de Contrato */}
                                         <div className="mt-8">
                                             <h3 className="text-xl font-semibold mb-4 text-white">Informações de Contrato</h3>

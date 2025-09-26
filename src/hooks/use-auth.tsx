@@ -24,9 +24,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    setIsMounted(true);
     let authSubscription: any = null;
 
     const initializeAuth = async () => {
@@ -151,7 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         authSubscription.unsubscribe();
       }
     };
-  }, []);;
+  }, []);
 
   const logout = async () => {
     try {
@@ -178,6 +180,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   };
+
+  if (!isMounted) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        backgroundColor: '#0f172a',
+        color: 'white'
+      }}>
+        Carregando...
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ user, loading, logout }}>

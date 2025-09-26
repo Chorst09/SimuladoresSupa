@@ -79,6 +79,13 @@ interface Proposal {
     expiryDate?: string;
     value: number;
     type: string;
+    contractPeriod?: number;
+    items?: Product[];
+    applySalespersonDiscount?: boolean;
+    appliedDirectorDiscountPercentage?: number;
+    baseTotalMonthly?: number;
+    clientData?: ClientData;
+    createdBy?: string;
 }
 
 // Helper function to get monthly price based on contract term
