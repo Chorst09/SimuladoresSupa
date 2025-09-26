@@ -1881,11 +1881,195 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                             </TableBody>
                                         </Table>
                                         
-                                        {/* Payback */}
+                                        {/* Resumo Executivo */}
                                         <div className="mt-6 pt-4 border-t border-slate-700">
-                                            <h3 className="text-lg font-semibold mb-2">Payback</h3>
-                                            <div className="text-2xl font-bold text-green-400">
-                                                {dreCalculations.paybackMeses > 0 ? `${dreCalculations.paybackMeses} meses` : '0 meses'}
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h3 className="text-lg font-semibold">Resumo Executivo</h3>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            // Função para exportar DRE
+                                                            const dreData = Object.keys(dreCalculations)
+                                                                .filter(key => !isNaN(Number(key)))
+                                                                .map(period => ({
+                                                                    periodo: `${period} meses`,
+                                                                    receita: dreCalculations[period].receitaMensal,
+                                                                    balance: dreCalculations[period].balance,
+                                                                    rentabilidade: dreCalculations[period].rentabilidade
+                                                                }));
+                                                            
+                                                            const csvContent = "data:text/csv;charset=utf-8," 
+                                                                + "Período,Receita Mensal,Balance,Rentabilidade\n"
+                                                                + dreData.map(row => `${row.periodo},${row.receita},${row.balance},${row.rentabilidade}%`).join("\n");
+                                                            
+                                                            const encodedUri = encodeURI(csvContent);
+                                                            const link = document.createElement("a");
+                                                            link.setAttribute("href", encodedUri);
+                                                            link.setAttribute("download", `DRE_Internet_Fibra_${velocidade}Mbps.csv`);
+                                                            document.body.appendChild(link);
+                                                            link.click();
+                                                            document.body.removeChild(link);
+                                                        }}
+                                                        className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                                                    >
+                                                        <Download className="h-4 w-4 mr-1" />
+                                                        Exportar CSV
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={handlePrint}
+                                                        className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                                                    >
+                                                        <FileText className="h-4 w-4 mr-1" />
+                                                        Imprimir
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                                <div className="bg-slate-800/50 p-4 rounded-lg">
+                                                    <h4 className="text-sm font-medium text-slate-300 mb-2">Melhor Período</h4>
+                                                    <div className="text-xl font-bold text-green-400">
+                                                        {(() => {
+                                                            const periods = [12, 24, 36, 48, 60];
+                                                            const bestPeriod = periods.reduce((best, current) => 
+                                                                dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
+                                                            );
+                                                            return `${bestPeriod} meses`;
+                                                        })()}
+                                                    </div>
+                                                    <div className="text-sm text-slate-400">
+                                                        {(() => {
+                                                            const periods = [12, 24, 36, 48, 60];
+                                                            const bestPeriod = periods.reduce((best, current) => 
+                                                                dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
+                                                            );
+                                                            return `${dreCalculations[bestPeriod].rentabilidade.toFixed(2)}% rentabilidade`;
+                                                        })()}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="bg-slate-800/50 p-4 rounded-lg">
+                                                    <h4 className="text-sm font-medium text-slate-300 mb-2">Receita Média</h4>
+                                                    <div className="text-xl font-bold text-blue-400">
+                                                        {formatCurrency(
+                                                            [12, 24, 36, 48, 60].reduce((sum, period) => 
+                                                                sum + dreCalculations[period].receitaMensal, 0
+                                                            ) / 5
+                                                        )}
+                                                    </div>
+                                                    <div className="text-sm text-slate-400">Por mês</div>
+                                                </div>
+                                                
+                                                <div className="bg-slate-800/50 p-4 rounded-lg">
+                                                    <h4 className="text-sm font-medium text-slate-300 mb-2">Payback Médio</h4>
+                                                    <div className="text-xl font-bold text-purple-400">
+                                                        {(() => {
+                                                            const avgPayback = [12, 24, 36, 48, 60].reduce((sum, period) => {
+                                                                const payback = dreCalculations[period].receitaInstalacao > 0 && dreCalculations[period].balance > 0 
+                                                                    ? Math.ceil(dreCalculations[period].receitaInstalacao / dreCalculations[period].balance) 
+                                                                    : 0;
+                                                                return sum + payback;
+                                                            }, 0) / 5;
+                                                            return avgPayback > 0 ? `${Math.round(avgPayback)} meses` : '0 meses';
+                                                        })()}
+                                                    </div>
+                                                    <div className="text-sm text-slate-400">Tempo de retorno</div>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Gráfico de Rentabilidade Simples */}
+                                            <div className="bg-slate-800/50 p-4 rounded-lg mb-4">
+                                                <h4 className="text-sm font-medium text-slate-300 mb-3">Rentabilidade por Período</h4>
+                                                <div className="flex items-end justify-between h-20 gap-2">
+                                                    {[12, 24, 36, 48, 60].map(period => {
+                                                        const rentabilidade = dreCalculations[period].rentabilidade;
+                                                        const maxRent = Math.max(...[12, 24, 36, 48, 60].map(p => dreCalculations[p].rentabilidade));
+                                                        const height = maxRent > 0 ? (rentabilidade / maxRent) * 100 : 0;
+                                                        
+                                                        return (
+                                                            <div key={period} className="flex flex-col items-center flex-1">
+                                                                <div 
+                                                                    className={`w-full rounded-t transition-all duration-300 ${
+                                                                        rentabilidade >= 0 ? 'bg-green-500' : 'bg-red-500'
+                                                                    }`}
+                                                                    style={{ height: `${Math.abs(height)}%`, minHeight: '4px' }}
+                                                                ></div>
+                                                                <div className="text-xs text-slate-400 mt-1">{period}m</div>
+                                                                <div className="text-xs font-medium text-white">
+                                                                    {rentabilidade.toFixed(1)}%
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Alertas Inteligentes */}
+                                            <div className="space-y-3">
+                                                {(() => {
+                                                    const alerts = [];
+                                                    const periods = [12, 24, 36, 48, 60];
+                                                    
+                                                    // Verificar rentabilidade negativa
+                                                    const negativePeriods = periods.filter(p => dreCalculations[p].rentabilidade < 0);
+                                                    if (negativePeriods.length > 0) {
+                                                        alerts.push({
+                                                            type: 'warning',
+                                                            title: 'Rentabilidade Negativa',
+                                                            message: `Períodos com prejuízo: ${negativePeriods.join(', ')} meses. Considere revisar custos ou preços.`,
+                                                            icon: '⚠️'
+                                                        });
+                                                    }
+                                                    
+                                                    // Verificar melhor período
+                                                    const bestPeriod = periods.reduce((best, current) => 
+                                                        dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
+                                                    );
+                                                    if (dreCalculations[bestPeriod].rentabilidade > 20) {
+                                                        alerts.push({
+                                                            type: 'success',
+                                                            title: 'Excelente Rentabilidade',
+                                                            message: `O período de ${bestPeriod} meses oferece ${dreCalculations[bestPeriod].rentabilidade.toFixed(1)}% de rentabilidade. Recomendado!`,
+                                                            icon: '🎯'
+                                                        });
+                                                    }
+                                                    
+                                                    // Verificar payback alto
+                                                    const highPaybackPeriods = periods.filter(p => {
+                                                        const payback = dreCalculations[p].receitaInstalacao > 0 && dreCalculations[p].balance > 0 
+                                                            ? Math.ceil(dreCalculations[p].receitaInstalacao / dreCalculations[p].balance) 
+                                                            : 0;
+                                                        return payback > 12;
+                                                    });
+                                                    if (highPaybackPeriods.length > 0) {
+                                                        alerts.push({
+                                                            type: 'info',
+                                                            title: 'Payback Elevado',
+                                                            message: `Períodos com payback > 12 meses: ${highPaybackPeriods.join(', ')} meses. Considere reduzir taxa de instalação.`,
+                                                            icon: '💡'
+                                                        });
+                                                    }
+                                                    
+                                                    return alerts.map((alert, index) => (
+                                                        <div key={index} className={`p-3 rounded-lg border-l-4 ${
+                                                            alert.type === 'success' ? 'bg-green-900/20 border-green-500' :
+                                                            alert.type === 'warning' ? 'bg-yellow-900/20 border-yellow-500' :
+                                                            'bg-blue-900/20 border-blue-500'
+                                                        }`}>
+                                                            <div className="flex items-start gap-3">
+                                                                <span className="text-lg">{alert.icon}</span>
+                                                                <div>
+                                                                    <h5 className="font-medium text-white">{alert.title}</h5>
+                                                                    <p className="text-sm text-slate-300 mt-1">{alert.message}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ));
+                                                })()}
                                             </div>
                                         </div>
                                     </CardContent>
