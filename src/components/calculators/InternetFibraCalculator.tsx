@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,27 @@ import {
     Trash2,
     ArrowLeft
 } from 'lucide-react';
+
+// Componente isolado para seletor de prazo contratual
+const ContractTermSelector = memo(({ value, onChange }: { value: number; onChange: (value: string) => void }) => {
+    return (
+        <div className="space-y-2">
+            <Label htmlFor="contract-term">Prazo Contratual</Label>
+            <Select onValueChange={onChange} value={value.toString()}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="12">12 meses</SelectItem>
+                    <SelectItem value="24">24 meses</SelectItem>
+                    <SelectItem value="36">36 meses</SelectItem>
+                    <SelectItem value="48">48 meses</SelectItem>
+                    <SelectItem value="60">60 meses</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+    );
+});
+
+ContractTermSelector.displayName = 'ContractTermSelector';
 
 // Interfaces
 export interface Product {
@@ -246,12 +267,16 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
     // Estado para debounce do contractTerm
     const [debouncedContractTerm, setDebouncedContractTerm] = useState(contractTerm);
+    // Key única para forçar re-mount quando necessário
+    const [componentKey, setComponentKey] = useState(0);
 
     // Debounce effect para contractTerm
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedContractTerm(contractTerm);
-        }, 100);
+            // Força re-mount do componente para evitar conflitos DOM
+            setComponentKey(prev => prev + 1);
+        }, 150); // Aumentado para 150ms
         return () => clearTimeout(timer);
     }, [contractTerm]);
 
@@ -1370,25 +1395,16 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 <TabsTrigger value="dre">DRE</TabsTrigger>
                             )}
                         </TabsList>
-                        <TabsContent value="calculator">
+                        <TabsContent value="calculator" key={`calculator-${componentKey}`}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
                                     <CardHeader><CardTitle className="flex items-center"><Calculator className="mr-2" />Calculadora</CardTitle></CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="contract-term">Prazo Contratual</Label>
-                                                <Select onValueChange={handleContractTermChange} value={contractTerm.toString()}>
-                                                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="12">12 meses</SelectItem>
-                                                        <SelectItem value="24">24 meses</SelectItem>
-                                                        <SelectItem value="36">36 meses</SelectItem>
-                                                        <SelectItem value="48">48 meses</SelectItem>
-                                                        <SelectItem value="60">60 meses</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
+                                            <ContractTermSelector 
+                                                value={contractTerm} 
+                                                onChange={handleContractTermChange} 
+                                            />
                                             <div className="space-y-2">
                                                 <Label htmlFor="speed">Velocidade</Label>
                                                 <Select onValueChange={(v) => setSelectedSpeed(Number(v))} value={selectedSpeed.toString()}>
