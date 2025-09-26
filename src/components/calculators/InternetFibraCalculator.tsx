@@ -470,12 +470,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         fetchProposals();
     }, [fetchProposals]);
 
-    // Debug useEffect to monitor addedProducts changes
-    useEffect(() => {
-        console.log('=== ADDED PRODUCTS CHANGED ===');
-        console.log('Length:', addedProducts.length);
-        console.log('Products:', addedProducts);
-    }, [addedProducts]);
+    // Removed debug useEffect to prevent unnecessary re-renders
 
     // Funções
     const formatCurrency = (value: number | undefined | null) => {
@@ -1120,9 +1115,17 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             }
         `;
         
-        // Create style element
+        // Create style element safely
         const styleElement = document.createElement('style');
         styleElement.textContent = printStyles;
+        styleElement.id = 'print-styles-fibra';
+        
+        // Remove existing style element if it exists
+        const existingStyle = document.getElementById('print-styles-fibra');
+        if (existingStyle) {
+            existingStyle.remove();
+        }
+        
         document.head.appendChild(styleElement);
         
         // Add print-area class to the proposal view
@@ -1134,9 +1137,12 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         // Trigger print
         window.print();
         
-        // Clean up
+        // Clean up safely
         setTimeout(() => {
-            document.head.removeChild(styleElement);
+            const styleToRemove = document.getElementById('print-styles-fibra');
+            if (styleToRemove && styleToRemove.parentNode) {
+                styleToRemove.parentNode.removeChild(styleToRemove);
+            }
             if (proposalElement) {
                 proposalElement.classList.remove('print-area');
             }
@@ -1283,7 +1289,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 </TableHeader>
                                 <TableBody>
                                     {(currentProposal.items || currentProposal.products || []).map((product, index) => (
-                                        <TableRow key={index}>
+                                        <TableRow key={product.id || `product-${index}`}>
                                             <TableCell>{product.description}</TableCell>
                                             <TableCell>{formatCurrency(product.setup)}</TableCell>
                                             <TableCell>{formatCurrency(product.monthly)}</TableCell>
@@ -1951,9 +1957,17 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                             const link = document.createElement("a");
                                                             link.setAttribute("href", encodedUri);
                                                             link.setAttribute("download", `DRE_Internet_Fibra_${velocidade}Mbps.csv`);
+                                                            
+                                                            // Safely append and remove link
                                                             document.body.appendChild(link);
                                                             link.click();
-                                                            document.body.removeChild(link);
+                                                            
+                                                            // Use setTimeout to ensure click is processed before removal
+                                                            setTimeout(() => {
+                                                                if (link.parentNode) {
+                                                                    link.parentNode.removeChild(link);
+                                                                }
+                                                            }, 100);
                                                         }}
                                                         className="border-slate-600 text-slate-300 hover:bg-slate-700"
                                                     >
