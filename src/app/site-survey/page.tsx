@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { CustomerInfoForm } from '@/components/survey/CustomerInfoForm';
 import { DetailedSiteSurveyForm } from '@/components/survey/DetailedSiteSurveyForm';
-import { TopologyViewer } from '@/components/topology/TopologyViewerSimple';
+// import { TopologyViewer } from '@/components/topology/TopologyViewerSimple';
 import { TopologyConfig } from '@/components/topology/types/topology';
 import { SurveyDetailsView } from '@/components/survey/SurveyDetailsView';
 import { Plus, ArrowLeft, Trash2, Eye } from "lucide-react";
@@ -211,8 +211,24 @@ export default function SiteSurveyPage() {
           Voltar para Detalhes
         </Button>
         <h2 className="text-2xl font-bold mb-4">Topologia de Rede para {selectedSurvey.customerName}</h2>
-        <div style={{ height: '70vh', border: '1px solid #ccc', borderRadius: '8px' }}>
-          <TopologyViewer config={topologyConfig} />
+        <div style={{ height: '70vh', border: '1px solid #ccc', borderRadius: '8px' }} className="p-4 bg-white">
+          <div className="text-center text-gray-500 mt-20">
+            <h4 className="text-lg font-medium mb-2">
+              Topologia - {topologyConfig.type === 'fiber' ? 'Internet via Fibra Óptica' : 
+                          topologyConfig.type === 'radio' ? 'Internet via Rádio Enlace' :
+                          topologyConfig.type === 'wifi' ? 'Access Points (Wi-Fi)' : 'SD-WAN'}
+            </h4>
+            <p className="text-sm">Diagrama de topologia para {topologyConfig.customerName}</p>
+            <p className="text-xs text-gray-400 mt-2">Endereço: {topologyConfig.address}</p>
+            <div className="mt-8 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                Visualização de topologia de rede simplificada
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Tipo: {topologyConfig.type.toUpperCase()}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );

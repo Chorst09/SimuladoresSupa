@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from 'react';
-import { TopologyViewer } from '@/components/topology/TopologyViewerSimple';
+// import { TopologyViewer } from '@/components/topology/TopologyViewerSimple';
 import { TopologyConfig } from '../topology/types/topology';
 
 interface DetailedSiteSurveyFormProps {
@@ -63,11 +63,22 @@ export function DetailedSiteSurveyForm({ surveyType, customerName = '', address 
       {/* Topology Diagram */}
       {topologyConfig && (
         <div className="lg:order-2">
-          <TopologyViewer
-            config={topologyConfig}
-            showExportOptions={true}
-            className="sticky top-4"
-          />
+          <div className="sticky top-4 p-4 border rounded-lg bg-white">
+            <h3 className="text-lg font-semibold mb-2">
+              Topologia - {topologyConfig.type === 'fiber' ? 'Internet via Fibra Óptica' : 
+                          topologyConfig.type === 'radio' ? 'Internet via Rádio Enlace' :
+                          topologyConfig.type === 'wifi' ? 'Access Points (Wi-Fi)' : 'SD-WAN'}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Cliente: {topologyConfig.customerName}
+            </p>
+            <div className="min-h-[300px] bg-gray-50 rounded-lg flex items-center justify-center">
+              <div className="text-center text-gray-500">
+                <p className="text-sm">Visualização de topologia simplificada</p>
+                <p className="text-xs mt-1">Tipo: {topologyConfig.type.toUpperCase()}</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
