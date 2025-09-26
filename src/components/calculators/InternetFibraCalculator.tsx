@@ -550,19 +550,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     
     // Função para calcular DRE por período de contrato
     const calculateDREForPeriod = (months: number) => {
-        // CORREÇÃO: Usar sempre o valor mensal do projeto atual (velocidade e prazo selecionados)
-        // Se o período for diferente do selecionado, usar o preço do período específico
-        // Se for o mesmo período selecionado, usar o valor já calculado
+        // CORREÇÃO: Usar SEMPRE o valor mensal do projeto atual selecionado
+        // Independente da coluna, a receita mensal deve ser a mesma do projeto (velocidade + prazo selecionados)
         let monthlyRevenue = 0;
         
         if (result) {
-            if (months === contractTerm) {
-                // Se for o período selecionado, usar o valor já calculado com descontos aplicados
-                monthlyRevenue = applyDiscounts(getMonthlyPrice(result, months));
-            } else {
-                // Para outros períodos, calcular o preço base sem descontos específicos do período selecionado
-                monthlyRevenue = getMonthlyPrice(result, months);
-            }
+            // Usar sempre o valor do período selecionado atualmente (contractTerm) com descontos aplicados
+            monthlyRevenue = applyDiscounts(getMonthlyPrice(result, contractTerm));
         }
         
         const receitaInstalacao = taxaInstalacao;
