@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -184,7 +184,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [sipIncludeSetup, setSipIncludeSetup] = useState<boolean>(true);
     const [sipResult, setSipResult] = useState<SIPResult | null>(null);
 
-    const fetchProposals = React.useCallback(async () => {
+    const fetchProposals = useCallback(async () => {
         console.log('fetchProposals chamado, currentUser:', currentUser);
         if (!currentUser || !currentUser.role) {
             console.log('Usuário não encontrado ou sem role');
@@ -218,71 +218,75 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             console.error("Erro ao buscar propostas: ", error);
             setProposals([]);
         }
-    }, [currentUser]);
+    }, [currentUser?.token, currentUser?.role]); // Dependências mais específicas
 
-    useEffect(() => {
-        if (currentUser?.id) {
-            fetchProposals();
-        }
-    }, [currentUser?.id, fetchProposals]);
-
+    // Consolidar useEffects relacionados ao usuário para evitar re-renders em cascata
     useEffect(() => {
         if (!currentUser?.id) return;
 
-        const loadSettings = async () => {
+        // Executar operações de forma assíncrona para evitar conflitos
+        const initializeUserData = async () => {
             try {
-                // Try to load from localStorage first
-                const savedSettings = localStorage.getItem(`vmPricingSettings_${currentUser.id}`);
-                if (savedSettings) {
-                    const settingsData = JSON.parse(savedSettings);
-                    setMarkup(settingsData.markup || 30);
-                    setCommissionPercentage(settingsData.commissionPercentage || 3);
-                    setSetupFee(settingsData.setupFee || 500);
-                    setManagementAndSupportCost(settingsData.managementAndSupportCost || 250);
-                    setVcpuWindowsCost(settingsData.vcpuWindowsCost || 15);
-                    setVcpuLinuxCost(settingsData.vcpuLinuxCost || 10);
-                    setRamCost(settingsData.ramCost || 8);
-                    setHddSasCost(settingsData.hddSasCost || 0.5);
-                    setSsdPerformanceCost(settingsData.ssdPerformanceCost || 1.5);
-                    setNvmeCost(settingsData.nvmeCost || 2.5);
-                    setNetwork1GbpsCost(settingsData.network1GbpsCost || 0);
-                    setNetwork10GbpsCost(settingsData.network10GbpsCost || 100);
-                    setWindowsServerCost(settingsData.windowsServerCost || 135);
-                    setWindows10ProCost(settingsData.windows10ProCost || 120);
-                    setUbuntuCost(settingsData.ubuntuCost || 0);
-                    setCentosCost(settingsData.centosCost || 0);
-                    setDebianCost(settingsData.debianCost || 0);
-                    setRockyLinuxCost(settingsData.rockyLinuxCost || 0);
-                    setBackupCostPerGb(settingsData.backupCostPerGb || 1.25);
-                    setAdditionalIpCost(settingsData.additionalIpCost || 15);
-                    setSnapshotCost(settingsData.snapshotCost || 25);
-                    setVpnSiteToSiteCost(settingsData.vpnSiteToSiteCost || 50);
-                    setPisCofins(String(settingsData.pisCofins || '3,65').replace('.', ','));
-                    setIss(String(settingsData.iss || '5,00').replace('.', ','));
-                    setCsllIr(String(settingsData.csllIr || '8,88').replace('.', ','));
-                    if (settingsData.contractDiscounts) {
-                        setContractDiscounts(settingsData.contractDiscounts);
-                    }
-                    return;
-                }
+                // 1. Fetch proposals
+                await fetchProposals();
 
-                // Try to fetch from API as fallback
-                const response = await fetch(`/api/vm-settings?userId=${currentUser.id}`);
-                if (response.ok) {
-                    const settingsData = await response.json();
-                    setMarkup(settingsData.markup || 30);
-                    setCommissionPercentage(settingsData.commissionPercentage || 3);
-                    setSetupFee(settingsData.setupFee || 500);
-                    setManagementAndSupportCost(settingsData.managementAndSupportCost || 250);
-                    // ... outros settings
-                }
+                // 2. Load settings com debounce
+                setTimeout(async () => {
+                    try {
+                        const savedSettings = localStorage.getItem(`vmPricingSettings_${currentUser.id}`);
+                        if (savedSettings) {
+                            const settingsData = JSON.parse(savedSettings);
+                            setMarkup(settingsData.markup || 30);
+                            setCommissionPercentage(settingsData.commissionPercentage || 3);
+                            setSetupFee(settingsData.setupFee || 500);
+                            setManagementAndSupportCost(settingsData.managementAndSupportCost || 250);
+                            setVcpuWindowsCost(settingsData.vcpuWindowsCost || 15);
+                            setVcpuLinuxCost(settingsData.vcpuLinuxCost || 10);
+                            setRamCost(settingsData.ramCost || 8);
+                            setHddSasCost(settingsData.hddSasCost || 0.5);
+                            setSsdPerformanceCost(settingsData.ssdPerformanceCost || 1.5);
+                            setNvmeCost(settingsData.nvmeCost || 2.5);
+                            setNetwork1GbpsCost(settingsData.network1GbpsCost || 0);
+                            setNetwork10GbpsCost(settingsData.network10GbpsCost || 100);
+                            setWindowsServerCost(settingsData.windowsServerCost || 135);
+                            setWindows10ProCost(settingsData.windows10ProCost || 120);
+                            setUbuntuCost(settingsData.ubuntuCost || 0);
+                            setCentosCost(settingsData.centosCost || 0);
+                            setDebianCost(settingsData.debianCost || 0);
+                            setRockyLinuxCost(settingsData.rockyLinuxCost || 0);
+                            setBackupCostPerGb(settingsData.backupCostPerGb || 1.25);
+                            setAdditionalIpCost(settingsData.additionalIpCost || 15);
+                            setSnapshotCost(settingsData.snapshotCost || 25);
+                            setVpnSiteToSiteCost(settingsData.vpnSiteToSiteCost || 50);
+                            setPisCofins(String(settingsData.pisCofins || '3,65').replace('.', ','));
+                            setIss(String(settingsData.iss || '5,00').replace('.', ','));
+                            setCsllIr(String(settingsData.csllIr || '8,88').replace('.', ','));
+                            if (settingsData.contractDiscounts) {
+                                setContractDiscounts(settingsData.contractDiscounts);
+                            }
+                            return;
+                        }
+
+                        // Try to fetch from API as fallback
+                        const response = await fetch(`/api/vm-settings?userId=${currentUser.id}`);
+                        if (response.ok) {
+                            const settingsData = await response.json();
+                            setMarkup(settingsData.markup || 30);
+                            setCommissionPercentage(settingsData.commissionPercentage || 3);
+                            setSetupFee(settingsData.setupFee || 500);
+                            setManagementAndSupportCost(settingsData.managementAndSupportCost || 250);
+                        }
+                    } catch (error) {
+                        console.error("Erro ao buscar configurações de preço:", error);
+                    }
+                }, 100); // Debounce de 100ms
             } catch (error) {
-                console.error("Erro ao buscar configurações de preço:", error);
+                console.error("Erro ao inicializar dados do usuário:", error);
             }
         };
 
-        loadSettings();
-    }, [currentUser?.id]);
+        initializeUserData();
+    }, [currentUser?.id, fetchProposals]);
 
     // Load tax rates from localStorage (only once)
     useEffect(() => {
@@ -954,9 +958,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         setAddedProducts([...addedProducts, newProduct]);
     };
 
-    const handleRemoveProduct = (productId: string) => {
-        setAddedProducts(addedProducts.filter(p => p.id !== productId));
-    };
+    const handleRemoveProduct = useCallback((productId: string) => {
+        setAddedProducts(prev => prev.filter(p => p.id !== productId));
+    }, []);
 
     const handleTaxRegimeChange = (regime: string) => {
         setSelectedTaxRegime(regime);
