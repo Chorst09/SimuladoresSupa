@@ -550,45 +550,48 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     
     // Função para calcular DRE por período de contrato
     const calculateDREForPeriod = (months: number) => {
-        // CORREÇÃO: Usar SEMPRE o valor mensal do projeto atual selecionado
-        // Independente da coluna, a receita mensal deve ser a mesma do projeto (velocidade + prazo selecionados)
-        let monthlyRevenue = 0;
+        // CORREÇÃO: Receita mensal = valor mensal × número de meses do período
+        // Ex: Para 12 meses = 12 × R$ 5.211,00 = R$ 62.532,00
+        let monthlyValue = 0;
+        let totalRevenue = 0;
         
         if (result) {
-            // Usar sempre o valor do período selecionado atualmente (contractTerm) com descontos aplicados
-            monthlyRevenue = applyDiscounts(getMonthlyPrice(result, contractTerm));
+            // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
+            monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
+            // Calcular receita total do período: valor mensal × meses
+            totalRevenue = monthlyValue * months;
         }
         
         const receitaInstalacao = taxaInstalacao;
-        const receitaTotalPrimeiromes = monthlyRevenue + receitaInstalacao;
-        const custoBanda = custoFibra / months; // Amortização do custo da fibra
+        const receitaTotalPrimeiromes = totalRevenue + receitaInstalacao;
+        const custoBanda = custoFibra; // Custo total da fibra (não amortizado)
         const fundraising = 0; // Conforme tabela
         const lastMile = 0; // Conforme tabela
         
-        // Impostos baseados na Tabela de Impostos
+        // Impostos baseados na Tabela de Impostos (aplicados sobre a receita total do período)
         const pisRate = taxRates.pis / 100;
         const cofinsRate = taxRates.cofins / 100;
         const csllRate = taxRates.csll / 100;
         const irpjRate = taxRates.irpj / 100;
         
-        const pis = monthlyRevenue * pisRate;
-        const cofins = monthlyRevenue * cofinsRate;
-        const csll = monthlyRevenue * csllRate;
-        const irpj = monthlyRevenue * irpjRate;
+        const pis = totalRevenue * pisRate;
+        const cofins = totalRevenue * cofinsRate;
+        const csll = totalRevenue * csllRate;
+        const irpj = totalRevenue * irpjRate;
         
-        // Comissões A+B (baseado no markup e margem líquida)
-        const comissoesAB = monthlyRevenue * (commissionPercentage / 100);
-        const custoDespesa = monthlyRevenue * 0.10; // 10% conforme padrão
+        // Comissões A+B (baseado no markup e margem líquida sobre receita total)
+        const comissoesAB = totalRevenue * (commissionPercentage / 100);
+        const custoDespesa = totalRevenue * 0.10; // 10% conforme padrão
         
-        // Balance (Lucro Líquido) - CORREÇÃO: não subtrair receitaInstalacao e custoFibra total do balance mensal
-        const balance = monthlyRevenue - custoBanda - pis - cofins - csll - irpj - comissoesAB - custoDespesa;
+        // Balance (Lucro Líquido) - Receita total menos todos os custos
+        const balance = totalRevenue - custoBanda - pis - cofins - csll - irpj - comissoesAB - custoDespesa;
         
         // Rentabilidade e Lucratividade
-        const rentabilidade = monthlyRevenue > 0 ? (balance / monthlyRevenue) * 100 : 0;
+        const rentabilidade = totalRevenue > 0 ? (balance / totalRevenue) * 100 : 0;
         const lucratividade = rentabilidade; // Mesmo valor conforme tabela
         
         return {
-            receitaMensal: monthlyRevenue,
+            receitaMensal: totalRevenue, // Agora é receita total do período
             receitaInstalacao,
             receitaTotalPrimeiromes,
             custoFibra,
@@ -1737,7 +1740,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                             </TableHeader>
                                             <TableBody>
                                                 <TableRow className="border-slate-800 bg-green-900/30">
-                                                    <TableCell className="text-white font-semibold">Receita mensal</TableCell>
+                                                    <TableCell className="text-white font-semibold">Receita Total do Período</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(dreCalculations[12].receitaMensal)}</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(dreCalculations[24].receitaMensal)}</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(dreCalculations[36].receitaMensal)}</TableCell>

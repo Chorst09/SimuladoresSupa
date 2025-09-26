@@ -221,18 +221,18 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     }, [currentUser]);
 
     useEffect(() => {
-        if (currentUser?.uid) {
+        if (currentUser?.id) {
             fetchProposals();
         }
-    }, [currentUser?.uid]);
+    }, [currentUser?.id, fetchProposals]);
 
     useEffect(() => {
-        if (!currentUser?.uid) return;
+        if (!currentUser?.id) return;
 
         const loadSettings = async () => {
             try {
                 // Try to load from localStorage first
-                const savedSettings = localStorage.getItem(`vmPricingSettings_${currentUser.uid}`);
+                const savedSettings = localStorage.getItem(`vmPricingSettings_${currentUser.id}`);
                 if (savedSettings) {
                     const settingsData = JSON.parse(savedSettings);
                     setMarkup(settingsData.markup || 30);
@@ -267,7 +267,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 }
 
                 // Try to fetch from API as fallback
-                const response = await fetch(`/api/vm-settings?userId=${currentUser.uid}`);
+                const response = await fetch(`/api/vm-settings?userId=${currentUser.id}`);
                 if (response.ok) {
                     const settingsData = await response.json();
                     setMarkup(settingsData.markup || 30);
@@ -282,7 +282,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         };
 
         loadSettings();
-    }, [currentUser?.uid]);
+    }, [currentUser?.id]);
 
     // Load tax rates from localStorage (only once)
     useEffect(() => {
@@ -1499,7 +1499,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                 </TableHeader>
                                 <TableBody>
                                     {(currentProposal.products ?? []).map((product, index) => (
-                                        <TableRow key={index}>
+                                        <TableRow key={product.id || `product-${index}`}>
                                             <TableCell>{product.description}</TableCell>
                                             <TableCell>{formatCurrency(product.setup)}</TableCell>
                                             <TableCell>{formatCurrency(product.monthly)}</TableCell>
@@ -2981,8 +2981,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                         </TableRow>
                                                                     </TableHeader>
                                                                     <TableBody>
-                                                                        {addedProducts.map(p => (
-                                                                            <TableRow key={p.id} className="border-slate-800">
+                                                                        {addedProducts.map((p, index) => (
+                                                                            <TableRow key={`${p.id}-${index}`} className="border-slate-800">
                                                                                 <TableCell className="text-white">{p.description}</TableCell>
                                                                                 <TableCell className="text-white">{formatCurrency(p.setup)}</TableCell>
                                                                                 <TableCell className="text-white">{formatCurrency(p.monthly)}</TableCell>
@@ -3121,8 +3121,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                         <table className="print-table">
                             <thead><tr><th>Descrição</th><th>Setup</th><th>Mensal</th></tr></thead>
                             <tbody>
-                                {addedProducts.map(p => (
-                                    <tr key={p.id}><td>{p.description}</td><td>{formatCurrency(p.setup)}</td><td>{formatCurrency(p.monthly)}</td></tr>
+                                {addedProducts.map((p, index) => (
+                                    <tr key={`print-${p.id}-${index}`}><td>{p.description}</td><td>{formatCurrency(p.setup)}</td><td>{formatCurrency(p.monthly)}</td></tr>
                                 ))}
                             </tbody>
                         </table>
