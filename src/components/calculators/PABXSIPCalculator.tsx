@@ -857,11 +857,12 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     // Aplicar desconto do diretor (personalizável)
     const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
 
-    const partnerIndicatorCommission = getPartnerIndicatorRate(rawTotalMonthly, parseInt(contractDuration, 10)) * rawTotalMonthly;
+    const partnerIndicatorCommission = (getPartnerIndicatorRate(rawTotalMonthly, parseInt(contractDuration, 10)) / 100) * rawTotalMonthly;
+        
+        const influencerPartnerCommission = (getPartnerInfluencerRate(rawTotalMonthly, parseInt(contractDuration, 10)) / 100) * rawTotalMonthly;
 
-    const influencerPartnerCommission = getPartnerInfluencerRate(rawTotalMonthly, parseInt(contractDuration, 10)) * rawTotalMonthly;
-
-    const finalTotalSetup = rawTotalSetup * salespersonDiscountFactor * directorDiscountFactor;
+    // Desconto do vendedor e diretor aplicado apenas sobre o valor mensal, não sobre o setup
+    const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
     const finalTotalMonthly = (rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor) - partnerIndicatorCommission - influencerPartnerCommission;
 
     const clearForm = () => {
@@ -1009,7 +1010,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         // Apply discounts to get final totals
         const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
         const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
-        const finalTotalSetup = rawTotalSetup * salespersonDiscountFactor * directorDiscountFactor;
+        // Desconto do vendedor e diretor aplicado apenas sobre o valor mensal, não sobre o setup
+    const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
         const finalTotalMonthly = rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor;
 
         // Determine if this should be version 2 (when discounts are applied)
@@ -1473,11 +1475,11 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                     <p className="ml-4">Mensal: {formatCurrency(currentProposal.rawTotalMonthly || 0)}</p>
 
                                     {currentProposal.discountInfo.applySalespersonDiscount && (
-                                        <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.rawTotalSetup || 0) * 0.05).toFixed(2).replace('.', ',')} / -R$ {((currentProposal.rawTotalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
+                                        <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.rawTotalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
                                     )}
 
                                     {currentProposal.discountInfo.appliedDirectorDiscountPercentage > 0 && (
-                                        <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.discountInfo.appliedDirectorDiscountPercentage}%):</strong> -R$ {(((currentProposal.rawTotalSetup || 0) * (currentProposal.discountInfo.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.discountInfo.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')} / -R$ {(((currentProposal.rawTotalMonthly || 0) * (currentProposal.discountInfo.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.discountInfo.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')}</p>
+                                        <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.discountInfo.appliedDirectorDiscountPercentage}%):</strong> -R$ {(((currentProposal.rawTotalMonthly || 0) * (currentProposal.discountInfo.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.discountInfo.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')}</p>
                                     )}
                                 </div>
                             </div>
@@ -1981,7 +1983,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                         {applySalespersonDiscount && (
                                             <TableRow key="salesperson-discount-row" className="border-slate-700 font-semibold text-orange-400">
                                                 <TableCell>Desconto Vendedor (5%):</TableCell>
-                                                <TableCell className="text-right">-{formatCurrency(rawTotalSetup * 0.05)}</TableCell>
+                                                <TableCell className="text-right">-{formatCurrency(rawTotalMonthly * 0.05)}</TableCell>
                                                 <TableCell className="text-right">-{formatCurrency(rawTotalMonthly * 0.05)}</TableCell>
                                             </TableRow>
                                         )}
@@ -2107,18 +2109,39 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                         // Calculate operational costs (estimated at 60% of revenue for PABX/SIP services)
                         const estimatedOperationalCosts = dreMonthlyRevenue * 0.60;
 
+                        // Cálculo do DRE seguindo o modelo contábil correto
+                        const receitaOperacionalBruta = dreMonthlyRevenue;
+                        
+                        // Deduções da Receita Bruta (Impostos sobre a Receita - 15% conforme solicitado)
+                        const impostosSobreReceita = receitaOperacionalBruta * 0.15;
+                        
+                        // Receita Operacional Líquida
+                        const receitaOperacionalLiquida = receitaOperacionalBruta - impostosSobreReceita;
+                        
+                        // Despesas Operacionais (Comissões)
+                        const despesasComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador + (dreMonthlyRevenue * (diretorRate / 100));
+                        
+                        // Lucro/Prejuízo Operacional
+                        const lucroOperacional = receitaOperacionalLiquida - despesasComissoes - estimatedOperationalCosts;
+                        
+                        // Lucro/Prejuízo Líquido (considerando que não há outras despesas/receitas financeiras)
+                        const lucroLiquido = lucroOperacional;
+                        
+                        // Rentabilidade (Margem Líquida)
+                        const rentabilidade = receitaOperacionalBruta > 0 ? (lucroLiquido / receitaOperacionalBruta) * 100 : 0;
+                        
                         const dreCalculations = {
-                            receitaBruta: dreMonthlyRevenue,
-                            receitaLiquida: dreMonthlyRevenue * 0.9075, // Assuming 9.25% taxes
+                            receitaBruta: receitaOperacionalBruta,
+                            receitaLiquida: receitaOperacionalLiquida,
                             custoServico: estimatedOperationalCosts,
                             comissaoVendedor: comissaoVendedor,
                             comissaoDiretor: dreMonthlyRevenue * (diretorRate / 100),
                             comissaoParceiroIndicador: comissaoParceiroIndicador,
                             comissaoParceiroInfluenciador: comissaoParceiroInfluenciador,
-                            totalImpostos: dreMonthlyRevenue * 0.0925,
-                            lucroOperacional: dreMonthlyRevenue - estimatedOperationalCosts - (dreMonthlyRevenue * ((vendedorRate + diretorRate + parceiroIndicadorRate + parceiroInfluenciadorRate) / 100)),
-                            lucroLiquido: (dreMonthlyRevenue - estimatedOperationalCosts - (dreMonthlyRevenue * ((vendedorRate + diretorRate + parceiroIndicadorRate + parceiroInfluenciadorRate) / 100))) * 0.66, // After profit taxes
-                            rentabilidade: ((dreMonthlyRevenue - estimatedOperationalCosts - (dreMonthlyRevenue * ((vendedorRate + diretorRate + parceiroIndicadorRate + parceiroInfluenciadorRate) / 100))) * 0.66 / dreMonthlyRevenue) * 100,
+                            totalImpostos: impostosSobreReceita,
+                            lucroOperacional: lucroOperacional,
+                            lucroLiquido: lucroLiquido,
+                            rentabilidade: rentabilidade,
                             paybackMeses: 0, // PABX/SIP typically has no setup fee
                             taxaInstalacao: pabxResult?.setupFee || 0
                         };

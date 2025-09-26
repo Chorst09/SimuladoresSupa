@@ -14,7 +14,7 @@ import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManag
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
-import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
+import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
 import { 
     Wifi, 
     Calculator, 
@@ -182,11 +182,14 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
     
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
+    // Usa apenas o valor mensal para buscar o percentual na tabela de comissões
     const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number): number => {
         if (!channelIndicator || !includeReferralPartner) return 0;
         return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths) / 100;
     };
 
+    // Função para obter taxa de comissão do Parceiro Influenciador usando as tabelas editáveis
+    // Usa apenas o valor mensal para buscar o percentual na tabela de comissões
     const getPartnerInfluencerRate = (monthlyRevenue: number, contractMonths: number): number => {
         if (!channelInfluencer || !includeInfluencerPartner) return 0;
         return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths) / 100;
@@ -304,12 +307,19 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const calculatedCommissionValue = finalPrice * Comm;
         const revenueTaxValue = finalPrice * T_rev;
         
+        // Usando apenas o valor mensal (sem setup) para o cálculo das comissões
+        const monthlyValueOnly = priceAfterDirectorDiscount;
+        
+        // Corrigindo para usar a tabela de comissões com base no prazo do contrato e valor mensal apenas
+        // A função getPartnerIndicatorRate retorna a porcentagem, então precisamos dividir por 100
         const calculatedReferralPartnerCommission = includeReferralPartner
-            ? finalPrice * getPartnerIndicatorRate(finalPrice, contractTerm)
+            ? monthlyValueOnly * (getPartnerIndicatorRate(monthlyValueOnly, contractTerm) / 100)
             : 0;
 
+        // Corrigindo para usar a tabela de comissões com base no prazo do contrato e valor mensal apenas
+        // A função getPartnerInfluencerRate retorna a porcentagem, então precisamos dividir por 100
         const calculatedInfluencerPartnerCommission = includeInfluencerPartner
-            ? finalPrice * getPartnerInfluencerRate(finalPrice, contractTerm)
+            ? monthlyValueOnly * (getPartnerInfluencerRate(monthlyValueOnly, contractTerm) / 100)
             : 0;
 
         const grossProfit = finalPrice - C - calculatedCommissionValue - revenueTaxValue - calculatedReferralPartnerCommission - calculatedInfluencerPartnerCommission;
@@ -525,21 +535,42 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         ? (costBreakdown.finalPrice * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
         : (costBreakdown.finalPrice * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
 
+    // Cálculo do DRE seguindo o modelo contábil correto
+    const receitaOperacionalBruta = costBreakdown.finalPrice;
+    
+    // Deduções da Receita Bruta (Impostos sobre a Receita)
+    const impostosSobreReceita = receitaOperacionalBruta * 0.15; // 15% de impostos conforme solicitado
+    
+    // Receita Operacional Líquida
+    const receitaOperacionalLiquida = receitaOperacionalBruta - impostosSobreReceita;
+    
+    // Despesas Operacionais (Comissões)
+    const despesasComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+    
+    // Lucro/Prejuízo Operacional
+    const lucroOperacional = receitaOperacionalLiquida - despesasComissoes - costBreakdown.cost;
+    
+    // Lucro/Prejuízo Líquido (considerando que não há outras despesas/receitas financeiras)
+    const lucroLiquido = lucroOperacional;
+    
+    // Rentabilidade (Margem Líquida)
+    const rentabilidade = receitaOperacionalBruta > 0 ? (lucroLiquido / receitaOperacionalBruta) * 100 : 0;
+    
     const dreCalculations = {
-        receitaBruta: costBreakdown.finalPrice,
-        receitaLiquida: costBreakdown.finalPrice - costBreakdown.revenueTaxValue,
+        receitaBruta: receitaOperacionalBruta,
+        receitaLiquida: receitaOperacionalLiquida,
         custoServico: costBreakdown.cost,
         custoBanda: costBreakdown.cost,
         taxaInstalacao: costBreakdown.setupFee,
         comissaoVendedor: comissaoVendedor,
         comissaoParceiroIndicador: comissaoParceiroIndicador,
         comissaoParceiroInfluenciador: comissaoParceiroInfluenciador,
-        totalImpostos: costBreakdown.revenueTaxValue + costBreakdown.profitTaxValue,
-        lucroOperacional: costBreakdown.grossProfit,
-        lucroLiquido: costBreakdown.netProfit,
-        rentabilidade: costBreakdown.netMargin,
-        lucratividade: costBreakdown.netMargin,
-        paybackMeses: costBreakdown.setupFee > 0 && costBreakdown.netProfit > 0 ? Math.ceil(costBreakdown.setupFee / costBreakdown.netProfit) : 0,
+        totalImpostos: impostosSobreReceita,
+        lucroOperacional: lucroOperacional,
+        lucroLiquido: lucroLiquido,
+        rentabilidade: rentabilidade,
+        lucratividade: rentabilidade,
+        paybackMeses: costBreakdown.setupFee > 0 && lucroLiquido > 0 ? Math.ceil(costBreakdown.setupFee / lucroLiquido) : 0,
     };
 
     const handleSavePrices = () => {
@@ -597,7 +628,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
 
 
-    const finalTotalSetup = rawTotalSetup * salespersonDiscountFactor * directorDiscountFactor;
+    // Desconto do vendedor e diretor aplicado apenas sobre o valor mensal, não sobre o setup
+    const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
     const finalTotalMonthly = rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor;
 
     // Função para determinar a versão baseada nos descontos aplicados
@@ -1522,7 +1554,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     {applySalespersonDiscount && (
                                                         <div className="flex justify-between text-orange-400">
                                                             <span>Desconto Vendedor (5%):</span>
-                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * 0.05)}</span>
+                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.monthly, 0)) * 0.05)}</span>
                                                         </div>
                                                     )}
                                                     {appliedDirectorDiscountPercentage > 0 && (
@@ -1669,7 +1701,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     <TableCell className="text-right text-white"></TableCell>
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Custo da VM</TableCell>
+                                                    <TableCell className="text-white">Custo Fibra</TableCell>
                                                     <TableCell className="text-right text-white">{formatCurrency(costBreakdown.cost)}</TableCell>
                                                 </TableRow>
                                                 {includeReferralPartner && (

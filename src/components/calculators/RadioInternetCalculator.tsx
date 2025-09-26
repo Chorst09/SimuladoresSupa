@@ -607,7 +607,8 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
 
 
 
-    const finalTotalSetup = rawTotalSetup * salespersonDiscountFactor * directorDiscountFactor;
+    // Desconto do vendedor e diretor aplicado apenas sobre o valor mensal, não sobre o setup
+    const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
     const finalTotalMonthly = (rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor);
 
     const costBreakdown = useMemo(() => {
@@ -647,11 +648,11 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
         const priceAfterDirectorDiscount = priceAfterSalespersonDiscount * (1 - (appliedDirectorDiscountPercentage / 100));
 
         const calculatedReferralPartnerCommission = includeReferralPartner
-            ? priceAfterDirectorDiscount * getPartnerIndicatorRate(priceAfterDirectorDiscount, contractTerm)
+            ? priceAfterDirectorDiscount * (getPartnerIndicatorRate(priceAfterDirectorDiscount, contractTerm) / 100)
             : 0;
 
         const calculatedInfluencerPartnerCommission = includeInfluencerPartner
-            ? priceAfterDirectorDiscount * getPartnerInfluencerRate(priceAfterDirectorDiscount, contractTerm)
+            ? priceAfterDirectorDiscount * (getPartnerInfluencerRate(priceAfterDirectorDiscount, contractTerm) / 100)
             : 0;
 
         const finalPrice = priceAfterDirectorDiscount - calculatedReferralPartnerCommission - calculatedInfluencerPartnerCommission;
@@ -740,8 +741,9 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
         }
 
         const receitaMensal = costBreakdown.finalPrice;
-        const receitaAnual = receitaMensal * 12;
         const taxaInstalacao = costBreakdown.setupFee;
+        // Incluir a taxa de instalação na receita anual
+        const receitaAnual = (receitaMensal * 12) + taxaInstalacao;
         const custoBanda = costBreakdown.baseCost;
         
         // Impostos sobre receita
@@ -766,17 +768,35 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
             ? (receitaMensal * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
             : (receitaMensal * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
         
-        // Cálculos DRE
-        const receitaBruta = receitaMensal;
-        const receitaLiquida = receitaBruta - impostoReceita;
-        const totalCustos = custoBanda + comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
-        const lucroOperacional = receitaLiquida - totalCustos;
-        const lucroLiquido = lucroOperacional - impostoLucro;
+        // Cálculo do DRE seguindo o modelo contábil correto
+        // Receita Operacional Bruta (apenas receita mensal, sem distribuir a taxa de instalação)
+        const receitaOperacionalBruta = receitaMensal;
         
-        const rentabilidade = receitaBruta > 0 ? (lucroLiquido / receitaBruta) * 100 : 0;
-        const lucratividade = rentabilidade; // Same as rentabilidade for this context
+        // Deduções da Receita Bruta (Impostos sobre a Receita - 15% conforme solicitado)
+        const impostosSobreReceita = receitaOperacionalBruta * 0.15;
         
+        // Receita Operacional Líquida
+        const receitaOperacionalLiquida = receitaOperacionalBruta - impostosSobreReceita;
+        
+        // Despesas Operacionais (Comissões)
+        const despesasComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+        
+        // Lucro/Prejuízo Operacional
+        const lucroOperacional = receitaOperacionalLiquida - despesasComissoes - custoBanda;
+        
+        // Lucro/Prejuízo Líquido (considerando que não há outras despesas/receitas financeiras)
+        const lucroLiquido = lucroOperacional;
+        
+        // Rentabilidade (Margem Líquida)
+        const rentabilidade = receitaOperacionalBruta > 0 ? (lucroLiquido / receitaOperacionalBruta) * 100 : 0;
+        const lucratividade = rentabilidade;
+        
+        // Payback em meses (considerando a taxa de instalação)
         const paybackMeses = taxaInstalacao > 0 && lucroLiquido > 0 ? Math.ceil(taxaInstalacao / lucroLiquido) : 0;
+        
+        // Para compatibilidade com o código existente
+        const receitaBruta = receitaOperacionalBruta;
+        const receitaLiquida = receitaOperacionalLiquida;
 
         return {
             receitaMensal,
@@ -1661,7 +1681,7 @@ const RadioInternetCalculator: React.FC<RadioInternetCalculatorProps> = ({ onBac
                                                     {applySalespersonDiscount && (
                                                         <div className="flex justify-between text-orange-400">
                                                             <span>Desconto Vendedor (5%):</span>
-                                                            <span>-{formatCurrency(rawTotalSetup * 0.05)}</span>
+                                                            <span>-{formatCurrency(rawTotalMonthly * 0.05)}</span>
                                                         </div>
                                                     )}
                                                     {appliedDirectorDiscountPercentage > 0 && (
