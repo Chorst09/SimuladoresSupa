@@ -114,102 +114,95 @@ const FALLBACK_CHANNEL_INDICATOR: CommissionChannelIndicator[] = [
 
 export function useCommissions(): UseCommissionsResult {
   const { user, loading: authLoading } = useAuth();
-  const [channelSeller, setChannelSeller] = useState<CommissionChannelSeller | null>(null);
-  const [channelDirector, setChannelDirector] = useState<CommissionChannelDirector | null>(null);
-  const [seller, setSeller] = useState<CommissionSeller | null>(null);
-  const [channelInfluencer, setChannelInfluencer] = useState<CommissionChannelInfluencer[] | null>(null);
-  const [channelIndicator, setChannelIndicator] = useState<CommissionChannelIndicator[] | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [channelSeller, setChannelSeller] = useState<CommissionChannelSeller | null>(FALLBACK_CHANNEL_SELLER);
+  const [channelDirector, setChannelDirector] = useState<CommissionChannelDirector | null>(FALLBACK_CHANNEL_DIRECTOR);
+  const [seller, setSeller] = useState<CommissionSeller | null>(FALLBACK_SELLER);
+  const [channelInfluencer, setChannelInfluencer] = useState<CommissionChannelInfluencer[] | null>(FALLBACK_CHANNEL_INFLUENCER);
+  const [channelIndicator, setChannelIndicator] = useState<CommissionChannelIndicator[] | null>(FALLBACK_CHANNEL_INDICATOR);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 3;
+  const maxRetries = 2;
 
   const validateCommissionData = (data: any, type: string): boolean => {
     if (!data) return false;
-    
+
     if (type === 'array') {
-      return Array.isArray(data) && data.length > 0 && 
-             data.every(item => 
-               typeof item.months_12 === 'number' && 
-               typeof item.months_24 === 'number' &&
-               typeof item.months_36 === 'number' &&
-               typeof item.months_48 === 'number' &&
-               typeof item.months_60 === 'number'
-             );
+      return Array.isArray(data) && data.length > 0 &&
+        data.every(item =>
+          typeof item.months_12 === 'number' &&
+          typeof item.months_24 === 'number' &&
+          typeof item.months_36 === 'number' &&
+          typeof item.months_48 === 'number' &&
+          typeof item.months_60 === 'number'
+        );
     } else {
-      return typeof data.months_12 === 'number' && 
-             typeof data.months_24 === 'number' &&
-             typeof data.months_36 === 'number' &&
-             typeof data.months_48 === 'number' &&
-             typeof data.months_60 === 'number';
+      return typeof data.months_12 === 'number' &&
+        typeof data.months_24 === 'number' &&
+        typeof data.months_36 === 'number' &&
+        typeof data.months_48 === 'number' &&
+        typeof data.months_60 === 'number';
     }
   };
 
   const fetchData = async (attempt = 0): Promise<void> => {
     try {
-      setIsLoading(true);
+      // Como já temos dados de fallback, não precisamos mostrar loading
+      // Apenas limpar erro se houver
       setError(null);
-      
+
       console.log(`🔄 useCommissions: Tentativa ${attempt + 1}/${maxRetries + 1} de carregamento das comissões`);
 
-      // Sempre inicializar com dados de fallback primeiro
-      const initializeFallbackData = () => {
-        console.log('📋 useCommissions: Inicializando com dados de fallback');
-        setChannelSeller(FALLBACK_CHANNEL_SELLER);
-        setChannelDirector(FALLBACK_CHANNEL_DIRECTOR);
-        setSeller(FALLBACK_SELLER);
-        setChannelInfluencer(FALLBACK_CHANNEL_INFLUENCER);
-        setChannelIndicator(FALLBACK_CHANNEL_INDICATOR);
-      };
-
-      // Se não há usuário, usar fallback imediatamente
+      // Se não há usuário, manter dados de fallback
       if (!user) {
-        console.log('👤 useCommissions: Sem usuário autenticado, usando dados de fallback');
-        initializeFallbackData();
+        console.log('👤 useCommissions: Sem usuário autenticado, mantendo dados de fallback');
+        setIsLoading(false);
         return;
       }
 
-      // Verificar conectividade do Supabase com timeout
-      let session = null;
+      // Verificar conectividade do Supabase com timeout reduzido
       try {
         const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout na verificação de sessão')), 5000)
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout na verificação de sessão')), 3000)
         );
-        
+
         const { data: { session: sessionData }, error: sessionError } = await Promise.race([
           sessionPromise,
           timeoutPromise
         ]) as any;
-        
+
         if (sessionError) {
           console.warn('⚠️ useCommissions: Erro na sessão:', sessionError.message);
           if (attempt < maxRetries) {
-            console.log(`🔄 useCommissions: Tentando novamente em 2 segundos...`);
-            setTimeout(() => fetchData(attempt + 1), 2000);
+            console.log(`🔄 useCommissions: Tentando novamente em 1 segundo...`);
+            setTimeout(() => fetchData(attempt + 1), 1000);
             return;
           }
+          // Se falhou todas as tentativas, manter fallback
+          setIsLoading(false);
+          return;
         }
-        session = sessionData;
       } catch (sessionErr) {
         console.warn('❌ useCommissions: Erro ao verificar sessão:', sessionErr);
         if (attempt < maxRetries) {
-          console.log(`🔄 useCommissions: Tentando novamente em 2 segundos...`);
-          setTimeout(() => fetchData(attempt + 1), 2000);
+          console.log(`🔄 useCommissions: Tentando novamente em 1 segundo...`);
+          setTimeout(() => fetchData(attempt + 1), 1000);
           return;
         }
-        initializeFallbackData();
+        // Se falhou todas as tentativas, manter fallback
+        setIsLoading(false);
         return;
       }
 
-      // Tentar buscar dados do Supabase com retry automático
+      // Tentar buscar dados do Supabase com timeout reduzido
       const fetchWithRetry = async (tableName: string, query: any) => {
         try {
           const promise = query;
-          const timeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error(`Timeout ao buscar ${tableName}`)), 8000)
+          const timeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout ao buscar ${tableName}`)), 4000)
           );
-          
+
           return await Promise.race([promise, timeout]);
         } catch (error) {
           console.warn(`⚠️ useCommissions: Erro ao buscar ${tableName}:`, error);
@@ -219,23 +212,23 @@ export function useCommissions(): UseCommissionsResult {
 
       const results = await Promise.allSettled([
         // Canal/Vendedor
-        fetchWithRetry('commission_channel_seller', 
+        fetchWithRetry('commission_channel_seller',
           supabase.from('commission_channel_seller').select('*').single()
         ),
         // Canal/Diretor
-        fetchWithRetry('commission_channel_director', 
+        fetchWithRetry('commission_channel_director',
           supabase.from('commission_channel_director').select('*').single()
         ),
         // Vendedor
-        fetchWithRetry('commission_seller', 
+        fetchWithRetry('commission_seller',
           supabase.from('commission_seller').select('*').single()
         ),
         // Canal Influenciador
-        fetchWithRetry('commission_channel_influencer', 
+        fetchWithRetry('commission_channel_influencer',
           supabase.from('commission_channel_influencer').select('*').order('revenue_min', { ascending: true })
         ),
         // Canal Indicador
-        fetchWithRetry('commission_channel_indicator', 
+        fetchWithRetry('commission_channel_indicator',
           supabase.from('commission_channel_indicator').select('*').order('revenue_min', { ascending: true })
         )
       ]);
@@ -249,59 +242,57 @@ export function useCommissions(): UseCommissionsResult {
         channelIndicatorResult
       ] = results;
 
+      // Só atualizar os dados se conseguiu carregar do Supabase
+      // Caso contrário, manter os dados de fallback já inicializados
+
       // Canal/Vendedor
-      if (channelSellerResult.status === 'fulfilled' && 
-          channelSellerResult.value?.data && 
-          validateCommissionData(channelSellerResult.value.data, 'single')) {
+      if (channelSellerResult.status === 'fulfilled' &&
+        channelSellerResult.value?.data &&
+        validateCommissionData(channelSellerResult.value.data, 'single')) {
         setChannelSeller(channelSellerResult.value.data);
         console.log('✅ useCommissions: Canal/Vendedor carregado do Supabase');
       } else {
-        setChannelSeller(FALLBACK_CHANNEL_SELLER);
-        console.log('📋 useCommissions: Canal/Vendedor usando fallback');
+        console.log('📋 useCommissions: Canal/Vendedor mantendo fallback');
       }
 
       // Canal/Diretor
-      if (channelDirectorResult.status === 'fulfilled' && 
-          channelDirectorResult.value?.data && 
-          validateCommissionData(channelDirectorResult.value.data, 'single')) {
+      if (channelDirectorResult.status === 'fulfilled' &&
+        channelDirectorResult.value?.data &&
+        validateCommissionData(channelDirectorResult.value.data, 'single')) {
         setChannelDirector(channelDirectorResult.value.data);
         console.log('✅ useCommissions: Canal/Diretor carregado do Supabase');
       } else {
-        setChannelDirector(FALLBACK_CHANNEL_DIRECTOR);
-        console.log('📋 useCommissions: Canal/Diretor usando fallback');
+        console.log('📋 useCommissions: Canal/Diretor mantendo fallback');
       }
 
       // Vendedor
-      if (sellerResult.status === 'fulfilled' && 
-          sellerResult.value?.data && 
-          validateCommissionData(sellerResult.value.data, 'single')) {
+      if (sellerResult.status === 'fulfilled' &&
+        sellerResult.value?.data &&
+        validateCommissionData(sellerResult.value.data, 'single')) {
         setSeller(sellerResult.value.data);
         console.log('✅ useCommissions: Vendedor carregado do Supabase');
       } else {
-        setSeller(FALLBACK_SELLER);
-        console.log('📋 useCommissions: Vendedor usando fallback');
+        console.log('📋 useCommissions: Vendedor mantendo fallback');
       }
 
       // Canal Influenciador
-      if (channelInfluencerResult.status === 'fulfilled' && 
-          channelInfluencerResult.value?.data && 
-          validateCommissionData(channelInfluencerResult.value.data, 'array')) {
+      if (channelInfluencerResult.status === 'fulfilled' &&
+        channelInfluencerResult.value?.data &&
+        validateCommissionData(channelInfluencerResult.value.data, 'array')) {
         setChannelInfluencer(channelInfluencerResult.value.data);
         console.log('✅ useCommissions: Canal Influenciador carregado do Supabase');
       } else {
-        setChannelInfluencer(FALLBACK_CHANNEL_INFLUENCER);
-        console.log('📋 useCommissions: Canal Influenciador usando fallback');
+        console.log('📋 useCommissions: Canal Influenciador mantendo fallback');
       }
 
       // Canal Indicador
-      if (channelIndicatorResult.status === 'fulfilled' && 
-          channelIndicatorResult.value?.data && 
-          validateCommissionData(channelIndicatorResult.value.data, 'array')) {
+      if (channelIndicatorResult.status === 'fulfilled' &&
+        channelIndicatorResult.value?.data &&
+        validateCommissionData(channelIndicatorResult.value.data, 'array')) {
         setChannelIndicator(channelIndicatorResult.value.data);
         console.log('✅ useCommissions: Canal Indicador carregado do Supabase');
       } else {
-        setChannelIndicator(FALLBACK_CHANNEL_INDICATOR);
-        console.log('📋 useCommissions: Canal Indicador usando fallback');
+        console.log('📋 useCommissions: Canal Indicador mantendo fallback');
       }
 
       // Verificar se pelo menos uma tabela foi carregada com sucesso
@@ -310,35 +301,29 @@ export function useCommissions(): UseCommissionsResult {
 
       // Se nenhuma tabela foi carregada e ainda temos tentativas, retry
       if (successCount === 0 && attempt < maxRetries) {
-        console.log(`🔄 useCommissions: Nenhuma tabela carregada, tentando novamente em 3 segundos...`);
+        console.log(`🔄 useCommissions: Nenhuma tabela carregada, tentando novamente em 1 segundo...`);
         setRetryCount(attempt + 1);
-        setTimeout(() => fetchData(attempt + 1), 3000);
+        setTimeout(() => fetchData(attempt + 1), 1000);
         return;
       }
 
       // Reset retry count on success
       setRetryCount(0);
-      console.log('🎉 useCommissions: Carregamento concluído');
+      console.log(`🎉 useCommissions: Carregamento concluído (${successCount}/${results.length} tabelas do Supabase)`);
 
     } catch (err) {
       console.error('❌ useCommissions: Erro crítico:', err);
-      
+
       // Se ainda temos tentativas, retry
       if (attempt < maxRetries) {
-        console.log(`🔄 useCommissions: Erro crítico, tentando novamente em 5 segundos...`);
+        console.log(`🔄 useCommissions: Erro crítico, tentando novamente em 1 segundo...`);
         setRetryCount(attempt + 1);
-        setTimeout(() => fetchData(attempt + 1), 5000);
+        setTimeout(() => fetchData(attempt + 1), 1000);
         return;
       }
 
-      // Última tentativa falhou, usar fallback e reportar erro
-      console.log('📋 useCommissions: Todas as tentativas falharam, usando dados de fallback');
-      setChannelSeller(FALLBACK_CHANNEL_SELLER);
-      setChannelDirector(FALLBACK_CHANNEL_DIRECTOR);
-      setSeller(FALLBACK_SELLER);
-      setChannelInfluencer(FALLBACK_CHANNEL_INFLUENCER);
-      setChannelIndicator(FALLBACK_CHANNEL_INDICATOR);
-      
+      // Última tentativa falhou, manter fallback e reportar erro
+      console.log('📋 useCommissions: Todas as tentativas falharam, mantendo dados de fallback');
       setError(`Erro ao carregar comissões após ${maxRetries + 1} tentativas. Usando dados padrão.`);
     } finally {
       setIsLoading(false);
@@ -346,22 +331,17 @@ export function useCommissions(): UseCommissionsResult {
   };
 
   useEffect(() => {
-    // Sempre carregar dados quando a autenticação terminar de carregar
+    // Só tentar carregar dados do Supabase quando a autenticação terminar de carregar
     if (!authLoading) {
       console.log('🚀 useCommissions: Iniciando carregamento das tabelas de comissão');
       fetchData(0).catch((err) => {
         console.error('💥 useCommissions: Erro crítico no useEffect:', err);
-        // Garantir que sempre temos dados de fallback em caso de erro crítico
-        setChannelSeller(FALLBACK_CHANNEL_SELLER);
-        setChannelDirector(FALLBACK_CHANNEL_DIRECTOR);
-        setSeller(FALLBACK_SELLER);
-        setChannelInfluencer(FALLBACK_CHANNEL_INFLUENCER);
-        setChannelIndicator(FALLBACK_CHANNEL_INDICATOR);
+        // Em caso de erro crítico, manter dados de fallback e parar loading
         setIsLoading(false);
         setError('Erro crítico ao inicializar comissões. Usando dados padrão.');
       });
     }
-  }, [authLoading, user]);
+  }, [authLoading]);
 
   return {
     channelSeller,
@@ -385,7 +365,7 @@ export function getCommissionRate(
   if (!commissions || commissions.length === 0) {
     return 0;
   }
-  
+
   // Encontrar a faixa de comissão adequada
   const commission = commissions.find(
     c => monthlyRevenue >= c.revenue_min && monthlyRevenue <= c.revenue_max

@@ -37,7 +37,8 @@ export default function CommissionTablesUnified({ className, editable = false }:
   
   const { updateCommission } = useCommissionsEditor();
 
-  if (isLoading) {
+  // Só mostrar loading se realmente estiver carregando e não tiver dados
+  if (isLoading && !channelSeller && !seller && !channelInfluencer && !channelIndicator) {
     return (
       <div className={cn("flex items-center justify-center p-8", className)}>
         <div className="text-white">Carregando tabelas de comissões...</div>
@@ -45,7 +46,8 @@ export default function CommissionTablesUnified({ className, editable = false }:
     );
   }
 
-  if (error) {
+  // Mostrar erro apenas se não tiver dados de fallback
+  if (error && !channelSeller && !seller && !channelInfluencer && !channelIndicator) {
     return (
       <div className={cn("flex items-center justify-center p-8", className)}>
         <div className="text-red-400">Erro ao carregar tabelas de comissões: {error}</div>
