@@ -38,220 +38,30 @@ export const initialRFPs: any[] = [];
 export const initialPriceRecords: any[] = [];
 
 // Removed initialEditais export as this feature has been removed
-export const initialEditais: any[] = [];
 
 export const PIE_COLORS = ['#4CAF50', '#FFC107', '#2196F3', '#F44336', '#9C27B0'];
-    type: 'Ata de Registro de Preços',
-    description: 'Ata para aquisição de equipamentos de informática, incluindo computadores, impressoras e periféricos.',
-    status: 'Ativo',
-    publishDate: '2024-06-15',
-    validityDate: '2025-06-15',
-    totalValue: 2500000,
-    accountManager: 'João da Silva',
-    category: 'Tecnologia',
-    items: [
-      {
-        id: '1',
-        description: 'Notebook Dell Latitude 5520',
-        unit: 'unidade',
-        quantity: 100,
-        unitPrice: 3500,
-        totalPrice: 350000,
-        supplier: 'Dell Brasil',
-        brand: 'Dell',
-        model: 'Latitude 5520'
-      },
-      {
-        id: '2',
-        description: 'Impressora HP LaserJet Pro M404n',
-        unit: 'unidade',
-        quantity: 50,
-        unitPrice: 1200,
-        totalPrice: 60000,
-        supplier: 'HP Brasil',
-        brand: 'HP',
-        model: 'LaserJet Pro M404n'
-      },
-      {
-        id: '3',
-        description: 'Switch Cisco Catalyst 2960',
-        unit: 'unidade',
-        quantity: 20,
-        unitPrice: 2500,
-        totalPrice: 50000,
-        supplier: 'Cisco Brasil',
-        brand: 'Cisco',
-        model: 'Catalyst 2960'
-      }
-    ],
-    participants: ['Dell Brasil', 'HP Brasil', 'Cisco Brasil', 'Lenovo Brasil'],
-    attachments: ['ata_001.pdf', 'edital_001.pdf', 'anexos_tecnicos.pdf'],
-    notes: 'Ata válida por 12 meses com possibilidade de renovação por igual período.'
-  },
-  {
-    id: 'ATA-002',
-    title: 'Pregão Eletrônico - Serviços de Manutenção',
-    client: 'Secretaria de Educação',
-    type: 'Pregão Eletrônico',
-    description: 'Pregão para contratação de serviços de manutenção preventiva e corretiva de equipamentos de informática.',
-    status: 'Ativo',
-    publishDate: '2024-05-20',
-    validityDate: '2025-05-20',
-    totalValue: 800000,
-    accountManager: 'Maria Oliveira',
-    category: 'Serviços',
-    items: [
-      {
-        id: '1',
-        description: 'Manutenção Preventiva - Computadores',
-        unit: 'hora',
-        quantity: 2000,
-        unitPrice: 80,
-        totalPrice: 160000,
-        supplier: 'TechService Ltda',
-        brand: '',
-        model: ''
-      },
-      {
-        id: '2',
-        description: 'Manutenção Corretiva - Impressoras',
-        unit: 'hora',
-        quantity: 1000,
-        unitPrice: 120,
-        totalPrice: 120000,
-        supplier: 'PrintFix Ltda',
-        brand: '',
-        model: ''
-      }
-    ],
-    participants: ['TechService Ltda', 'PrintFix Ltda', 'Manutec Ltda'],
-    attachments: ['pregao_002.pdf', 'especificacoes_servicos.pdf'],
-    notes: 'Serviços devem ser prestados em até 24h para manutenção corretiva.'
-  },
-  {
-    id: 'ATA-003',
-    title: 'Concorrência - Sistema de Gestão Escolar',
-    client: 'Secretaria de Educação Estadual',
-    type: 'Concorrência',
-    description: 'Concorrência para aquisição de sistema de gestão escolar com módulos de matrícula, notas e frequência.',
-    status: 'Vencido',
-    publishDate: '2023-12-01',
-    validityDate: '2024-12-01',
-    totalValue: 1500000,
-    accountManager: 'Carlos Pereira',
-    category: 'Educação',
-    items: [
-      {
-        id: '1',
-        description: 'Sistema de Gestão Escolar - Licença',
-        unit: 'licença',
-        quantity: 500,
-        unitPrice: 2000,
-        totalPrice: 1000000,
-        supplier: 'EduTech Sistemas',
-        brand: 'EduTech',
-        model: 'Gestão Escolar v3.0'
-      },
-      {
-        id: '2',
-        description: 'Treinamento de Usuários',
-        unit: 'hora',
-        quantity: 200,
-        unitPrice: 150,
-        totalPrice: 30000,
-        supplier: 'EduTech Sistemas',
-        brand: '',
-        model: ''
-      }
-    ],
-    participants: ['EduTech Sistemas', 'SchoolSoft Ltda', 'EduManager'],
-    attachments: ['concorrencia_003.pdf', 'especificacoes_sistema.pdf'],
-    notes: 'Sistema deve ser compatível com padrões do MEC.'
-  },
-  {
-    id: 'ATA-004',
-    title: 'Ata de Registro de Preços - Material de Escritório',
-    client: 'Tribunal de Justiça',
-    type: 'Ata de Registro de Preços',
-    description: 'Ata para aquisição de material de escritório e papelaria para uso administrativo.',
-    status: 'Suspenso',
-    publishDate: '2024-07-01',
-    validityDate: '2025-07-01',
-    totalValue: 300000,
-    accountManager: 'Ana Costa',
-    category: 'Administrativo',
-    items: [
-      {
-        id: '1',
-        description: 'Papel A4 75g - Resma',
-        unit: 'resma',
-        quantity: 1000,
-        unitPrice: 15,
-        totalPrice: 15000,
-        supplier: 'Papelaria Central',
-        brand: 'Chamex',
-        model: ''
-      },
-      {
-        id: '2',
-        description: 'Caneta Esferográfica Azul',
-        unit: 'unidade',
-        quantity: 5000,
-        unitPrice: 2.5,
-        totalPrice: 12500,
-        supplier: 'Papelaria Central',
-        brand: 'Bic',
-        model: 'Cristal'
-      }
-    ],
-    participants: ['Papelaria Central', 'OfficeMax', 'Staples'],
-    attachments: ['ata_004.pdf'],
-    notes: 'Ata suspensa temporariamente para reavaliação de preços.'
-  },
-  {
-    id: 'ATA-005',
-    title: 'Pregão Eletrônico - Segurança Eletrônica',
-    client: 'Secretaria de Segurança Pública',
-    type: 'Pregão Eletrônico',
-    description: 'Pregão para aquisição de sistemas de segurança eletrônica, câmeras e equipamentos de monitoramento.',
-    status: 'Renovado',
-    publishDate: '2023-08-15',
-    validityDate: '2024-08-15',
-    renewalDate: '2025-08-15',
-    totalValue: 3500000,
-    accountManager: 'Pedro Santos',
-    category: 'Segurança',
-    items: [
-      {
-        id: '1',
-        description: 'Câmera IP Dome 4MP',
-        unit: 'unidade',
-        quantity: 200,
-        unitPrice: 800,
-        totalPrice: 160000,
-        supplier: 'SecurityTech',
-        brand: 'Hikvision',
-        model: 'DS-2CD2142FWD-I'
-      },
-      {
-        id: '2',
-        description: 'NVR 32 Canais',
-        unit: 'unidade',
-        quantity: 10,
-        unitPrice: 5000,
-        totalPrice: 50000,
-        supplier: 'SecurityTech',
-        brand: 'Hikvision',
-        model: 'DS-7732NI-K4'
-      }
-    ],
-    participants: ['SecurityTech', 'SurveillancePro', 'SafeGuard'],
-    attachments: ['pregao_005.pdf', 'especificacoes_seguranca.pdf'],
-    notes: 'Ata renovada por mais 12 meses com ajuste de preços de 5%.'
-  }
-];
 
-export const PIE_COLORS = ['#4CAF50', '#FFC107', '#2196F3', '#F44336', '#9C27B0'];
+// Interfaces for type safety
+interface Edital {
+  id: string;
+  title: string;
+  publicationNumber: string;
+  publishingBody: string;
+  publishDate: string;
+  openingDate: string;
+  submissionDeadline: string;
+  estimatedValue: number;
+  category: string;
+  status: string;
+  description: string;
+  requirements: string;
+  documents?: any[];
+  products?: any[];
+  analysis?: any;
+  files?: any[];
+  attachments?: string[];
+  notes?: string;
+}
 
 export const initialEditais: Edital[] = [
   {
