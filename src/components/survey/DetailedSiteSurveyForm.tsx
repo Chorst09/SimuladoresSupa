@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from 'react';
-import { TopologyViewer } from '@/components/topology/TopologyViewer';
+import { TopologyViewer } from '@/components/topology/TopologyViewerSimple';
 import { TopologyConfig } from '../topology/types/topology';
 
 interface DetailedSiteSurveyFormProps {
