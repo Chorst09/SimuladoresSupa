@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+@layer base {
+  :root {
+    --background: 240 10% 10%; /* #18181B */
+    --foreground: 220 14% 96%; /* #F3F4F6 */
+    --card: 240 10% 14%; /* #232336 */
+    --card-foreground: 220 14% 96%;
+    --popover: 240 10% 14%;
+    --popover-foreground: 220 14% 96%;
+    --primary: 188 94% 48%; /* #06B6D4 - azul ciano */
+    --primary-foreground: 220 14% 96%;
+    --secondary: 262 83% 58%; /* #7C3AED - roxo */
+    --secondary-foreground: 220 14% 96%;
+    --muted: 240 4.8% 20%; /* #232336 */
+    --muted-foreground: 220 10% 60%; /* #A1A1AA */
+    --accent: 88 81% 59%; /* #A3E635 - verde lima */
+    --accent-foreground: 240 10% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --border: 240 5.9% 25%;
+    --input: 240 5.9% 25%;
+    --ring: 188 94% 48%;
+    --chart-1: 188 94% 48%;
+    --chart-2: 262 83% 58%;
+    --chart-3: 88 81% 59%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.75rem;
+  }
+  .dark {
+    --background: 240 10% 10%;
+    --foreground: 220 14% 96%;
+    --card: 240 10% 14%;
+    --card-foreground: 220 14% 96%;
+    --popover: 240 10% 14%;
+    --popover-foreground: 220 14% 96%;
+    --primary: 188 94% 48%;
+    --primary-foreground: 220 14% 96%;
+    --secondary: 262 83% 58%;
+    --secondary-foreground: 220 14% 96%;
+    --muted: 240 4.8% 20%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 88 81% 59%;
+    --accent-foreground: 240 10% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --border: 240 5.9% 25%;
+    --input: 240 5.9% 25%;
+    --ring: 188 94% 48%;
+    --chart-1: 188 94% 48%;
+    --chart-2: 262 83% 58%;
+    --chart-3: 88 81% 59%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 140 60% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-gradient-to-br from-background via-secondary/10 to-primary/10 text-foreground min-h-screen;
+  }
+}
