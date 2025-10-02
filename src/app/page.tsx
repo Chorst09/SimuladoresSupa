@@ -48,6 +48,16 @@ export default function App() {
 
     useEffect(() => {
         setMounted(true);
+        
+        // Verificar parâmetros de URL para navegação direta
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const adminParam = urlParams.get('admin');
+            
+            if (adminParam === 'user-management') {
+                setActiveTab('user-management');
+            }
+        }
     }, []);
 
 

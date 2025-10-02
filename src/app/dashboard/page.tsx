@@ -94,6 +94,26 @@ export default function DashboardPage() {
               </button>
             </div>
 
+            {user.role === 'admin' && (
+              <div className="mt-6">
+                <h3 className="font-semibold mb-3 text-orange-800">🔧 Administração:</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button 
+                    onClick={() => window.location.href = '/?admin=user-management'}
+                    className="bg-orange-600 text-white px-4 py-3 rounded hover:bg-orange-700 text-center"
+                  >
+                    👥 Gerenciar Usuários
+                  </button>
+                  <button 
+                    onClick={() => window.location.href = '/?admin=settings'}
+                    className="bg-purple-600 text-white px-4 py-3 rounded hover:bg-purple-700 text-center"
+                  >
+                    ⚙️ Configurações
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="mt-6 p-4 bg-green-100 rounded-lg">
               <h3 className="font-semibold text-green-800">✅ Login realizado com sucesso!</h3>
               <p className="text-green-700 text-sm">
