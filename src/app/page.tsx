@@ -18,7 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 
 // Lazy load dos componentes pesados
 const DashboardView = lazy(() => import('@/components/dashboard/DashboardView'));
-const GestaoOportunidades = lazy(() => import('@/components/gestao-oportunidades/GestaoOportunidadesSimple'));
+const GestaoOportunidades = lazy(() => import('@/components/gestao-oportunidades/GestaoOportunidades'));
 const PABXSIPCalculator = lazy(() => import('@/components/calculators/PABXSIPCalculator'));
 const MaquinasVirtuaisCalculator = lazy(() => import('@/components/calculators/MaquinasVirtuaisCalculator'));
 const InternetFibraCalculator = lazy(() => import('@/components/calculators/InternetFibraCalculator'));
@@ -28,7 +28,6 @@ const InternetManCalculator = lazy(() => import('@/components/calculators/Intern
 const PhysicalVirtualConversion = lazy(() => import('@/components/tools/PhysicalVirtualConversion'));
 const UserManagement = lazy(() => import('@/components/admin/UserManagement'));
 const AdminSetup = lazy(() => import('@/components/admin/AdminSetup'));
-const UserRoleDebug = lazy(() => import('@/components/debug/UserRoleDebug'));
 
 
 
@@ -83,12 +82,12 @@ export default function App() {
                 { id: 'calculator-internet-man', label: 'Internet MAN', icon: <Wifi className="h-4 w-4" /> },
             ]
         },
-        // Gestão de Oportunidades - TESTE: sempre visível
-        {
+        // Gestão de Oportunidades - apenas para admin e director
+        ...(user?.role === 'admin' || user?.role === 'director' ? [{
             id: 'gestao-oportunidades',
-            label: 'Gestão de Oportunidades (TESTE)',
+            label: 'Gestão de Oportunidades',
             icon: <Briefcase className="h-4 w-4" />
-        },
+        }] : []),
         {
             id: 'tools',
             label: 'Ferramentas',
@@ -106,8 +105,7 @@ export default function App() {
             label: 'Administração',
             icon: <Shield className="h-4 w-4" />,
             subItems: [
-                { id: 'user-management', label: 'Gerenciar Usuários', icon: <Users className="h-4 w-4" /> },
-                { id: 'debug-user-role', label: 'Debug Role Usuário', icon: <User className="h-4 w-4" /> }
+                { id: 'user-management', label: 'Gerenciar Usuários', icon: <Users className="h-4 w-4" /> }
             ]
         }] : [])
     ];
@@ -142,7 +140,6 @@ export default function App() {
                     </Suspense>
                 );
             case 'gestao-oportunidades':
-                console.log('🎯 Renderizando Gestão de Oportunidades');
                 return (
                     <Suspense fallback={<LoadingSpinner />}>
                         <GestaoOportunidades />
@@ -188,12 +185,6 @@ export default function App() {
                 return (
                     <Suspense fallback={<LoadingSpinner />}>
                         <UserManagement />
-                    </Suspense>
-                );
-            case 'debug-user-role':
-                return (
-                    <Suspense fallback={<LoadingSpinner />}>
-                        <UserRoleDebug />
                     </Suspense>
                 );
 
