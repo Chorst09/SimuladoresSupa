@@ -540,7 +540,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const custoFibraCalculadora = custoFibra;
         
         const fundraising = 0; // Conforme tabela
-        const lastMile = 0; // Conforme tabela
+        const lastMile = createLastMile ? lastMileCost : 0; // Incluir custo Last Mile quando selecionado
 
         // CORREÇÃO: Impostos baseados na receita total (incluindo taxa de instalação)
         const simplesNacionalRate = taxRates.simplesNacional / 100;
@@ -569,7 +569,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const custoDespesa = receitaTotalPrimeiromes * 0.10; // 10% conforme padrão
 
         // Balance (Lucro Líquido) - Receita total (incluindo instalação) menos todos os custos
-        const balance = receitaTotalPrimeiromes - custoBanda - custoFibraCalculadora - simplesNacional - totalComissoes - custoDespesa;
+        const balance = receitaTotalPrimeiromes - custoBanda - custoFibraCalculadora - lastMile - simplesNacional - totalComissoes - custoDespesa;
 
         // Payback Calculation usando a função padronizada
         const paybackMonths = calculatePayback(
@@ -585,7 +585,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const rentabilidade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
         const lucratividade = rentabilidade; // Mesmo valor conforme tabela
 
-        const totalCost = custoBanda + custoFibraCalculadora + simplesNacional + totalComissoes + custoDespesa;
+        const totalCost = custoBanda + custoFibraCalculadora + lastMile + simplesNacional + totalComissoes + custoDespesa;
         const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
         const markup = totalCost > 0 ? (balance / totalCost) * 100 : 0;
 
