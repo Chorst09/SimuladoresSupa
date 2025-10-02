@@ -111,11 +111,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('👤 Processando usuário:', supabaseUser.email);
         
         // Check if user has role in Supabase profiles table
-        const { data: userData, error } = await supabase
+        let { data: userData, error } = await supabase
           .from('profiles')
           .select('role, full_name, password_changed') // Adicionar campo password_changed
           .eq('id', supabaseUser.id)
           .single();
+
+        // Se der erro na coluna password_changed, tentar sem ela
+        if (error && error.message?.includes('password_changed')) {
+          console.log('Coluna password_changed não existe, carregando sem ela...');
+          const { data: userDataFallback, error: errorFallback } = await supabase
+            .from('profiles')
+            .select('role, full_name')
+            .eq('id', supabaseUser.id)
+            .single();
+          
+          userData = userDataFallback;
+          error = errorFallback;
+        }
 
         let role: UserProfile['role'] = 'user';
         let passwordChanged = true; // Default para usuários existentes
@@ -134,15 +147,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log('🔑 Email de admin detectado, criando registro...');
             
             // Create user record with admin role
-            await supabase
-              .from('profiles')
-              .upsert({
-                id: supabaseUser.id,
-                email: supabaseUser.email,
-                role: 'admin',
-                full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email,
-                password_changed: true
-              });
+            const adminProfile = {
+              id: supabaseUser.id,
+              email: supabaseUser.email,
+              role: 'admin',
+              full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email
+            };
+
+            try {
+              await supabase
+                .from('profiles')
+                .upsert({
+                  ...adminProfile,
+                  password_changed: true
+                });
+            } catch (upsertError: any) {
+              if (upsertError.message?.includes('password_changed')) {
+                // Se der erro na coluna, inserir sem ela
+                await supabase
+                  .from('profiles')
+                  .upsert(adminProfile);
+              } else {
+                throw upsertError;
+              }
+            }
           }
         }
 

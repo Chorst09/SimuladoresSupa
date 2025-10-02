@@ -41,12 +41,30 @@ export default function UserManagement() {
 
   const loadUsers = async () => {
     try {
-      const { data: usersData, error } = await supabase
+      // Primeiro tentar com password_changed, se falhar, tentar sem
+      let { data: usersData, error } = await supabase
         .from('profiles')
         .select('id, email, full_name, role, created_at, password_changed')
         .order('created_at', { ascending: false });
       
-      if (error) {
+      // Se der erro na coluna password_changed, tentar sem ela
+      if (error && error.message?.includes('password_changed')) {
+        console.log('Coluna password_changed não existe, carregando sem ela...');
+        const { data: usersDataFallback, error: errorFallback } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, role, created_at')
+          .order('created_at', { ascending: false });
+        
+        if (errorFallback) {
+          throw errorFallback;
+        }
+        
+        // Adicionar password_changed como true para usuários existentes
+        usersData = usersDataFallback?.map(user => ({
+          ...user,
+          password_changed: true
+        })) || [];
+      } else if (error) {
         throw error;
       }
       
@@ -113,15 +131,38 @@ export default function UserManagement() {
 
         if (authData.user) {
           // Cria documento na tabela users
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: authData.user.id,
-              email: newUserEmail,
-              role: newUserRole,
-              full_name: newUserName || newUserEmail,
-              password_changed: false // Marcar que precisa alterar senha no primeiro acesso
-            });
+          const userProfile = {
+            id: authData.user.id,
+            email: newUserEmail,
+            role: newUserRole,
+            full_name: newUserName || newUserEmail
+          };
+
+          // Tentar adicionar password_changed, se falhar, inserir sem
+          try {
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert({
+                ...userProfile,
+                password_changed: false // Marcar que precisa alterar senha no primeiro acesso
+              });
+
+            if (insertError && insertError.message?.includes('password_changed')) {
+              // Se der erro na coluna, inserir sem ela
+              const { error: insertErrorFallback } = await supabase
+                .from('profiles')
+                .insert(userProfile);
+              
+              if (insertErrorFallback) {
+                throw insertErrorFallback;
+              }
+            } else if (insertError) {
+              throw insertError;
+            }
+          } catch (insertError) {
+            console.error('Erro ao inserir usuário na tabela:', insertError);
+            // Don't throw here as the user was created successfully in auth
+          }
 
           if (insertError) {
             console.error('Erro ao inserir usuário na tabela:', insertError);
