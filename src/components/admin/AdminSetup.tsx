@@ -25,7 +25,7 @@ export default function AdminSetup() {
   const checkForAdmin = async () => {
     try {
       const { data: adminUsers, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('id')
         .eq('role', 'admin')
         .limit(1);
@@ -53,9 +53,9 @@ export default function AdminSetup() {
     setCreating(true);
 
     try {
-      // Check if user already exists in Supabase user_profiles table
+      // Check if user already exists in Supabase profiles table
       const { data: existingUsers, error: checkError } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('id, email')
         .eq('email', email)
         .limit(1);
@@ -65,9 +65,9 @@ export default function AdminSetup() {
       }
       
       if (existingUsers && existingUsers.length > 0) {
-        // User exists in user_profiles table, just update to admin
+        // User exists in profiles table, just update to admin
         const { error: updateError } = await supabase
-          .from('user_profiles')
+          .from('profiles')
           .update({
             role: 'admin'
           })
@@ -99,9 +99,9 @@ export default function AdminSetup() {
       }
 
       if (authData.user) {
-        // Create user document in user_profiles table
+        // Create user document in profiles table
         const { error: insertError } = await supabase
-          .from('user_profiles')
+          .from('profiles')
           .insert({
             id: authData.user.id,
             email: email,

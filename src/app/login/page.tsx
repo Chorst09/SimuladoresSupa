@@ -41,10 +41,8 @@ const LoginPage = () => {
       if (data.user) {
         toast({ title: 'Login bem-sucedido!', description: 'Redirecionando...' });
         
-        // Aguardar um pouco para o auth state change processar
-        setTimeout(() => {
-          router.replace('/');
-        }, 1000);
+        // Não fazer redirecionamento manual - deixar o AuthRedirect cuidar disso
+        // O AuthRedirect vai detectar que o usuário está logado e redirecionar automaticamente
       }
     } catch (err: any) {
       console.error('Login error:', err);

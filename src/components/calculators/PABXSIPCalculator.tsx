@@ -5,8 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from "sonner"; // Added toast import
 import { supabase } from '../../lib/supabaseClient';
-import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+// Firebase removido - usando apenas Supabase
 import CommissionTablesUnified from './CommissionTablesUnified';
 import { CommissionData } from '@/lib/types';
 import { DRETable, DRETableProps } from './DRETable';
@@ -1208,7 +1207,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     // Alias for backward compatibility
     const calculatePABXResult = useCallback(calculatePABX, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxPrices, aiAgentPrices, getPriceRange]);
 
-    // Função para salvar a proposta
+    // Função para salvar a proposta (usando apenas API)
     const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
         if (!currentUser?.id) {
             alert('Usuário não autenticado');
@@ -1217,77 +1216,10 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
         try {
             setSaving(true);
-
-            // Se saveAsNewVersion for true, criar nova versão
-            if (saveAsNewVersion && proposalId) {
-                // Buscar a proposta original para obter informações de versionamento
-                const originalProposalRef = doc(db, 'proposals', proposalId);
-                const originalProposalSnap = await getDoc(originalProposalRef);
-
-                if (originalProposalSnap.exists()) {
-                    const originalData = originalProposalSnap.data();
-                    const baseId = originalData.baseId || proposalId;
-                    const currentVersion = originalData.version || 1;
-                    const newVersion = currentVersion + 1;
-
-                    // Criar nova proposta com versão incrementada
-                    const newProposalData = {
-                        ...currentProposal,
-                        baseId: baseId,
-                        version: newVersion,
-                        versionName: `v${newVersion}`,
-                        parentId: proposalId,
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                        createdBy: currentUser.id
-                    };
-
-                    // Salvar nova versão
-                    const newProposalRef = await addDoc(collection(db, 'proposals'), newProposalData);
-
-                    // Atualizar o estado com a nova proposta
-                    setCurrentProposal({
-                        ...newProposalData,
-                        id: newProposalRef.id
-                    });
-
-                    alert(`Proposta salva como ${newProposalData.versionName}!`);
-                    return;
-                }
-            }
-
-            // Lógica de salvamento normal (atualizar ou criar nova)
-            const proposalData = {
-                ...currentProposal,
-                updatedAt: new Date(),
-                createdBy: currentUser.id,
-                version: currentProposal.version || 1,
-                versionName: currentProposal.versionName || 'v1'
-            };
-
-            if (proposalId) {
-                // Atualizar proposta existente
-                const proposalRef = doc(db, 'proposals', proposalId);
-                await updateDoc(proposalRef, proposalData);
-                alert('Proposta atualizada com sucesso!');
-            } else {
-                // Criar nova proposta
-                proposalData.createdAt = new Date();
-                proposalData.baseId = null; // Será definido após criação
-
-                const docRef = await addDoc(collection(db, 'proposals'), proposalData);
-
-                // Atualizar com baseId igual ao próprio ID
-                await updateDoc(docRef, { baseId: docRef.id });
-
-                setCurrentProposal({
-                    ...proposalData,
-                    id: docRef.id,
-                    baseId: docRef.id
-                });
-
-                alert('Proposta salva com sucesso!');
-            }
+            
+            // Usar a função saveProposal que já existe e funciona com API
+            await saveProposal();
+            
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
             alert('Erro ao salvar proposta. Tente novamente.');

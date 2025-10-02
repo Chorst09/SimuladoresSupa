@@ -10,12 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CommissionTablesUnified from './CommissionTablesUnified';
 import { Separator } from '@/components/ui/separator';
-import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManagerForm';
+import { ClientManagerForm } from './ClientManagerForm';
+import { ClientData, AccountManagerData } from '@/lib/types';
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
-import { Proposal } from '@/lib/types'; // Importar a interface Proposal do arquivo centralizado
+
 import {
     Wifi,
     Calculator,
@@ -27,10 +28,9 @@ import {
     Trash2,
     ArrowLeft
 } from 'lucide-react';
-import { formatCurrency, formatNumber, calculatePaybackMonths } from '@/lib/utils';
-import { Proposal, Product, ClientData, AccountManagerData, UserProfile } from '@/lib/types';
+import { formatCurrency } from '@/lib/utils';
+import { Proposal, UserProfile } from '@/lib/types';
 import { supabase } from '@/lib/supabaseClient';
-import { PricingConfig, DREData } from './VMCalculator';
 
 // Componente isolado para seletor de prazo contratual
 const ContractTermSelector = memo(({ value, onChange }: { value: number; onChange: (value: string) => void }) => {
@@ -54,7 +54,7 @@ const ContractTermSelector = memo(({ value, onChange }: { value: number; onChang
 ContractTermSelector.displayName = 'ContractTermSelector';
 
 // Interfaces
-export interface Product {
+interface Product {
     id: string;
     type: 'FIBRA';
     description: string;
@@ -815,7 +815,21 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         }
     };
 
+    // Função para salvar proposta (compatível com botão "Salvar como Nova Versão")
+    const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
+        if (!user?.id) {
+            alert('Usuário não autenticado');
+            return;
+        }
 
+        try {
+            // Usar a função saveProposal existente
+            await saveProposal();
+        } catch (error) {
+            console.error('Erro ao salvar proposta:', error);
+            alert('Erro ao salvar proposta. Tente novamente.');
+        }
+    };
 
     const clearForm = () => {
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });

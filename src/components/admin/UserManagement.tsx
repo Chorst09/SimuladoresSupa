@@ -42,7 +42,7 @@ export default function UserManagement() {
   const loadUsers = async () => {
     try {
       const { data: usersData, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
       
@@ -77,7 +77,7 @@ export default function UserManagement() {
     try {
       // Verifica se já existe usuário com este email
       const { data: existingUsers, error: checkError } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('id, email')
         .eq('email', newUserEmail)
         .limit(1);
@@ -89,7 +89,7 @@ export default function UserManagement() {
       if (existingUsers && existingUsers.length > 0) {
         // Usuário já existe, apenas atualiza
         const { error: updateError } = await supabase
-          .from('user_profiles')
+          .from('profiles')
           .update({
             role: newUserRole
           })
@@ -114,7 +114,7 @@ export default function UserManagement() {
         if (authData.user) {
           // Cria documento na tabela users
           const { error: insertError } = await supabase
-            .from('user_profiles')
+            .from('profiles')
             .insert({
               id: authData.user.id,
               email: newUserEmail,
@@ -161,7 +161,7 @@ export default function UserManagement() {
 
     try {
       const { error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .update({
           role: editingUser.role,
           full_name: editingUser.full_name
@@ -190,9 +190,9 @@ export default function UserManagement() {
     }
 
     try {
-      // Delete user from user_profiles table
+      // Delete user from profiles table
       const { error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .delete()
         .eq('id', userId);
 

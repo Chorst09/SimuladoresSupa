@@ -34,7 +34,10 @@ export default function AuthRedirect({
     } else if (!requireAuth && user && isAuthPage) {
       console.log('🔄 Usuário logado, redirecionando para dashboard...');
       setHasRedirected(true);
-      router.replace('/');
+      // Aguardar um pouco mais para garantir que o estado está estável
+      setTimeout(() => {
+        router.replace('/');
+      }, 500);
     }
   }, [user, loading, requireAuth, redirectTo, router, pathname, hasRedirected]);
 

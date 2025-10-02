@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useAuth } from "@/hooks/use-auth";
 import { useAdmin } from "@/hooks/use-admin";
-import { useRouter } from 'next/navigation';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import {
     Loader2, LogOut, User, Briefcase, BarChart, Calculator,
     Server, Phone, Wifi, Radio, CheckSquare, BarChart3, ClipboardList,
@@ -41,7 +41,6 @@ import { useTheme } from 'next-themes';
 export default function App() {
     const { user, loading, logout } = useAuth();
     const { hasAnyAdmin, loading: adminLoading } = useAdmin();
-    const router = useRouter();
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
 
@@ -50,18 +49,6 @@ export default function App() {
     useEffect(() => {
         setMounted(true);
     }, []);
-
-    useEffect(() => {
-        console.log('Auth state:', { loading, user: user ? { email: user.email, role: user.role } : null });
-        console.log('Admin check:', { adminLoading, hasAnyAdmin });
-        console.log('Is admin?', user?.role === 'admin');
-        
-        // Só redirecionar se não estiver carregando e não houver usuário
-        if (!loading && !adminLoading && !user) {
-            console.log('Redirecting to login...');
-            router.replace('/login');
-        }
-    }, [user, loading, router, adminLoading, hasAnyAdmin]);
 
 
     // Definir itens de navegação
@@ -237,13 +224,12 @@ export default function App() {
         );
     }
 
-    if (!user) {
-        return null; // useEffect will redirect to login
-    }
+
 
     return (
-        <div className="min-h-screen font-body bg-background text-foreground transition-colors duration-500">
-            <div className="flex">
+        <ProtectedRoute>
+            <div className="min-h-screen font-body bg-background text-foreground transition-colors duration-500">
+                <div className="flex">
 
                 {/* Sidebar - Adaptada para usar navItems e activeTab/setActiveTab */}
                 <aside className="w-64 bg-card shadow-xl flex-col h-screen sticky top-0 hidden md:flex">
@@ -371,7 +357,8 @@ export default function App() {
                     </div>
 
                 </main>
+                </div>
             </div>
-        </div>
+        </ProtectedRoute>
     );
 }

@@ -846,8 +846,21 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         }
     };
 
+    // Função para salvar proposta (compatível com botão "Salvar como Nova Versão")
+    const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
+        if (!user?.id) {
+            alert('Usuário não autenticado');
+            return;
+        }
 
-
+        try {
+            // Usar a função saveProposal existente
+            await saveProposal();
+        } catch (error) {
+            console.error('Erro ao salvar proposta:', error);
+            alert('Erro ao salvar proposta. Tente novamente.');
+        }
+    };
     const clearForm = () => {
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
         setAccountManagerData({ name: '', email: '', phone: '' });

@@ -62,21 +62,21 @@ export default function CommissionDebugTest() {
       });
     }
 
-    // Test 3: Check user_profiles table
+    // Test 3: Check profiles table
     try {
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*');
       
       testResults.push({
-        test: 'Tabela user_profiles',
+        test: 'Tabela profiles',
         success: !error,
         data: { count: data?.length || 0, profiles: data },
         error: error?.message
       });
     } catch (err) {
       testResults.push({
-        test: 'Tabela user_profiles',
+        test: 'Tabela profiles',
         success: false,
         error: err instanceof Error ? err.message : 'Erro desconhecido'
       });

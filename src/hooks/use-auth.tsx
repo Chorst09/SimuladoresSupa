@@ -63,6 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           try {
             if (event === 'SIGNED_IN' && session?.user) {
               console.log('Checking user role in auth state change...');
+              setLoading(true); // Manter loading durante processamento
               await processUser(session.user);
             } else if (event === 'SIGNED_OUT' || !session?.user) {
               console.log('User signed out or no user present');
@@ -85,7 +86,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
           
           if (mountedRef.current) {
-            setLoading(false);
+            // Aguardar um pouco antes de definir loading como false para dar tempo ao processamento
+            setTimeout(() => {
+              if (mountedRef.current) {
+                setLoading(false);
+              }
+            }, 200);
           }
         });
 
@@ -104,10 +110,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         console.log('👤 Processando usuário:', supabaseUser.email);
         
-        // Check if user has role in Supabase user_profiles table
+        // Check if user has role in Supabase profiles table
         const { data: userData, error } = await supabase
-          .from('user_profiles')
-          .select('role, full_name') // Usar campos da tabela user_profiles
+          .from('profiles')
+          .select('role, full_name') // Usar campos da tabela profiles
           .eq('id', supabaseUser.id)
           .single();
 
@@ -117,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           role = userData.role || 'user';
           console.log('✅ Role encontrada:', role);
         } else {
-          console.log('⚠️ Usuário não encontrado na tabela user_profiles, verificando email...');
+          console.log('⚠️ Usuário não encontrado na tabela profiles, verificando email...');
           
           // If no user document exists, check if user is admin by email
           if (supabaseUser.email === 'admin@example.com' || supabaseUser.email === 'carlos.horst@doubletelecom.com.br') {
@@ -126,7 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             
             // Create user record with admin role
             await supabase
-              .from('user_profiles')
+              .from('profiles')
               .upsert({
                 id: supabaseUser.id,
                 email: supabaseUser.email,
