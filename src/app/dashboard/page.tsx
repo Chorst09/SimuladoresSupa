@@ -2,20 +2,27 @@
 
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Loader2, LogOut } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace('/login');
+      setIsRedirecting(true);
+      window.location.href = '/login';
     }
-  }, [user, loading, router]);
+  }, [user, loading]);
 
-  if (loading) {
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/login';
+  };
+
+  if (loading || isRedirecting) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -36,7 +43,16 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <button 
+            onClick={handleLogout}
+            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </button>
+        </div>
         
         <div className="bg-card p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">Bem-vindo!</h2>
@@ -44,20 +60,34 @@ export default function DashboardPage() {
             Usuário: {user.email} ({user.role})
           </p>
           
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button 
-              onClick={() => router.push('/')}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-primary/90"
+              onClick={() => window.location.href = '/'}
+              className="bg-primary text-primary-foreground px-4 py-3 rounded hover:bg-primary/90 text-center"
             >
-              Ir para Aplicação Principal
+              Aplicação Principal
             </button>
             
             <button 
-              onClick={() => router.push('/debug-auth')}
-              className="bg-secondary text-secondary-foreground px-4 py-2 rounded hover:bg-secondary/90 ml-4"
+              onClick={() => window.location.href = '/debug-auth'}
+              className="bg-secondary text-secondary-foreground px-4 py-3 rounded hover:bg-secondary/90 text-center"
             >
               Debug de Autenticação
             </button>
+
+            <button 
+              onClick={() => window.location.href = '/gestao-oportunidades'}
+              className="bg-green-600 text-white px-4 py-3 rounded hover:bg-green-700 text-center"
+            >
+              Gestão de Oportunidades
+            </button>
+          </div>
+
+          <div className="mt-6 p-4 bg-green-100 rounded-lg">
+            <h3 className="font-semibold text-green-800">✅ Login realizado com sucesso!</h3>
+            <p className="text-green-700 text-sm">
+              Você está autenticado e pode navegar pela aplicação.
+            </p>
           </div>
         </div>
       </div>

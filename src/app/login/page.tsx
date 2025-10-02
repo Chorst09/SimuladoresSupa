@@ -41,8 +41,10 @@ const LoginPage = () => {
       if (data.user) {
         toast({ title: 'Login bem-sucedido!', description: 'Redirecionando...' });
         
-        // Não fazer redirecionamento manual - deixar o AuthRedirect cuidar disso
-        // O AuthRedirect vai detectar que o usuário está logado e redirecionar automaticamente
+        // Fazer redirecionamento direto após login bem-sucedido
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
       }
     } catch (err: any) {
       console.error('Login error:', err);
@@ -70,43 +72,47 @@ const LoginPage = () => {
 
 
 
+  // Se já está logado, redirecionar
+  if (user && !authLoading) {
+    window.location.href = '/dashboard';
+    return <LoadingSpinner message="Redirecionando..." />;
+  }
+
   return (
-    <AuthRedirect requireAuth={false}>
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="w-[400px]">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">Acessar sua Conta</CardTitle>
-            <CardDescription className="text-center">
-              Insira seu e-mail e senha para continuar.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin}>
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="seu@email.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Entrando...' : 'Entrar'}
-                </Button>
-                {error && <p className="text-red-500 text-sm text-center mt-2">{error}</p>}
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <Card className="w-[400px]">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">Acessar sua Conta</CardTitle>
+          <CardDescription className="text-center">
+            Insira seu e-mail e senha para continuar.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleLogin}>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="seu@email.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
-            </form>
-            <div className="mt-4 text-center text-sm">
-              Não tem uma conta?{' '}
-              <Link href="/signup" className="underline">
-                Cadastre-se
-              </Link>
+              <div className="grid gap-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Entrando...' : 'Entrar'}
+              </Button>
+              {error && <p className="text-red-500 text-sm text-center mt-2">{error}</p>}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    </AuthRedirect>
+          </form>
+          <div className="mt-4 text-center text-sm">
+            Não tem uma conta?{' '}
+            <Link href="/signup" className="underline">
+              Cadastre-se
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
