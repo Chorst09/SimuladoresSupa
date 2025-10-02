@@ -113,21 +113,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Check if user has role in Supabase profiles table
         const { data: userData, error } = await supabase
           .from('profiles')
-          .select('role, full_name') // Usar campos da tabela profiles
+          .select('role, full_name, password_changed') // Adicionar campo password_changed
           .eq('id', supabaseUser.id)
           .single();
 
         let role: UserProfile['role'] = 'user';
+        let passwordChanged = true; // Default para usuários existentes
 
         if (!error && userData) {
           role = userData.role || 'user';
-          console.log('✅ Role encontrada:', role);
+          passwordChanged = userData.password_changed !== false; // Se não existe o campo, assume true
+          console.log('✅ Role encontrada:', role, 'Password changed:', passwordChanged);
         } else {
           console.log('⚠️ Usuário não encontrado na tabela profiles, verificando email...');
           
           // If no user document exists, check if user is admin by email
           if (supabaseUser.email === 'admin@example.com' || supabaseUser.email === 'carlos.horst@doubletelecom.com.br') {
             role = 'admin';
+            passwordChanged = true; // Admin não precisa alterar senha
             console.log('🔑 Email de admin detectado, criando registro...');
             
             // Create user record with admin role
@@ -137,7 +140,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 id: supabaseUser.id,
                 email: supabaseUser.email,
                 role: 'admin',
-                full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email
+                full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email,
+                password_changed: true
               });
           }
         }
@@ -147,9 +151,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             id: supabaseUser.id,
             email: supabaseUser.email || '',
             name: supabaseUser.user_metadata?.name || userData?.full_name || undefined,
-            role: role
+            role: role,
+            passwordChanged: passwordChanged
           });
-          console.log('✅ Usuário definido:', { email: supabaseUser.email, role });
+          console.log('✅ Usuário definido:', { email: supabaseUser.email, role, passwordChanged });
         }
       } catch (error) {
         console.error('❌ Erro ao processar usuário:', error);
@@ -157,7 +162,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser({
             id: supabaseUser.id,
             email: supabaseUser.email || '',
-            role: 'user'
+            role: 'user',
+            passwordChanged: true // Default para evitar problemas
           });
         }
       }

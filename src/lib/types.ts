@@ -59,6 +59,7 @@ export interface UserProfile {
   role: UserRole;
   token?: string; // Adicionado token
   distributorId?: string; // Adicionado distributorId
+  passwordChanged?: boolean; // Adicionado para controlar primeiro acesso
 }
 
 export interface Partner {

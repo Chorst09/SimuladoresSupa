@@ -43,7 +43,7 @@ export default function UserManagement() {
     try {
       const { data: usersData, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, role, created_at, password_changed')
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -119,7 +119,8 @@ export default function UserManagement() {
               id: authData.user.id,
               email: newUserEmail,
               role: newUserRole,
-              full_name: newUserName || newUserEmail
+              full_name: newUserName || newUserEmail,
+              password_changed: false // Marcar que precisa alterar senha no primeiro acesso
             });
 
           if (insertError) {
@@ -330,6 +331,7 @@ export default function UserManagement() {
                 <TableHead>Email</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Função</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Data de Criação</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
@@ -347,6 +349,21 @@ export default function UserManagement() {
                         <User className="h-4 w-4 mr-1 text-blue-500" />
                       )}
                       {user.role === 'admin' ? 'Administrador' : user.role === 'director' ? 'Diretor' : 'Usuário'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      {user.password_changed === false ? (
+                        <Badge variant="destructive" className="flex items-center gap-1">
+                          <UserX className="h-3 w-3" />
+                          Primeiro Acesso
+                        </Badge>
+                      ) : (
+                        <Badge variant="default" className="flex items-center gap-1">
+                          <UserCheck className="h-3 w-3" />
+                          Ativo
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
