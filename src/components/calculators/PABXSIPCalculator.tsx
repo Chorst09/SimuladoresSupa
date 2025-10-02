@@ -7,7 +7,7 @@ import { toast } from "sonner"; // Added toast import
 import { supabase } from '../../lib/supabaseClient';
 // Firebase removido - usando apenas Supabase
 import CommissionTablesUnified from './CommissionTablesUnified';
-import { CommissionData } from '@/lib/types';
+// import { CommissionData } from '@/lib/types'; // Removido - usando hook useCommissions
 import { DRETable, DRETableProps } from './DRETable';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -128,7 +128,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
     const { user: currentUser } = useAuth();
 
-    // Commission data state
+    // Commission data removido - usando tabelas editáveis do hook useCommissions
+    /*
     const [commissionData, setCommissionData] = useState<CommissionData>({
         vendedor: [
             { meses: '12 meses', comissao: '1,2' },
@@ -155,6 +156,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             { range: 'Acima de R$ 9.000,01', ate24: '11,51', mais24: '13' },
         ],
     });
+    */
 
     // Save PABX/SIP settings
     const saveSettings = useCallback(async () => {
@@ -187,7 +189,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     sip_include_setup: sipIncludeSetup,
                     sip_additional_channels: sipAdditionalChannels,
                     sip_with_equipment: sipWithEquipment,
-                    commission_data: commissionData,
+                    // commission_data removido - usando hook useCommissions
                     updated_at: new Date().toISOString(),
                     user_name: currentUser.email || 'Usuário não identificado'
                 });
@@ -205,7 +207,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         currentUser, pabxExtensions, pabxModality, pabxPremiumPlan, pabxPremiumSubPlan,
         pabxPremiumEquipment, contractDuration, pabxIncludeSetup, pabxIncludeDevices,
         pabxDeviceQuantity, pabxIncludeAI, aiAgentPlan, pabxAIPlan, includeParceiroIndicador,
-        sipPlan, sipIncludeSetup, sipAdditionalChannels, sipWithEquipment, commissionData
+        sipPlan, sipIncludeSetup, sipAdditionalChannels, sipWithEquipment
     ]);
 
     // Dados de preços do List Price - PABX (editáveis)
@@ -647,6 +649,15 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         // Apply director discount to monthly revenue
         const discountedMonthlyRevenue = monthlyRevenue * (1 - appliedDirectorDiscountPercentage / 100);
 
+        // Obter comissões da tabela editável
+        const months = contractTerm;
+        const temParceiros = includeParceiroIndicador || includeInfluencerPartner;
+        
+        // Calcular comissão do vendedor baseado na presença de parceiros
+        const vendedorCommissionRate = temParceiros
+            ? getChannelSellerCommissionRate(channelSeller, months) / 100
+            : getSellerCommissionRate(seller, months) / 100;
+
         // MÊS 0: Investimento Inicial para PABX
         // Receita (Taxa de Instalação): + installationFee
         // Custo (Equipamentos PABX): - equipmentCost
@@ -664,7 +675,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 // MÊS 1: Primeira Mensalidade (COM comissão do vendedor)
                 // Para PABX, custos operacionais são menores
                 const monthlyTaxImpost = discountedMonthlyRevenue * 0.15; // Imposto 15%
-                const monthlyCommission = discountedMonthlyRevenue * 0.10; // Comissão menor para PABX 10% (só no mês 1)
+                const monthlyCommission = discountedMonthlyRevenue * vendedorCommissionRate; // Usar comissão da tabela
                 const monthlyCustoDesp = discountedMonthlyRevenue * 0.05; // Custo/Despesa menor 5%
 
                 monthlyNetFlow = discountedMonthlyRevenue - monthlyTaxImpost - monthlyCommission - monthlyCustoDesp;
@@ -714,38 +725,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         }
     }, [pabxModality, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxExtensions, pabxIncludeAI, pabxAIPlan]);
 
-    // Get commission rate based on contract duration and role
-    const getCommissionRate = (role: 'vendedor' | 'diretor' | 'parceiro', amount: number = 0): number => {
-        if (role === 'vendedor' || role === 'diretor') {
-            const months = parseInt(contractDuration);
-            const commissionEntry = commissionData[role].find((entry: { meses: string; comissao: string }) =>
-                entry.meses.includes(months.toString())
-            );
-
-            if (commissionEntry) {
-                return parseFloat(commissionEntry.comissao.replace(',', '.')) / 100;
-            }
-        } else if (role === 'parceiro') {
-            const months = parseInt(contractDuration);
-            const commissionEntry = commissionData.parceiro.find((entry: { range: string; ate24: string; mais24: string }) => {
-                const range = entry.range;
-                if (range === 'Acima de R$ 9.000,01') {
-                    return amount > 9000.01;
-                }
-                const [minStr, maxStr] = range.replace('R$ ', '').replace(/\./g, '').replace(',', '.').split(' a ');
-                const min = parseFloat(minStr);
-                const max = parseFloat(maxStr);
-                return amount >= min && amount <= max;
-            });
-
-            if (commissionEntry) {
-                const rate = months <= 24 ? commissionEntry.ate24 : commissionEntry.mais24;
-                return parseFloat(rate.replace(',', '.')) / 100;
-            }
-        }
-
-        return 0; // Default to 0% if no matching entry found
-    };
+    // Função removida - usando funções do hook useCommissions
 
     // Get partner indicator commission rate based on monthly revenue and contract duration
     const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number) => {
