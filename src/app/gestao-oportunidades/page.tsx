@@ -1,7 +1,15 @@
 import GestaoOportunidades from '@/components/gestao-oportunidades/GestaoOportunidades'
+import AccessControl from '@/components/shared/AccessControl'
 
 export default function GestaoOportunidadesPage() {
-  return <GestaoOportunidades />
+  return (
+    <AccessControl 
+      allowedRoles={['admin', 'director']}
+      fallbackMessage="O sistema de Gestão de Oportunidades é restrito a Administradores e Diretores."
+    >
+      <GestaoOportunidades />
+    </AccessControl>
+  )
 }
 
 export const metadata = {

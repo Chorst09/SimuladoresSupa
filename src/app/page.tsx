@@ -82,11 +82,12 @@ export default function App() {
                 { id: 'calculator-internet-man', label: 'Internet MAN', icon: <Wifi className="h-4 w-4" /> },
             ]
         },
-        {
+        // Gestão de Oportunidades - apenas para admin e director
+        ...(user?.role === 'admin' || user?.role === 'director' ? [{
             id: 'gestao-oportunidades',
             label: 'Gestão de Oportunidades',
             icon: <Briefcase className="h-4 w-4" />
-        },
+        }] : []),
         {
             id: 'tools',
             label: 'Ferramentas',

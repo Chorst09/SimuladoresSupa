@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
+import AccessControl from '@/components/shared/AccessControl';
 
-export default function GestaoOportunidades() {
+function GestaoOportunidadesContent() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-8">
@@ -227,5 +228,16 @@ export default function GestaoOportunidades() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function GestaoOportunidades() {
+  return (
+    <AccessControl 
+      allowedRoles={['admin', 'director']}
+      fallbackMessage="O sistema de Gestão de Oportunidades é restrito a Administradores e Diretores."
+    >
+      <GestaoOportunidadesContent />
+    </AccessControl>
   );
 }
