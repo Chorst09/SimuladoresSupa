@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useAuth } from "@/hooks/use-auth";
 import { useAdmin } from "@/hooks/use-admin";
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+
 import {
     Loader2, LogOut, User, Briefcase, BarChart, Calculator,
     Server, Phone, Wifi, Radio, CheckSquare, BarChart3, ClipboardList,
@@ -224,12 +224,24 @@ export default function App() {
         );
     }
 
+    // Redirect to login if no user (but don't show anything to avoid flash)
+    if (!user) {
+        if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+        }
+        return (
+            <div className="flex justify-center items-center min-h-screen bg-background">
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                <p className="ml-4">Redirecionando...</p>
+            </div>
+        );
+    }
+
 
 
     return (
-        <ProtectedRoute>
-            <div className="min-h-screen font-body bg-background text-foreground transition-colors duration-500">
-                <div className="flex">
+        <div className="min-h-screen font-body bg-background text-foreground transition-colors duration-500">
+            <div className="flex">
 
                 {/* Sidebar - Adaptada para usar navItems e activeTab/setActiveTab */}
                 <aside className="w-64 bg-card shadow-xl flex-col h-screen sticky top-0 hidden md:flex">
@@ -357,8 +369,7 @@ export default function App() {
                     </div>
 
                 </main>
-                </div>
             </div>
-        </ProtectedRoute>
+        </div>
     );
 }

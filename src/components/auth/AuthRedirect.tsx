@@ -27,18 +27,20 @@ export default function AuthRedirect({
 
     const isAuthPage = pathname === '/login' || pathname === '/signup';
     
-    if (requireAuth && !user && !isAuthPage) {
-      console.log('🔄 Redirecionando para login...');
-      setHasRedirected(true);
-      router.replace(redirectTo);
-    } else if (!requireAuth && user && isAuthPage) {
-      console.log('🔄 Usuário logado, redirecionando para dashboard...');
-      setHasRedirected(true);
-      // Aguardar um pouco mais para garantir que o estado está estável
-      setTimeout(() => {
-        router.replace('/');
-      }, 500);
-    }
+    // Aguardar um pouco antes de fazer qualquer redirecionamento para evitar race conditions
+    const redirectTimeout = setTimeout(() => {
+      if (requireAuth && !user && !isAuthPage && !hasRedirected) {
+        console.log('🔄 Redirecionando para login...');
+        setHasRedirected(true);
+        router.replace(redirectTo);
+      } else if (!requireAuth && user && isAuthPage && !hasRedirected) {
+        console.log('🔄 Usuário logado, redirecionando para dashboard...');
+        setHasRedirected(true);
+        router.replace('/dashboard');
+      }
+    }, 300);
+
+    return () => clearTimeout(redirectTimeout);
   }, [user, loading, requireAuth, redirectTo, router, pathname, hasRedirected]);
 
   // Mostrar loading enquanto verifica auth ou durante redirecionamento
