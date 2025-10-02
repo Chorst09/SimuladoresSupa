@@ -1,0 +1,1 @@
+ALTER TABLE profiles ADD COLUMN password_changed BOOLEAN DEFAULT true;
