@@ -28,6 +28,7 @@ const InternetManCalculator = lazy(() => import('@/components/calculators/Intern
 const PhysicalVirtualConversion = lazy(() => import('@/components/tools/PhysicalVirtualConversion'));
 const UserManagement = lazy(() => import('@/components/admin/UserManagement'));
 const AdminSetup = lazy(() => import('@/components/admin/AdminSetup'));
+const UserRoleDebug = lazy(() => import('@/components/debug/UserRoleDebug'));
 
 
 
@@ -105,7 +106,8 @@ export default function App() {
             label: 'Administração',
             icon: <Shield className="h-4 w-4" />,
             subItems: [
-                { id: 'user-management', label: 'Gerenciar Usuários', icon: <Users className="h-4 w-4" /> }
+                { id: 'user-management', label: 'Gerenciar Usuários', icon: <Users className="h-4 w-4" /> },
+                { id: 'debug-user-role', label: 'Debug Role Usuário', icon: <User className="h-4 w-4" /> }
             ]
         }] : [])
     ];
@@ -185,6 +187,12 @@ export default function App() {
                 return (
                     <Suspense fallback={<LoadingSpinner />}>
                         <UserManagement />
+                    </Suspense>
+                );
+            case 'debug-user-role':
+                return (
+                    <Suspense fallback={<LoadingSpinner />}>
+                        <UserRoleDebug />
                     </Suspense>
                 );
 
