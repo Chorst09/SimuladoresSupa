@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { supabase } from '@/lib/supabaseClient';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { UserProfile } from '@/lib/types'; // Import UserProfile from central types
+import { clearAuthSession, isRefreshTokenError, recoverOrClearSession } from '@/lib/auth-utils';
 
 // Define o tipo para o contexto de autenticação
 interface AuthContextType {
@@ -29,11 +30,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         console.log('🔄 Inicializando autenticação...');
         
-        // Get initial session
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Get initial session with error handling
+        const session = await recoverOrClearSession();
         
-        if (error) {
-          console.error('❌ Erro ao obter sessão:', error);
+        if (!session) {
+          console.log('📋 Nenhuma sessão válida encontrada');
           if (mountedRef.current) {
             setUser(null);
             setLoading(false);
@@ -56,16 +57,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Setup auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
           console.log('🔔 Auth state change:', event, session ? 'User present' : 'No user');
-          console.log('Session details:', session?.user);
           
           if (!mountedRef.current) return;
 
-          if (event === 'SIGNED_IN' && session?.user) {
-            console.log('Checking user role in auth state change...');
-            await processUser(session.user);
-          } else if (event === 'SIGNED_OUT' || !session?.user) {
-            console.log('User signed out or no user present');
-            setUser(null);
+          try {
+            if (event === 'SIGNED_IN' && session?.user) {
+              console.log('Checking user role in auth state change...');
+              await processUser(session.user);
+            } else if (event === 'SIGNED_OUT' || !session?.user) {
+              console.log('User signed out or no user present');
+              setUser(null);
+            } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+              console.log('Token refreshed successfully');
+              await processUser(session.user);
+            }
+          } catch (error) {
+            console.error('❌ Erro no auth state change:', error);
+            // Se houver erro de token, fazer logout local
+            if (isRefreshTokenError(error)) {
+              console.log('🔄 Token inválido, fazendo logout local...');
+              setUser(null);
+              if (typeof window !== 'undefined') {
+                localStorage.clear();
+                sessionStorage.clear();
+              }
+            }
           }
           
           if (mountedRef.current) {
@@ -157,12 +173,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(true);
       }
       
-      await supabase.auth.signOut();
+      // Force sign out even if refresh token is invalid
+      await supabase.auth.signOut({ scope: 'local' });
       
-      // Only manipulate localStorage if we're in the browser
+      // Clear all auth-related data from localStorage
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
+        // Clear Supabase session data
+        localStorage.removeItem('supabase.auth.token');
+        sessionStorage.clear();
       }
       
       if (mountedRef.current) {
@@ -171,7 +191,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error('Error signing out:', error);
+      
+      // Even if logout fails, clear local state
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+      
       if (mountedRef.current) {
+        setUser(null);
         setLoading(false);
       }
     }
