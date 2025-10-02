@@ -236,7 +236,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         const loadSettings = async () => {
             try {
                 // Try to load from localStorage first
-                const savedSettings = localStorage.getItem(`vmPricingSettings_${currentUser.uid}`);
+                const savedSettings = localStorage.getItem(`vmPricingSettings_${currentUser.id}`);
                 if (savedSettings) {
                     const settingsData = JSON.parse(savedSettings);
                     setMarkup(settingsData.markup || 30);
@@ -271,7 +271,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 }
 
                 // Try to fetch from API as fallback
-                const response = await fetch(`/api/vm-settings?userId=${currentUser.uid}`);
+                const response = await fetch(`/api/vm-settings?userId=${currentUser.id}`);
                 if (response.ok) {
                     const settingsData = await response.json();
                     setMarkup(settingsData.markup || 30);
@@ -1274,7 +1274,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 contractDiscounts,
                 taxRates,
                 updatedAt: new Date().toISOString(),
-                userId: currentUser.uid
+                userId: currentUser.id
             };
 
             console.log('Saving settings:', settingsToSave);
@@ -1282,8 +1282,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             console.log('managementAndSupportCost in settingsToSave:', settingsToSave.managementAndSupportCost);
 
             // Save to localStorage as fallback
-            localStorage.setItem(`vmPricingSettings_${currentUser.uid}`, JSON.stringify(settingsToSave));
-            console.log('Saved to localStorage with key:', `vmPricingSettings_${currentUser.uid}`);
+            localStorage.setItem(`vmPricingSettings_${currentUser.id}`, JSON.stringify(settingsToSave));
+            console.log('Saved to localStorage with key:', `vmPricingSettings_${currentUser.id}`);
 
             // Try to save via API
             const response = await fetch('/api/vm-settings', {
@@ -1335,9 +1335,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     contractDiscounts,
                     taxRates,
                     updatedAt: new Date().toISOString(),
-                    userId: currentUser.uid
+                    userId: currentUser.id
                 };
-                localStorage.setItem(`vmPricingSettings_${currentUser.uid}`, JSON.stringify(settingsToSave));
+                localStorage.setItem(`vmPricingSettings_${currentUser.id}`, JSON.stringify(settingsToSave));
                 toast.success('Configurações salvas localmente!');
             } catch (localError) {
                 console.error("Erro ao salvar no localStorage:", localError);
@@ -1485,7 +1485,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                         parentId: proposalId,
                         createdAt: new Date(),
                         updatedAt: new Date(),
-                        createdBy: currentUser.uid
+                        createdBy: currentUser.id
                     };
                     
                     // Salvar nova versão
@@ -1506,7 +1506,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             const proposalData = {
                 ...currentProposal,
                 updatedAt: new Date(),
-                createdBy: currentUser.uid,
+                createdBy: currentUser.id,
                 version: currentProposal.version || 1,
                 versionName: currentProposal.versionName || 'v1'
             };

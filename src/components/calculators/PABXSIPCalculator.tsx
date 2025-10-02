@@ -170,7 +170,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             const { error } = await supabase
                 .from('pabx_settings')
                 .upsert({
-                    user_id: currentUser.uid,
+                    user_id: currentUser.id,
                     pabx_extensions: pabxExtensions,
                     pabx_modality: pabxModality,
                     pabx_premium_plan: pabxPremiumPlan,
@@ -416,7 +416,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     category: 'setup',
                     range_key: range,
                     price: price,
-                    updated_by: currentUser.uid
+                    updated_by: currentUser.id
                 });
             });
 
@@ -427,7 +427,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     category: 'monthly',
                     range_key: range,
                     price: price,
-                    updated_by: currentUser.uid
+                    updated_by: currentUser.id
                 });
             });
 
@@ -438,7 +438,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     category: 'hosting',
                     range_key: range,
                     price: price,
-                    updated_by: currentUser.uid
+                    updated_by: currentUser.id
                 });
             });
 
@@ -449,7 +449,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     category: 'device',
                     range_key: range,
                     price: price,
-                    updated_by: currentUser.uid
+                    updated_by: currentUser.id
                 });
             });
 
@@ -1098,7 +1098,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 totalSetup: finalTotalSetup, // Use discounted value
                 rawTotalMonthly: rawTotalMonthly, // Store raw values for reference
                 rawTotalSetup: rawTotalSetup, // Store raw values for reference
-                createdBy: currentUser.uid || 'anonymous',
+                createdBy: currentUser.id || 'anonymous',
                 distributorId: accountManagerData.distributorId || '',
                 accountManager: accountManagerData.name || '',
                 items: proposalItems,
@@ -1210,7 +1210,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
     // Função para salvar a proposta
     const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
-        if (!currentUser?.uid) {
+        if (!currentUser?.id) {
             alert('Usuário não autenticado');
             return;
         }
@@ -1239,7 +1239,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                         parentId: proposalId,
                         createdAt: new Date(),
                         updatedAt: new Date(),
-                        createdBy: currentUser.uid
+                        createdBy: currentUser.id
                     };
 
                     // Salvar nova versão
@@ -1260,7 +1260,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             const proposalData = {
                 ...currentProposal,
                 updatedAt: new Date(),
-                createdBy: currentUser.uid,
+                createdBy: currentUser.id,
                 version: currentProposal.version || 1,
                 versionName: currentProposal.versionName || 'v1'
             };

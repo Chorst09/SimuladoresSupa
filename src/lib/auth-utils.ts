@@ -6,26 +6,49 @@ import { supabase } from './supabaseClient';
  */
 export const clearAuthSession = async () => {
   try {
-    // Tentar fazer logout normal primeiro
-    await supabase.auth.signOut({ scope: 'local' });
+    // Tentar fazer logout com escopo global primeiro
+    await supabase.auth.signOut({ scope: 'global' });
   } catch (error) {
-    console.warn('Erro ao fazer logout normal:', error);
+    console.warn('Erro ao fazer logout global:', error);
+    try {
+      // Se falhar, tentar logout local
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (localError) {
+      console.warn('Erro ao fazer logout local:', localError);
+    }
   }
 
-  // Limpar todos os dados de autenticação do storage
+  // Limpar TODOS os dados de storage
   if (typeof window !== 'undefined') {
-    // Limpar localStorage
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.includes('supabase') || key.includes('auth'))) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-
-    // Limpar sessionStorage
+    // Limpar completamente localStorage
+    localStorage.clear();
+    
+    // Limpar completamente sessionStorage
     sessionStorage.clear();
+    
+    // Limpar cookies relacionados ao Supabase (se houver)
+    document.cookie.split(";").forEach(function(c) { 
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+    });
+  }
+};
+
+/**
+ * Reset completo da autenticação - força um estado limpo
+ */
+export const forceAuthReset = async () => {
+  console.log('🔄 Forçando reset completo da autenticação...');
+  
+  // Limpar sessão
+  await clearAuthSession();
+  
+  // Recriar cliente Supabase com configuração limpa
+  if (typeof window !== 'undefined') {
+    // Aguardar um pouco para garantir que tudo foi limpo
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Recarregar a página para garantir estado limpo
+    window.location.reload();
   }
 };
 
