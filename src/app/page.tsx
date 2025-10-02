@@ -18,6 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 
 // Lazy load dos componentes pesados
 const DashboardView = lazy(() => import('@/components/dashboard/DashboardView'));
+const GestaoOportunidades = lazy(() => import('@/components/gestao-oportunidades/GestaoOportunidades'));
 const PABXSIPCalculator = lazy(() => import('@/components/calculators/PABXSIPCalculator'));
 const MaquinasVirtuaisCalculator = lazy(() => import('@/components/calculators/MaquinasVirtuaisCalculator'));
 const InternetFibraCalculator = lazy(() => import('@/components/calculators/InternetFibraCalculator'));
@@ -82,6 +83,11 @@ export default function App() {
             ]
         },
         {
+            id: 'gestao-oportunidades',
+            label: 'Gestão de Oportunidades',
+            icon: <Briefcase className="h-4 w-4" />
+        },
+        {
             id: 'tools',
             label: 'Ferramentas',
             icon: <CheckSquare className="h-4 w-4" />,
@@ -130,6 +136,12 @@ export default function App() {
                 return (
                     <Suspense fallback={<LoadingSpinner />}>
                         <DashboardView onNavigateToCalculator={setActiveTab} />
+                    </Suspense>
+                );
+            case 'gestao-oportunidades':
+                return (
+                    <Suspense fallback={<LoadingSpinner />}>
+                        <GestaoOportunidades />
                     </Suspense>
                 );
             case 'calculator-pabx-sip': 
