@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from "sonner"; // Added toast import
 import { supabase } from '../../lib/supabaseClient';
+import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import CommissionTablesUnified from './CommissionTablesUnified';
 import { CommissionData } from '@/lib/types';
 import { DRETable, DRETableProps } from './DRETable';
@@ -77,6 +79,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [savedProposals, setSavedProposals] = useState<Proposal[]>([]);
     const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
+    const [hasChanged, setHasChanged] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     // Estados dos dados do cliente e gerente
     const [clientData, setClientData] = useState<ClientData>({
@@ -162,7 +166,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
         try {
             setIsSaving(true);
-            
+
             const { error } = await supabase
                 .from('pabx_settings')
                 .upsert({
@@ -185,7 +189,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     sip_additional_channels: sipAdditionalChannels,
                     sip_with_equipment: sipWithEquipment,
                     commission_data: commissionData,
-          updated_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
                     user_name: currentUser.email || 'Usuário não identificado'
                 });
 
@@ -401,10 +405,10 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
         try {
             console.log('Salvando preços no Supabase:', pabxPrices);
-            
+
             // Preparar dados para inserção
             const priceUpdates = [];
-            
+
             // Setup prices
             Object.entries(pabxPrices.setup).forEach(([range, price]) => {
                 priceUpdates.push({
@@ -415,7 +419,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     updated_by: currentUser.uid
                 });
             });
-            
+
             // Monthly prices
             Object.entries(pabxPrices.monthly).forEach(([range, price]) => {
                 priceUpdates.push({
@@ -426,7 +430,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     updated_by: currentUser.uid
                 });
             });
-            
+
             // Hosting prices
             Object.entries(pabxPrices.hosting).forEach(([range, price]) => {
                 priceUpdates.push({
@@ -437,7 +441,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     updated_by: currentUser.uid
                 });
             });
-            
+
             // Device prices
             Object.entries(pabxPrices.device).forEach(([range, price]) => {
                 priceUpdates.push({
@@ -448,16 +452,16 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     updated_by: currentUser.uid
                 });
             });
-            
+
             const { error } = await supabase
                 .from('pabx_prices')
-                .upsert(priceUpdates, { 
+                .upsert(priceUpdates, {
                     onConflict: 'price_type,category,range_key',
-                    ignoreDuplicates: false 
+                    ignoreDuplicates: false
                 });
 
             if (error) throw error;
-            
+
             toast.success('Preços salvos com sucesso no Supabase!');
             console.log('Preços salvos com sucesso!');
         } catch (error) {
@@ -478,7 +482,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
             if (data && data.length > 0) {
                 console.log('Dados carregados do Supabase:', data);
-                
+
                 // Reorganizar dados no formato esperado
                 const loadedPrices = {
                     setup: {},
@@ -618,6 +622,71 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         return `R$ ${numValue.toFixed(2).replace('.', ',')}`;
     };
     const generateUniqueId = () => `item-${Date.now()}`;
+
+    // Função para obter o payback máximo permitido por prazo contratual
+    const getMaxPaybackMonths = (contractTerm: number): number => {
+        // Returns the maximum allowed payback period for each contract term
+        switch (contractTerm) {
+            case 12: return 8;
+            case 24: return 10;
+            case 36: return 11;
+            case 48: return 13;
+            case 60: return 14;
+            default: return 8;
+        }
+    };
+
+    const calculatePayback = (
+        installationFee: number,
+        equipmentCost: number,
+        monthlyRevenue: number,
+        contractTerm: number,
+        appliedDirectorDiscountPercentage: number = 0
+    ): number => {
+        if (monthlyRevenue <= 0) return contractTerm;
+
+        // Apply director discount to monthly revenue
+        const discountedMonthlyRevenue = monthlyRevenue * (1 - appliedDirectorDiscountPercentage / 100);
+
+        // MÊS 0: Investimento Inicial para PABX
+        // Receita (Taxa de Instalação): + installationFee
+        // Custo (Equipamentos PABX): - equipmentCost
+        // Imposto (15% sobre Taxa de Instalação): - (installationFee * 0.15)
+        // Custo/Despesa Inicial: - (installationFee * 0.10)
+        const taxImpost = installationFee * 0.15;
+        const taxCustoDesp = installationFee * 0.10;
+        let cumulativeBalance = installationFee - equipmentCost - taxImpost - taxCustoDesp;
+
+        // Calculate month by month until balance becomes positive
+        for (let month = 1; month <= contractTerm; month++) {
+            let monthlyNetFlow = 0;
+
+            if (month === 1) {
+                // MÊS 1: Primeira Mensalidade (COM comissão do vendedor)
+                // Para PABX, custos operacionais são menores
+                const monthlyTaxImpost = discountedMonthlyRevenue * 0.15; // Imposto 15%
+                const monthlyCommission = discountedMonthlyRevenue * 0.10; // Comissão menor para PABX 10% (só no mês 1)
+                const monthlyCustoDesp = discountedMonthlyRevenue * 0.05; // Custo/Despesa menor 5%
+
+                monthlyNetFlow = discountedMonthlyRevenue - monthlyTaxImpost - monthlyCommission - monthlyCustoDesp;
+            } else {
+                // MÊS 2+: Fluxo Recorrente (SEM comissão do vendedor)
+                const monthlyTaxImpost = discountedMonthlyRevenue * 0.15; // Imposto 15%
+                const monthlyCustoDesp = discountedMonthlyRevenue * 0.05; // Custo/Despesa 5%
+
+                monthlyNetFlow = discountedMonthlyRevenue - monthlyTaxImpost - monthlyCustoDesp;
+            }
+
+            cumulativeBalance += monthlyNetFlow;
+
+            if (cumulativeBalance >= 0) {
+                return month;
+            }
+        }
+
+        // If payback not achieved within contract term
+        return contractTerm;
+    };
 
     // Função para determinar a faixa de preço baseada no número de ramais
     const getPriceRange = useCallback((extensions: number): string => {
@@ -858,8 +927,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
 
     const partnerIndicatorCommission = (getPartnerIndicatorRate(rawTotalMonthly, parseInt(contractDuration, 10)) / 100) * rawTotalMonthly;
-        
-        const influencerPartnerCommission = (getPartnerInfluencerRate(rawTotalMonthly, parseInt(contractDuration, 10)) / 100) * rawTotalMonthly;
+
+    const influencerPartnerCommission = (getPartnerInfluencerRate(rawTotalMonthly, parseInt(contractDuration, 10)) / 100) * rawTotalMonthly;
 
     // Desconto do vendedor e diretor aplicado apenas sobre o valor mensal, não sobre o setup
     const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
@@ -1011,7 +1080,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
         const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
         // Desconto do vendedor e diretor aplicado apenas sobre o valor mensal, não sobre o setup
-    const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
+        const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
         const finalTotalMonthly = rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor;
 
         // Determine if this should be version 2 (when discounts are applied)
@@ -1129,10 +1198,103 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         calculatePABX();
     }, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxPrices, aiAgentPrices, getPriceRange]);
 
+    // Detectar mudanças nos valores para mostrar botão de nova versão
+    useEffect(() => {
+        if (currentProposal?.id) {
+            setHasChanged(true);
+        }
+    }, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, sipPlan, sipIncludeSetup, sipAdditionalChannels, sipWithEquipment, clientData, accountManagerData, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
+
     // Alias for backward compatibility
     const calculatePABXResult = useCallback(calculatePABX, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxPrices, aiAgentPrices, getPriceRange]);
 
+    // Função para salvar a proposta
+    const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
+        if (!currentUser?.uid) {
+            alert('Usuário não autenticado');
+            return;
+        }
 
+        try {
+            setSaving(true);
+
+            // Se saveAsNewVersion for true, criar nova versão
+            if (saveAsNewVersion && proposalId) {
+                // Buscar a proposta original para obter informações de versionamento
+                const originalProposalRef = doc(db, 'proposals', proposalId);
+                const originalProposalSnap = await getDoc(originalProposalRef);
+
+                if (originalProposalSnap.exists()) {
+                    const originalData = originalProposalSnap.data();
+                    const baseId = originalData.baseId || proposalId;
+                    const currentVersion = originalData.version || 1;
+                    const newVersion = currentVersion + 1;
+
+                    // Criar nova proposta com versão incrementada
+                    const newProposalData = {
+                        ...currentProposal,
+                        baseId: baseId,
+                        version: newVersion,
+                        versionName: `v${newVersion}`,
+                        parentId: proposalId,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        createdBy: currentUser.uid
+                    };
+
+                    // Salvar nova versão
+                    const newProposalRef = await addDoc(collection(db, 'proposals'), newProposalData);
+
+                    // Atualizar o estado com a nova proposta
+                    setCurrentProposal({
+                        ...newProposalData,
+                        id: newProposalRef.id
+                    });
+
+                    alert(`Proposta salva como ${newProposalData.versionName}!`);
+                    return;
+                }
+            }
+
+            // Lógica de salvamento normal (atualizar ou criar nova)
+            const proposalData = {
+                ...currentProposal,
+                updatedAt: new Date(),
+                createdBy: currentUser.uid,
+                version: currentProposal.version || 1,
+                versionName: currentProposal.versionName || 'v1'
+            };
+
+            if (proposalId) {
+                // Atualizar proposta existente
+                const proposalRef = doc(db, 'proposals', proposalId);
+                await updateDoc(proposalRef, proposalData);
+                alert('Proposta atualizada com sucesso!');
+            } else {
+                // Criar nova proposta
+                proposalData.createdAt = new Date();
+                proposalData.baseId = null; // Será definido após criação
+
+                const docRef = await addDoc(collection(db, 'proposals'), proposalData);
+
+                // Atualizar com baseId igual ao próprio ID
+                await updateDoc(docRef, { baseId: docRef.id });
+
+                setCurrentProposal({
+                    ...proposalData,
+                    id: docRef.id,
+                    baseId: docRef.id
+                });
+
+                alert('Proposta salva com sucesso!');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar proposta:', error);
+            alert('Erro ao salvar proposta. Tente novamente.');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const handleDeleteProposal = async (proposalId: string) => {
         if (!currentUser) {
@@ -1510,8 +1672,18 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                             {(() => {
                                 const totalSetup = currentProposal.totalSetup;
                                 const totalMonthly = currentProposal.totalMonthly;
-                                const paybackMonths = totalSetup > 0 ? Math.ceil(totalSetup / totalMonthly) : 0;
-                                const maxPayback = 24; // Default max payback
+                                const contractTerm = parseInt(contractDuration) || 12;
+
+                                // Usar a função calculatePayback padronizada
+                                const paybackMonths = calculatePayback(
+                                    totalSetup,
+                                    0, // No equipment cost for PABX
+                                    totalMonthly,
+                                    contractTerm,
+                                    0 // No director discount applied here
+                                );
+
+                                const maxPayback = getMaxPaybackMonths(contractTerm);
                                 const isValid = paybackMonths <= maxPayback;
 
                                 return (
@@ -1989,8 +2161,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                         )}
                                         {appliedDirectorDiscountPercentage > 0 && (
                                             <TableRow key="director-discount-row" className="border-slate-700 font-semibold text-orange-400">
-                                                <TableCell>Desconto Diretor ({appliedDirectorDiscountPercentage}%):</TableCell>
-                                                <TableCell className="text-right">-{formatCurrency(rawTotalSetup * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</TableCell>
+                                                <TableCell>Desconto Diretor ({appliedDirectorDiscountPercentage}%) - Apenas Mensal:</TableCell>
+                                                <TableCell className="text-right">R$ 0,00</TableCell>
                                                 <TableCell className="text-right">-{formatCurrency(rawTotalMonthly * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</TableCell>
                                             </TableRow>
                                         )}
@@ -2053,7 +2225,20 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                 </div>
 
                                 <div className="flex justify-end gap-4 mt-6">
-                                    <Button onClick={saveProposal} className="bg-green-600 hover:bg-green-700">
+                                    {hasChanged && currentProposal?.id && (
+                                        <Button
+                                            onClick={() => {
+                                                if (currentProposal.id) {
+                                                    handleSave(currentProposal.id, true);
+                                                    setHasChanged(false);
+                                                }
+                                            }}
+                                            className="bg-blue-600 hover:bg-blue-700"
+                                        >
+                                            Salvar como Nova Versão
+                                        </Button>
+                                    )}
+                                    <Button onClick={() => handleSave()} className="bg-green-600 hover:bg-green-700">
                                         Salvar Proposta
                                     </Button>
                                     <Button className="bg-blue-600 hover:bg-blue-700">
@@ -2077,31 +2262,31 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                         const dreMonthlyRevenue = (pabxResult?.totalMonthly || 0) + (sipResult?.monthly || 0);
                         const months = parseInt(contractDuration);
                         // Cálculo correto das comissões baseado na seleção dos parceiros
-                        const comissaoParceiroIndicador = includeParceiroIndicador 
+                        const comissaoParceiroIndicador = includeParceiroIndicador
                             ? (dreMonthlyRevenue * (getChannelIndicatorCommissionRate(channelIndicator, dreMonthlyRevenue, months) / 100))
                             : 0;
-                        const comissaoParceiroInfluenciador = includeInfluencerPartner 
+                        const comissaoParceiroInfluenciador = includeInfluencerPartner
                             ? (dreMonthlyRevenue * (getChannelInfluencerCommissionRate(channelInfluencer, dreMonthlyRevenue, months) / 100))
                             : 0;
-                        
+
                         // Calcular a comissão correta baseado na presença de parceiros
                         const temParceiros = includeParceiroIndicador || includeInfluencerPartner;
-                        const comissaoVendedor = temParceiros 
+                        const comissaoVendedor = temParceiros
                             ? (dreMonthlyRevenue * (getChannelSellerCommissionRate(channelSeller, months) / 100)) // Canal/Vendedor quando há parceiros
                             : (dreMonthlyRevenue * (getSellerCommissionRate(seller, months) / 100)); // Vendedor quando não há parceiros
-                        
-                        const vendedorRate = temParceiros 
+
+                        const vendedorRate = temParceiros
                             ? getChannelSellerCommissionRate(channelSeller, months)
                             : getSellerCommissionRate(seller, months);
-                            
+
                         const diretorRate = getDirectorCommissionRate(channelDirector, months);
-                        
-                        const parceiroIndicadorRate = includeParceiroIndicador 
-                            ? getChannelIndicatorCommissionRate(channelIndicator, dreMonthlyRevenue, months) 
+
+                        const parceiroIndicadorRate = includeParceiroIndicador
+                            ? getChannelIndicatorCommissionRate(channelIndicator, dreMonthlyRevenue, months)
                             : 0;
-                            
-                        const parceiroInfluenciadorRate = includeInfluencerPartner 
-                            ? getChannelInfluencerCommissionRate(channelInfluencer, dreMonthlyRevenue, months) 
+
+                        const parceiroInfluenciadorRate = includeInfluencerPartner
+                            ? getChannelInfluencerCommissionRate(channelInfluencer, dreMonthlyRevenue, months)
                             : 0;
 
                         const parceiroRate = parceiroIndicadorRate + parceiroInfluenciadorRate;
@@ -2111,25 +2296,25 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
                         // Cálculo do DRE seguindo o modelo contábil correto
                         const receitaOperacionalBruta = dreMonthlyRevenue;
-                        
+
                         // Deduções da Receita Bruta (Impostos sobre a Receita - 15% conforme solicitado)
                         const impostosSobreReceita = receitaOperacionalBruta * 0.15;
-                        
+
                         // Receita Operacional Líquida
                         const receitaOperacionalLiquida = receitaOperacionalBruta - impostosSobreReceita;
-                        
+
                         // Despesas Operacionais (Comissões)
                         const despesasComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador + (dreMonthlyRevenue * (diretorRate / 100));
-                        
+
                         // Lucro/Prejuízo Operacional
                         const lucroOperacional = receitaOperacionalLiquida - despesasComissoes - estimatedOperationalCosts;
-                        
+
                         // Lucro/Prejuízo Líquido (considerando que não há outras despesas/receitas financeiras)
                         const lucroLiquido = lucroOperacional;
-                        
+
                         // Rentabilidade (Margem Líquida)
                         const rentabilidade = receitaOperacionalBruta > 0 ? (lucroLiquido / receitaOperacionalBruta) * 100 : 0;
-                        
+
                         const dreCalculations = {
                             receitaBruta: receitaOperacionalBruta,
                             receitaLiquida: receitaOperacionalLiquida,
@@ -2380,7 +2565,11 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                 <Button
                                     variant={isEditingSIP ? "secondary" : "outline"}
                                     size="sm"
-                                    onClick={isEditingSIP ? handleSaveSIP : () => setIsEditingSIP(true)}
+                                    onClick={isEditingSIP ? () => {
+                                        if (currentProposal.id) {
+                                            handleSave(currentProposal.id, true); // Salvar como nova versão
+                                        }
+                                    } : () => setIsEditingSIP(true)}
                                     className="border-slate-600"
                                 >
                                     {isEditingSIP ? "Salvar" : "Editar"}

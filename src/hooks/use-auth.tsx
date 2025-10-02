@@ -88,24 +88,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         console.log('👤 Processando usuário:', supabaseUser.email);
         
-        // Check if user has role in Supabase users table
+        // Check if user has role in Supabase user_profiles table
         const { data: userData, error } = await supabase
-          .from('users')
-          .select('role, token, distributorId') // Selecionar token e distributorId
+          .from('user_profiles')
+          .select('role, full_name') // Usar campos da tabela user_profiles
           .eq('id', supabaseUser.id)
           .single();
 
         let role: UserProfile['role'] = 'user';
-        let token: string | undefined = undefined;
-        let distributorId: string | undefined = undefined;
 
         if (!error && userData) {
           role = userData.role || 'user';
-          token = userData.token || undefined;
-          distributorId = userData.distributorId || undefined;
           console.log('✅ Role encontrada:', role);
         } else {
-          console.log('⚠️ Usuário não encontrado na tabela users, verificando email...');
+          console.log('⚠️ Usuário não encontrado na tabela user_profiles, verificando email...');
           
           // If no user document exists, check if user is admin by email
           if (supabaseUser.email === 'admin@example.com' || supabaseUser.email === 'carlos.horst@doubletelecom.com.br') {
@@ -114,16 +110,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             
             // Create user record with admin role
             await supabase
-              .from('users')
+              .from('user_profiles')
               .upsert({
                 id: supabaseUser.id,
                 email: supabaseUser.email,
                 role: 'admin',
-                token: 'admin-token', // Valor padrão ou gerado
-                distributorId: 'admin-distributor' // Valor padrão ou gerado
+                full_name: supabaseUser.user_metadata?.full_name || supabaseUser.email
               });
-            token = 'admin-token';
-            distributorId = 'admin-distributor';
           }
         }
 
@@ -131,10 +124,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser({
             id: supabaseUser.id,
             email: supabaseUser.email || '',
-            name: supabaseUser.user_metadata?.name || undefined,
-            role: role,
-            token: token,
-            distributorId: distributorId
+            name: supabaseUser.user_metadata?.name || userData?.full_name || undefined,
+            role: role
           });
           console.log('✅ Usuário definido:', { email: supabaseUser.email, role });
         }

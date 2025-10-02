@@ -50,7 +50,7 @@ export interface Proposal {
   };
 }
 
-export type UserRole = 'admin' | 'diretor' | 'usuario';
+export type UserRole = 'admin' | 'director' | 'user';
 
 export interface UserProfile {
   id: string;

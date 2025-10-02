@@ -3052,19 +3052,19 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div className="space-y-2 pt-4 border-t border-slate-700">
                                                                     {applySalespersonDiscount && (
                                                                         <div className="flex justify-between text-orange-400">
-                                                                            <span>Desconto Vendedor (5%):</span>
-                                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * 0.05)}</span>
+                                                                            <span>Desconto Vendedor (5%) - Apenas Mensal:</span>
+                                                                            <span>-{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * 0.05)}</span>
                                                                         </div>
                                                                     )}
                                                                     {appliedDirectorDiscountPercentage > 0 && (
                                                                         <div className="flex justify-between text-orange-400">
-                                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%):</span>
-                                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
+                                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%) - Apenas Mensal:</span>
+                                                                            <span>-{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
                                                                         </div>
                                                                     )}
                                                                     <div className="flex justify-between items-center font-bold text-lg">
                                                                         <div>
-                                                                            Total Setup: <span className="text-green-400">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
+                                                                            Total Setup: <span className="text-green-400">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0))}</span>
                                                                         </div>
                                                                         <div>
                                                                             Total Mensal: <span className="text-green-400">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>

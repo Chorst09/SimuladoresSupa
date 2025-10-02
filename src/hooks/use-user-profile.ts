@@ -45,35 +45,63 @@ export function useUserProfile(): UseUserProfileResult {
       setIsLoading(true);
       setError(null);
 
-      const { data, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      // PRIMEIRO: Tentar buscar na tabela 'users' (que sabemos que funciona)
+      let fallbackRole: UserRole = 'user';
+      try {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        if (usersData?.role) {
+          fallbackRole = usersData.role as UserRole;
+          console.log('Role encontrada na tabela users:', fallbackRole);
+        }
+      } catch (usersErr) {
+        console.warn('Tabela users não encontrada ou erro:', usersErr);
+      }
 
-      if (profileError) {
-        // Se o perfil não existe, criar um com role 'user'
-        if (profileError.code === 'PGRST116') {
-          const { data: newProfile, error: createError } = await supabase
+      // SEGUNDO: Tentar buscar na tabela user_profiles
+      let data = null;
+      let profileError = null;
+      
+      try {
+        const result = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        data = result.data;
+        profileError = result.error;
+      } catch (err) {
+        console.warn('Erro ao buscar user_profiles, usando fallback:', err);
+        profileError = err as any;
+      }
+
+      if (profileError || !data) {
+        console.log('Criando perfil com role do fallback:', fallbackRole);
+        
+        // Criar perfil usando o role da tabela users como fallback
+        const profileData: UserProfile = {
+          id: user.id,
+          email: user.email || '',
+          role: fallbackRole, // Usar role da tabela users
+          full_name: user.user_metadata?.full_name || user.email,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        setProfile(profileData);
+        
+        // Tentar criar na tabela user_profiles (sem bloquear se falhar)
+        try {
+          await supabase
             .from('user_profiles')
-            .insert([
-              {
-                id: user.id,
-                email: user.email || '',
-                role: 'user' as UserRole,
-                full_name: user.user_metadata?.full_name || user.email
-              }
-            ])
-            .select()
-            .single();
-
-          if (createError) {
-            throw createError;
-          }
-
-          setProfile(newProfile);
-        } else {
-          throw profileError;
+            .upsert(profileData, { onConflict: 'id' });
+        } catch (insertErr) {
+          console.warn('Não foi possível inserir em user_profiles:', insertErr);
         }
       } else {
         setProfile(data);
@@ -82,7 +110,7 @@ export function useUserProfile(): UseUserProfileResult {
       console.error('Erro ao buscar perfil do usuário:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar perfil');
       
-      // Fallback: criar perfil básico em memória
+      // Fallback final: usar dados básicos
       if (user) {
         setProfile({
           id: user.id,

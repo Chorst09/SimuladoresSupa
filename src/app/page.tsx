@@ -27,7 +27,8 @@ const InternetManCalculator = lazy(() => import('@/components/calculators/Intern
 const PhysicalVirtualConversion = lazy(() => import('@/components/tools/PhysicalVirtualConversion'));
 const UserManagement = lazy(() => import('@/components/admin/UserManagement'));
 const AdminSetup = lazy(() => import('@/components/admin/AdminSetup'));
-const CommissionTablesUnified = lazy(() => import('@/components/calculators/CommissionTablesUnified'));
+
+
 
 // Importe dados e tipos se ainda usados aqui
 import type { NavItem } from '@/lib/types';
@@ -97,8 +98,7 @@ export default function App() {
             label: 'Administração',
             icon: <Shield className="h-4 w-4" />,
             subItems: [
-                { id: 'user-management', label: 'Gerenciar Usuários', icon: <Users className="h-4 w-4" /> },
-                { id: 'commission-tables', label: 'Tabelas de Comissões', icon: <Calculator className="h-4 w-4" /> }
+                { id: 'user-management', label: 'Gerenciar Usuários', icon: <Users className="h-4 w-4" /> }
             ]
         }] : [])
     ];
@@ -174,29 +174,7 @@ export default function App() {
                         <UserManagement />
                     </Suspense>
                 );
-            case 'commission-tables':
-                return (
-                    <Suspense fallback={<LoadingSpinner />}>
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-foreground">Tabelas de Comissões</h2>
-                                    <p className="text-muted-foreground">Gerencie as tabelas de comissões das calculadoras</p>
-                                </div>
-                                <Button 
-                                    onClick={() => router.push('/admin/commission-tables')}
-                                    className="bg-primary hover:bg-primary/90"
-                                >
-                                    <Calculator className="mr-2 h-4 w-4" />
-                                    Editar Tabelas
-                                </Button>
-                            </div>
-                            <div className="bg-card rounded-lg border border-border p-6">
-                                <CommissionTablesUnified />
-                            </div>
-                        </div>
-                    </Suspense>
-                );
+
             case 'physical-virtual-conversion':
                 return (
                     <Suspense fallback={<LoadingSpinner />}>

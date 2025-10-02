@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -127,6 +129,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [showClientForm, setShowClientForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [hasChanged, setHasChanged] = useState<boolean>(false);
+    const [saving, setSaving] = useState(false);
 
     const filteredProposals = proposals.filter((p) => {
         const clientName = typeof p.client === 'string' ? p.client : p.client?.name || '';
@@ -366,6 +369,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const contractDiscount = useMemo(() => {
         return contractDiscounts[vmContractPeriod] || 0;
     }, [vmContractPeriod, contractDiscounts]);
+
+    // Detectar mudanças nos valores para mostrar botão de nova versão
+    useEffect(() => {
+        if (currentProposal?.id) {
+            setHasChanged(true);
+        }
+    }, [addedProducts, clientData, accountManagerData, selectedTaxRegime, taxRates, setupFee, vmContractPeriod]);
 
 
 
@@ -1441,6 +1451,94 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
             alert('Erro ao salvar proposta. Por favor, tente novamente.');
+        }
+    };
+
+    // Função para salvar a proposta com versionamento
+    const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
+        if (!currentUser?.uid) {
+            alert('Usuário não autenticado');
+            return;
+        }
+
+        try {
+            setSaving(true);
+            
+            // Se saveAsNewVersion for true, criar nova versão
+            if (saveAsNewVersion && proposalId) {
+                // Buscar a proposta original para obter informações de versionamento
+                const originalProposalRef = doc(db, 'proposals', proposalId);
+                const originalProposalSnap = await getDoc(originalProposalRef);
+                
+                if (originalProposalSnap.exists()) {
+                    const originalData = originalProposalSnap.data();
+                    const baseId = originalData.baseId || proposalId;
+                    const currentVersion = originalData.version || 1;
+                    const newVersion = currentVersion + 1;
+                    
+                    // Criar nova proposta com versão incrementada
+                    const newProposalData = {
+                        ...currentProposal,
+                        baseId: baseId,
+                        version: newVersion,
+                        versionName: `v${newVersion}`,
+                        parentId: proposalId,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        createdBy: currentUser.uid
+                    };
+                    
+                    // Salvar nova versão
+                    const newProposalRef = await addDoc(collection(db, 'proposals'), newProposalData);
+                    
+                    // Atualizar o estado com a nova proposta
+                    setCurrentProposal({
+                        ...newProposalData,
+                        id: newProposalRef.id
+                    });
+                    
+                    alert(`Proposta salva como ${newProposalData.versionName}!`);
+                    return;
+                }
+            }
+            
+            // Lógica de salvamento normal (atualizar ou criar nova)
+            const proposalData = {
+                ...currentProposal,
+                updatedAt: new Date(),
+                createdBy: currentUser.uid,
+                version: currentProposal.version || 1,
+                versionName: currentProposal.versionName || 'v1'
+            };
+
+            if (proposalId) {
+                // Atualizar proposta existente
+                const proposalRef = doc(db, 'proposals', proposalId);
+                await updateDoc(proposalRef, proposalData);
+                alert('Proposta atualizada com sucesso!');
+            } else {
+                // Criar nova proposta
+                proposalData.createdAt = new Date();
+                proposalData.baseId = null; // Será definido após criação
+                
+                const docRef = await addDoc(collection(db, 'proposals'), proposalData);
+                
+                // Atualizar com baseId igual ao próprio ID
+                await updateDoc(docRef, { baseId: docRef.id });
+                
+                setCurrentProposal({
+                    ...proposalData,
+                    id: docRef.id,
+                    baseId: docRef.id
+                });
+                
+                alert('Proposta salva com sucesso!');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar proposta:', error);
+            alert('Erro ao salvar proposta. Tente novamente.');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -2910,19 +3008,19 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div className="space-y-2 pt-4 border-t border-slate-700">
                                                                     {applySalespersonDiscount && (
                                                                         <div className="flex justify-between text-orange-400">
-                                                                            <span>Desconto Vendedor (5%):</span>
-                                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * 0.05)}</span>
+                                                                            <span>Desconto Vendedor (5%) - Apenas Mensal:</span>
+                                                                            <span>-{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * 0.05)}</span>
                                                                         </div>
                                                                     )}
                                                                     {appliedDirectorDiscountPercentage > 0 && (
                                                                         <div className="flex justify-between text-orange-400">
-                                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%):</span>
-                                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.setup + p.monthly, 0)) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
+                                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%) - Apenas Mensal:</span>
+                                                                            <span>-{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
                                                                         </div>
                                                                     )}
                                                                     <div className="flex justify-between items-center font-bold text-lg">
                                                                         <div>
-                                                                            Total Setup: <span className="text-green-400">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
+                                                                            Total Setup: <span className="text-green-400">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0))}</span>
                                                                         </div>
                                                                         <div>
                                                                             Total Mensal: <span className="text-green-400">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
@@ -2956,6 +3054,20 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                 </div>
 
                                 <div className="flex justify-end gap-4 mt-8">
+                                    {hasChanged && currentProposal?.id && (
+                                        <Button 
+                                            onClick={() => {
+                                                if (currentProposal.id) {
+                                                    handleSave(currentProposal.id, true);
+                                                    setHasChanged(false);
+                                                }
+                                            }} 
+                                            className="bg-blue-600 hover:bg-blue-700"
+                                            disabled={addedProducts.length === 0}
+                                        >
+                                            Salvar como Nova Versão
+                                        </Button>
+                                    )}
                                     <Button onClick={saveProposal} className="bg-green-600 hover:bg-green-700" disabled={addedProducts.length === 0}>
                                         <Save className="h-4 w-4 mr-2" />
                                         Salvar Proposta
