@@ -55,9 +55,11 @@ export default function App() {
         console.log('Auth state:', { loading, user: user ? { email: user.email, role: user.role } : null });
         console.log('Admin check:', { adminLoading, hasAnyAdmin });
         console.log('Is admin?', user?.role === 'admin');
-        if (!loading && !user) {
+        
+        // Só redirecionar se não estiver carregando e não houver usuário
+        if (!loading && !adminLoading && !user) {
             console.log('Redirecting to login...');
-            router.push('/login');
+            router.replace('/login');
         }
     }, [user, loading, router, adminLoading, hasAnyAdmin]);
 
