@@ -14,6 +14,7 @@ import Link from 'next/link';
 const SignupPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -35,23 +36,56 @@ const SignupPage = () => {
       }
 
       if (data.user) {
-        // Add user to users table with default role
+        // Add user to profiles table with 'pending' status
         const { error: insertError } = await supabase
-          .from('users')
+          .from('profiles')
           .insert({
             id: data.user.id,
             email: data.user.email,
-            role: 'user'
+            role: 'pending', // Status pendente até aprovação
+            full_name: fullName || email.split('@')[0], // Nome fornecido ou baseado no email
+            created_at: new Date().toISOString()
           });
 
         if (insertError) {
-          console.error('Error inserting user data:', insertError);
-          // Don't throw here as the user was created successfully
+          console.error('Error inserting user profile:', insertError);
+          // Tentar inserir sem campos opcionais
+          const { error: simpleInsertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              email: data.user.email,
+              role: 'pending'
+            });
+          
+          if (simpleInsertError) {
+            console.error('Error inserting simple profile:', simpleInsertError);
+          }
+        }
+
+        // Enviar email de aprovação para administradores
+        try {
+          const response = await fetch('/api/send-approval-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userEmail: email,
+              userName: fullName || email.split('@')[0]
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('Erro ao enviar email de aprovação');
+          }
+        } catch (emailError) {
+          console.error('Erro ao enviar email de aprovação:', emailError);
         }
 
         toast({ 
           title: 'Cadastro realizado com sucesso!', 
-          description: 'Verifique seu email para confirmar a conta antes de fazer login.' 
+          description: 'Sua conta foi criada e está aguardando aprovação do administrador. Você receberá um email quando for aprovada.' 
         });
         router.push('/login');
       }
@@ -88,6 +122,16 @@ const SignupPage = () => {
         <CardContent>
           <form onSubmit={handleSignUp} className="space-y-4">
             <div>
+              <Label htmlFor="fullName">Nome Completo</Label>
+              <Input
+                id="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Digite seu nome completo"
+              />
+            </div>
+            <div>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -105,6 +149,8 @@ const SignupPage = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
+                placeholder="Mínimo 6 caracteres"
               />
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}

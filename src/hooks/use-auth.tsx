@@ -137,6 +137,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           role = userData.role || 'user';
           passwordChanged = userData.password_changed !== false; // Se não existe o campo, assume true
           console.log('✅ Role encontrada:', role, 'Password changed:', passwordChanged);
+          
+          // Se o usuário está pendente, não permitir acesso
+          if (role === 'pending') {
+            console.log('⏳ Usuário com status pendente, aguardando aprovação');
+            setUser({
+              id: supabaseUser.id,
+              email: supabaseUser.email || '',
+              role: 'pending',
+              full_name: userData.full_name || supabaseUser.email || '',
+              password_changed: passwordChanged
+            });
+            return;
+          }
         } else {
           console.log('⚠️ Usuário não encontrado na tabela profiles, verificando email...');
           

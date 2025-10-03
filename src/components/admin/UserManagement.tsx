@@ -39,6 +39,29 @@ export default function UserManagement() {
     }
   }, [isAdmin]);
 
+  const approveUser = async (userId: string, newRole: UserRole) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          role: newRole,
+          password_changed: true // Marcar como ativo
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      // Recarregar lista de usuários
+      await loadUsers();
+      
+      // TODO: Enviar email de aprovação para o usuário
+      console.log(`Usuário aprovado com role: ${newRole}`);
+      
+    } catch (error) {
+      console.error('Erro ao aprovar usuário:', error);
+    }
+  };
+
   const loadUsers = async () => {
     try {
       // Primeiro tentar com password_changed, se falhar, tentar sem
@@ -386,10 +409,19 @@ export default function UserManagement() {
                     <div className="flex items-center">
                       {user.role === 'admin' ? (
                         <Shield className="h-4 w-4 mr-1 text-orange-500" />
+                      ) : user.role === 'director' ? (
+                        <Crown className="h-4 w-4 mr-1 text-purple-500" />
+                      ) : user.role === 'seller' ? (
+                        <Briefcase className="h-4 w-4 mr-1 text-green-500" />
+                      ) : user.role === 'pending' ? (
+                        <Loader2 className="h-4 w-4 mr-1 text-yellow-500 animate-spin" />
                       ) : (
                         <User className="h-4 w-4 mr-1 text-blue-500" />
                       )}
-                      {user.role === 'admin' ? 'Administrador' : user.role === 'director' ? 'Diretor' : 'Usuário'}
+                      {user.role === 'admin' ? 'Administrador' : 
+                       user.role === 'director' ? 'Diretor' : 
+                       user.role === 'seller' ? 'Vendedor' :
+                       user.role === 'pending' ? 'Pendente' : 'Usuário'}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -415,6 +447,21 @@ export default function UserManagement() {
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
+                      {user.role === 'pending' && (
+                        <>
+                          <Select onValueChange={(value) => approveUser(user.id, value as UserRole)}>
+                            <SelectTrigger className="w-32 h-8">
+                              <SelectValue placeholder="Aprovar como..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">Usuário</SelectItem>
+                              <SelectItem value="seller">Vendedor</SelectItem>
+                              <SelectItem value="director">Diretor</SelectItem>
+                              <SelectItem value="admin">Administrador</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"

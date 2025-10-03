@@ -29,6 +29,7 @@ const AnaliseConcorrencia = lazy(() => import('@/app/ferramentas/analise-concorr
 const PhysicalVirtualConversion = lazy(() => import('@/components/tools/PhysicalVirtualConversion'));
 const UserManagement = lazy(() => import('@/components/admin/UserManagement'));
 const AdminSetup = lazy(() => import('@/components/admin/AdminSetup'));
+const PendingApproval = lazy(() => import('@/components/auth/PendingApproval'));
 
 
 
@@ -241,6 +242,21 @@ export default function App() {
     //         </div>
     //     );
     // }
+
+    // Show pending approval screen if user is pending
+    if (user?.role === 'pending') {
+        return (
+            <div className="min-h-screen bg-background">
+                <Suspense fallback={
+                    <div className="flex justify-center items-center min-h-screen">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                }>
+                    <PendingApproval />
+                </Suspense>
+            </div>
+        );
+    }
 
     // Redirect to login if no user (but don't show anything to avoid flash)
     if (!user) {
