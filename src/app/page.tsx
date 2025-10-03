@@ -227,20 +227,20 @@ export default function App() {
         );
     }
 
-    // Show admin setup if no admin exists in the system
-    if (!hasAnyAdmin) {
-        return (
-            <div className="min-h-screen bg-background">
-                <Suspense fallback={
-                    <div className="flex justify-center items-center min-h-screen">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                    </div>
-                }>
-                    <AdminSetup />
-                </Suspense>
-            </div>
-        );
-    }
+    // Skip admin setup - go directly to login
+    // if (!hasAnyAdmin) {
+    //     return (
+    //         <div className="min-h-screen bg-background">
+    //             <Suspense fallback={
+    //                 <div className="flex justify-center items-center min-h-screen">
+    //                     <Loader2 className="h-8 w-8 animate-spin" />
+    //                 </div>
+    //             }>
+    //                 <AdminSetup />
+    //             </Suspense>
+    //         </div>
+    //     );
+    // }
 
     // Redirect to login if no user (but don't show anything to avoid flash)
     if (!user) {
