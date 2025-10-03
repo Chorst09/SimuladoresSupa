@@ -16,15 +16,16 @@ export function useAdmin() {
 
   const checkAdminStatus = async () => {
     try {
-      // Check if any admin exists in the system
+      // Check if any admin exists in the system - usar tabela profiles
       const { data: adminUsers, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('id')
         .eq('role', 'admin')
         .limit(1);
       
       if (error) {
         console.error('Erro ao verificar admins:', error);
+        // Se houver erro, assumir que não há admin para mostrar setup
         setHasAnyAdmin(false);
       } else {
         const hasAdmin = adminUsers && adminUsers.length > 0;
@@ -36,7 +37,8 @@ export function useAdmin() {
       
       console.log('Admin check result:', { 
         hasAdmin: adminUsers && adminUsers.length > 0, 
-        userRole: user?.role 
+        userRole: user?.role,
+        tableName: 'profiles'
       });
       
     } catch (error) {

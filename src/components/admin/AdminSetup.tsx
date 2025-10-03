@@ -50,35 +50,45 @@ export default function AdminSetup() {
       return;
     }
 
+    if (password.length < 6) {
+      alert('Erro: A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
     setCreating(true);
 
     try {
+      console.log('🔄 Iniciando criação do primeiro administrador...');
+      
       // Check if user already exists in Supabase profiles table
       const { data: existingUsers, error: checkError } = await supabase
         .from('profiles')
-        .select('id, email')
+        .select('id, email, role')
         .eq('email', email)
         .limit(1);
       
       if (checkError) {
         console.error('Erro ao verificar usuário existente:', checkError);
+        throw new Error(`Erro ao verificar usuário: ${checkError.message}`);
       }
       
       if (existingUsers && existingUsers.length > 0) {
+        console.log('👤 Usuário já existe, promovendo para admin...');
         // User exists in profiles table, just update to admin
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
-            role: 'admin'
+            role: 'admin',
+            full_name: name || existingUsers[0].full_name || email
           })
           .eq('email', email);
         
         if (updateError) {
-          throw updateError;
+          console.error('Erro ao atualizar usuário:', updateError);
+          throw new Error(`Erro ao promover usuário: ${updateError.message}`);
         }
         
         alert('Sucesso: Usuário promovido a administrador!');
-        
         setHasAdmin(true);
         
         // Redirect to login after a short delay
@@ -88,17 +98,27 @@ export default function AdminSetup() {
         return;
       }
       
+      console.log('🆕 Criando novo usuário...');
       // Create user with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: password,
+        options: {
+          data: {
+            full_name: name || email,
+            role: 'admin'
+          }
+        }
       });
 
       if (authError) {
+        console.error('Erro na autenticação:', authError);
         throw authError;
       }
 
       if (authData.user) {
+        console.log('✅ Usuário criado na autenticação, criando perfil...');
+        
         // Create user document in profiles table
         const { error: insertError } = await supabase
           .from('profiles')
@@ -106,14 +126,30 @@ export default function AdminSetup() {
             id: authData.user.id,
             email: email,
             role: 'admin',
-            full_name: name || email
+            full_name: name || email,
+            created_at: new Date().toISOString()
           });
 
         if (insertError) {
-          console.error('Erro ao inserir usuário na tabela:', insertError);
-          // Don't throw here as the user was created successfully in auth
+          console.error('Erro ao inserir usuário na tabela profiles:', insertError);
+          
+          // Try to create a simpler profile
+          const { error: simpleInsertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authData.user.id,
+              email: email,
+              role: 'admin'
+            });
+          
+          if (simpleInsertError) {
+            console.error('Erro mesmo com perfil simples:', simpleInsertError);
+            throw new Error(`Erro ao criar perfil: ${simpleInsertError.message}`);
+          }
         }
-        alert('Sucesso: Primeiro administrador criado com sucesso! Verifique seu email para confirmar a conta.');
+        
+        console.log('✅ Administrador criado com sucesso!');
+        alert('Sucesso: Primeiro administrador criado com sucesso! Você pode fazer login agora.');
 
         setHasAdmin(true);
         
@@ -121,9 +157,12 @@ export default function AdminSetup() {
         setTimeout(() => {
           window.location.href = '/login';
         }, 1500);
+      } else {
+        throw new Error('Falha ao criar usuário - dados de autenticação não retornados');
       }
     } catch (error: any) {
-      console.error('Erro ao criar primeiro admin:', error);
+      console.error('❌ Erro ao criar primeiro admin:', error);
+      
       let errorMessage = 'Não foi possível criar o administrador.';
       
       if (error.message.includes('User already registered')) {
@@ -132,6 +171,10 @@ export default function AdminSetup() {
         errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
       } else if (error.message.includes('Invalid email')) {
         errorMessage = 'Email inválido.';
+      } else if (error.message.includes('duplicate key value')) {
+        errorMessage = 'Este usuário já existe no sistema.';
+      } else if (error.message) {
+        errorMessage = `Erro: ${error.message}`;
       }
       
       alert(`Erro: ${errorMessage}`);
