@@ -380,7 +380,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             fiberCost: plan.fiberCost,
             paybackValidation: validatePayback(
                 includeInstallation ? plan.installationCost : 0,
-                plan.manCost,
+                plan.fiberCost,
                 monthlyPrice,
                 debouncedContractTerm,
                 applySalespersonDiscount,
@@ -692,9 +692,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         const receitaTotalPrimeiromes = totalRevenue + receitaInstalacao;
 
         // CORREÇÃO: Custo de banda = velocidade × 2,09 × meses do período
+        // Se Last Mile estiver marcado, não considerar custo da banda
         const velocidade = result?.speed || 0; // Velocidade em Mbps
-        const custoBandaMensal = velocidade * taxRates.banda; // 600 × 2,09 = 1.254,00
-        const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00
+        const custoBandaMensal = createLastMile ? 0 : velocidade * taxRates.banda; // Se Last Mile, custo = 0, senão 600 × 2,09 = 1.254,00
+        const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00 (ou 0 se Last Mile)
 
         // Custo Fibra vem da calculadora conforme prazo contratual e velocidade
         const custoManCalculadora = custoMan;
@@ -737,8 +738,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             custoManCalculadora,
             monthlyValue,
             contractTerm,
-            temParceiros,
-            0 // Sem desconto de diretor no DRE
+            applySalespersonDiscount,
+            appliedDirectorDiscountPercentage
         );
 
 
@@ -800,7 +801,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             60: dre60,
             // Manter compatibilidade com código existente
             receitaBruta: dre12.receitaMensal,
-            receitaLiquida: dre12.receitaMensal - dre12.simplesNacional - dre12.cofins,
+            receitaLiquida: dre12.receitaMensal - dre12.simplesNacional,
             custoServico: dre12.custoMan,
             custoBanda: dre12.custoBanda,
             taxaInstalacao: dre12.receitaInstalacao,
@@ -808,14 +809,14 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             comissaoParceiroIndicador: dre12.comissaoParceiroIndicador,
             comissaoParceiroInfluenciador: dre12.comissaoParceiroInfluenciador,
             totalComissoes: dre12.totalComissoes,
-            totalImpostos: dre12.simplesNacional + dre12.cofins + dre12.csll + dre12.irpj,
+            totalImpostos: dre12.simplesNacional,
             lucroOperacional: dre12.balance,
             lucroLiquido: dre12.balance,
             rentabilidade: dre12.rentabilidade,
             lucratividade: dre12.lucratividade,
             paybackMeses: calculatePayback(
                 dre12.receitaInstalacao,
-                result?.manCost || 0,
+                result?.fiberCost || 0,
                 dre12.receitaMensal,
                 12,
                 applySalespersonDiscount,
@@ -1518,7 +1519,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                     if (plan) {
                                         paybackMonths = calculatePayback(
                                             currentProposal.includeInstallation ? plan.installationCost : 0,
-                                            plan.manCost,
+                                            plan.fiberCost,
                                             totalMonthly,
                                             contractTerm,
                                             currentProposal.applySalespersonDiscount || false,
@@ -2223,7 +2224,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                             const avgPayback = [12, 24, 36, 48, 60].reduce((sum, period) => {
                                                                 const payback = calculatePayback(
                                                                     dreCalculations[period].receitaInstalacao,
-                                                                    result?.manCost || 0,
+                                                                    result?.fiberCost || 0,
                                                                     dreCalculations[period].receitaMensal,
                                                                     period,
                                                                     applySalespersonDiscount,
@@ -2298,7 +2299,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     const highPaybackPeriods = periods.filter(p => {
                                                         const payback = calculatePayback(
                                                             dreCalculations[p].receitaInstalacao,
-                                                            result?.manCost || 0,
+                                                            result?.fiberCost || 0,
                                                             dreCalculations[p].receitaMensal,
                                                             p,
                                                             applySalespersonDiscount,

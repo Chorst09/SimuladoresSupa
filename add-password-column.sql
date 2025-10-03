@@ -12,5 +12,5 @@ WHERE password_changed IS NULL;
 -- Verificar se a coluna foi adicionada
 SELECT column_name, data_type, is_nullable, column_default 
 FROM information_schema.columns 
-WHERE table_name = 'profiles' 
-AND column_name = 'password_changed';
+WHERE table_name = 'carlos.horst@doubletelecom.com.br' 
+AND column_name = 'Double@2025';

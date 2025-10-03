@@ -503,15 +503,16 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         const receitaTotalPrimeiromes = totalRevenue + receitaInstalacao;
         
         // CORREÇÃO: Custo de banda = velocidade × 2,09 × meses do período
+        // Se Last Mile estiver marcado, não considerar custo da banda
         const velocidade = result?.speed || 0; // Velocidade em Mbps
-        const custoBandaMensal = velocidade * taxRates.banda; // 600 × 2,09 = 1.254,00
-        const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00
+        const custoBandaMensal = createLastMile ? 0 : velocidade * taxRates.banda; // Se Last Mile, custo = 0, senão 600 × 2,09 = 1.254,00
+        const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00 (ou 0 se Last Mile)
         
         // Custo Fibra/Radio vem da calculadora conforme prazo contratual e velocidade
         const custoDoubleFiberRadioCalculadora = custoDoubleFiberRadio;
         
         const fundraising = 0; // Conforme tabela
-        const lastMile = 0; // Conforme tabela
+        const lastMile = createLastMile ? lastMileCost : 0; // Incluir custo Last Mile quando selecionado
 
         // CORREÇÃO: Impostos baseados na receita total (incluindo taxa de instalação)
         const simplesNacionalRate = taxRates.simplesNacional / 100;
@@ -540,7 +541,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         const custoDespesa = receitaTotalPrimeiromes * 0.10; // 10% conforme padrão
 
         // Balance (Lucro Líquido) - Receita total (incluindo instalação) menos todos os custos
-        const balance = receitaTotalPrimeiromes - custoBanda - custoDoubleFiberRadioCalculadora - simplesNacional - totalComissoes - custoDespesa;
+        const balance = receitaTotalPrimeiromes - custoBanda - custoDoubleFiberRadioCalculadora - lastMile - simplesNacional - totalComissoes - custoDespesa;
 
         // Payback Calculation usando a nova lógica
         const paybackMonths = calculatePayback(
@@ -557,7 +558,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         const rentabilidade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
         const lucratividade = rentabilidade; // Mesmo valor conforme tabela
 
-        const totalCost = custoBanda + custoDoubleFiberRadioCalculadora + simplesNacional + totalComissoes + custoDespesa;
+        const totalCost = custoBanda + custoDoubleFiberRadioCalculadora + lastMile + simplesNacional + totalComissoes + custoDespesa;
         const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
         const markup = totalCost > 0 ? (balance / totalCost) * 100 : 0;
 

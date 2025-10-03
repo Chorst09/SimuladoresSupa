@@ -25,6 +25,7 @@ const InternetFibraCalculator = lazy(() => import('@/components/calculators/Inte
 const InternetRadioCalculator = lazy(() => import('@/components/calculators/InternetRadioCalculator'));
 const DoubleFibraRadioCalculator = lazy(() => import('@/components/calculators/DoubleFibraRadioCalculator'));
 const InternetManCalculator = lazy(() => import('@/components/calculators/InternetManCalculator'));
+const AnaliseConcorrencia = lazy(() => import('@/app/ferramentas/analise-concorrencia/page'));
 const PhysicalVirtualConversion = lazy(() => import('@/components/tools/PhysicalVirtualConversion'));
 const UserManagement = lazy(() => import('@/components/admin/UserManagement'));
 const AdminSetup = lazy(() => import('@/components/admin/AdminSetup'));
@@ -92,6 +93,7 @@ export default function App() {
             label: 'Ferramentas',
             icon: <CheckSquare className="h-4 w-4" />,
             subItems: [
+                { id: 'analise-concorrencia', label: 'Análise de Concorrência', icon: <BarChart3 className="h-4 w-4" /> },
                 { id: 'physical-virtual-conversion', label: 'Conversão Física/Virtual', icon: <Server className="h-4 w-4" /> },
                 { id: 'site-survey', label: 'Site Survey', icon: <MapPin className="h-4 w-4" /> },
                 { id: 'it-assessment', label: 'Assessment de TI', icon: <BarChart3 className="h-4 w-4" /> },
@@ -187,6 +189,12 @@ export default function App() {
                     </Suspense>
                 );
 
+            case 'analise-concorrencia':
+                return (
+                    <Suspense fallback={<LoadingSpinner />}>
+                        <AnaliseConcorrencia />
+                    </Suspense>
+                );
             case 'physical-virtual-conversion':
                 return (
                     <Suspense fallback={<LoadingSpinner />}>

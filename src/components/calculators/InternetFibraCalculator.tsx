@@ -532,9 +532,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const receitaTotalPrimeiromes = totalRevenue + receitaInstalacao;
         
         // CORREÇÃO: Custo de banda = velocidade × 2,09 × meses do período
+        // Se Last Mile estiver marcado, não considerar custo da banda
         const velocidade = result?.speed || 0; // Velocidade em Mbps
-        const custoBandaMensal = velocidade * taxRates.banda; // 600 × 2,09 = 1.254,00
-        const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00
+        const custoBandaMensal = createLastMile ? 0 : velocidade * taxRates.banda; // Se Last Mile, custo = 0, senão 600 × 2,09 = 1.254,00
+        const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00 (ou 0 se Last Mile)
         
         // Custo Fibra vem da calculadora conforme prazo contratual e velocidade
         const custoFibraCalculadora = custoFibra;
@@ -577,8 +578,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             custoFibraCalculadora,
             monthlyValue,
             contractTerm,
-            temParceiros,
-            0 // Sem desconto de diretor no DRE
+            applySalespersonDiscount,
+            appliedDirectorDiscountPercentage
         );
 
         // Rentabilidade e Lucratividade baseadas na receita total (incluindo instalação)

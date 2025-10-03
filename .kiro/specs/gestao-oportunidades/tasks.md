@@ -7,7 +7,7 @@
   - _Requirements: Requirement 1, 2, 3, 4, 5, 6, 7_
 
 - [-] 2. Configuração do banco de dados e autenticação
-  - [ ] 2.1 Configurar Supabase e criar schema do banco de dados
+  - [x] 2.1 Configurar Supabase e criar schema do banco de dados
     - Criar tabelas: profiles, clientes, fornecedores, oportunidades, atividades, notificacoes
     - Implementar constraints, índices e relacionamentos
     - Configurar Row Level Security (RLS) policies

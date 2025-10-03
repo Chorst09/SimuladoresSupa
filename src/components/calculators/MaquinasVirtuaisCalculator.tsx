@@ -224,13 +224,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     }, [currentUser]);
 
     useEffect(() => {
-        if (currentUser?.uid) {
+        if (currentUser?.id) {
             fetchProposals();
         }
-    }, [currentUser?.uid]);
+    }, [currentUser?.id]);
 
     useEffect(() => {
-        if (!currentUser?.uid) return;
+        if (!currentUser?.id) return;
 
         const loadSettings = async () => {
             try {
@@ -285,7 +285,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         };
 
         loadSettings();
-    }, [currentUser?.uid]);
+    }, [currentUser?.id]);
 
     // Load tax rates from localStorage (only once)
     useEffect(() => {
@@ -397,6 +397,42 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [additionalIpCost, setAdditionalIpCost] = useState<number>(15);
     const [snapshotCost, setSnapshotCost] = useState<number>(25);
     const [vpnSiteToSiteCost, setVpnSiteToSiteCost] = useState<number>(50);
+
+    // Estados para controlar edição de cada card
+    const [editingCards, setEditingCards] = useState<{[key: string]: boolean}>({
+        recursosBase: false,
+        armazenamento: false,
+        placaRede: false,
+        sistemaOperacional: false,
+        backup: false,
+        ipAdicional: false,
+        snapshot: false,
+        vpnSiteToSite: false,
+        prazosContratuais: false,
+        taxaSetup: false,
+        gestaoSuporte: false
+    });
+
+    // Função para alternar edição de um card específico
+    const toggleCardEdit = (cardKey: string) => {
+        setEditingCards(prev => ({
+            ...prev,
+            [cardKey]: !prev[cardKey]
+        }));
+    };
+
+    // Função para salvar um card específico
+    const saveCard = async (cardKey: string) => {
+        try {
+            await handleSaveSettings();
+            setEditingCards(prev => ({
+                ...prev,
+                [cardKey]: false
+            }));
+        } catch (error) {
+            console.error('Erro ao salvar card:', error);
+        }
+    };
 
     // Dados para as tabelas de List Price
     const pabxListPriceData = {
@@ -947,9 +983,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
     // Funções de manipulação
     const handleAddVMProduct = () => {
-        const newProduct = {
+        const newProduct: Product = {
             id: Date.now().toString(),
-            type: 'VM',
+            type: 'VM' as ProductType,
             description: `${vmName} - ${vmCpuCores} vCPU, ${vmRamGb}GB RAM, ${vmStorageSize}GB ${vmStorageType}, ${vmOperatingSystem}`,
             setup: setupFee,
             monthly: vmFinalPrice,
@@ -1431,7 +1467,6 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentUser.token}`,
                 },
                 body: JSON.stringify(proposalToSave),
             });
@@ -1460,26 +1495,47 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             return;
         }
 
+        // Validar dados obrigatórios
+        if (!clientData || !clientData.name) {
+            alert('Por favor, preencha os dados do cliente antes de salvar.');
+            return;
+        }
+
+        if (!accountManagerData || !accountManagerData.name) {
+            alert('Por favor, preencha os dados do gerente de contas antes de salvar.');
+            return;
+        }
+
+        if (addedProducts.length === 0) {
+            alert('Por favor, adicione pelo menos um produto antes de salvar.');
+            return;
+        }
+
         try {
             setSaving(true);
+            
+            // Calcular totais
+            const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+            const calculatedTotalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
+            const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
             
             // Preparar dados da proposta
             const proposalData = {
                 title: `Proposta VM - ${clientData?.name || 'Cliente'}`,
                 client: clientData?.name || '',
                 type: 'VM',
-                value: totalMonthly,
+                value: finalTotalMonthly,
                 status: 'Rascunho' as const,
                 createdBy: currentUser.id,
                 accountManager: accountManagerData?.name || '',
                 date: new Date().toISOString().split('T')[0],
                 expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 dias
-                totalSetup: totalSetup,
-                totalMonthly: totalMonthly,
-                contractPeriod: contractDuration,
+                totalSetup: calculatedTotalSetup,
+                totalMonthly: finalTotalMonthly,
+                contractPeriod: vmContractPeriod,
                 clientData: clientData,
-                products: vmItems,
-                items: vmItems
+                products: addedProducts,
+                items: addedProducts
             };
 
             // Usar API para salvar
@@ -1495,6 +1551,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 const savedProposal = await response.json();
                 alert('Proposta salva com sucesso!');
                 setCurrentProposal(savedProposal);
+                // Atualizar lista de propostas
+                fetchProposals();
             } else {
                 const errorData = await response.json();
                 console.error('Erro ao salvar proposta:', errorData);
@@ -2577,8 +2635,40 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                 {/* Recursos Base (Custos) */}
                                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                    <CardHeader>
+                                                    <CardHeader className="flex flex-row items-center justify-between">
                                                         <CardTitle className="text-cyan-400">Recursos Base (Custos)</CardTitle>
+                                                        <div className="flex gap-2">
+                                                            {!editingCards.recursosBase ? (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => toggleCardEdit('recursosBase')}
+                                                                    className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                >
+                                                                    <Edit className="h-4 w-4 mr-1" />
+                                                                    Editar
+                                                                </Button>
+                                                            ) : (
+                                                                <div className="flex gap-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('recursosBase')}
+                                                                        className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                    >
+                                                                        Cancelar
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        onClick={() => saveCard('recursosBase')}
+                                                                        className="bg-green-600 hover:bg-green-700"
+                                                                    >
+                                                                        <Save className="h-4 w-4 mr-1" />
+                                                                        Salvar
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </CardHeader>
                                                     <CardContent>
                                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2586,14 +2676,34 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <h4 className="text-cyan-400 mb-2">vCPU Windows (por core)</h4>
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
-                                                                    <Input value={formatBrazilianNumber(vcpuWindowsCost)} onChange={(e) => { setVcpuWindowsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.recursosBase ? (
+                                                                        <Input 
+                                                                            value={formatBrazilianNumber(vcpuWindowsCost)} 
+                                                                            onChange={(e) => { setVcpuWindowsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(vcpuWindowsCost)}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">vCPU Linux (por core)</h4>
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
-                                                                    <Input value={formatBrazilianNumber(vcpuLinuxCost)} onChange={(e) => { setVcpuLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.recursosBase ? (
+                                                                        <Input 
+                                                                            value={formatBrazilianNumber(vcpuLinuxCost)} 
+                                                                            onChange={(e) => { setVcpuLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(vcpuLinuxCost)}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -2601,7 +2711,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <h4 className="text-cyan-400 mb-4">RAM (por GB)</h4>
                                                             <div>
                                                                 <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(ramCost)} onChange={(e) => { setRamCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                {editingCards.recursosBase ? (
+                                                                    <Input 
+                                                                        value={formatBrazilianNumber(ramCost)} 
+                                                                        onChange={(e) => { setRamCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    />
+                                                                ) : (
+                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                        R$ {formatBrazilianNumber(ramCost)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </CardContent>
@@ -2609,8 +2729,40 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                 {/* Armazenamento (Custos) */}
                                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                    <CardHeader>
+                                                    <CardHeader className="flex flex-row items-center justify-between">
                                                         <CardTitle className="text-cyan-400">Armazenamento (Custos)</CardTitle>
+                                                        <div className="flex gap-2">
+                                                            {!editingCards.armazenamento ? (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => toggleCardEdit('armazenamento')}
+                                                                    className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                >
+                                                                    <Edit className="h-4 w-4 mr-1" />
+                                                                    Editar
+                                                                </Button>
+                                                            ) : (
+                                                                <div className="flex gap-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('armazenamento')}
+                                                                        className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                    >
+                                                                        Cancelar
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        onClick={() => saveCard('armazenamento')}
+                                                                        className="bg-green-600 hover:bg-green-700"
+                                                                    >
+                                                                        <Save className="h-4 w-4 mr-1" />
+                                                                        Salvar
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </CardHeader>
                                                     <CardContent>
                                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -2618,21 +2770,51 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <h4 className="text-cyan-400 mb-4">HDD SAS</h4>
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
-                                                                    <Input value={formatBrazilianNumber(hddSasCost)} onChange={(e) => { setHddSasCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.armazenamento ? (
+                                                                        <Input 
+                                                                            value={formatBrazilianNumber(hddSasCost)} 
+                                                                            onChange={(e) => { setHddSasCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(hddSasCost)}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-4">SSD Performance</h4>
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
-                                                                    <Input value={formatBrazilianNumber(ssdPerformanceCost)} onChange={(e) => { setSsdPerformanceCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.armazenamento ? (
+                                                                        <Input 
+                                                                            value={formatBrazilianNumber(ssdPerformanceCost)} 
+                                                                            onChange={(e) => { setSsdPerformanceCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(ssdPerformanceCost)}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-4">NVMe</h4>
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
-                                                                    <Input value={formatBrazilianNumber(nvmeCost)} onChange={(e) => { setNvmeCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.armazenamento ? (
+                                                                        <Input 
+                                                                            value={formatBrazilianNumber(nvmeCost)} 
+                                                                            onChange={(e) => { setNvmeCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(nvmeCost)}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -2642,30 +2824,114 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                 {/* Placa de Rede e Sistema Operacional */}
                                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                                     <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                        <CardHeader>
+                                                        <CardHeader className="flex flex-row items-center justify-between">
                                                             <CardTitle className="text-cyan-400">Placa de Rede (Custos)</CardTitle>
+                                                            <div className="flex gap-2">
+                                                                {!editingCards.placaRede ? (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('placaRede')}
+                                                                        className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                    >
+                                                                        <Edit className="h-4 w-4 mr-1" />
+                                                                        Editar
+                                                                    </Button>
+                                                                ) : (
+                                                                    <div className="flex gap-2">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => toggleCardEdit('placaRede')}
+                                                                            className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                        >
+                                                                            Cancelar
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            onClick={() => saveCard('placaRede')}
+                                                                            className="bg-green-600 hover:bg-green-700"
+                                                                        >
+                                                                            <Save className="h-4 w-4 mr-1" />
+                                                                            Salvar
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </CardHeader>
                                                         <CardContent className="space-y-4">
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">1 Gbps</h4>
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
-                                                                    <Input value={formatBrazilianNumber(network1GbpsCost)} onChange={(e) => { setNetwork1GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.placaRede ? (
+                                                                        <Input 
+                                                                            value={formatBrazilianNumber(network1GbpsCost)} 
+                                                                            onChange={(e) => { setNetwork1GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(network1GbpsCost)}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">10 Gbps</h4>
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
-                                                                    <Input value={formatBrazilianNumber(network10GbpsCost)} onChange={(e) => { setNetwork10GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.placaRede ? (
+                                                                        <Input 
+                                                                            value={formatBrazilianNumber(network10GbpsCost)} 
+                                                                            onChange={(e) => { setNetwork10GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(network10GbpsCost)}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </CardContent>
                                                     </Card>
 
                                                     <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                        <CardHeader>
+                                                        <CardHeader className="flex flex-row items-center justify-between">
                                                             <CardTitle className="text-cyan-400">Sistema Operacional e Serviços (Custos)</CardTitle>
+                                                            <div className="flex gap-2">
+                                                                {!editingCards.sistemaOperacional ? (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('sistemaOperacional')}
+                                                                        className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                    >
+                                                                        <Edit className="h-4 w-4 mr-1" />
+                                                                        Editar
+                                                                    </Button>
+                                                                ) : (
+                                                                    <div className="flex gap-2">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => toggleCardEdit('sistemaOperacional')}
+                                                                            className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                        >
+                                                                            Cancelar
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            onClick={() => saveCard('sistemaOperacional')}
+                                                                            className="bg-green-600 hover:bg-green-700"
+                                                                        >
+                                                                            <Save className="h-4 w-4 mr-1" />
+                                                                            Salvar
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </CardHeader>
                                                         <CardContent className="space-y-4">
                                                             <div className="grid grid-cols-2 gap-4">
@@ -2673,14 +2939,34 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <h4 className="text-cyan-400 mb-2">Windows Server 2022 Standard</h4>
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
-                                                                        <Input value={formatBrazilianNumber(windowsServerCost)} onChange={(e) => { setWindowsServerCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                        {editingCards.sistemaOperacional ? (
+                                                                            <Input 
+                                                                                value={formatBrazilianNumber(windowsServerCost)} 
+                                                                                onChange={(e) => { setWindowsServerCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(windowsServerCost)}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                                 <div>
                                                                     <h4 className="text-cyan-400 mb-2">Windows 10 Pro</h4>
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
-                                                                        <Input value={formatBrazilianNumber(windows10ProCost)} onChange={(e) => { setWindows10ProCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                        {editingCards.sistemaOperacional ? (
+                                                                            <Input 
+                                                                                value={formatBrazilianNumber(windows10ProCost)} 
+                                                                                onChange={(e) => { setWindows10ProCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(windows10ProCost)}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2689,14 +2975,34 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <h4 className="text-cyan-400 mb-2">Ubuntu Server 22.04 LTS</h4>
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
-                                                                        <Input value={formatBrazilianNumber(ubuntuCost)} onChange={(e) => { setUbuntuCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                        {editingCards.sistemaOperacional ? (
+                                                                            <Input 
+                                                                                value={formatBrazilianNumber(ubuntuCost)} 
+                                                                                onChange={(e) => { setUbuntuCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(ubuntuCost)}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                                 <div>
                                                                     <h4 className="text-cyan-400 mb-2">CentOS Stream 9</h4>
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
-                                                                        <Input value={formatBrazilianNumber(centosCost)} onChange={(e) => { setCentosCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                        {editingCards.sistemaOperacional ? (
+                                                                            <Input 
+                                                                                value={formatBrazilianNumber(centosCost)} 
+                                                                                onChange={(e) => { setCentosCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(centosCost)}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2705,14 +3011,34 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <h4 className="text-cyan-400 mb-2">Debian 12</h4>
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
-                                                                        <Input value={formatBrazilianNumber(debianCost)} onChange={(e) => { setDebianCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                        {editingCards.sistemaOperacional ? (
+                                                                            <Input 
+                                                                                value={formatBrazilianNumber(debianCost)} 
+                                                                                onChange={(e) => { setDebianCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(debianCost)}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                                 <div>
                                                                     <h4 className="text-cyan-400 mb-2">Rocky Linux 9</h4>
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
-                                                                        <Input value={formatBrazilianNumber(rockyLinuxCost)} onChange={(e) => { setRockyLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                        {editingCards.sistemaOperacional ? (
+                                                                            <Input 
+                                                                                value={formatBrazilianNumber(rockyLinuxCost)} 
+                                                                                onChange={(e) => { setRockyLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(rockyLinuxCost)}
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2723,25 +3049,109 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                 {/* Serviços Adicionais */}
                                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                                     <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                        <CardHeader>
+                                                        <CardHeader className="flex flex-row items-center justify-between">
                                                             <CardTitle className="text-cyan-400">Backup (por GB)</CardTitle>
+                                                            <div className="flex gap-2">
+                                                                {!editingCards.backup ? (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('backup')}
+                                                                        className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                    >
+                                                                        <Edit className="h-4 w-4 mr-1" />
+                                                                        Editar
+                                                                    </Button>
+                                                                ) : (
+                                                                    <div className="flex gap-2">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => toggleCardEdit('backup')}
+                                                                            className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                        >
+                                                                            Cancelar
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            onClick={() => saveCard('backup')}
+                                                                            className="bg-green-600 hover:bg-green-700"
+                                                                        >
+                                                                            <Save className="h-4 w-4 mr-1" />
+                                                                            Salvar
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </CardHeader>
                                                         <CardContent>
                                                             <div>
                                                                 <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(backupCostPerGb)} onChange={(e) => { setBackupCostPerGb(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                {editingCards.backup ? (
+                                                                    <Input 
+                                                                        value={formatBrazilianNumber(backupCostPerGb)} 
+                                                                        onChange={(e) => { setBackupCostPerGb(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    />
+                                                                ) : (
+                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                        R$ {formatBrazilianNumber(backupCostPerGb)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </CardContent>
                                                     </Card>
 
                                                     <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                        <CardHeader>
+                                                        <CardHeader className="flex flex-row items-center justify-between">
                                                             <CardTitle className="text-cyan-400">IP Adicional</CardTitle>
+                                                            <div className="flex gap-2">
+                                                                {!editingCards.ipAdicional ? (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('ipAdicional')}
+                                                                        className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                    >
+                                                                        <Edit className="h-4 w-4 mr-1" />
+                                                                        Editar
+                                                                    </Button>
+                                                                ) : (
+                                                                    <div className="flex gap-2">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => toggleCardEdit('ipAdicional')}
+                                                                            className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                        >
+                                                                            Cancelar
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            onClick={() => saveCard('ipAdicional')}
+                                                                            className="bg-green-600 hover:bg-green-700"
+                                                                        >
+                                                                            <Save className="h-4 w-4 mr-1" />
+                                                                            Salvar
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </CardHeader>
                                                         <CardContent>
                                                             <div>
                                                                 <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(additionalIpCost)} onChange={(e) => { setAdditionalIpCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                {editingCards.ipAdicional ? (
+                                                                    <Input 
+                                                                        value={formatBrazilianNumber(additionalIpCost)} 
+                                                                        onChange={(e) => { setAdditionalIpCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    />
+                                                                ) : (
+                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                        R$ {formatBrazilianNumber(additionalIpCost)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </CardContent>
                                                     </Card>
@@ -2750,25 +3160,109 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                 {/* Snapshot e VPN */}
                                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                                     <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                        <CardHeader>
+                                                        <CardHeader className="flex flex-row items-center justify-between">
                                                             <CardTitle className="text-cyan-400">Snapshot Adicional</CardTitle>
+                                                            <div className="flex gap-2">
+                                                                {!editingCards.snapshot ? (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('snapshot')}
+                                                                        className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                    >
+                                                                        <Edit className="h-4 w-4 mr-1" />
+                                                                        Editar
+                                                                    </Button>
+                                                                ) : (
+                                                                    <div className="flex gap-2">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => toggleCardEdit('snapshot')}
+                                                                            className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                        >
+                                                                            Cancelar
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            onClick={() => saveCard('snapshot')}
+                                                                            className="bg-green-600 hover:bg-green-700"
+                                                                        >
+                                                                            <Save className="h-4 w-4 mr-1" />
+                                                                            Salvar
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </CardHeader>
                                                         <CardContent>
                                                             <div>
                                                                 <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(snapshotCost)} onChange={(e) => { setSnapshotCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                {editingCards.snapshot ? (
+                                                                    <Input 
+                                                                        value={formatBrazilianNumber(snapshotCost)} 
+                                                                        onChange={(e) => { setSnapshotCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    />
+                                                                ) : (
+                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                        R$ {formatBrazilianNumber(snapshotCost)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </CardContent>
                                                     </Card>
 
                                                     <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                        <CardHeader>
+                                                        <CardHeader className="flex flex-row items-center justify-between">
                                                             <CardTitle className="text-cyan-400">VPN Site-to-Site</CardTitle>
+                                                            <div className="flex gap-2">
+                                                                {!editingCards.vpnSiteToSite ? (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('vpnSiteToSite')}
+                                                                        className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                    >
+                                                                        <Edit className="h-4 w-4 mr-1" />
+                                                                        Editar
+                                                                    </Button>
+                                                                ) : (
+                                                                    <div className="flex gap-2">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => toggleCardEdit('vpnSiteToSite')}
+                                                                            className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                        >
+                                                                            Cancelar
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            onClick={() => saveCard('vpnSiteToSite')}
+                                                                            className="bg-green-600 hover:bg-green-700"
+                                                                        >
+                                                                            <Save className="h-4 w-4 mr-1" />
+                                                                            Salvar
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </CardHeader>
                                                         <CardContent>
                                                             <div>
                                                                 <Label>Custo Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(vpnSiteToSiteCost)} onChange={(e) => { setVpnSiteToSiteCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                {editingCards.vpnSiteToSite ? (
+                                                                    <Input 
+                                                                        value={formatBrazilianNumber(vpnSiteToSiteCost)} 
+                                                                        onChange={(e) => { setVpnSiteToSiteCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    />
+                                                                ) : (
+                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                        R$ {formatBrazilianNumber(vpnSiteToSiteCost)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </CardContent>
                                                     </Card>
@@ -2776,8 +3270,40 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                 {/* Prazos Contratuais e Descontos */}
                                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                    <CardHeader>
+                                                    <CardHeader className="flex flex-row items-center justify-between">
                                                         <CardTitle className="text-cyan-400">Prazos Contratuais e Descontos</CardTitle>
+                                                        <div className="flex gap-2">
+                                                            {!editingCards.prazosContratuais ? (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => toggleCardEdit('prazosContratuais')}
+                                                                    className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                >
+                                                                    <Edit className="h-4 w-4 mr-1" />
+                                                                    Editar
+                                                                </Button>
+                                                            ) : (
+                                                                <div className="flex gap-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('prazosContratuais')}
+                                                                        className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                    >
+                                                                        Cancelar
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        onClick={() => saveCard('prazosContratuais')}
+                                                                        className="bg-green-600 hover:bg-green-700"
+                                                                    >
+                                                                        <Save className="h-4 w-4 mr-1" />
+                                                                        Salvar
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </CardHeader>
                                                     <CardContent>
                                                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
@@ -2785,35 +3311,85 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <h4 className="text-cyan-400 mb-2">12 Meses</h4>
                                                                 <div>
                                                                     <Label>Desconto (%)</Label>
-                                                                    <Input value={contractDiscounts[12]} onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 12: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.prazosContratuais ? (
+                                                                        <Input 
+                                                                            value={contractDiscounts[12]} 
+                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 12: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            {contractDiscounts[12]}%
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">24 Meses</h4>
                                                                 <div>
                                                                     <Label>Desconto (%)</Label>
-                                                                    <Input value={contractDiscounts[24]} onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 24: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.prazosContratuais ? (
+                                                                        <Input 
+                                                                            value={contractDiscounts[24]} 
+                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 24: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            {contractDiscounts[24]}%
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">36 Meses</h4>
                                                                 <div>
                                                                     <Label>Desconto (%)</Label>
-                                                                    <Input value={contractDiscounts[36]} onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 36: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.prazosContratuais ? (
+                                                                        <Input 
+                                                                            value={contractDiscounts[36]} 
+                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 36: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            {contractDiscounts[36]}%
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">48 Meses</h4>
                                                                 <div>
                                                                     <Label>Desconto (%)</Label>
-                                                                    <Input value={contractDiscounts[48]} onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 48: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.prazosContratuais ? (
+                                                                        <Input 
+                                                                            value={contractDiscounts[48]} 
+                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 48: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            {contractDiscounts[48]}%
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">60 Meses</h4>
                                                                 <div>
                                                                     <Label>Desconto (%)</Label>
-                                                                    <Input value={contractDiscounts[60]} onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 60: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                    {editingCards.prazosContratuais ? (
+                                                                        <Input 
+                                                                            value={contractDiscounts[60]} 
+                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 60: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} 
+                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            {contractDiscounts[60]}%
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -2822,15 +3398,57 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                 {/* Taxa de Setup */}
                                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                    <CardHeader>
+                                                    <CardHeader className="flex flex-row items-center justify-between">
                                                         <CardTitle className="text-cyan-400">Taxa de Setup</CardTitle>
+                                                        <div className="flex gap-2">
+                                                            {!editingCards.taxaSetup ? (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => toggleCardEdit('taxaSetup')}
+                                                                    className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                >
+                                                                    <Edit className="h-4 w-4 mr-1" />
+                                                                    Editar
+                                                                </Button>
+                                                            ) : (
+                                                                <div className="flex gap-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('taxaSetup')}
+                                                                        className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                    >
+                                                                        Cancelar
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        onClick={() => saveCard('taxaSetup')}
+                                                                        className="bg-green-600 hover:bg-green-700"
+                                                                    >
+                                                                        <Save className="h-4 w-4 mr-1" />
+                                                                        Salvar
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </CardHeader>
                                                     <CardContent>
                                                         <div>
                                                             <h4 className="text-cyan-400 mb-4">Taxa de Setup Geral</h4>
                                                             <div>
                                                                 <Label>Valor Base</Label>
-                                                                <Input value={formatBrazilianNumber(setupFee)} onChange={(e) => { setSetupFee(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                {editingCards.taxaSetup ? (
+                                                                    <Input 
+                                                                        value={formatBrazilianNumber(setupFee)} 
+                                                                        onChange={(e) => { setSetupFee(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    />
+                                                                ) : (
+                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                        R$ {formatBrazilianNumber(setupFee)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </CardContent>
@@ -2838,30 +3456,63 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                 {/* Gestão e Suporte */}
                                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                    <CardHeader>
+                                                    <CardHeader className="flex flex-row items-center justify-between">
                                                         <CardTitle className="text-cyan-400">Gestão e Suporte</CardTitle>
+                                                        <div className="flex gap-2">
+                                                            {!editingCards.gestaoSuporte ? (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => toggleCardEdit('gestaoSuporte')}
+                                                                    className="border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-slate-900"
+                                                                >
+                                                                    <Edit className="h-4 w-4 mr-1" />
+                                                                    Editar
+                                                                </Button>
+                                                            ) : (
+                                                                <div className="flex gap-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleCardEdit('gestaoSuporte')}
+                                                                        className="border-gray-400 text-gray-400 hover:bg-gray-400 hover:text-slate-900"
+                                                                    >
+                                                                        Cancelar
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        onClick={() => saveCard('gestaoSuporte')}
+                                                                        className="bg-green-600 hover:bg-green-700"
+                                                                    >
+                                                                        <Save className="h-4 w-4 mr-1" />
+                                                                        Salvar
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </CardHeader>
                                                     <CardContent>
                                                         <div>
                                                             <h4 className="text-cyan-400 mb-4">Serviço Mensal de Gestão e Suporte</h4>
                                                             <div>
                                                                 <Label>Valor Mensal</Label>
-                                                                <Input value={formatBrazilianNumber(managementAndSupportCost)} onChange={(e) => { setManagementAndSupportCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} className="bg-slate-800 border-slate-700" />
+                                                                {editingCards.gestaoSuporte ? (
+                                                                    <Input 
+                                                                        value={formatBrazilianNumber(managementAndSupportCost)} 
+                                                                        onChange={(e) => { setManagementAndSupportCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
+                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    />
+                                                                ) : (
+                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                        R$ {formatBrazilianNumber(managementAndSupportCost)}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
 
-                                                {/* Botão Salvar */}
-                                                <div className="flex justify-end">
-                                                    <Button
-                                                        className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
-                                                        onClick={handleSaveSettings}
-                                                    >
-                                                        <Save className="h-4 w-4" />
-                                                        Salvar Configurações
-                                                    </Button>
-                                                </div>
+
                                             </div>
                                         </TabsContent>
 

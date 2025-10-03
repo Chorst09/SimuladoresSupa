@@ -18,7 +18,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Phone, PhoneForwarded, Edit, Plus, Save, Download, Trash2, ArrowLeft } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManagerForm';
+import { ClientManagerForm } from './ClientManagerForm';
+
+// Interfaces locais
+interface ClientData {
+    name: string;
+    contact: string;
+    projectName: string;
+    email: string;
+    phone: string;
+}
+
+interface AccountManagerData {
+    name: string;
+    email: string;
+    phone: string;
+    distributorId?: string;
+}
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate, getDirectorCommissionRate } from '@/hooks/use-commissions';
@@ -48,9 +64,11 @@ interface Proposal {
     id: string;
     baseId: string;
     version: number;
-    client: ClientData;
+    client: ClientData | string;
     accountManager: AccountManagerData;
     items: ProposalItem[];
+    products?: any[]; // Para compatibilidade com dados antigos
+    clientData?: ClientData; // Para compatibilidade com dados antigos
     totalSetup: number;
     totalMonthly: number;
     rawTotalSetup?: number;
@@ -111,6 +129,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     const [pabxPremiumSubPlan, setPabxPremiumSubPlan] = useState<'Ilimitado' | 'Tarifado'>('Ilimitado');
     const [pabxPremiumEquipment, setPabxPremiumEquipment] = useState<'Com' | 'Sem'>('Sem');
     const [contractDuration, setContractDuration] = useState<string>('24');
+    const [pabxPremiumSetupFee, setPabxPremiumSetupFee] = useState<number>(2500); // Taxa de setup Premium
 
     // Hook para comissões editáveis
     const { channelIndicator, channelInfluencer, channelSeller, seller, channelDirector } = useCommissions();
@@ -213,40 +232,40 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     // Dados de preços do List Price - PABX (editáveis)
     const [pabxPrices, setPabxPrices] = useState({
         setup: {
-            '10': 1250,
-            '20': 2000,
-            '30': 2500,
-            '50': 3000,
-            '100': 3500,
-            '500': 4000,
-            '1000': 4500
+            '10': 1250,      // Até 10 ramais
+            '20': 2000,      // De 11 a 20 ramais  
+            '30': 2500,      // De 21 a 30 ramais
+            '50': 3000,      // De 31 a 50 ramais
+            '100': 3500,     // De 51 a 100 ramais
+            '500': 4000,     // De 101 a 500 ramais
+            '1000': 4500     // De 501 a 1000 ramais
         },
         monthly: {
-            '10': 30,
-            '20': 29,
-            '30': 28,
-            '50': 27,
-            '100': 26,
-            '500': 25,
-            '1000': 24.5
+            '10': 30.00,     // Valor por ramal mensal até 10
+            '20': 29.00,     // Valor por ramal mensal de 11 a 20
+            '30': 28.00,     // Valor por ramal mensal de 21 a 30
+            '50': 27.50,     // Valor por ramal mensal de 31 a 50
+            '100': 26.00,    // Valor por ramal mensal de 51 a 100
+            '500': 25.00,    // Valor por ramal mensal de 101 a 500
+            '1000': 24.50    // Valor por ramal mensal de 501 a 1000
         },
         hosting: {
-            '10': 200,
-            '20': 220,
-            '30': 250,
-            '50': 300,
-            '100': 400,
-            '500': 450,
-            '1000': 500
+            '10': 200.00,    // Valor hospedagem até 10
+            '20': 220.00,    // Valor hospedagem de 11 a 20
+            '30': 250.00,    // Valor hospedagem de 21 a 30
+            '50': 300.00,    // Valor hospedagem de 31 a 50
+            '100': 400.00,   // Valor hospedagem de 51 a 100
+            '500': 450.00,   // Valor hospedagem de 101 a 500
+            '1000': 500.00   // Valor hospedagem de 501 a 1000
         },
         device: {
-            '10': 35,
-            '20': 34,
-            '30': 33,
-            '50': 32,
-            '100': 30,
-            '500': 29,
-            '1000': 28
+            '10': 35.00,     // Aluguel aparelho até 10
+            '20': 34.00,     // Aluguel aparelho de 11 a 20
+            '30': 33.00,     // Aluguel aparelho de 21 a 30
+            '50': 32.50,     // Aluguel aparelho de 31 a 50
+            '100': 30.00,    // Aluguel aparelho de 51 a 100
+            '500': 29.00,    // Aluguel aparelho de 101 a 500
+            '1000': 28.00    // Aluguel aparelho de 501 a 1000
         }
     });
 
@@ -408,7 +427,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             console.log('Salvando preços no Supabase:', pabxPrices);
 
             // Preparar dados para inserção
-            const priceUpdates = [];
+            const priceUpdates: any[] = [];
 
             // Setup prices
             Object.entries(pabxPrices.setup).forEach(([range, price]) => {
@@ -556,8 +575,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         Object.entries(editedValues).forEach(([key, value]) => {
             const [duration, plan, subPlan, index, field] = key.split('-');
             const idx = parseInt(index, 10);
-            if (updatedPrices[duration]?.[plan]?.[subPlan]?.[idx]) {
-                updatedPrices[duration][plan][subPlan][idx][field] = value;
+            if ((updatedPrices as any)[duration]?.[plan]?.[subPlan]?.[idx]) {
+                (updatedPrices as any)[duration][plan][subPlan][idx][field] = value;
             }
         });
 
@@ -705,13 +724,22 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         if (extensions <= 30) return '30';
         if (extensions <= 50) return '50';
         if (extensions <= 100) return '100';
-        return '100'; // Para valores acima de 100, usar a última faixa
+        if (extensions <= 500) return '500';
+        return '1000'; // Para valores acima de 500, usar a faixa de 1000
     }, []);
 
-    const getPremiumPriceRange = useCallback((extensions: number): string => {
+    const getPremiumPriceRange = useCallback((extensions: number, plan: string, subPlan: string): string => {
         if (extensions >= 2 && extensions <= 9) return '2 a 9 ramais';
-        if (extensions >= 10 && extensions <= 19) return '10 a 19 ramais';
-        if (extensions >= 20 && extensions <= 49) return '20 a 49 ramais';
+        
+        // Para planos Ilimitados, usar faixas específicas
+        if (subPlan.toLowerCase() === 'ilimitado') {
+            if (extensions >= 10 && extensions <= 19) return '10 a 19 ramais';
+            if (extensions >= 20 && extensions <= 49) return '20 a 49 ramais';
+        } else {
+            // Para planos Tarifados, usar faixa combinada 10-49
+            if (extensions >= 10 && extensions <= 49) return '10 a 49 ramais';
+        }
+        
         if (extensions >= 50 && extensions <= 99) return '50 a 99 ramais';
         if (extensions >= 100 && extensions <= 199) return '100 a 199 ramais';
         if (extensions >= 200) return '+ de 200 ramais';
@@ -748,7 +776,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 pabxPrices.hosting[range as keyof typeof pabxPrices.hosting];
             const deviceRentalCost = pabxIncludeDevices ?
                 (pabxPrices.device[range as keyof typeof pabxPrices.device] * pabxDeviceQuantity) : 0;
-            const aiAgentCost = pabxIncludeAI ? aiAgentPrices[pabxAIPlan as keyof typeof aiAgentPrices]?.price || 0 : 0;
+            const aiAgentCost = pabxIncludeAI ? (aiAgentPrices as any)[pabxAIPlan]?.price || 0 : 0;
 
             return {
                 setup,
@@ -758,32 +786,70 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 totalMonthly: baseMonthly + deviceRentalCost + aiAgentCost
             };
         } else { // Premium
-            const premiumRange = getPremiumPriceRange(pabxExtensions);
-            if (!premiumRange) {
+            // Buscar o plano baseado no prazo do contrato (24 ou 36 meses)
+            const contractPlan = pabxPremiumPrices[contractDuration as keyof typeof pabxPremiumPrices];
+            if (!contractPlan) {
+                console.log('Contrato não encontrado:', contractDuration);
                 return { setup: 0, baseMonthly: 0, deviceRentalCost: 0, aiAgentCost: 0, totalMonthly: 0 };
             }
 
-            const plan = pabxPremiumPrices[contractDuration as keyof typeof pabxPremiumPrices]?.[pabxPremiumPlan.toLowerCase() as keyof typeof pabxPremiumPrices[typeof contractDuration]];
-            if (!plan) {
+            // Buscar o tipo de plano (essencial ou profissional)
+            const planType = contractPlan[pabxPremiumPlan.toLowerCase() as keyof typeof contractPlan];
+            if (!planType) {
+                console.log('Tipo de plano não encontrado:', pabxPremiumPlan);
                 return { setup: 0, baseMonthly: 0, deviceRentalCost: 0, aiAgentCost: 0, totalMonthly: 0 };
             }
 
-            const subPlan = plan[pabxPremiumSubPlan.toLowerCase() as keyof typeof plan];
+            // Buscar o subtipo (ilimitado ou tarifado)
+            const subPlan = planType[pabxPremiumSubPlan.toLowerCase() as keyof typeof planType];
             if (!subPlan || !Array.isArray(subPlan)) {
+                console.log('Subtipo de plano não encontrado:', pabxPremiumSubPlan);
                 return { setup: 0, baseMonthly: 0, deviceRentalCost: 0, aiAgentCost: 0, totalMonthly: 0 };
             }
 
+            // Obter a faixa de preço correta baseada no plano e subtipo
+            const premiumRange = getPremiumPriceRange(pabxExtensions, pabxPremiumPlan, pabxPremiumSubPlan);
+            if (!premiumRange) {
+                console.log('Faixa Premium não encontrada para:', pabxExtensions, 'ramais');
+                return { setup: 0, baseMonthly: 0, deviceRentalCost: 0, aiAgentCost: 0, totalMonthly: 0 };
+            }
+
+            // Encontrar a faixa de preço correta
             const priceData = subPlan.find((p: { range: string }) => p.range === premiumRange);
             if (!priceData) {
+                console.log('Dados de preço não encontrados para faixa:', premiumRange);
+                console.log('Faixas disponíveis:', subPlan.map((p: any) => p.range));
                 return { setup: 0, baseMonthly: 0, deviceRentalCost: 0, aiAgentCost: 0, totalMonthly: 0 };
             }
 
-            const setup = 0; // To be defined by user
-            const baseMonthly = pabxPremiumEquipment === 'Com'
-                ? (priceData as any).comEquipamento * pabxExtensions
-                : (priceData as any).semEquipamento * pabxExtensions;
-            const deviceRentalCost = 0; // Already included in baseMonthly
-            const aiAgentCost = pabxIncludeAI ? aiAgentPrices[pabxAIPlan as keyof typeof aiAgentPrices]?.price || 0 : 0;
+            // Calcular taxa de setup (se incluída)
+            const setup = pabxIncludeSetup ? pabxPremiumSetupFee : 0;
+
+            // Calcular mensalidade baseada em com/sem equipamento
+            const pricePerExtension = pabxPremiumEquipment === 'Com'
+                ? (priceData as any).comEquipamento
+                : (priceData as any).semEquipamento;
+            
+            const baseMonthly = pricePerExtension * pabxExtensions;
+
+            // Custo de aparelhos já está incluído no preço Premium
+            const deviceRentalCost = 0;
+
+            // Custo do Agente IA (se incluído)
+            const aiAgentCost = pabxIncludeAI ? (aiAgentPrices as any)[pabxAIPlan]?.price || 0 : 0;
+
+            console.log('Cálculo Premium:', {
+                contractDuration,
+                pabxPremiumPlan,
+                pabxPremiumSubPlan,
+                pabxPremiumEquipment,
+                pabxExtensions,
+                premiumRange,
+                pricePerExtension,
+                baseMonthly,
+                setup,
+                aiAgentCost
+            });
 
             return {
                 setup,
@@ -806,6 +872,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         pabxPremiumSubPlan,
         pabxPremiumEquipment,
         contractDuration,
+        pabxPremiumSetupFee,
         aiAgentPrices,
         pabxPremiumPrices,
         getPriceRange,
@@ -866,9 +933,26 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     const addPABXToProposal = () => {
         if (!pabxResult) return;
 
+        let description = '';
+        if (pabxModality === 'Standard') {
+            description = `PABX Standard ${pabxExtensions} ramais`;
+            if (pabxIncludeDevices) {
+                description += ` + ${pabxDeviceQuantity} aparelhos`;
+            }
+            if (pabxIncludeAI) {
+                description += ` + Agente IA ${pabxAIPlan}`;
+            }
+        } else {
+            description = `PABX Premium ${pabxPremiumPlan} ${pabxPremiumSubPlan} ${pabxExtensions} ramais (${contractDuration} meses)`;
+            description += ` - ${pabxPremiumEquipment} Equipamento`;
+            if (pabxIncludeAI) {
+                description += ` + Agente IA ${pabxAIPlan}`;
+            }
+        }
+
         const newItem: ProposalItem = {
             id: generateUniqueId(),
-            description: `PABX ${pabxExtensions} ramais`,
+            description: description,
             setup: pabxResult.setup,
             monthly: pabxResult.totalMonthly
         };
@@ -1174,7 +1258,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
     // Calcular automaticamente quando os valores mudarem
     useEffect(() => {
-        calculatePABX();
+        const result = calculatePABX();
+        setPabxResult(result);
     }, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxPrices, aiAgentPrices, getPriceRange]);
 
     // Detectar mudanças nos valores para mostrar botão de nova versão
@@ -1687,6 +1772,26 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                     </RadioGroup>
                                 </div>
 
+                                <div>
+                                    <Label htmlFor="pabx-extensions">Quantidade de Ramais</Label>
+                                    <Input
+                                        id="pabx-extensions"
+                                        type="number"
+                                        value={pabxExtensions}
+                                        onChange={(e) => setPabxExtensions(parseInt(e.target.value) || 1)}
+                                        min="1"
+                                        max="1000"
+                                        className="bg-slate-800 border-slate-700 text-white"
+                                        placeholder="Digite a quantidade de ramais"
+                                    />
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        Faixa de preço: {pabxModality === 'Standard' 
+                                            ? getPriceRange(pabxExtensions) + ' ramais' 
+                                            : getPremiumPriceRange(pabxExtensions, pabxPremiumPlan, pabxPremiumSubPlan)
+                                        }
+                                    </p>
+                                </div>
+
                                 {/* Contract Duration - Standard */}
                                 {pabxModality === 'Standard' && (
                                     <div className="space-y-2">
@@ -1896,23 +2001,76 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                 {/* Resultado PABX */}
                                 {pabxResult && (
                                     <div className="bg-slate-800 p-4 rounded-lg">
-                                        <h3 className="font-semibold mb-2">Resultado PABX:</h3>
+                                        <h3 className="font-semibold mb-2">Resultado PABX {pabxModality}:</h3>
                                         <div className="space-y-1 text-sm">
-                                            <div className="flex justify-between">
-                                                <span>Taxa de Setup:</span>
-                                                <span>{formatCurrency(pabxResult.setup)}</span>
+                                            <div className="flex justify-between text-slate-300">
+                                                <span>Ramais configurados:</span>
+                                                <span>{pabxExtensions} ramais</span>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span>Mensalidade Base:</span>
-                                                <span>{formatCurrency(pabxResult.baseMonthly)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span>Aluguel de Aparelhos:</span>
-                                                <span>{formatCurrency(pabxResult.deviceRentalCost)}</span>
-                                            </div>
+                                            
+                                            {pabxModality === 'Standard' ? (
+                                                <>
+                                                    <div className="flex justify-between text-slate-300">
+                                                        <span>Faixa de preço:</span>
+                                                        <span>{getPriceRange(pabxExtensions)} ramais</span>
+                                                    </div>
+                                                    <Separator className="my-2 bg-slate-600" />
+                                                    <div className="flex justify-between">
+                                                        <span>Taxa de Setup:</span>
+                                                        <span>{formatCurrency(pabxResult.setup)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>Valor por Ramal:</span>
+                                                        <span>{formatCurrency(pabxPrices.monthly[getPriceRange(pabxExtensions) as keyof typeof pabxPrices.monthly])}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>Valor Hospedagem:</span>
+                                                        <span>{formatCurrency(pabxPrices.hosting[getPriceRange(pabxExtensions) as keyof typeof pabxPrices.hosting])}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>Mensalidade Base:</span>
+                                                        <span>{formatCurrency(pabxResult.baseMonthly)}</span>
+                                                    </div>
+                                                    {pabxIncludeDevices && (
+                                                        <div className="flex justify-between">
+                                                            <span>Aluguel Aparelhos ({pabxDeviceQuantity}x):</span>
+                                                            <span>{formatCurrency(pabxResult.deviceRentalCost)}</span>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="flex justify-between text-slate-300">
+                                                        <span>Faixa de preço:</span>
+                                                        <span>{getPremiumPriceRange(pabxExtensions, pabxPremiumPlan, pabxPremiumSubPlan)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-slate-300">
+                                                        <span>Plano:</span>
+                                                        <span>{pabxPremiumPlan} {pabxPremiumSubPlan}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-slate-300">
+                                                        <span>Contrato:</span>
+                                                        <span>{contractDuration} meses</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-slate-300">
+                                                        <span>Equipamento:</span>
+                                                        <span>{pabxPremiumEquipment} Equipamento</span>
+                                                    </div>
+                                                    <Separator className="my-2 bg-slate-600" />
+                                                    <div className="flex justify-between">
+                                                        <span>Taxa de Setup:</span>
+                                                        <span>{formatCurrency(pabxResult.setup)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>Mensalidade Base:</span>
+                                                        <span>{formatCurrency(pabxResult.baseMonthly)}</span>
+                                                    </div>
+                                                </>
+                                            )}
+                                            
                                             {pabxResult.aiAgentCost > 0 && (
                                                 <div className="flex justify-between">
-                                                    <span>Agente IA:</span>
+                                                    <span>Agente IA ({pabxAIPlan}):</span>
                                                     <span>{formatCurrency(pabxResult.aiAgentCost)}</span>
                                                 </div>
                                             )}
@@ -2987,6 +3145,92 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                                 type="number"
                                                                 value={editedValues[`24-profissional-tarifado-${index}-semEquipamento`] ?? item.semEquipamento}
                                                                 onChange={(e) => handleInputChange('24', 'profissional', 'tarifado', index, 'semEquipamento', e.target.value)}
+                                                                className="w-24 p-1 text-center text-black rounded"
+                                                            />
+                                                        ) : (
+                                                            formatCurrency(item.semEquipamento)
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+
+                                        {/* ESSENCIAL 36 MESES - ILIMITADO */}
+                                        <TableHeader>
+                                            <TableRow className="border-slate-700">
+                                                <TableHead className="text-white bg-blue-700 text-center" rowSpan={3}>ESSENCIAL - 36 MESES</TableHead>
+                                                <TableHead className="text-white bg-blue-600 text-center" colSpan={2}>Ilimitado</TableHead>
+                                            </TableRow>
+                                            <TableRow className="border-slate-700">
+                                                <TableHead className="text-white bg-blue-600 text-center">Valores com Equipamento (Aluguel + Assinatura)</TableHead>
+                                                <TableHead className="text-white bg-blue-500 text-center">Valores sem Equipamento (Assinatura)</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {pabxPremiumPrices['36'].essencial.ilimitado.map((item, index) => (
+                                                <TableRow key={`essencial-ilimitado-36-${index}`} className="border-slate-800">
+                                                    <TableCell>{item.range}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        {isEditingPABXPremium24 ? (
+                                                            <input
+                                                                type="number"
+                                                                value={editedValues[`36-essencial-ilimitado-${index}-comEquipamento`] ?? item.comEquipamento}
+                                                                onChange={(e) => handleInputChange('36', 'essencial', 'ilimitado', index, 'comEquipamento', e.target.value)}
+                                                                className="w-24 p-1 text-center text-black rounded"
+                                                            />
+                                                        ) : (
+                                                            formatCurrency(item.comEquipamento)
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {isEditingPABXPremium24 ? (
+                                                            <input
+                                                                type="number"
+                                                                value={editedValues[`36-essencial-ilimitado-${index}-semEquipamento`] ?? item.semEquipamento}
+                                                                onChange={(e) => handleInputChange('36', 'essencial', 'ilimitado', index, 'semEquipamento', e.target.value)}
+                                                                className="w-24 p-1 text-center text-black rounded"
+                                                            />
+                                                        ) : (
+                                                            formatCurrency(item.semEquipamento)
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+
+                                        {/* ESSENCIAL 36 MESES - TARIFADO */}
+                                        <TableHeader>
+                                            <TableRow className="border-slate-700">
+                                                <TableHead className="text-white bg-blue-700 text-center" rowSpan={3}>ESSENCIAL - 36 MESES</TableHead>
+                                                <TableHead className="text-white bg-blue-600 text-center" colSpan={2}>Tarifado</TableHead>
+                                            </TableRow>
+                                            <TableRow className="border-slate-700">
+                                                <TableHead className="text-white bg-blue-600 text-center">Valores com Equipamento (Aluguel + Franquia)</TableHead>
+                                                <TableHead className="text-white bg-blue-500 text-center">Valores sem Equipamento (Assinatura + Franquia)</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {pabxPremiumPrices['36'].essencial.tarifado.map((item, index) => (
+                                                <TableRow key={`essencial-tarifado-36-${index}`} className="border-slate-800">
+                                                    <TableCell>{item.range}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        {isEditingPABXPremium24 ? (
+                                                            <input
+                                                                type="number"
+                                                                value={editedValues[`36-essencial-tarifado-${index}-comEquipamento`] ?? item.comEquipamento}
+                                                                onChange={(e) => handleInputChange('36', 'essencial', 'tarifado', index, 'comEquipamento', e.target.value)}
+                                                                className="w-24 p-1 text-center text-black rounded"
+                                                            />
+                                                        ) : (
+                                                            formatCurrency(item.comEquipamento)
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {isEditingPABXPremium24 ? (
+                                                            <input
+                                                                type="number"
+                                                                value={editedValues[`36-essencial-tarifado-${index}-semEquipamento`] ?? item.semEquipamento}
+                                                                onChange={(e) => handleInputChange('36', 'essencial', 'tarifado', index, 'semEquipamento', e.target.value)}
                                                                 className="w-24 p-1 text-center text-black rounded"
                                                             />
                                                         ) : (
