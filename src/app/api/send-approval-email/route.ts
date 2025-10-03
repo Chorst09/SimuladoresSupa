@@ -73,6 +73,8 @@ export async function POST(request: NextRequest) {
     // Método 1: Tentar usar Resend se a chave estiver disponível
     if (process.env.RESEND_API_KEY) {
       try {
+        console.log('🔑 Chave Resend encontrada, tentando enviar email...');
+        
         const resendResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -87,24 +89,59 @@ export async function POST(request: NextRequest) {
           }),
         });
 
+        const responseText = await resendResponse.text();
+        console.log('📧 Resposta do Resend:', { status: resendResponse.status, body: responseText });
+
         if (resendResponse.ok) {
           emailSent = true;
-          console.log('✅ Email enviado via Resend');
+          console.log('✅ Email enviado via Resend com sucesso!');
         } else {
-          const errorData = await resendResponse.text();
-          emailError = `Resend error: ${errorData}`;
+          emailError = `Resend error (${resendResponse.status}): ${responseText}`;
+          console.error('❌ Erro no Resend:', emailError);
         }
       } catch (error: any) {
         emailError = `Resend error: ${error.message}`;
+        console.error('❌ Erro de conexão com Resend:', error);
+      }
+    } else {
+      emailError = 'Chave RESEND_API_KEY não encontrada';
+      console.error('❌ Chave do Resend não configurada');
+    }
+
+    // Método 2: Se o Resend falhar, tentar webhook alternativo
+    if (!emailSent) {
+      try {
+        console.log('🔄 Tentando método alternativo de notificação...');
+        
+        // Criar uma notificação no banco de dados para backup
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert({
+            type: 'new_user_approval',
+            recipient_email: 'carlos.horst@doubletelecom.com.br',
+            data: {
+              userEmail,
+              userName,
+              timestamp: new Date().toISOString()
+            },
+            created_at: new Date().toISOString()
+          });
+
+        if (!notificationError) {
+          console.log('✅ Notificação salva no banco de dados como backup');
+        }
+      } catch (backupError) {
+        console.log('⚠️ Erro ao salvar notificação backup:', backupError);
       }
     }
 
-    // Método 2: Log detalhado para debug (sempre executado)
+    // Método 3: Log detalhado para debug (sempre executado)
     console.log('📧 Detalhes do email de aprovação:', {
       admins: admins.map(admin => ({ email: admin.email, name: admin.full_name })),
       newUser: { email: userEmail, name: userName },
       emailSent,
       emailError,
+      resendApiKey: process.env.RESEND_API_KEY ? 'Configurada' : 'Não configurada',
       timestamp: new Date().toISOString()
     });
 
