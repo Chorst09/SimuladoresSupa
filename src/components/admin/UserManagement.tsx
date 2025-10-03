@@ -152,6 +152,14 @@ export default function UserManagement() {
       });
 
       if (authError) {
+        // Tratar erros específicos do Supabase
+        if (authError.message.includes('only request this after')) {
+          alert('⏱️ Limite de criação de usuários atingido. Aguarde alguns segundos e tente novamente.');
+          return;
+        } else if (authError.message.includes('User already registered')) {
+          alert('⚠️ Este email já está cadastrado no sistema.');
+          return;
+        }
         throw authError;
       }
 
@@ -184,7 +192,19 @@ export default function UserManagement() {
       loadUsers();
     } catch (error: any) {
       console.error('Erro ao criar usuário:', error);
-      alert(`Erro: ${error.message || 'Não foi possível criar o usuário.'}`);
+      
+      let description = error.message || 'Não foi possível criar o usuário.';
+      if (error.message.includes('User already registered')) {
+        description = 'Este email já está em uso. Tente usar outro email.';
+      } else if (error.message.includes('Invalid email')) {
+        description = 'Email inválido. Verifique e tente novamente.';
+      } else if (error.message.includes('Password should be at least')) {
+        description = 'Senha fraca. Use uma senha com pelo menos 6 caracteres.';
+      } else if (error.message.includes('only request this after')) {
+        description = 'Limite de criação atingido. Aguarde 1 minuto e tente novamente.';
+      }
+      
+      alert(`Erro: ${description}`);
     }
   };
 
@@ -287,6 +307,14 @@ export default function UserManagement() {
                 Adicionar Usuário
               </Button>
             </DialogTrigger>
+          </Dialog>
+          
+          <Button
+            variant="outline"
+            onClick={() => window.open('/signup', '_blank')}
+          >
+            📝 Cadastro Público
+          </Button>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Usuário</DialogTitle>
@@ -354,6 +382,10 @@ export default function UserManagement() {
             <Users className="h-5 w-5 mr-2" />
             Usuários do Sistema ({users.length})
           </CardTitle>
+          <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg">
+            💡 <strong>Dica:</strong> Se houver limite de criação de usuários, use o botão "📝 Cadastro Público" 
+            para que os usuários se cadastrem diretamente e depois aprove-os aqui.
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
