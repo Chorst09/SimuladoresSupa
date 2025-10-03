@@ -82,9 +82,9 @@ const SignupPage = () => {
           const emailResult = await emailResponse.json();
           console.log('📧 Resultado do email:', emailResult);
 
-          // Método 2: Webhook/Discord (backup)
+          // Método 2: Notificação por logs (sempre funciona)
           try {
-            const webhookResponse = await fetch('/api/webhook-notification', {
+            const logResponse = await fetch('/api/log-notification', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -95,10 +95,10 @@ const SignupPage = () => {
               }),
             });
 
-            const webhookResult = await webhookResponse.json();
-            console.log('🔔 Resultado da notificação:', webhookResult);
-          } catch (webhookError) {
-            console.error('⚠️ Erro na notificação webhook:', webhookError);
+            const logResult = await logResponse.json();
+            console.log('📝 Resultado da notificação por log:', logResult);
+          } catch (logError) {
+            console.error('⚠️ Erro na notificação por log:', logError);
           }
 
           if (!emailResponse.ok && !emailResult.emailSent) {
