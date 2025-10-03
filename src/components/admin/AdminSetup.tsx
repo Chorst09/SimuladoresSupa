@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, UserPlus, Loader2 } from 'lucide-react';
+import ConnectionDiagnostic from './ConnectionDiagnostic';
 
 export default function AdminSetup() {
   const [loading, setLoading] = useState(true);
@@ -24,20 +25,40 @@ export default function AdminSetup() {
 
   const checkForAdmin = async () => {
     try {
-      const { data: adminUsers, error } = await supabase
+      console.log('🔍 Verificando administradores existentes...');
+      
+      // Tentar conectar com timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 10000)
+      );
+      
+      const queryPromise = supabase
         .from('profiles')
         .select('id')
         .eq('role', 'admin')
         .limit(1);
       
+      const { data: adminUsers, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+      
       if (error) {
         console.error('Erro ao verificar administradores:', error);
+        // Se houver erro, assumir que não há admin para permitir criação
         setHasAdmin(false);
       } else {
-        setHasAdmin(adminUsers && adminUsers.length > 0);
+        const hasAdminUsers = adminUsers && adminUsers.length > 0;
+        console.log(`📊 Administradores encontrados: ${hasAdminUsers ? adminUsers.length : 0}`);
+        setHasAdmin(hasAdminUsers);
       }
-    } catch (error) {
-      console.error('Erro ao verificar administradores:', error);
+    } catch (error: any) {
+      console.error('❌ Erro ao verificar administradores:', error);
+      
+      if (error.message === 'Timeout') {
+        console.log('⏰ Timeout na conexão - assumindo que não há admin');
+      } else if (error.message?.includes('Failed to fetch')) {
+        console.log('🌐 Erro de conectividade - assumindo que não há admin');
+      }
+      
+      // Em caso de erro, assumir que não há admin para permitir setup
       setHasAdmin(false);
     } finally {
       setLoading(false);
@@ -60,12 +81,40 @@ export default function AdminSetup() {
     try {
       console.log('🔄 Iniciando criação do primeiro administrador...');
       
-      // Check if user already exists in Supabase profiles table
-      const { data: existingUsers, error: checkError } = await supabase
-        .from('profiles')
-        .select('id, email, role')
-        .eq('email', email)
-        .limit(1);
+      // Verificar conectividade primeiro
+      console.log('🌐 Testando conectividade com Supabase...');
+      
+      let existingUsers = null;
+      let checkError = null;
+      
+      try {
+        // Tentar verificar usuário existente com timeout
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout na verificação')), 15000)
+        );
+        
+        const checkPromise = supabase
+          .from('profiles')
+          .select('id, email, role')
+          .eq('email', email)
+          .limit(1);
+        
+        const result = await Promise.race([checkPromise, timeoutPromise]) as any;
+        existingUsers = result.data;
+        checkError = result.error;
+        
+      } catch (connectError: any) {
+        console.warn('⚠️ Erro de conectividade na verificação:', connectError.message);
+        
+        if (connectError.message?.includes('Failed to fetch') || connectError.message?.includes('Timeout')) {
+          console.log('🔄 Tentando criar usuário diretamente devido a problemas de conectividade...');
+          // Pular verificação e tentar criar diretamente
+          existingUsers = null;
+          checkError = null;
+        } else {
+          throw connectError;
+        }
+      }
       
       if (checkError) {
         console.error('Erro ao verificar usuário existente:', checkError);
@@ -165,19 +214,31 @@ export default function AdminSetup() {
       
       let errorMessage = 'Não foi possível criar o administrador.';
       
-      if (error.message.includes('User already registered')) {
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('Timeout')) {
+        errorMessage = 'Erro de conectividade com o banco de dados. Verifique sua conexão com a internet e tente novamente.';
+      } else if (error.message?.includes('User already registered')) {
         errorMessage = 'Este email já está em uso. Tente fazer login ou use outro email.';
-      } else if (error.message.includes('Password should be at least')) {
+      } else if (error.message?.includes('Password should be at least')) {
         errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
-      } else if (error.message.includes('Invalid email')) {
+      } else if (error.message?.includes('Invalid email')) {
         errorMessage = 'Email inválido.';
-      } else if (error.message.includes('duplicate key value')) {
+      } else if (error.message?.includes('duplicate key value')) {
         errorMessage = 'Este usuário já existe no sistema.';
+      } else if (error.message?.includes('JWT')) {
+        errorMessage = 'Erro de autenticação. Verifique as configurações do Supabase.';
       } else if (error.message) {
         errorMessage = `Erro: ${error.message}`;
       }
       
-      alert(`Erro: ${errorMessage}`);
+      // Adicionar informações de debug para o usuário
+      console.log('🔍 Informações de debug:', {
+        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Configurada' : 'Não configurada',
+        supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Configurada' : 'Não configurada',
+        errorType: error.name,
+        errorMessage: error.message
+      });
+      
+      alert(`${errorMessage}\n\nSe o problema persistir, verifique:\n1. Conexão com a internet\n2. Configurações do Supabase\n3. Console do navegador para mais detalhes`);
     } finally {
       setCreating(false);
     }
@@ -210,7 +271,7 @@ export default function AdminSetup() {
   }
 
   return (
-    <div className="max-w-md mx-auto mt-8">
+    <div className="max-w-2xl mx-auto mt-8">
       <Card>
         <CardHeader className="text-center">
           <Shield className="h-12 w-12 mx-auto mb-4 text-primary" />
@@ -237,7 +298,7 @@ export default function AdminSetup() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Senha segura"
+              placeholder="Senha segura (mínimo 6 caracteres)"
             />
           </div>
           <div>
@@ -268,6 +329,8 @@ export default function AdminSetup() {
           </Button>
         </CardContent>
       </Card>
+      
+      <ConnectionDiagnostic />
     </div>
   );
 }
