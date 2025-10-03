@@ -33,6 +33,13 @@ export async function POST(request: NextRequest) {
       subject: 'Nova solicitação de acesso - Simuladores Double TI',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #fef3c7; padding: 10px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; color: #92400e; font-size: 14px;">
+              <strong>📧 Para: carlos.horst@doubletelecom.com.br</strong><br>
+              Este email foi enviado para chorstconsult@gmail.com devido às limitações do Resend. 
+              Por favor, encaminhe para o email corporativo.
+            </p>
+          </div>
           <h2 style="color: #2563eb;">Nova Solicitação de Acesso</h2>
           <p>Um novo usuário solicitou acesso ao sistema:</p>
           <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
@@ -41,7 +48,7 @@ export async function POST(request: NextRequest) {
             <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
           </div>
           <p>Para aprovar este usuário, acesse o painel administrativo:</p>
-          <a href="https://simuladores-supa-v2.vercel.app/admin-user-management" 
+          <a href="https://simuladores-supa-v2.vercel.app/?admin=user-management" 
              style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 10px 0;">
             Gerenciar Usuários
           </a>
@@ -74,7 +81,7 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             from: 'onboarding@resend.dev', // Email padrão do Resend para teste
-            to: ['chorstconsult@gmail.com'], // Seu email verificado (Resend só permite este email sem domínio verificado)
+            to: ['chorstconsult@gmail.com'], // Email verificado no Resend - será encaminhado para carlos.horst@doubletelecom.com.br
             subject: emailContent.subject,
             html: emailContent.html,
           }),
