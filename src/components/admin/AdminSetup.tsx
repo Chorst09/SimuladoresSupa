@@ -147,7 +147,37 @@ export default function AdminSetup() {
         return;
       }
       
-      console.log('🆕 Criando novo usuário...');
+      console.log('🆕 Tentando criar admin diretamente na tabela...');
+      
+      // Tentar inserir diretamente na tabela profiles primeiro
+      try {
+        const { data: directInsert, error: directError } = await supabase
+          .from('profiles')
+          .insert({
+            id: crypto.randomUUID(),
+            email: email,
+            role: 'admin',
+            full_name: name || email,
+            created_at: new Date().toISOString()
+          })
+          .select();
+
+        if (!directError && directInsert) {
+          console.log('✅ Admin criado diretamente na tabela!');
+          alert('Sucesso: Administrador criado com sucesso!');
+          setHasAdmin(true);
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 1500);
+          return;
+        } else {
+          console.log('⚠️ Inserção direta falhou, tentando via Auth...');
+        }
+      } catch (directInsertError) {
+        console.log('⚠️ Inserção direta falhou, tentando via Auth...');
+      }
+
+      console.log('🆕 Criando novo usuário via Auth...');
       // Create user with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
