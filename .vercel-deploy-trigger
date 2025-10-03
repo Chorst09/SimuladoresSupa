@@ -1,1 +1,13 @@
-# Deploy trigger Thu Oct  2 14:05:51 -03 2025
+DEPLOY_TRIGGER=2024-12-20-PABX-PREMIUM-FIXES
+TIMESTAMP=$(date)
+COMMIT_HASH=f307945
+
+# Correções implementadas:
+- PABX Premium cálculos corrigidos
+- Tabela ESSENCIAL 36 meses adicionada
+- Taxa de setup configurável
+- Integração Agente IA
+- Função getPremiumPriceRange corrigida
+- Interface Premium completa
+
+# Deploy forçado em: $(date)
