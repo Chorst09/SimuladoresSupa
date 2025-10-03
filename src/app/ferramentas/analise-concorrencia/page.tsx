@@ -5,6 +5,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import { Bar } from 'react-chartjs-2';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -424,30 +425,35 @@ export default function AnaliseConcorrencia() {
 
             {/* Cards de Resumo */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {(() => {
-                const prices = results.map(r => r.price);
-                const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
-                const minResult = results.reduce((prev, curr) => prev.price < curr.price ? prev : curr);
-                const maxResult = results.reduce((prev, curr) => prev.price > curr.price ? prev : curr);
+              {
+                (() => {
+                  const prices = results.map(r => r.price);
+                  const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+                  const minResult = results.reduce((prev, curr) => prev.price < curr.price ? prev : curr);
+                  const maxResult = results.reduce((prev, curr) => prev.price > curr.price ? prev : curr);
 
-                return [
-                  { title: 'Preço Médio Mensal', value: `R$ ${avgPrice.toFixed(2)}`, color: 'blue' },
-                  { title: 'Menor Mensalidade', value: `R$ ${minResult.price.toFixed(2)}`, subtitle: minResult.competitor, color: 'green' },
-                  { title: 'Maior Mensalidade', value: `R$ ${maxResult.price.toFixed(2)}`, subtitle: maxResult.competitor, color: 'red' },
-                  { title: 'Concorrentes', value: results.length.toString(), color: 'indigo' }
-                ].map((card, index) => (
-                  <div key={index} className="bg-gray-50 dark:bg-gray-700/50 p-5 rounded-xl shadow">
-                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{card.title}</h4>
-                    <p className={`text-3xl font-bold text-${card.color}-600 dark:text-${card.color}-400 mt-1`}>
-                      {card.value}
-                    </p>
-                    {card.subtitle && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{card.subtitle}</p>
-                    )}
-                  </div>
-                ));
-              })()}
-            </div>
+                  const cards = [
+                    { title: 'Preço Médio Mensal', value: `R$ ${avgPrice.toFixed(2)}`, color: 'blue' },
+                    { title: 'Menor Mensalidade', value: `R$ ${minResult.price.toFixed(2)}`, subtitle: minResult.competitor, color: 'green' },
+                    { title: 'Maior Mensalidade', value: `R$ ${maxResult.price.toFixed(2)}`, subtitle: maxResult.competitor, color: 'red' },
+                    { title: 'Concorrentes', value: results.length.toString(), color: 'indigo' }
+                  ];
+
+                  return cards.map((card, index) => (
+                    <Card key={index}>
+                      <CardHeader>
+                        <CardTitle>{card.title}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className={`text-3xl font-bold text-${card.color}-600 dark:text-${card.color}-400 mt-1`}>
+                          {card.value}
+                        </p>
+                        {card.subtitle && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{card.subtitle}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ));
 
             {/* Tabela e Gráfico */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
