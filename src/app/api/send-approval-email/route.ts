@@ -33,11 +33,10 @@ export async function POST(request: NextRequest) {
       subject: 'Nova solicitação de acesso - Simuladores Double TI',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #fef3c7; padding: 10px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
-            <p style="margin: 0; color: #92400e; font-size: 14px;">
-              <strong>📧 Para: carlos.horst@doubletelecom.com.br</strong><br>
-              Este email foi enviado para chorstconsult@gmail.com devido às limitações do Resend. 
-              Por favor, encaminhe para o email corporativo.
+          <div style="background: #dbeafe; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #2563eb;">
+            <p style="margin: 0; color: #1e40af; font-size: 14px;">
+              <strong>🎯 Sistema Simuladores Double TI</strong><br>
+              Nova solicitação de acesso recebida e aguardando sua aprovação.
             </p>
           </div>
           <h2 style="color: #2563eb;">Nova Solicitação de Acesso</h2>
@@ -82,8 +81,8 @@ export async function POST(request: NextRequest) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: 'onboarding@resend.dev', // Email padrão do Resend para teste
-            to: ['chorstconsult@gmail.com'], // Email verificado no Resend - será encaminhado para carlos.horst@doubletelecom.com.br
+            from: 'onboarding@resend.dev', // Usando domínio padrão do Resend
+            to: ['carlos.horst@doubletelecom.com.br'], // Enviando diretamente para o email corporativo
             subject: emailContent.subject,
             html: emailContent.html,
           }),
