@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         from: 'onboarding@resend.dev',
-        to: ['chorstconsult@gmail.com'],
+        to: ['carlos.horst@doubletelecom.com.br'],
         subject: 'Teste de Email - Simuladores Double TI',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

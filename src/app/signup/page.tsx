@@ -82,7 +82,33 @@ const SignupPage = () => {
           const emailResult = await emailResponse.json();
           console.log('📧 Resultado do email:', emailResult);
 
-          // Método 2: Notificação por logs (sempre funciona)
+          // Método 2: Se o email principal falhar, usar API direta
+          if (!emailResult.emailSent) {
+            try {
+              console.log('🔄 Tentando método alternativo de email...');
+              const directResponse = await fetch('/api/send-email-direct', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  userEmail: email,
+                  userName: fullName || email.split('@')[0]
+                }),
+              });
+
+              const directResult = await directResponse.json();
+              console.log('📧 Resultado do email direto:', directResult);
+              
+              if (directResult.success) {
+                console.log('✅ Email enviado via método alternativo!');
+              }
+            } catch (directError) {
+              console.error('⚠️ Erro no email direto:', directError);
+            }
+          }
+
+          // Método 3: Notificação por logs (sempre funciona)
           try {
             const logResponse = await fetch('/api/log-notification', {
               method: 'POST',
