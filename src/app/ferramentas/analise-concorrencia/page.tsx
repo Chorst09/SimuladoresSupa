@@ -454,6 +454,9 @@ export default function AnaliseConcorrencia() {
                       </CardContent>
                     </Card>
                   ));
+                })()
+              }
+            </div>
 
             {/* Tabela e Gráfico */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

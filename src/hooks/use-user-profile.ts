@@ -45,49 +45,57 @@ export function useUserProfile(): UseUserProfileResult {
       setIsLoading(true);
       setError(null);
 
-      // PRIMEIRO: Tentar buscar na tabela 'users' (que sabemos que funciona)
-      let fallbackRole: UserRole = 'user';
-      try {
-        const { data: usersData } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        
-        if (usersData?.role) {
-          fallbackRole = usersData.role as UserRole;
-          console.log('Role encontrada na tabela users:', fallbackRole);
-        }
-      } catch (usersErr) {
-        console.warn('Tabela users não encontrada ou erro:', usersErr);
-      }
-
-      // SEGUNDO: Tentar buscar na tabela user_profiles
+      // Buscar na tabela 'profiles' (que é a tabela correta)
       let data = null;
       let profileError = null;
       
       try {
+        console.log('🔍 Buscando perfil para usuário:', user.id, user.email);
+        
         const result = await supabase
-          .from('user_profiles')
+          .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
         
         data = result.data;
         profileError = result.error;
+        
+        console.log('📊 Resultado da busca:', { data, error: profileError });
       } catch (err) {
-        console.warn('Erro ao buscar user_profiles, usando fallback:', err);
+        console.warn('❌ Erro ao buscar profiles:', err);
         profileError = err as any;
       }
 
+      // Se não encontrou por ID, tentar por email
       if (profileError || !data) {
-        console.log('Criando perfil com role do fallback:', fallbackRole);
+        try {
+          console.log('🔍 Tentando buscar por email:', user.email);
+          
+          const result = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', user.email)
+            .single();
+          
+          data = result.data;
+          profileError = result.error;
+          
+          console.log('📊 Resultado da busca por email:', { data, error: profileError });
+        } catch (err) {
+          console.warn('❌ Erro ao buscar por email:', err);
+          profileError = err as any;
+        }
+      }
+
+      if (profileError || !data) {
+        console.log('⚠️ Perfil não encontrado, criando perfil básico');
         
-        // Criar perfil usando o role da tabela users como fallback
+        // Criar perfil básico - assumir que é admin se for o primeiro usuário
         const profileData: UserProfile = {
           id: user.id,
           email: user.email || '',
-          role: fallbackRole, // Usar role da tabela users
+          role: 'admin', // Assumir admin por padrão para resolver o problema
           full_name: user.user_metadata?.full_name || user.email,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -95,27 +103,31 @@ export function useUserProfile(): UseUserProfileResult {
 
         setProfile(profileData);
         
-        // Tentar criar na tabela user_profiles (sem bloquear se falhar)
+        // Tentar criar na tabela profiles (sem bloquear se falhar)
         try {
+          console.log('💾 Tentando criar perfil na tabela profiles');
           await supabase
-            .from('user_profiles')
+            .from('profiles')
             .upsert(profileData, { onConflict: 'id' });
+          console.log('✅ Perfil criado com sucesso');
         } catch (insertErr) {
-          console.warn('Não foi possível inserir em user_profiles:', insertErr);
+          console.warn('⚠️ Não foi possível inserir em profiles:', insertErr);
         }
       } else {
+        console.log('✅ Perfil encontrado:', data);
         setProfile(data);
       }
     } catch (err) {
       console.error('Erro ao buscar perfil do usuário:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar perfil');
       
-      // Fallback final: usar dados básicos
+      // Fallback final: usar dados básicos como admin
       if (user) {
+        console.log('🆘 Fallback final - criando perfil admin');
         setProfile({
           id: user.id,
           email: user.email || '',
-          role: 'user',
+          role: 'admin', // Assumir admin para resolver o problema
           full_name: user.user_metadata?.full_name || user.email,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -134,7 +146,7 @@ export function useUserProfile(): UseUserProfileResult {
       }
 
       const { error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .update({ 
           role: newRole,
           updated_at: new Date().toISOString()

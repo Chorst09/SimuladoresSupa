@@ -27,46 +27,86 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Aqui você pode integrar com um serviço de email como Resend, SendGrid, etc.
-    // Por enquanto, vamos apenas logar e retornar sucesso
-    console.log('📧 Email de aprovação seria enviado para:', {
-      admins: admins.map(admin => admin.email),
-      newUser: { email: userEmail, name: userName }
-    });
-
-    // Simular envio de email
+    // Implementar envio de email usando fetch (funciona sem dependências extras)
     const emailContent = {
       to: admins.map(admin => admin.email),
       subject: 'Nova solicitação de acesso - Simuladores Double TI',
       html: `
-        <h2>Nova Solicitação de Acesso</h2>
-        <p>Um novo usuário solicitou acesso ao sistema:</p>
-        <ul>
-          <li><strong>Email:</strong> ${userEmail}</li>
-          <li><strong>Nome:</strong> ${userName || 'Não informado'}</li>
-        </ul>
-        <p>Para aprovar este usuário, acesse o painel administrativo em:</p>
-        <a href="${process.env.NEXTAUTH_URL || 'https://seu-dominio.vercel.app'}/admin">
-          Gerenciar Usuários
-        </a>
-        <p>Você pode definir o nível de acesso como:</p>
-        <ul>
-          <li><strong>admin:</strong> Acesso total ao sistema</li>
-          <li><strong>director:</strong> Acesso a relatórios e gestão</li>
-          <li><strong>seller:</strong> Acesso às calculadoras</li>
-          <li><strong>user:</strong> Acesso básico</li>
-        </ul>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">Nova Solicitação de Acesso</h2>
+          <p>Um novo usuário solicitou acesso ao sistema:</p>
+          <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <p><strong>Email:</strong> ${userEmail}</p>
+            <p><strong>Nome:</strong> ${userName || 'Não informado'}</p>
+            <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+          </div>
+          <p>Para aprovar este usuário, acesse o painel administrativo:</p>
+          <a href="https://simuladores-supa-v2.vercel.app/admin-user-management" 
+             style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 10px 0;">
+            Gerenciar Usuários
+          </a>
+          <h3>Níveis de Acesso Disponíveis:</h3>
+          <ul>
+            <li><strong>admin:</strong> Acesso total ao sistema</li>
+            <li><strong>director:</strong> Acesso a relatórios e gestão</li>
+            <li><strong>user:</strong> Acesso básico às calculadoras</li>
+          </ul>
+          <hr style="margin: 20px 0;">
+          <p style="color: #6b7280; font-size: 12px;">
+            Este email foi enviado automaticamente pelo sistema Simuladores Double TI.
+          </p>
+        </div>
       `
     };
 
-    // TODO: Implementar envio real de email aqui
-    // Exemplo com Resend:
-    // const resend = new Resend(process.env.RESEND_API_KEY);
-    // await resend.emails.send(emailContent);
+    // Tentar enviar email usando diferentes métodos
+    let emailSent = false;
+    let emailError = null;
+
+    // Método 1: Tentar usar Resend se a chave estiver disponível
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'sistema@doubletelcom.com.br',
+            to: admins.map(admin => admin.email),
+            subject: emailContent.subject,
+            html: emailContent.html,
+          }),
+        });
+
+        if (resendResponse.ok) {
+          emailSent = true;
+          console.log('✅ Email enviado via Resend');
+        } else {
+          const errorData = await resendResponse.text();
+          emailError = `Resend error: ${errorData}`;
+        }
+      } catch (error: any) {
+        emailError = `Resend error: ${error.message}`;
+      }
+    }
+
+    // Método 2: Log detalhado para debug (sempre executado)
+    console.log('📧 Detalhes do email de aprovação:', {
+      admins: admins.map(admin => ({ email: admin.email, name: admin.full_name })),
+      newUser: { email: userEmail, name: userName },
+      emailSent,
+      emailError,
+      timestamp: new Date().toISOString()
+    });
 
     return NextResponse.json({
-      message: 'Email de aprovação enviado com sucesso',
-      admins: admins.length
+      message: emailSent ? 'Email de aprovação enviado com sucesso' : 'Solicitação registrada - Administradores serão notificados',
+      admins: admins.length,
+      emailSent,
+      emailError: emailError || undefined,
+      adminEmails: admins.map(admin => admin.email)
     });
 
   } catch (error) {
