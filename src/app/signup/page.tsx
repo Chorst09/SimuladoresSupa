@@ -65,6 +65,7 @@ const SignupPage = () => {
 
         // Enviar email de aprovação para administradores
         try {
+          console.log('📧 Enviando email de aprovação...');
           const response = await fetch('/api/send-approval-email', {
             method: 'POST',
             headers: {
@@ -76,11 +77,16 @@ const SignupPage = () => {
             }),
           });
 
+          const result = await response.json();
+          console.log('📧 Resultado do email:', result);
+
           if (!response.ok) {
-            console.error('Erro ao enviar email de aprovação');
+            console.error('❌ Erro ao enviar email de aprovação:', result);
+          } else {
+            console.log('✅ Email de aprovação enviado com sucesso!');
           }
         } catch (emailError) {
-          console.error('Erro ao enviar email de aprovação:', emailError);
+          console.error('❌ Erro ao enviar email de aprovação:', emailError);
         }
 
         toast({ 

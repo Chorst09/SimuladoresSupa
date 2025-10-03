@@ -13,7 +13,7 @@ async function testResendEmail() {
       },
       body: JSON.stringify({
         from: 'onboarding@resend.dev',
-        to: ['carlos.horst@doubletelcom.com.br'],
+        to: ['chorstconsult@gmail.com'], // Seu email verificado no Resend
         subject: 'Teste - Sistema Simuladores Double TI',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

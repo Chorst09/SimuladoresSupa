@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             from: 'onboarding@resend.dev', // Email padrão do Resend para teste
-            to: admins.map(admin => admin.email),
+            to: ['chorstconsult@gmail.com'], // Seu email verificado (Resend só permite este email sem domínio verificado)
             subject: emailContent.subject,
             html: emailContent.html,
           }),
