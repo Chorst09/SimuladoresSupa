@@ -307,14 +307,6 @@ export default function UserManagement() {
                 Adicionar Usuário
               </Button>
             </DialogTrigger>
-          </Dialog>
-          
-          <Button
-            variant="outline"
-            onClick={() => window.open('/signup', '_blank')}
-          >
-            📝 Cadastro Público
-          </Button>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Usuário</DialogTitle>
@@ -373,6 +365,13 @@ export default function UserManagement() {
               </div>
             </DialogContent>
           </Dialog>
+          
+          <Button
+            variant="outline"
+            onClick={() => window.open('/signup', '_blank')}
+          >
+            📝 Cadastro Público
+          </Button>
         </div>
       </div>
 
