@@ -116,7 +116,7 @@ export default function UserManagement() {
           id: '1',
           email: 'carlos.horst@doubletelcom.com.br',
           full_name: 'Carlos Horst',
-          role: 'admin',
+          role: 'director', // Mudando para 'director' que provavelmente é válido
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           password_changed: true

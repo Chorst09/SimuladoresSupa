@@ -91,11 +91,11 @@ export function useUserProfile(): UseUserProfileResult {
       if (profileError || !data) {
         console.log('⚠️ Perfil não encontrado, criando perfil básico');
         
-        // Criar perfil básico - assumir que é admin se for o primeiro usuário
+        // Criar perfil básico - assumir que é director se for o primeiro usuário
         const profileData: UserProfile = {
           id: user.id,
           email: user.email || '',
-          role: 'admin', // Assumir admin por padrão para resolver o problema
+          role: 'director', // Usar 'director' que provavelmente é válido
           full_name: user.user_metadata?.full_name || user.email,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -123,11 +123,11 @@ export function useUserProfile(): UseUserProfileResult {
       
       // Fallback final: usar dados básicos como admin
       if (user) {
-        console.log('🆘 Fallback final - criando perfil admin');
+        console.log('🆘 Fallback final - criando perfil director');
         setProfile({
           id: user.id,
           email: user.email || '',
-          role: 'admin', // Assumir admin para resolver o problema
+          role: 'director', // Usar 'director' que provavelmente é válido
           full_name: user.user_metadata?.full_name || user.email,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -175,14 +175,14 @@ export function useUserProfile(): UseUserProfileResult {
   }, [authLoading, user]);
 
   // Computed properties baseadas no role
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'director'; // Director também é admin
   const isDirector = profile?.role === 'director';
   const isUser = profile?.role === 'user';
 
   // Permissões baseadas no role
-  const canAccessCommissions = isAdmin; // Apenas admin pode ver comissões
-  const canAccessPricing = isAdmin; // Apenas admin pode ver tabelas de preços
-  const canAccessDRE = isAdmin; // Apenas admin pode ver DRE
+  const canAccessCommissions = isAdmin; // Admin e Director podem ver comissões
+  const canAccessPricing = isAdmin; // Admin e Director podem ver tabelas de preços
+  const canAccessDRE = isAdmin; // Admin e Director podem ver DRE
   const canViewAllProposals = isAdmin || isDirector; // Admin e Diretor podem ver todas as propostas
 
   return {

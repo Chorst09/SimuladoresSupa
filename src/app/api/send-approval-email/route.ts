@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: 'sistema@doubletelcom.com.br',
+            from: 'onboarding@resend.dev', // Email padrão do Resend para teste
             to: admins.map(admin => admin.email),
             subject: emailContent.subject,
             html: emailContent.html,
