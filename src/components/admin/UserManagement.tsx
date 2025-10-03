@@ -64,11 +64,50 @@ export default function UserManagement() {
 
   const loadUsers = async () => {
     try {
-      // Primeiro tentar com password_changed, se falhar, tentar sem
-      let { data: usersData, error } = await supabase
-        .from('profiles')
-        .select('id, email, full_name, role, created_at, password_changed')
-        .order('created_at', { ascending: false });
+      console.log('🔄 Carregando usuários...');
+      
+      // Tentar múltiplas abordagens para carregar usuários
+      let usersData = null;
+      let error = null;
+
+      // Tentativa 1: Com todos os campos
+      try {
+        const result = await supabase
+          .from('profiles')
+          .select('id, email, full_name, role, created_at, password_changed')
+          .order('created_at', { ascending: false });
+        
+        usersData = result.data;
+        error = result.error;
+      } catch (err) {
+        console.log('❌ Tentativa 1 falhou, tentando sem password_changed...');
+      }
+
+      // Tentativa 2: Sem password_changed se a primeira falhar
+      if (error || !usersData) {
+        try {
+          const result = await supabase
+            .from('profiles')
+            .select('id, email, full_name, role, created_at')
+            .order('created_at', { ascending: false });
+          
+          usersData = result.data;
+          error = result.error;
+        } catch (err) {
+          console.log('❌ Tentativa 2 falhou, tentando campos básicos...');
+        }
+      }
+
+      // Tentativa 3: Apenas campos essenciais
+      if (error || !usersData) {
+        const result = await supabase
+          .from('profiles')
+          .select('id, email, role')
+          .order('email', { ascending: true });
+        
+        usersData = result.data;
+        error = result.error;
+      }
       
       // Se der erro na coluna password_changed, tentar sem ela
       if (error && error.message?.includes('password_changed')) {
@@ -308,13 +347,21 @@ export default function UserManagement() {
           </p>
         </div>
         
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Adicionar Usuário
-            </Button>
-          </DialogTrigger>
+        <div className="flex space-x-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={disableRLS}
+          >
+            Corrigir RLS
+          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Adicionar Usuário
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Adicionar Novo Usuário</DialogTitle>

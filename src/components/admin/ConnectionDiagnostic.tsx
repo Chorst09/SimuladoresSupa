@@ -16,6 +16,33 @@ export default function ConnectionDiagnostic() {
   const [testing, setTesting] = useState(false);
   const [results, setResults] = useState<DiagnosticResult[]>([]);
 
+  const fixRLSEmergency = async () => {
+    setTesting(true);
+    
+    try {
+      const response = await fetch('/api/fix-rls-emergency', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('✅ RLS corrigido com sucesso!\n\n' + result.message);
+        // Executar diagnóstico novamente
+        await runDiagnostics();
+      } else {
+        alert('❌ Erro na correção RLS:\n\n' + result.error + '\n\nInstruções:\n' + (result.instructions?.join('\n') || ''));
+      }
+    } catch (error: any) {
+      alert('❌ Erro ao executar correção RLS:\n\n' + error.message);
+    }
+    
+    setTesting(false);
+  };
+
   const runDiagnostics = async () => {
     setTesting(true);
     const diagnostics: DiagnosticResult[] = [];
@@ -188,20 +215,29 @@ export default function ConnectionDiagnostic() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Button 
-          onClick={runDiagnostics} 
-          disabled={testing}
-          className="mb-4"
-        >
-          {testing ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Testando...
-            </>
-          ) : (
-            'Executar Diagnóstico'
-          )}
-        </Button>
+        <div className="flex gap-2 mb-4">
+          <Button 
+            onClick={runDiagnostics} 
+            disabled={testing}
+          >
+            {testing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Testando...
+              </>
+            ) : (
+              'Executar Diagnóstico'
+            )}
+          </Button>
+          
+          <Button 
+            onClick={fixRLSEmergency} 
+            disabled={testing}
+            variant="destructive"
+          >
+            🚨 Corrigir RLS
+          </Button>
+        </div>
 
         {results.length > 0 && (
           <div className="space-y-3">
