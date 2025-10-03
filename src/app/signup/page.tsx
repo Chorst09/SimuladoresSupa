@@ -63,10 +63,12 @@ const SignupPage = () => {
           }
         }
 
-        // Enviar email de aprovação para administradores
+        // Enviar notificações para administradores (múltiplos métodos)
         try {
-          console.log('📧 Enviando email de aprovação...');
-          const response = await fetch('/api/send-approval-email', {
+          console.log('📧 Enviando notificações de aprovação...');
+          
+          // Método 1: Email via Resend
+          const emailResponse = await fetch('/api/send-approval-email', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -77,16 +79,35 @@ const SignupPage = () => {
             }),
           });
 
-          const result = await response.json();
-          console.log('📧 Resultado do email:', result);
+          const emailResult = await emailResponse.json();
+          console.log('📧 Resultado do email:', emailResult);
 
-          if (!response.ok) {
-            console.error('❌ Erro ao enviar email de aprovação:', result);
-          } else {
-            console.log('✅ Email de aprovação enviado com sucesso!');
+          // Método 2: Webhook/Discord (backup)
+          try {
+            const webhookResponse = await fetch('/api/webhook-notification', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userEmail: email,
+                userName: fullName || email.split('@')[0]
+              }),
+            });
+
+            const webhookResult = await webhookResponse.json();
+            console.log('🔔 Resultado da notificação:', webhookResult);
+          } catch (webhookError) {
+            console.error('⚠️ Erro na notificação webhook:', webhookError);
           }
-        } catch (emailError) {
-          console.error('❌ Erro ao enviar email de aprovação:', emailError);
+
+          if (!emailResponse.ok && !emailResult.emailSent) {
+            console.error('❌ Erro ao enviar email de aprovação:', emailResult);
+          } else {
+            console.log('✅ Notificações enviadas com sucesso!');
+          }
+        } catch (notificationError) {
+          console.error('❌ Erro ao enviar notificações:', notificationError);
         }
 
         toast({ 
