@@ -2235,8 +2235,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <span className="text-green-400">{formatCurrency(costBreakdown.finalPrice)}</span>
                                                                 </div>
                                                                 <div className="flex justify-between">
-                                                                    <span>Receita Total do Contrato (12m):</span>
-                                                                    <span className="text-green-400">{formatCurrency(costBreakdown.finalPrice * 12)}</span>
+                                                                    <span>Receita Total do Contrato ({vmContractPeriod}m):</span>
+                                                                    <span className="text-green-400">{formatCurrency(costBreakdown.finalPrice * vmContractPeriod)}</span>
                                                                 </div>
                                                                 <div className="flex justify-between">
                                                                     <span>Taxa de Setup:</span>
@@ -2247,7 +2247,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div className="flex justify-between">
                                                                     <span>Receita Líquida Total:</span>
                                                                     <span className={costBreakdown.netProfit >= 0 ? "text-green-400" : "text-red-400"}>
-                                                                        {formatCurrency(costBreakdown.netProfit * 12)}
+                                                                        {formatCurrency(costBreakdown.netProfit * vmContractPeriod)}
                                                                     </span>
                                                                 </div>
                                                                 <div className="flex justify-between">
@@ -2274,7 +2274,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div className="w-4 h-4 bg-blue-500 mr-2"></div>
                                                             DRE - Demonstrativo de Resultado do Exercício
                                                         </CardTitle>
-                                                        <CardDescription>DRE - Período: 12 Meses</CardDescription>
+                                                        <CardDescription>DRE - Período: {vmContractPeriod} Meses</CardDescription>
                                                     </CardHeader>
                                                     <CardContent>
                                                         <Table>
@@ -2400,8 +2400,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                         <span className="text-blue-300 font-semibold">{formatCurrency(costBreakdown.finalPrice)}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-sm">
-                                                                        <span className="text-gray-300">Anual:</span>
-                                                                        <span className="text-blue-300 font-semibold">{formatCurrency(costBreakdown.finalPrice * 12)}</span>
+                                                                        <span className="text-gray-300">Total Contrato:</span>
+                                                                        <span className="text-blue-300 font-semibold">{formatCurrency(costBreakdown.finalPrice * vmContractPeriod)}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-sm">
                                                                         <span className="text-gray-300">Setup:</span>
@@ -2442,9 +2442,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex justify-between text-sm">
-                                                                        <span className="text-gray-300">Anual:</span>
+                                                                        <span className="text-gray-300">Total Contrato:</span>
                                                                         <span className={`font-semibold ${costBreakdown.netProfit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                                            {formatCurrency(costBreakdown.netProfit * 12)}
+                                                                            {formatCurrency(costBreakdown.netProfit * vmContractPeriod)}
                                                                         </span>
                                                                     </div>
                                                                 </div>
@@ -2467,9 +2467,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex justify-between text-sm">
-                                                                        <span className="text-gray-300">ROI Anual:</span>
+                                                                        <span className="text-gray-300">ROI Total:</span>
                                                                         <span className={`font-semibold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
-                                                                            {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100 * 12)}%
+                                                                            {formatBrazilianNumber((costBreakdown.netProfit / costBreakdown.finalPrice) * 100 * vmContractPeriod)}%
                                                                         </span>
                                                                     </div>
                                                                 </div>
@@ -2485,15 +2485,15 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                                                 <div className="text-center">
                                                                     <div className="text-2xl font-bold text-green-400">
-                                                                        {formatCurrency(costBreakdown.finalPrice * 12)}
+                                                                        {formatCurrency(costBreakdown.finalPrice * vmContractPeriod)}
                                                                     </div>
-                                                                    <div className="text-sm text-slate-400">Receita Total (12m)</div>
+                                                                    <div className="text-sm text-slate-400">Receita Total ({vmContractPeriod}m)</div>
                                                                 </div>
                                                                 <div className="text-center">
                                                                     <div className={`text-2xl font-bold ${costBreakdown.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                        {formatCurrency(costBreakdown.netProfit * 12)}
+                                                                        {formatCurrency(costBreakdown.netProfit * vmContractPeriod)}
                                                                     </div>
-                                                                    <div className="text-sm text-slate-400">Lucro Total (12m)</div>
+                                                                    <div className="text-sm text-slate-400">Lucro Total ({vmContractPeriod}m)</div>
                                                                 </div>
                                                                 <div className="text-center">
                                                                     <div className={`text-2xl font-bold ${(costBreakdown.netProfit / costBreakdown.finalPrice * 100) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
