@@ -990,10 +990,24 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
     // Funções de manipulação
     const handleAddVMProduct = () => {
+        // Criar descrição completa incluindo serviços adicionais
+        let description = `${vmName} - ${vmCpuCores} vCPU, ${vmRamGb}GB RAM, ${vmStorageSize}GB ${vmStorageType}, ${vmOperatingSystem}`;
+        
+        // Adicionar serviços adicionais na descrição
+        const additionalServices = [];
+        if (vmBackupSize > 0) additionalServices.push(`Backup ${vmBackupSize}GB`);
+        if (vmAdditionalIp) additionalServices.push('IP Adicional');
+        if (vmSnapshot) additionalServices.push('Snapshot');
+        if (vmVpnSiteToSite) additionalServices.push('VPN Site-to-Site');
+        
+        if (additionalServices.length > 0) {
+            description += ` - ${additionalServices.join(', ')}`;
+        }
+
         const newProduct: Product = {
             id: Date.now().toString(),
             type: 'VM' as ProductType,
-            description: `${vmName} - ${vmCpuCores} vCPU, ${vmRamGb}GB RAM, ${vmStorageSize}GB ${vmStorageType}, ${vmOperatingSystem}`,
+            description: description,
             setup: setupFee,
             monthly: vmFinalPrice,
             details: {
@@ -1001,7 +1015,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 ramGb: vmRamGb,
                 storageType: vmStorageType,
                 storageSize: vmStorageSize,
-                operatingSystem: vmOperatingSystem
+                networkSpeed: vmNetworkSpeed,
+                operatingSystem: vmOperatingSystem,
+                backupSize: vmBackupSize,
+                additionalIp: vmAdditionalIp,
+                snapshot: vmSnapshot,
+                vpnSiteToSite: vmVpnSiteToSite,
+                contractPeriod: vmContractPeriod
             }
         };
         setAddedProducts([...addedProducts, newProduct]);
@@ -1096,6 +1116,34 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             setVmContractPeriod(proposal.contractPeriod);
         }
         
+        // Load VM specific data from the first product if available
+        if (products && products.length > 0) {
+            const firstProduct = products[0];
+            if (firstProduct.details) {
+                // Carregar configurações da VM
+                if (firstProduct.details.cpuCores) setVmCpuCores(firstProduct.details.cpuCores);
+                if (firstProduct.details.ramGb) setVmRamGb(firstProduct.details.ramGb);
+                if (firstProduct.details.storageType) setVmStorageType(firstProduct.details.storageType);
+                if (firstProduct.details.storageSize) setVmStorageSize(firstProduct.details.storageSize);
+                if (firstProduct.details.networkSpeed) setVmNetworkSpeed(firstProduct.details.networkSpeed);
+                if (firstProduct.details.operatingSystem) setVmOperatingSystem(firstProduct.details.operatingSystem);
+                
+                // Carregar serviços adicionais
+                if (firstProduct.details.backupSize !== undefined) setVmBackupSize(firstProduct.details.backupSize);
+                if (firstProduct.details.additionalIp !== undefined) setVmAdditionalIp(firstProduct.details.additionalIp);
+                if (firstProduct.details.snapshot !== undefined) setVmSnapshot(firstProduct.details.snapshot);
+                if (firstProduct.details.vpnSiteToSite !== undefined) setVmVpnSiteToSite(firstProduct.details.vpnSiteToSite);
+            }
+        }
+        
+        // Load discount settings if available
+        if (proposal.applySalespersonDiscount !== undefined) {
+            setApplySalespersonDiscount(proposal.applySalespersonDiscount);
+        }
+        if (proposal.appliedDirectorDiscountPercentage !== undefined) {
+            setAppliedDirectorDiscountPercentage(proposal.appliedDirectorDiscountPercentage);
+        }
+        
         setViewMode('calculator');
     };
 
@@ -1144,6 +1192,26 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         // Load contract period
         if (proposal.contractPeriod) {
             setVmContractPeriod(proposal.contractPeriod);
+        }
+        
+        // Load VM specific data from the first product if available
+        if (products && products.length > 0) {
+            const firstProduct = products[0];
+            if (firstProduct.details) {
+                // Carregar configurações da VM
+                if (firstProduct.details.cpuCores) setVmCpuCores(firstProduct.details.cpuCores);
+                if (firstProduct.details.ramGb) setVmRamGb(firstProduct.details.ramGb);
+                if (firstProduct.details.storageType) setVmStorageType(firstProduct.details.storageType);
+                if (firstProduct.details.storageSize) setVmStorageSize(firstProduct.details.storageSize);
+                if (firstProduct.details.networkSpeed) setVmNetworkSpeed(firstProduct.details.networkSpeed);
+                if (firstProduct.details.operatingSystem) setVmOperatingSystem(firstProduct.details.operatingSystem);
+                
+                // Carregar serviços adicionais
+                if (firstProduct.details.backupSize !== undefined) setVmBackupSize(firstProduct.details.backupSize);
+                if (firstProduct.details.additionalIp !== undefined) setVmAdditionalIp(firstProduct.details.additionalIp);
+                if (firstProduct.details.snapshot !== undefined) setVmSnapshot(firstProduct.details.snapshot);
+                if (firstProduct.details.vpnSiteToSite !== undefined) setVmVpnSiteToSite(firstProduct.details.vpnSiteToSite);
+            }
         }
         
         setViewMode('proposal-summary');
@@ -1541,9 +1609,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             const calculatedTotalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
             const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
             
+            // Determinar versão
+            let version = 1;
+            if (saveAsNewVersion && currentProposal) {
+                version = (currentProposal.version || 1) + 1;
+            } else if (currentProposal) {
+                version = currentProposal.version || 1;
+            }
+            
             // Preparar dados da proposta
             const proposalData = {
-                title: `Proposta VM - ${clientData?.name || 'Cliente'}`,
+                title: `Proposta VM V${version} - ${clientData?.name || 'Cliente'}`,
                 client: clientData?.name || '',
                 type: 'VM',
                 value: finalTotalMonthly,
@@ -1555,24 +1631,44 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 totalSetup: calculatedTotalSetup,
                 totalMonthly: finalTotalMonthly,
                 contractPeriod: vmContractPeriod,
+                version: version,
                 clientData: clientData,
                 products: addedProducts,
-                items: addedProducts
+                items: addedProducts,
+                // Dados adicionais para controle de versão
+                applySalespersonDiscount: applySalespersonDiscount,
+                appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                baseTotalMonthly: baseTotalMonthly
             };
 
-            // Usar API para salvar
-            const response = await fetch('/api/proposals', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(proposalData),
-            });
+            let response;
+            
+            if (saveAsNewVersion || !proposalId) {
+                // Criar nova proposta/versão
+                response = await fetch('/api/proposals', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(proposalData),
+                });
+            } else {
+                // Atualizar proposta existente
+                response = await fetch(`/api/proposals?id=${proposalId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(proposalData),
+                });
+            }
 
             if (response.ok) {
                 const savedProposal = await response.json();
-                alert('Proposta salva com sucesso!');
+                const actionText = saveAsNewVersion ? 'Nova versão criada' : 'Proposta salva';
+                alert(`${actionText} com sucesso! ID: ${savedProposal.baseId || savedProposal.id}`);
                 setCurrentProposal(savedProposal);
+                setHasChanged(false);
                 // Atualizar lista de propostas
                 fetchProposals();
             } else {
