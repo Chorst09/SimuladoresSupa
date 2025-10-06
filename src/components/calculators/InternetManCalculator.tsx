@@ -1100,9 +1100,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     };
 
     const editProposal = (proposal: Proposal) => {
-        console.log('=== EDIT PROPOSAL DEBUG ===');
-        console.log('Proposal:', proposal);
-        console.log('Proposal keys:', Object.keys(proposal));
+
         console.log('Products:', proposal.products);
         console.log('Items:', proposal.items);
         console.log('Full proposal JSON:', JSON.stringify(proposal, null, 2));
@@ -1778,7 +1776,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
                                     <CardHeader><CardTitle className="flex items-center"><FileText className="mr-2" />Resumo da Proposta</CardTitle></CardHeader>
                                     <CardContent>
-                                        {console.log('=== RESUMO DEBUG ===', 'addedProducts.length:', addedProducts.length, 'addedProducts:', addedProducts)}
+
                                         {addedProducts.length === 0 ? (
                                             <p className="text-slate-400">Nenhum produto adicionado.</p>
                                         ) : (

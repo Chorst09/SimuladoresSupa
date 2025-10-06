@@ -252,6 +252,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     setNetwork10GbpsCost(settingsData.network10GbpsCost || 100);
                     setWindowsServerCost(settingsData.windowsServerCost || 135);
                     setWindows10ProCost(settingsData.windows10ProCost || 120);
+                    setWindows11ProCost(settingsData.windows11ProCost || 130);
                     setUbuntuCost(settingsData.ubuntuCost || 0);
                     setCentosCost(settingsData.centosCost || 0);
                     setDebianCost(settingsData.debianCost || 0);
@@ -308,8 +309,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [iss, setIss] = useState<string>('0,00');
     const [csllIr, setCsllIr] = useState<string>('0,00');
 
-    // Debug: Log current taxRates state
-    console.log('Current taxRates state:', taxRates);
+
 
     // Cálculo de impostos baseado nas taxas editáveis
     const revenueTaxes = useMemo(() => {
@@ -389,6 +389,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [network10GbpsCost, setNetwork10GbpsCost] = useState<number>(100);
     const [windowsServerCost, setWindowsServerCost] = useState<number>(135);
     const [windows10ProCost, setWindows10ProCost] = useState<number>(120);
+    const [windows11ProCost, setWindows11ProCost] = useState<number>(130);
     const [ubuntuCost, setUbuntuCost] = useState<number>(0);
     const [centosCost, setCentosCost] = useState<number>(0);
     const [debianCost, setDebianCost] = useState<number>(0);
@@ -808,10 +809,12 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         }
 
         // Custo do Sistema Operacional
-        if (vmOperatingSystem === 'Windows Server 2022') {
+        if (vmOperatingSystem === 'Windows Server 2022 Standard') {
             cost += windowsServerCost;
         } else if (vmOperatingSystem === 'Windows 10 Pro') {
             cost += windows10ProCost;
+        } else if (vmOperatingSystem === 'Windows 11 Pro') {
+            cost += windows11ProCost;
         }
 
         // Serviços adicionais
@@ -833,7 +836,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         vmCpuCores, vmRamGb, vmStorageType, vmStorageSize, vmNetworkSpeed, vmOperatingSystem,
         vmBackupSize, vmAdditionalIp, vmSnapshot, vmVpnSiteToSite,
         vcpuWindowsCost, vcpuLinuxCost, ramCost, hddSasCost, ssdPerformanceCost, nvmeCost,
-        network10GbpsCost, windowsServerCost, windows10ProCost, backupCostPerGb,
+        network10GbpsCost, windowsServerCost, windows10ProCost, windows11ProCost, backupCostPerGb,
         additionalIpCost, snapshotCost, vpnSiteToSiteCost
     ]);
 
@@ -1295,6 +1298,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 network10GbpsCost,
                 windowsServerCost,
                 windows10ProCost,
+                windows11ProCost,
                 ubuntuCost,
                 centosCost,
                 debianCost,
@@ -1356,6 +1360,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     network10GbpsCost,
                     windowsServerCost,
                     windows10ProCost,
+                    windows11ProCost,
                     ubuntuCost,
                     centosCost,
                     debianCost,
@@ -1973,6 +1978,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <SelectItem value="Ubuntu Server 22.04 LTS">Ubuntu Server 22.04 LTS</SelectItem>
                                                                     <SelectItem value="Windows Server 2022 Standard">Windows Server 2022 Standard</SelectItem>
                                                                     <SelectItem value="Windows 10 Pro">Windows 10 Pro</SelectItem>
+                                                                    <SelectItem value="Windows 11 Pro">Windows 11 Pro</SelectItem>
                                                                     <SelectItem value="CentOS Stream 9">CentOS Stream 9</SelectItem>
                                                                     <SelectItem value="Debian 12">Debian 12</SelectItem>
                                                                     <SelectItem value="Rocky Linux 9">Rocky Linux 9</SelectItem>
