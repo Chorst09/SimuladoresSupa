@@ -97,13 +97,17 @@ interface Proposal {
     baseId: string;
     version: number;
     userId: string; // ID do usuário que criou a proposta
-    client: ClientData;
+    client: ClientData | string; // Pode ser objeto ou string
     accountManager: AccountManagerData;
     products: Product[];
     totalSetup: number;
     totalMonthly: number;
-    createdAt: string;
+    contractPeriod: number; // Período do contrato em meses
+    createdAt: string | any; // Pode ser string ou objeto Firestore
     status: string;
+    // Campos opcionais para compatibilidade
+    clientData?: ClientData;
+    items?: Product[];
 }
 
 import { Separator } from '@/components/ui/separator';
@@ -1086,6 +1090,12 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         setAddedProducts(products);
         setSelectedStatus(proposal.status); // Load the status
+        
+        // Load contract period
+        if (proposal.contractPeriod) {
+            setVmContractPeriod(proposal.contractPeriod);
+        }
+        
         setViewMode('calculator');
     };
 
@@ -1130,6 +1140,12 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         setAddedProducts(products);
         setSelectedStatus(proposal.status);
+        
+        // Load contract period
+        if (proposal.contractPeriod) {
+            setVmContractPeriod(proposal.contractPeriod);
+        }
+        
         setViewMode('proposal-summary');
     };
 
@@ -1462,6 +1478,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 products: addedProducts,
                 totalSetup: totalSetup,
                 totalMonthly: finalTotalMonthly,
+                contractPeriod: vmContractPeriod, // Incluir período do contrato
                 baseTotalMonthly: baseTotalMonthly,
                 applySalespersonDiscount: applySalespersonDiscount,
                 appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,

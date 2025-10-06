@@ -928,12 +928,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     };
 
     const editProposal = (proposal: Proposal) => {
-        console.log('=== EDIT PROPOSAL DEBUG ===');
-        console.log('Proposal:', proposal);
-        console.log('Proposal keys:', Object.keys(proposal));
-        console.log('Products:', proposal.products);
-        console.log('Items:', proposal.items);
-        console.log('Full proposal JSON:', JSON.stringify(proposal, null, 2));
+
 
         setCurrentProposal(proposal);
 
@@ -973,19 +968,15 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             }));
         }
 
-        console.log('Processed products:', products);
+
         setAddedProducts(products);
 
         // Load all calculation parameters from the first product if available
         if (products && products.length > 0) {
             const firstProduct = products[0];
-            console.log('First product:', firstProduct);
-            console.log('First product details:', firstProduct.details);
-
             if (firstProduct.details) {
                 // Set calculator parameters based on saved product details
                 if (firstProduct.details.speed) {
-                    console.log('Setting speed:', firstProduct.details.speed);
                     setSelectedSpeed(firstProduct.details.speed);
                 }
                 if (firstProduct.details.contractTerm) setContractTerm(firstProduct.details.contractTerm);
