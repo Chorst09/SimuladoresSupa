@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     setIsMounted(true);
+    console.log('⚙️ AuthProvider Mounted, isMounted:', true);
     let authSubscription: any = null;
 
     const initializeAuth = async () => {
@@ -38,6 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (mountedRef.current) {
             setUser(null);
             setLoading(false);
+            console.log('📊 setLoading(false) - Nenhuma sessão');
           }
           return;
         }
@@ -52,6 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (mountedRef.current) {
           setLoading(false);
+          console.log('📊 setLoading(false) - Sessão inicial processada');
         }
 
         // Setup auth state listener
@@ -63,7 +66,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           try {
             if (event === 'SIGNED_IN' && session?.user) {
               console.log('Checking user role in auth state change...');
-              setLoading(true); // Manter loading durante processamento
               await processUser(session.user);
             } else if (event === 'SIGNED_OUT' || !session?.user) {
               console.log('User signed out or no user present');
@@ -83,15 +85,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 sessionStorage.clear();
               }
             }
-          }
-          
-          if (mountedRef.current) {
-            // Aguardar um pouco antes de definir loading como false para dar tempo ao processamento
-            setTimeout(() => {
-              if (mountedRef.current) {
-                setLoading(false);
-              }
-            }, 200);
+          } finally {
+            if (mountedRef.current) {
+              setLoading(false);
+              console.log('📊 setLoading(false) - Auth state change processado (finally)');
+            }
           }
         });
 
@@ -102,11 +100,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (mountedRef.current) {
           setUser(null);
           setLoading(false);
+          console.log('📊 setLoading(false) - Erro na inicialização');
         }
       }
     };
 
     const processUser = async (supabaseUser: SupabaseUser) => {
+      console.log('▶️ Iniciando processUser para:', supabaseUser.email);
       try {
         console.log('👤 Processando usuário:', supabaseUser.email);
         
@@ -116,6 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .select('role, full_name, password_changed') // Adicionar campo password_changed
           .eq('id', supabaseUser.id)
           .single();
+        console.log('Debug: Resultado da busca de perfil:', { userData, error });
 
         // Se der erro na coluna password_changed, tentar sem ela
         if (error && error.message?.includes('password_changed')) {
@@ -128,6 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           userData = userDataFallback;
           error = errorFallback;
+          console.log('Debug: Resultado da busca de perfil (fallback):', { userData, error });
         }
 
         let role: UserProfile['role'] = 'user';
@@ -148,6 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               full_name: userData.full_name || supabaseUser.email || '',
               password_changed: passwordChanged
             });
+            console.log('Debug: Usuário pendente definido.');
             return;
           }
         } else {
@@ -174,12 +177,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   ...adminProfile,
                   password_changed: true
                 });
+              console.log('Debug: Perfil de admin upserted.');
             } catch (upsertError: any) {
               if (upsertError.message?.includes('password_changed')) {
                 // Se der erro na coluna, inserir sem ela
                 await supabase
                   .from('profiles')
                   .upsert(adminProfile);
+                console.log('Debug: Perfil de admin upserted (fallback).');
               } else {
                 throw upsertError;
               }
@@ -206,7 +211,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             role: 'user',
             passwordChanged: true // Default para evitar problemas
           });
+          console.log('Debug: Erro no processamento do usuário, usuário definido como padrão.');
         }
+      } finally {
+        console.log('🔚 Finalizando processUser.');
       }
     };
 
@@ -214,8 +222,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       mountedRef.current = false;
+      console.log('🚫 AuthProvider Unmounted, mountedRef.current:', false);
       if (authSubscription) {
         authSubscription.unsubscribe();
+        console.log('🚫 Auth subscription unsubscribed');
       }
     };
   }, []);
@@ -224,6 +234,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       if (mountedRef.current) {
         setLoading(true);
+        console.log('📊 setLoading(true) - Logout');
       }
       
       // Force sign out even if refresh token is invalid
@@ -241,6 +252,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (mountedRef.current) {
         setUser(null);
         setLoading(false);
+        console.log('📊 setLoading(false) - Logout concluído');
       }
     } catch (error) {
       console.error('Error signing out:', error);
@@ -254,6 +266,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (mountedRef.current) {
         setUser(null);
         setLoading(false);
+        console.log('📊 setLoading(false) - Erro no logout');
       }
     }
   };
@@ -268,7 +281,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         backgroundColor: '#0f172a',
         color: 'white'
       }}>
-        Carregando...
+        Carregando... (Não Montado)
+      </div>
+    );
+  }
+
+  if (loading) {
+    console.log('⏳ Renderizando tela de carregamento...');
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        backgroundColor: '#0f172a',
+        color: 'white'
+      }}>
+        Carregando... (Estado Loading)
       </div>
     );
   }
