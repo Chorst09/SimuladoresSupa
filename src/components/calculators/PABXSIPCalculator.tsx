@@ -1491,6 +1491,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                 <TableRow className="border-slate-700">
                                     <TableHead className="text-slate-300 font-semibold">ID</TableHead>
                                     <TableHead className="text-slate-300 font-semibold">Cliente</TableHead>
+                                    <TableHead className="text-slate-300 font-semibold">Nome do Projeto</TableHead>
                                     <TableHead className="text-slate-300 font-semibold">Data</TableHead>
                                     <TableHead className="text-slate-300 font-semibold">Total Mensal</TableHead>
                                     <TableHead className="text-slate-300 font-semibold">Ações</TableHead>
@@ -1499,7 +1500,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                             <TableBody>
                                 {filteredProposals.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-8 text-slate-400">
+                                        <TableCell colSpan={6} className="text-center py-8 text-slate-400">
                                             Nenhuma proposta encontrada. Clique em "Nova Proposta" para começar.
                                         </TableCell>
                                     </TableRow>
@@ -1508,6 +1509,11 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                         <TableRow key={proposal.id} className="border-slate-800 hover:bg-slate-800/50">
                                             <TableCell className="text-slate-300">{proposal.baseId || proposal.id}</TableCell>
                                             <TableCell className="text-slate-300">{typeof proposal.client === 'string' ? proposal.client : proposal.client?.name || 'Sem nome'} (v{proposal.version})</TableCell>
+                                            <TableCell className="text-slate-300">{
+                                                typeof proposal.client === 'object' && proposal.client?.projectName 
+                                                    ? proposal.client.projectName 
+                                                    : proposal.clientData?.projectName || 'Projeto não informado'
+                                            }</TableCell>
                                             <TableCell className="text-slate-300">{proposal.createdAt ? (isNaN(new Date(proposal.createdAt).getTime()) ? 'N/A' : new Date(proposal.createdAt).toLocaleDateString('pt-BR')) : 'N/A'}</TableCell>
                                             <TableCell className="text-slate-300">{formatCurrency(Number(proposal.totalMonthly || proposal.value || 0))}</TableCell>
                                             <TableCell>

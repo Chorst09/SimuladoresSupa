@@ -1849,6 +1849,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                         <TableRow className="border-slate-700">
                                             <TableHead className="text-white">ID</TableHead>
                                             <TableHead className="text-white">Cliente</TableHead>
+                                            <TableHead className="text-white">Nome do Projeto</TableHead>
                                             <TableHead className="text-white">Data</TableHead>
                                             <TableHead className="text-white">Total Mensal</TableHead>
                                             <TableHead className="text-white">Ações</TableHead>
@@ -1857,7 +1858,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                     <TableBody>
                                         {(filteredProposals ?? []).length === 0 ? (
                                             <TableRow key="no-proposals-found">
-                                                <TableCell colSpan={5} className="text-center py-8 text-slate-400">
+                                                <TableCell colSpan={6} className="text-center py-8 text-slate-400">
                                                     No proposal found. Click on "New Proposal" to start.
                                                 </TableCell>
                                             </TableRow>
@@ -1866,6 +1867,11 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                 <TableRow key={p.id} className="border-slate-800">
                                                     <TableCell>{p.baseId || p.id}</TableCell>
                                                     <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Sem nome'} (v{p.version})</TableCell>
+                                                    <TableCell>{
+                                                        typeof p.client === 'object' && p.client?.projectName 
+                                                            ? p.client.projectName 
+                                                            : p.clientData?.projectName || 'Projeto não informado'
+                                                    }</TableCell>
                                                     <TableCell>{p.createdAt ? (
                                                         (typeof p.createdAt === 'object' && 'toDate' in p.createdAt)
                                                             ? new Date(p.createdAt.toDate()).toLocaleDateString('pt-BR')

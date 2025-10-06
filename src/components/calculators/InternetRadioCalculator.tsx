@@ -1161,6 +1161,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                     <TableRow className="border-slate-700">
                                         <TableHead className="text-white">ID</TableHead>
                                         <TableHead className="text-white">Cliente</TableHead>
+                                        <TableHead className="text-white">Nome do Projeto</TableHead>
                                         <TableHead className="text-white">Data</TableHead>
                                         <TableHead className="text-white">Total Mensal</TableHead>
                                         <TableHead className="text-white">Ações</TableHead>
@@ -1171,6 +1172,11 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                         <TableRow key={p.id} className="border-slate-800">
                                             <TableCell>{p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>
+                                            <TableCell>{
+                                                typeof p.client === 'object' && p.client?.projectName 
+                                                    ? p.client.projectName 
+                                                    : p.clientData?.projectName || 'Projeto não informado'
+                                            }</TableCell>
                                             <TableCell>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</TableCell>
                                             <TableCell>{formatCurrency(p.totalMonthly || p.value || 0)}</TableCell>
                                             <TableCell>
