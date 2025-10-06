@@ -30,6 +30,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
   const [searchTerm, setSearchTerm] = useState('');
   const [showProposalTypeDialog, setShowProposalTypeDialog] = useState(false);
   const [showCommercialProposal, setShowCommercialProposal] = useState(false);
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
 
   const filteredProposals = proposals.filter(proposal => {
     if (!proposal) return false; // Defensively handle null/undefined proposals in the array
@@ -82,6 +83,11 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
       setEditingProposal(null);
       setIsFormOpen(true);
     }
+  };
+
+  const handleViewCommercialProposal = (proposal: Proposal) => {
+    setSelectedProposal(proposal);
+    setShowCommercialProposal(true);
   };
 
   const handleSave = (proposal: Proposal) => {
@@ -243,6 +249,15 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => handleViewCommercialProposal(proposal)}
+                        className="flex items-center"
+                      >
+                        <FileText className="h-4 w-4 mr-1" />
+                        <span>Ver Proposta</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleNavigateToCalculator(proposal)}
                         className="flex items-center"
                       >
@@ -316,7 +331,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
           <DialogHeader>
             <DialogTitle>Proposta Comercial</DialogTitle>
           </DialogHeader>
-          <CommercialProposalView partners={partners} />
+          <CommercialProposalView partners={partners} proposal={selectedProposal} />
         </DialogContent>
       </Dialog>
 

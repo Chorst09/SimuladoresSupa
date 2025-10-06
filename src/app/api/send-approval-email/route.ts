@@ -27,9 +27,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Implementar envio de email usando fetch (funciona sem dependências extras)
+    // Gerar token único para aprovação
+    const approvalToken = Buffer.from(`${userEmail}:${Date.now()}`).toString('base64');
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+
+    // Implementar envio de email usando fetch
     const emailContent = {
-      to: admins.map(admin => admin.email),
+      to: ['carlos.horst@doubletelecom.com.br'], // Enviando diretamente para o email corporativo
       subject: 'Nova solicitação de acesso - Simuladores Double TI',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -46,30 +50,67 @@ export async function POST(request: NextRequest) {
             <p><strong>Nome:</strong> ${userName || 'Não informado'}</p>
             <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
           </div>
-          <p>Para aprovar este usuário, acesse o painel administrativo:</p>
-          <a href="https://simuladores-supa-v2.vercel.app/?admin=user-management" 
-             style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 10px 0;">
-            Gerenciar Usuários
+          
+          <h3 style="color: #2563eb;">Ações Rápidas:</h3>
+          <div style="margin: 20px 0;">
+            <h4 style="color: #059669; margin-bottom: 10px;">✅ Aprovar como:</h4>
+            <div style="margin-bottom: 10px;">
+              <a href="${baseUrl}/api/approve-user?token=${approvalToken}&role=admin" 
+                 style="background: #dc2626; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 5px 5px 5px 0; font-size: 14px;">
+                👑 Administrador
+              </a>
+              <span style="color: #6b7280; font-size: 12px;">Acesso total ao sistema</span>
+            </div>
+            <div style="margin-bottom: 10px;">
+              <a href="${baseUrl}/api/approve-user?token=${approvalToken}&role=director" 
+                 style="background: #2563eb; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 5px 5px 5px 0; font-size: 14px;">
+                📊 Diretor
+              </a>
+              <span style="color: #6b7280; font-size: 12px;">Acesso a relatórios e gestão</span>
+            </div>
+            <div style="margin-bottom: 10px;">
+              <a href="${baseUrl}/api/approve-user?token=${approvalToken}&role=user" 
+                 style="background: #059669; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 5px 5px 5px 0; font-size: 14px;">
+                👤 Usuário
+              </a>
+              <span style="color: #6b7280; font-size: 12px;">Acesso básico às calculadoras</span>
+            </div>
+          </div>
+          
+          <div style="margin: 20px 0;">
+            <h4 style="color: #dc2626; margin-bottom: 10px;">❌ Negar Acesso:</h4>
+            <a href="${baseUrl}/api/deny-user?token=${approvalToken}" 
+               style="background: #6b7280; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; display: inline-block; font-size: 14px;">
+              🚫 Negar Solicitação
+            </a>
+          </div>
+          
+          <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0; color: #92400e; font-size: 14px;">
+              <strong>⚠️ Importante:</strong> Clique diretamente nos botões acima para aprovar/negar. 
+              As ações são processadas automaticamente.
+            </p>
+          </div>
+          
+          <p>Ou acesse o painel administrativo para gerenciar usuários:</p>
+          <a href="${baseUrl}/admin/users" 
+             style="background: #374151; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 10px 0;">
+            🔧 Painel Administrativo
           </a>
-          <h3>Níveis de Acesso Disponíveis:</h3>
-          <ul>
-            <li><strong>admin:</strong> Acesso total ao sistema</li>
-            <li><strong>director:</strong> Acesso a relatórios e gestão</li>
-            <li><strong>user:</strong> Acesso básico às calculadoras</li>
-          </ul>
+          
           <hr style="margin: 20px 0;">
           <p style="color: #6b7280; font-size: 12px;">
-            Este email foi enviado automaticamente pelo sistema Simuladores Double TI.
+            Este email foi enviado automaticamente pelo sistema Simuladores Double TI.<br>
+            Token de aprovação: ${approvalToken.substring(0, 20)}...
           </p>
         </div>
       `
     };
 
-    // Tentar enviar email usando diferentes métodos
+    // Tentar enviar email usando Resend
     let emailSent = false;
     let emailError = null;
 
-    // Método 1: Tentar usar Resend se a chave estiver disponível
     if (process.env.RESEND_API_KEY) {
       try {
         console.log('🔑 Chave Resend encontrada, tentando enviar email...');
@@ -81,8 +122,8 @@ export async function POST(request: NextRequest) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: 'onboarding@resend.dev', // Usando domínio padrão do Resend
-            to: ['carlos.horst@doubletelecom.com.br'], // Enviando diretamente para o email corporativo
+            from: 'onboarding@resend.dev',
+            to: emailContent.to,
             subject: emailContent.subject,
             html: emailContent.html,
           }),
@@ -107,34 +148,13 @@ export async function POST(request: NextRequest) {
       console.error('❌ Chave do Resend não configurada');
     }
 
-    // Método 2: Se o Resend falhar, tentar webhook alternativo
+    // Log de backup se o email não foi enviado
     if (!emailSent) {
-      try {
-        console.log('🔄 Tentando método alternativo de notificação...');
-        
-        // Criar uma notificação no banco de dados para backup
-        const { error: notificationError } = await supabase
-          .from('notifications')
-          .insert({
-            type: 'new_user_approval',
-            recipient_email: 'carlos.horst@doubletelecom.com.br',
-            data: {
-              userEmail,
-              userName,
-              timestamp: new Date().toISOString()
-            },
-            created_at: new Date().toISOString()
-          });
-
-        if (!notificationError) {
-          console.log('✅ Notificação salva no banco de dados como backup');
-        }
-      } catch (backupError) {
-        console.log('⚠️ Erro ao salvar notificação backup:', backupError);
-      }
+      console.log('🔄 Email não foi enviado via Resend, registrando para notificação manual...');
+      console.log('📧 Administradores que deveriam receber o email:', admins.map(admin => admin.email));
     }
 
-    // Método 3: Log detalhado para debug (sempre executado)
+    // Log detalhado para debug
     console.log('📧 Detalhes do email de aprovação:', {
       admins: admins.map(admin => ({ email: admin.email, name: admin.full_name })),
       newUser: { email: userEmail, name: userName },

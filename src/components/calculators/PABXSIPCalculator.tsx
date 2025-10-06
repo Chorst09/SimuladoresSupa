@@ -1574,11 +1574,32 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Dados do Cliente</h3>
                             <div className="space-y-2 text-sm">
-                                <p><strong>Nome:</strong> {typeof currentProposal.client === 'string' ? currentProposal.client : currentProposal.client?.name || 'N/A'}</p>
-                                <p><strong>Projeto:</strong> {typeof currentProposal.client === 'object' ? currentProposal.client?.projectName || 'N/A' : 'N/A'}</p>
-                                <p><strong>Email:</strong> {typeof currentProposal.client === 'object' ? currentProposal.client?.email || 'N/A' : 'N/A'}</p>
-                                <p><strong>Telefone:</strong> {typeof currentProposal.client === 'object' ? currentProposal.client?.phone || 'N/A' : 'N/A'}</p>
-                                <p><strong>Contato:</strong> {typeof currentProposal.client === 'object' ? currentProposal.client?.contact || 'N/A' : 'N/A'}</p>
+                                <p><strong>Nome:</strong> {
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.name 
+                                        ? currentProposal.client.name 
+                                        : currentProposal.clientData?.name || 
+                                          (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
+                                }</p>
+                                <p><strong>Projeto:</strong> {
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.projectName 
+                                        ? currentProposal.client.projectName 
+                                        : currentProposal.clientData?.projectName || 'N/A'
+                                }</p>
+                                <p><strong>Email:</strong> {
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.email 
+                                        ? currentProposal.client.email 
+                                        : currentProposal.clientData?.email || 'N/A'
+                                }</p>
+                                <p><strong>Telefone:</strong> {
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.phone 
+                                        ? currentProposal.client.phone 
+                                        : currentProposal.clientData?.phone || 'N/A'
+                                }</p>
+                                <p><strong>Contato:</strong> {
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.contact 
+                                        ? currentProposal.client.contact 
+                                        : currentProposal.clientData?.contact || 'N/A'
+                                }</p>
                             </div>
                         </div>
                         <div>

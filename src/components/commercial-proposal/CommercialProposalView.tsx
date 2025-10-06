@@ -10,20 +10,37 @@ import { Check, Download, Printer } from 'lucide-react';
 
 interface CommercialProposalViewProps {
   partners: any[];
+  proposal?: any;
 }
 
-const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partners }) => {
+const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partners, proposal }) => {
+  console.log('\n\n=========== DEBUG PROPOSAL OBJECT ===========');
+  console.log(JSON.stringify(proposal, null, 2));
+  console.log('===========================================\n\n');
   const [proposalData, setProposalData] = useState({
-    clientName: '',
-    date: new Date().toLocaleDateString('pt-BR'),
-    productType: 'Datacenter',
+    // Suporte para múltiplas estruturas de dados:
+    // 1. Calculadoras salvam: clientData (objeto) e accountManagerData (objeto)
+    // 2. Mock API usa: client (objeto) e accountManager (objeto)  
+    // 3. Supabase armazena: client_data e account_manager (com underscore)
+    clientName: proposal?.clientData?.name || proposal?.clientData?.companyName || 
+                proposal?.client_data?.name || proposal?.client_data?.companyName || '',
+    clientProject: proposal?.clientData?.projectName || proposal?.client_data?.projectName || '',
+    clientEmail: proposal?.clientData?.email || proposal?.client_data?.email || '',
+    clientPhone: proposal?.clientData?.phone || proposal?.client_data?.phone || '',
+    clientContact: proposal?.clientData?.contact || proposal?.client_data?.contact || '',
+    accountManagerName: proposal?.accountManager?.name || proposal?.accountManagerData?.name || 
+                        (typeof proposal?.accountManager === 'string' ? proposal?.accountManager : '') || '',
+    accountManagerEmail: proposal?.accountManager?.email || proposal?.accountManagerData?.email || '',
+    accountManagerPhone: proposal?.accountManager?.phone || proposal?.accountManagerData?.phone || '',
+    date: proposal?.date || new Date().toLocaleDateString('pt-BR'),
+    productType: proposal?.type || 'Máquinas Virtuais',
     serviceImage: null as string | null,
     logoImage: null as string | null
   });
 
   const [showForm, setShowForm] = useState(false);
 
-  const productTypes = ['Datacenter', 'Firewall', 'Cloud', 'Segurança', 'Rede'];
+  const productTypes = ['Máquinas Virtuais', 'Datacenter', 'Firewall', 'Cloud', 'Segurança', 'Rede', 'Internet Fibra', 'PABX SIP'];
 
   const handlePrint = () => {
     window.print();
@@ -91,6 +108,69 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                   value={proposalData.clientName}
                   onChange={(e) => setProposalData(prev => ({ ...prev, clientName: e.target.value }))}
                   placeholder="Digite o nome do cliente"
+                />
+              </div>
+              <div>
+                <Label htmlFor="clientProject">Projeto</Label>
+                <Input
+                  id="clientProject"
+                  value={proposalData.clientProject}
+                  onChange={(e) => setProposalData(prev => ({ ...prev, clientProject: e.target.value }))}
+                  placeholder="Nome do projeto"
+                />
+              </div>
+              <div>
+                <Label htmlFor="clientEmail">Email do Cliente</Label>
+                <Input
+                  id="clientEmail"
+                  value={proposalData.clientEmail}
+                  onChange={(e) => setProposalData(prev => ({ ...prev, clientEmail: e.target.value }))}
+                  placeholder="email@cliente.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="clientPhone">Telefone do Cliente</Label>
+                <Input
+                  id="clientPhone"
+                  value={proposalData.clientPhone}
+                  onChange={(e) => setProposalData(prev => ({ ...prev, clientPhone: e.target.value }))}
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+              <div>
+                <Label htmlFor="clientContact">Contato</Label>
+                <Input
+                  id="clientContact"
+                  value={proposalData.clientContact}
+                  onChange={(e) => setProposalData(prev => ({ ...prev, clientContact: e.target.value }))}
+                  placeholder="Nome do contato"
+                />
+              </div>
+              <div>
+                <Label htmlFor="accountManagerName">Gerente de Contas</Label>
+                <Input
+                  id="accountManagerName"
+                  value={proposalData.accountManagerName}
+                  onChange={(e) => setProposalData(prev => ({ ...prev, accountManagerName: e.target.value }))}
+                  placeholder="Nome do gerente"
+                />
+              </div>
+              <div>
+                <Label htmlFor="accountManagerEmail">Email do Gerente</Label>
+                <Input
+                  id="accountManagerEmail"
+                  value={proposalData.accountManagerEmail}
+                  onChange={(e) => setProposalData(prev => ({ ...prev, accountManagerEmail: e.target.value }))}
+                  placeholder="gerente@empresa.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="accountManagerPhone">Telefone do Gerente</Label>
+                <Input
+                  id="accountManagerPhone"
+                  value={proposalData.accountManagerPhone}
+                  onChange={(e) => setProposalData(prev => ({ ...prev, accountManagerPhone: e.target.value }))}
+                  placeholder="(11) 99999-9999"
                 />
               </div>
               <div>
@@ -228,6 +308,9 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
             <div className="mb-8">
               <div className="text-xl mb-2">{proposalData.clientName || 'Nome do Cliente'}</div>
               <div className="text-lg opacity-90">{proposalData.date}</div>
+              {proposalData.clientProject && (
+                <div className="text-md opacity-80 mt-1">Projeto: {proposalData.clientProject}</div>
+              )}
             </div>
 
             {/* Linha divisória */}
@@ -386,13 +469,93 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
         </div>
       </div>
 
+      {/* Segunda Página - Dados Detalhados */}
+      <div className="proposal-page bg-white border rounded-lg shadow-lg print:shadow-none print:border-none mt-6" style={{ 
+        width: '210mm', 
+        height: '297mm', 
+        margin: '0 auto',
+        pageBreakAfter: 'always',
+        pageBreakInside: 'avoid'
+      }}>
+        <div className="p-12 h-full">
+          {/* Cabeçalho */}
+          <div className="flex justify-between items-start mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Proposta Comercial</h1>
+              <p className="text-gray-600">{proposalData.productType}</p>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-600">Data: {proposalData.date}</div>
+            </div>
+          </div>
+
+          {/* Dados do Cliente */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Dados do Cliente</h3>
+            <div className="space-y-2 text-sm">
+              <p><strong>Nome:</strong> {proposalData.clientName || 'N/A'}</p>
+              <p><strong>Projeto:</strong> {proposalData.clientProject || 'N/A'}</p>
+              <p><strong>Email:</strong> {proposalData.clientEmail || 'N/A'}</p>
+              <p><strong>Telefone:</strong> {proposalData.clientPhone || 'N/A'}</p>
+              <p><strong>Contato:</strong> {proposalData.clientContact || 'N/A'}</p>
+            </div>
+          </div>
+
+          {/* Gerente de Contas */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Gerente de Contas</h3>
+            <div className="space-y-2 text-sm">
+              <p><strong>Nome:</strong> {proposalData.accountManagerName || 'N/A'}</p>
+              <p><strong>Email:</strong> {proposalData.accountManagerEmail || 'N/A'}</p>
+              <p><strong>Telefone:</strong> {proposalData.accountManagerPhone || 'N/A'}</p>
+            </div>
+          </div>
+
+          {/* Produtos e Serviços */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Produtos e Serviços</h3>
+            <table className="w-full border-collapse border border-gray-300">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="border border-gray-300 px-4 py-2 text-left">Descrição</th>
+                  <th className="border border-gray-300 px-4 py-2 text-left">Setup</th>
+                  <th className="border border-gray-300 px-4 py-2 text-left">Mensal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border border-gray-300 px-4 py-2">{proposalData.productType}</td>
+                  <td className="border border-gray-300 px-4 py-2">-</td>
+                  <td className="border border-gray-300 px-4 py-2">-</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Rodapé */}
+          <div className="absolute bottom-12 left-12 right-12">
+            <div className="border-t border-gray-300 pt-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm text-gray-600">Double TI + Telecom</p>
+                  <p className="text-sm text-gray-600">www.doubletelecom.com.br</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Página 2 de 2</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Controles de Navegação */}
       <div className="flex justify-center space-x-4 mt-6 no-print">
         <Button variant="outline" disabled>
           Página Anterior
         </Button>
         <span className="flex items-center px-4 py-2 bg-gray-100 rounded">
-          Página 1 de 1
+          Página 1 de 2
         </span>
         <Button variant="outline" disabled>
           Próxima Página
@@ -402,4 +565,4 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
   );
 };
 
-export default CommercialProposalView; 
+export default CommercialProposalView;

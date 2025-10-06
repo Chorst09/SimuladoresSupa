@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import type { Proposal, Partner } from '@/lib/types';
+import type { Proposal, Partner, ClientData, AccountManagerData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +15,10 @@ import { Paperclip, X } from 'lucide-react';
 const formSchema = z.object({
   title: z.string().min(1, 'O título da proposta é obrigatório.'),
   client: z.string().min(1, 'O nome do cliente é obrigatório.'),
+  clientProject: z.string().optional(),
+  clientEmail: z.string().email('Email inválido.').optional().or(z.literal('')),
+  clientPhone: z.string().optional(),
+  clientContact: z.string().optional(),
   description: z.string().min(1, 'A descrição é obrigatória.'),
   value: z.coerce.number().min(0, 'O valor deve ser positivo.'),
   date: z.string().min(1, 'A data é obrigatória.'),
@@ -52,12 +56,18 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ proposal, partners, onSave,
     defaultValues: {
       title: proposal?.title || '',
       client: proposal?.client || '',
+      clientProject: proposal?.clientData?.projectName || '',
+      clientEmail: proposal?.clientData?.email || '',
+      clientPhone: proposal?.clientData?.phone || '',
+      clientContact: proposal?.clientData?.contact || '',
       description: proposal?.description || '',
       value: proposal?.value || 0,
       date: proposal?.date || new Date().toISOString().split('T')[0],
       expiryDate: proposal?.expiryDate || '',
       status: proposal?.status || 'Rascunho',
-      accountManager: proposal?.accountManager || '',
+      accountManager: typeof proposal?.accountManager === 'string' 
+                          ? proposal.accountManager 
+                          : proposal?.accountManager?.name || '',
       distributorId: proposal?.distributorId?.toString() || '',
       proposalFile: proposal?.proposalFile || '',
       technicalSpecs: proposal?.technicalSpecs || '',
@@ -86,9 +96,26 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ proposal, partners, onSave,
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    const clientData: ClientData = {
+      name: values.client,
+      projectName: values.clientProject || undefined,
+      email: values.clientEmail || undefined,
+      phone: values.clientPhone || undefined,
+      contact: values.clientContact || undefined,
+    };
+
+    const accountManagerData: AccountManagerData = {
+      name: values.accountManager,
+      // Adicionar email e telefone do gerente de conta se estiverem disponíveis no formulário
+      // email: values.accountManagerEmail, 
+      // phone: values.accountManagerPhone,
+    };
+
     const proposalData: Proposal = {
       id: proposal?.id || Date.now().toString(),
       ...values,
+      clientData: clientData,
+      accountManager: accountManagerData,
       distributorId: values.distributorId,
       proposalFile: uploadedFiles.proposalFile,
       technicalSpecs: uploadedFiles.technicalSpecs,
@@ -123,6 +150,63 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ proposal, partners, onSave,
                 <FormLabel>Cliente</FormLabel>
                 <FormControl>
                   <Input placeholder="Nome do cliente" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Campos de detalhes do cliente */}
+          <FormField
+            control={form.control}
+            name="clientProject"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Projeto do Cliente</FormLabel>
+                <FormControl>
+                  <Input placeholder="Projeto do cliente" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="clientEmail"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email do Cliente</FormLabel>
+                <FormControl>
+                  <Input placeholder="email@cliente.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="clientPhone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Telefone do Cliente</FormLabel>
+                <FormControl>
+                  <Input placeholder="(DD) 99999-9999" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="clientContact"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Contato do Cliente</FormLabel>
+                <FormControl>
+                  <Input placeholder="Nome do contato" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

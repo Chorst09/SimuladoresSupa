@@ -63,12 +63,12 @@ const SignupPage = () => {
           }
         }
 
-        // Enviar notificações para administradores (múltiplos métodos)
+        // Novo fluxo: Enviar emails separados
         try {
-          console.log('📧 Enviando notificações de aprovação...');
+          console.log('📧 Enviando emails do novo fluxo...');
           
-          // Método 1: Email via Resend
-          const emailResponse = await fetch('/api/send-approval-email', {
+          // 1. Enviar email de confirmação para o usuário
+          const userConfirmationResponse = await fetch('/api/send-user-confirmation', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -79,36 +79,25 @@ const SignupPage = () => {
             }),
           });
 
-          const emailResult = await emailResponse.json();
-          console.log('📧 Resultado do email:', emailResult);
+          const userConfirmationResult = await userConfirmationResponse.json();
+          console.log('📧 Resultado do email de confirmação para usuário:', userConfirmationResult);
 
-          // Método 2: Se o email principal falhar, usar API direta
-          if (!emailResult.emailSent) {
-            try {
-              console.log('🔄 Tentando método alternativo de email...');
-              const directResponse = await fetch('/api/send-email-direct', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  userEmail: email,
-                  userName: fullName || email.split('@')[0]
-                }),
-              });
+          // 2. Enviar email de aprovação para administradores
+          const adminApprovalResponse = await fetch('/api/send-approval-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userEmail: email,
+              userName: fullName || email.split('@')[0]
+            }),
+          });
 
-              const directResult = await directResponse.json();
-              console.log('📧 Resultado do email direto:', directResult);
-              
-              if (directResult.success) {
-                console.log('✅ Email enviado via método alternativo!');
-              }
-            } catch (directError) {
-              console.error('⚠️ Erro no email direto:', directError);
-            }
-          }
+          const adminApprovalResult = await adminApprovalResponse.json();
+          console.log('📧 Resultado do email de aprovação para admin:', adminApprovalResult);
 
-          // Método 3: Notificação por logs (sempre funciona)
+          // 3. Log de backup (sempre funciona)
           try {
             const logResponse = await fetch('/api/log-notification', {
               method: 'POST',
@@ -117,7 +106,8 @@ const SignupPage = () => {
               },
               body: JSON.stringify({
                 userEmail: email,
-                userName: fullName || email.split('@')[0]
+                userName: fullName || email.split('@')[0],
+                action: 'new_user_registration'
               }),
             });
 
@@ -127,18 +117,14 @@ const SignupPage = () => {
             console.error('⚠️ Erro na notificação por log:', logError);
           }
 
-          if (!emailResponse.ok && !emailResult.emailSent) {
-            console.error('❌ Erro ao enviar email de aprovação:', emailResult);
-          } else {
-            console.log('✅ Notificações enviadas com sucesso!');
-          }
+          console.log('✅ Fluxo de emails concluído!');
         } catch (notificationError) {
-          console.error('❌ Erro ao enviar notificações:', notificationError);
+          console.error('❌ Erro ao enviar emails:', notificationError);
         }
 
         toast({ 
           title: 'Cadastro realizado com sucesso!', 
-          description: 'Sua conta foi criada e está aguardando aprovação do administrador. Você receberá um email quando for aprovada.' 
+          description: 'Sua conta foi criada e você receberá um email de confirmação. Aguarde a aprovação do administrador para acessar o sistema.' 
         });
         router.push('/login');
       }
