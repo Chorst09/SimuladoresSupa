@@ -1661,6 +1661,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                 <div>
                                     <p><strong>Total Setup:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
                                     <p><strong>Total Mensal:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
+                                    <p><strong>Período do Contrato:</strong> {currentProposal.contractPeriod || 12} meses</p>
+                                    <p><strong>Total do Contrato:</strong> {formatCurrency((currentProposal.totalMonthly || 0) * (currentProposal.contractPeriod || 12))}</p>
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {currentProposal.createdAt ? (
