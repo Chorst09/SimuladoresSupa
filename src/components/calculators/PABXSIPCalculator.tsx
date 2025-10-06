@@ -1569,8 +1569,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6 print:space-y-4">
-                    {/* Dados do Cliente */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:gap-4">
+                    {/* Dados do Cliente, Projeto e Gerente */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:gap-4">
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Dados do Cliente</h3>
                             <div className="space-y-2 text-sm">
@@ -1579,11 +1579,6 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                         ? currentProposal.client.name 
                                         : currentProposal.clientData?.name || 
                                           (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
-                                }</p>
-                                <p><strong>Projeto:</strong> {
-                                    typeof currentProposal.client === 'object' && currentProposal.client?.projectName 
-                                        ? currentProposal.client.projectName 
-                                        : currentProposal.clientData?.projectName || 'N/A'
                                 }</p>
                                 <p><strong>Email:</strong> {
                                     typeof currentProposal.client === 'object' && currentProposal.client?.email 
@@ -1600,6 +1595,25 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                         ? currentProposal.client.contact 
                                         : currentProposal.clientData?.contact || 'N/A'
                                 }</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-3">Nome do Projeto</h3>
+                            <div className="space-y-2 text-sm">
+                                <p className="font-medium text-base">{
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.projectName 
+                                        ? currentProposal.client.projectName 
+                                        : currentProposal.clientData?.projectName || 'Projeto não informado'
+                                }</p>
+                                <p className="text-gray-600 text-xs mt-2">
+                                    <strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}
+                                </p>
+                                <p className="text-gray-600 text-xs">
+                                    <strong>Versão:</strong> v{currentProposal.version || 1}
+                                </p>
+                                <p className="text-gray-600 text-xs">
+                                    <strong>Período do Contrato:</strong> {currentProposal.contractPeriod ? `${currentProposal.contractPeriod} meses` : 'N/A'}
+                                </p>
                             </div>
                         </div>
                         <div>
