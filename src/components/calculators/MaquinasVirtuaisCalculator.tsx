@@ -1803,7 +1803,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                     <TableRow>
                                         <TableHead className="text-gray-900">Descrição</TableHead>
                                         <TableHead className="text-gray-900">Setup</TableHead>
-                                        <TableHead className="text-gray-900">Mensal</TableHead>
+                                        <TableHead className="text-gray-900">Mensal Total</TableHead>
+                                        <TableHead className="text-gray-900">Mensal/VM</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1812,6 +1813,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                             <TableCell>{product.description}</TableCell>
                                             <TableCell>{formatCurrency(product.setup)}</TableCell>
                                             <TableCell>{formatCurrency(product.monthly)}</TableCell>
+                                            <TableCell>
+                                                {product.details?.unitMonthly ? formatCurrency(product.details.unitMonthly) : 
+                                                 (product.details?.quantity ? formatCurrency(product.monthly / product.details.quantity) : formatCurrency(product.monthly))}
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -3788,7 +3793,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                         <TableRow className="border-slate-700">
                                                                             <TableHead className="text-white">Descrição</TableHead>
                                                                             <TableHead className="text-white">Setup</TableHead>
-                                                                            <TableHead className="text-white">Mensal</TableHead>
+                                                                            <TableHead className="text-white">Mensal Total</TableHead>
+                                                                            <TableHead className="text-white">Mensal/VM</TableHead>
                                                                             <TableHead className="text-white w-20">Ações</TableHead>
                                                                         </TableRow>
                                                                     </TableHeader>
@@ -3798,6 +3804,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                                 <TableCell className="text-white">{p.description}</TableCell>
                                                                                 <TableCell className="text-white">{formatCurrency(p.setup)}</TableCell>
                                                                                 <TableCell className="text-white">{formatCurrency(p.monthly)}</TableCell>
+                                                                                <TableCell className="text-white">
+                                                                                    {p.details?.unitMonthly ? formatCurrency(p.details.unitMonthly) : 
+                                                                                     (p.details?.quantity ? formatCurrency(p.monthly / p.details.quantity) : formatCurrency(p.monthly))}
+                                                                                </TableCell>
                                                                                 <TableCell>
                                                                                     <Button
                                                                                         variant="destructive"
