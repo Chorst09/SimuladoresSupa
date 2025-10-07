@@ -73,59 +73,76 @@ export default function UserManagement() {
 
   const loadUsers = async () => {
     try {
-      console.log('🔄 Carregando usuários...');
+      console.log('🔄 Carregando usuários via API...');
       setLoading(true);
       
-      // Abordagem mais simples e direta
-      const { data: usersData, error } = await supabase
-        .from('profiles')
-        .select('*');
+      // Use the new API endpoint that bypasses RLS
+      const response = await fetch('/api/users', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
       
-      console.log('📊 Dados retornados:', { usersData, error });
+      console.log('📊 Resposta da API:', result);
       
-      if (error) {
-        console.error('❌ Erro na query:', error);
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao carregar usuários');
       }
       
-      if (!usersData || usersData.length === 0) {
-        console.log('⚠️ Nenhum usuário encontrado na tabela profiles');
+      if (!result.users || result.users.length === 0) {
+        console.log('⚠️ Nenhum usuário encontrado');
         setUsers([]);
         return;
       }
       
       // Mapear para ExtendedUserProfile
-      const mappedUsers: ExtendedUserProfile[] = usersData.map(user => ({
+      const mappedUsers: ExtendedUserProfile[] = result.users.map((user: any) => ({
         id: user.id,
         email: user.email,
         full_name: user.full_name || user.email,
         role: user.role as UserRole | 'pending' | 'seller',
         created_at: user.created_at || new Date().toISOString(),
         updated_at: user.updated_at || new Date().toISOString(),
-        password_changed: true
+        password_changed: user.password_changed !== false
       }));
       
       setUsers(mappedUsers);
-      console.log(`✅ ${mappedUsers.length} usuários carregados:`, mappedUsers);
+      console.log(`✅ ${mappedUsers.length} usuários carregados via API:`, mappedUsers);
       
     } catch (error: any) {
-      console.error('❌ Erro ao carregar usuários:', error);
+      console.error('❌ Erro ao carregar usuários via API:', error);
       
-      // Criar usuários de exemplo para teste
-      const testUsers: ExtendedUserProfile[] = [
-        {
-          id: '1',
-          email: 'carlos.horst@doubletelcom.com.br',
-          full_name: 'Carlos Horst',
-          role: 'director', // Mudando para 'director' que provavelmente é válido
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          password_changed: true
+      // Fallback: try direct Supabase query
+      try {
+        console.log('🔄 Tentando fallback com Supabase direto...');
+        const { data: usersData, error } = await supabase
+          .from('profiles')
+          .select('*');
+        
+        if (!error && usersData) {
+          const mappedUsers: ExtendedUserProfile[] = usersData.map(user => ({
+            id: user.id,
+            email: user.email,
+            full_name: user.full_name || user.email,
+            role: user.role as UserRole | 'pending' | 'seller',
+            created_at: user.created_at || new Date().toISOString(),
+            updated_at: user.updated_at || new Date().toISOString(),
+            password_changed: true
+          }));
+          
+          setUsers(mappedUsers);
+          console.log(`✅ ${mappedUsers.length} usuários carregados via fallback:`, mappedUsers);
+          return;
         }
-      ];
+      } catch (fallbackError) {
+        console.error('❌ Fallback também falhou:', fallbackError);
+      }
       
-      setUsers(testUsers);
-      console.log('🧪 Usando usuários de teste:', testUsers);
+      // Last resort: show empty state with helpful message
+      setUsers([]);
       
     } finally {
       setLoading(false);
@@ -135,52 +152,34 @@ export default function UserManagement() {
   const handleAddUser = async () => {
     setAddUserError(null);
     
-    if (!isAdmin) {
-      alert('Erro: Apenas administradores podem criar novos usuários.');
-      return;
-    }
-
     if (!newUserEmail || !newUserPassword) {
       alert('Erro: Email e senha são obrigatórios.');
       return;
     }
 
     try {
-      // Cria usuário no Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUserEmail,
-        password: newUserPassword,
+      console.log('🔄 Criando usuário via API...');
+      
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: newUserEmail,
+          password: newUserPassword,
+          name: newUserName,
+          role: newUserRole
+        })
       });
 
-      if (authError) {
-        // Tratar erros específicos do Supabase
-        if (authError.message.includes('only request this after')) {
-          alert('⏱️ Limite de criação de usuários atingido. Aguarde alguns segundos e tente novamente.');
-          return;
-        } else if (authError.message.includes('User already registered')) {
-          alert('⚠️ Este email já está cadastrado no sistema.');
-          return;
-        }
-        throw authError;
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao criar usuário');
       }
 
-      if (authData.user) {
-        // Cria documento na tabela profiles
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            email: newUserEmail,
-            role: newUserRole,
-            full_name: newUserName || newUserEmail
-          });
-
-        if (insertError) {
-          console.error('Erro ao inserir usuário na tabela:', insertError);
-        }
-
-        alert('Sucesso: Usuário criado com sucesso!');
-      }
+      alert('✅ Usuário criado com sucesso!');
 
       // Reset form
       setNewUserEmail('');
@@ -190,9 +189,10 @@ export default function UserManagement() {
       setIsAddDialogOpen(false);
 
       // Reload users
-      loadUsers();
+      await loadUsers();
+      
     } catch (error: any) {
-      console.error('Erro ao criar usuário:', error);
+      console.error('❌ Erro ao criar usuário via API:', error);
       
       let description = error.message || 'Não foi possível criar o usuário.';
       if (error.message.includes('User already registered')) {
@@ -205,7 +205,7 @@ export default function UserManagement() {
         description = 'Limite de criação atingido. Aguarde 1 minuto e tente novamente.';
       }
       
-      alert(`Erro: ${description}`);
+      alert(`❌ Erro: ${description}`);
     }
   };
 
