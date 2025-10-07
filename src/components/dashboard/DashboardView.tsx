@@ -17,23 +17,57 @@ interface CalculatorCardProps {
   onNavigate: (calculatorId: string) => void;
 }
 
-const CalculatorCard = ({ title, description, icon, calculatorId, color, onNavigate }: CalculatorCardProps) => (
-  <div 
-    className={`bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border-l-4 ${color} h-full cursor-pointer`}
-    onClick={() => onNavigate(calculatorId)}
-  >
-    <div className="flex items-center mb-4">
-      <div className="p-2 rounded-full bg-opacity-20 bg-current mr-3">
-        {icon}
+const CalculatorCard = ({ title, description, icon, calculatorId, color, onNavigate }: CalculatorCardProps) => {
+  const gradientMap: { [key: string]: string } = {
+    'border-l-blue-500': 'from-blue-600 to-blue-800',
+    'border-l-purple-500': 'from-purple-600 to-purple-800',
+    'border-l-green-500': 'from-green-600 to-green-800',
+    'border-l-teal-500': 'from-teal-600 to-teal-800',
+    'border-l-cyan-500': 'from-cyan-600 to-cyan-800',
+  };
+
+  const hoverShadowMap: { [key: string]: string } = {
+    'border-l-blue-500': 'hover:shadow-blue-500/25',
+    'border-l-purple-500': 'hover:shadow-purple-500/25',
+    'border-l-green-500': 'hover:shadow-green-500/25',
+    'border-l-teal-500': 'hover:shadow-teal-500/25',
+    'border-l-cyan-500': 'hover:shadow-cyan-500/25',
+  };
+
+  const gradient = gradientMap[color] || 'from-blue-600 to-blue-800';
+  const hoverShadow = hoverShadowMap[color] || 'hover:shadow-blue-500/25';
+
+  return (
+    <div 
+      className={`bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl ${hoverShadow} hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-slate-700/50 h-full cursor-pointer group overflow-hidden relative`}
+      onClick={() => onNavigate(calculatorId)}
+    >
+      {/* Gradient overlay */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-10 group-hover:opacity-20 transition-opacity duration-300`} />
+      
+      {/* Content */}
+      <div className="relative p-6">
+        <div className="flex items-center mb-4">
+          <div className={`p-3 rounded-xl bg-gradient-to-br ${gradient} shadow-lg mr-4`}>
+            <div className="text-white">
+              {icon}
+            </div>
+          </div>
+          <h3 className="text-xl font-bold text-white group-hover:text-cyan-300 transition-colors">{title}</h3>
+        </div>
+        <p className="text-slate-300 mb-6 leading-relaxed">{description}</p>
+        <div className="flex items-center text-cyan-400 font-semibold group-hover:text-cyan-300 transition-colors">
+          Acessar calculadora 
+          <ChevronRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+        </div>
       </div>
-      <h3 className="text-lg font-semibold">{title}</h3>
+      
+      {/* Decorative elements */}
+      <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-white/5 to-transparent rounded-bl-full" />
+      <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-white/5 to-transparent rounded-tr-full" />
     </div>
-    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{description}</p>
-    <div className="flex items-center text-sm font-medium text-blue-600 dark:text-blue-400">
-      Acessar calculadora <ChevronRight className="ml-1 h-4 w-4" />
-    </div>
-  </div>
-);
+  );
+};
 
 interface DashboardViewProps {
   onNavigateToCalculator?: (calculatorId: string) => void;
@@ -85,8 +119,8 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
       try {
         let query = supabase.from('proposals').select('*');
 
-        // Se não for admin ou diretor, filtra apenas as propostas do usuário
-        if (user.role !== 'admin' && user.role !== 'diretor') {
+        // Se não for admin ou director, filtra apenas as propostas do usuário
+        if (user.role !== 'admin' && user.role !== 'director') {
           query = query.eq('user_id', user.id);
         }
 
@@ -203,10 +237,22 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 space-y-8">
       <div data-section="calculadoras">
-        <h2 className="text-2xl font-bold mb-4">Calculadoras</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {/* Header moderno */}
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="p-3 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg">
+              <Calculator className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-white">Calculadoras</h2>
+              <p className="text-slate-400">Escolha a ferramenta ideal para seu orçamento</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           <CalculatorCard
             title="PABX/SIP"
             description="Calcule orçamentos para soluções de telefonia IP"
@@ -259,8 +305,20 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
       </div>
       
       <div>
-        <h2 className="text-2xl font-bold mb-4">Visão Geral</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        {/* Header da Visão Geral */}
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg">
+              <Server className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-white">Visão Geral</h2>
+              <p className="text-slate-400">Acompanhe suas propostas deste mês</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
           <StatCard 
             icon={<Phone className="w-6 h-6 text-blue-500" />} 
             title="Propostas PABX/SIP" 
