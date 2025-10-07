@@ -70,6 +70,9 @@ export async function POST(request: Request) {
     const { email, password, name, role } = body
 
     console.log('🔄 API /users POST - Criando usuário:', { email, role })
+    console.log('🔑 Debug - supabaseUrl:', supabaseUrl ? 'OK' : 'MISSING')
+    console.log('🔑 Debug - supabaseServiceKey:', supabaseServiceKey ? 'OK' : 'MISSING')
+    console.log('🔑 Debug - supabaseAnonKey:', supabaseAnonKey ? 'OK' : 'MISSING')
 
     if (!email || !password) {
       return NextResponse.json({
@@ -80,6 +83,7 @@ export async function POST(request: Request) {
 
     // Check if we have service role key for admin operations
     if (!supabaseServiceKey) {
+      console.log('❌ Service Role Key não encontrada')
       return NextResponse.json({
         success: false,
         error: 'Service Role Key não configurada. Use o cadastro público em /signup',
@@ -87,6 +91,13 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
+    // Validate required parameters
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error(`Missing required parameters: URL=${!!supabaseUrl}, Key=${!!supabaseServiceKey}`)
+    }
+
+    console.log('🔧 Criando cliente Supabase admin...')
+    
     // Create admin client
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -94,6 +105,8 @@ export async function POST(request: Request) {
         persistSession: false
       }
     })
+
+    console.log('✅ Cliente Supabase admin criado')
 
     // Create user in auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
