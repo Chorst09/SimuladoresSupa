@@ -1493,16 +1493,39 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                             </div>
                                         </div>
                                         {isExistingClient && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
-                                                <Input
-                                                    id="previousMonthlyFee"
-                                                    type="number"
-                                                    value={previousMonthlyFee}
-                                                    onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
-                                                    placeholder="0.00"
-                                                    className="bg-slate-800"
-                                                />
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
+                                                    <Input
+                                                        id="previousMonthlyFee"
+                                                        type="number"
+                                                        value={previousMonthlyFee}
+                                                        onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
+                                                        placeholder="0.00"
+                                                        className="bg-slate-800"
+                                                    />
+                                                </div>
+                                                {previousMonthlyFee > 0 && result && (
+                                                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm text-slate-300">Diferença de Valor:</span>
+                                                            <span className={`font-semibold ${
+                                                                result.monthlyPrice - previousMonthlyFee >= 0 
+                                                                    ? 'text-green-400' 
+                                                                    : 'text-red-400'
+                                                            }`}>
+                                                                {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs text-slate-400 mt-1">
+                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
+                                                                ? 'Aumento na mensalidade' 
+                                                                : 'Redução na mensalidade'
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                         <div className="space-y-2">

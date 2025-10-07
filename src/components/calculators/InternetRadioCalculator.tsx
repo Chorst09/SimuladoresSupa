@@ -1475,16 +1475,39 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                             </div>
                                         </div>
                                         {isExistingClient && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
-                                                <Input
-                                                    id="previousMonthlyFee"
-                                                    type="number"
-                                                    value={previousMonthlyFee}
-                                                    onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
-                                                    placeholder="0.00"
-                                                    className="bg-slate-800"
-                                                />
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
+                                                    <Input
+                                                        id="previousMonthlyFee"
+                                                        type="number"
+                                                        value={previousMonthlyFee}
+                                                        onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
+                                                        placeholder="0.00"
+                                                        className="bg-slate-800"
+                                                    />
+                                                </div>
+                                                {previousMonthlyFee > 0 && result && (
+                                                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm text-slate-300">Diferença de Valor:</span>
+                                                            <span className={`font-semibold ${
+                                                                result.monthlyPrice - previousMonthlyFee >= 0 
+                                                                    ? 'text-green-400' 
+                                                                    : 'text-red-400'
+                                                            }`}>
+                                                                {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs text-slate-400 mt-1">
+                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
+                                                                ? 'Aumento na mensalidade' 
+                                                                : 'Redução na mensalidade'
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                         <div className="space-y-2">
@@ -1983,21 +2006,25 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                                 </div>
 
                                                 <div className="bg-slate-800/50 p-4 rounded-lg">
-                                                    <h4 className="text-sm font-medium text-slate-300 mb-2">Payback Médio</h4>
+                                                    <h4 className="text-sm font-medium text-slate-300 mb-2">Payback Calculado</h4>
                                                     <div className="text-xl font-bold text-purple-400">
                                                         {(() => {
-                                                            const avgPayback = [12, 24, 36, 48, 60].reduce((sum, period) => {
-                                                                const payback = calculatePayback(
-                                                                    dreCalculations[period].receitaInstalacao,
-                                                                    result?.radioCost || 0,
-                                                                    dreCalculations[period].receitaMensal,
-                                                                    period,
-                                                                    applySalespersonDiscount,
-                                                                    appliedDirectorDiscountPercentage
-                                                                );
-                                                                return sum + payback;
-                                                            }, 0) / 5;
-                                                            return avgPayback > 0 ? `${Math.round(avgPayback)} meses` : '0 meses';
+                                                            console.log('Debug Payback Radio - contractTerm:', contractTerm);
+                                                            console.log('Debug Payback Radio - dreCalculations[contractTerm]:', dreCalculations[contractTerm]);
+                                                            console.log('Debug Payback Radio - result?.radioCost:', result?.radioCost);
+                                                            console.log('Debug Payback Radio - applySalespersonDiscount:', applySalespersonDiscount);
+                                                            console.log('Debug Payback Radio - appliedDirectorDiscountPercentage:', appliedDirectorDiscountPercentage);
+                                                            
+                                                            const currentPayback = calculatePayback(
+                                                                dreCalculations[contractTerm].receitaInstalacao,
+                                                                result?.radioCost || 0,
+                                                                dreCalculations[contractTerm].receitaMensal,
+                                                                contractTerm,
+                                                                applySalespersonDiscount,
+                                                                appliedDirectorDiscountPercentage
+                                                            );
+                                                            console.log('Debug Payback Radio - resultado:', currentPayback);
+                                                            return currentPayback > 0 ? `${currentPayback} meses` : '0 meses';
                                                         })()}
                                                     </div>
                                                     <div className="text-sm text-slate-400">Tempo de retorno</div>
