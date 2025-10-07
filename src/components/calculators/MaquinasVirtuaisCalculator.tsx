@@ -2022,183 +2022,210 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                         </TabsList>
                                         <TabsContent value="calculator">
                                             <div className="mt-6">
-                                                {/* Configurar Máquina Virtual */}
-                                                <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                                    <CardHeader>
+                                                {/* Configurar Máquina Virtual - Design Moderno */}
+                                                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-slate-700/50 shadow-2xl">
+                                                    {/* Header com gradiente */}
+                                                    <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-t-2xl p-6">
                                                         <div className="flex justify-between items-center">
-                                                            <CardTitle className="text-cyan-400 flex items-center gap-2">
-                                                                <Server className="h-5 w-5" />
-                                                                Configurar Máquina Virtual
-                                                            </CardTitle>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                                                                    <Server className="h-6 w-6 text-white" />
+                                                                </div>
+                                                                <div>
+                                                                    <h2 className="text-2xl font-bold text-white">Configurar Máquina Virtual</h2>
+                                                                    <p className="text-cyan-100 text-sm">Configure os recursos da sua VM</p>
+                                                                </div>
+                                                            </div>
                                                             <div className="flex gap-2">
-                                                                <Button variant="outline" className="bg-blue-600 text-white border-blue-600">
+                                                                <Button className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm">
                                                                     <Brain className="h-4 w-4 mr-2" />
                                                                     Sugestão IA
                                                                 </Button>
-                                                                <Button variant="outline" className="bg-blue-600 text-white border-blue-600">
+                                                                <Button onClick={handleAddVMProduct} className="bg-green-500 hover:bg-green-600 text-white border-0">
                                                                     <Plus className="h-4 w-4 mr-2" />
                                                                     Adicionar à Proposta
                                                                 </Button>
                                                             </div>
                                                         </div>
-                                                    </CardHeader>
-                                                    <CardContent className="space-y-3">
-                                                        {/* Nome da VM */}
-                                                        <div>
-                                                            <Label className="mb-2 block text-white">
-                                                                Nome da VM
-                                                            </Label>
+                                                    </div>
+                                                    
+                                                    {/* Conteúdo principal com grid moderno */}
+                                                    <div className="p-6 space-y-6">
+                                                        
+                                                        {/* Card: Identificação */}
+                                                        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <Edit className="h-4 w-4 text-cyan-400" />
+                                                                <h3 className="text-white font-semibold">Nome da VM</h3>
+                                                            </div>
                                                             <Input
                                                                 value={vmName}
                                                                 onChange={(e) => setVmName(e.target.value)}
-                                                                className="bg-slate-800 border-slate-700 text-white"
+                                                                className="bg-slate-900/50 border-slate-600 text-white focus:border-cyan-400"
+                                                                placeholder="Ex: Servidor Principal"
                                                             />
                                                         </div>
 
-                                                        {/* vCPU Cores e Memória RAM - Layout compacto */}
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                            <div>
-                                                                <Label className="mb-2 block text-white">
-                                                                    vCPU Cores
-                                                                </Label>
+                                                        {/* Grid: Recursos Computacionais */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                                <div className="flex items-center gap-2 mb-3">
+                                                                    <Cpu className="h-4 w-4 text-blue-400" />
+                                                                    <h3 className="text-white font-semibold">vCPU Cores</h3>
+                                                                </div>
                                                                 <Input
                                                                     type="number"
                                                                     value={vmCpuCores}
                                                                     onChange={(e) => setVmCpuCores(Number(e.target.value))}
-                                                                    className="bg-slate-800 border-slate-700 text-white"
+                                                                    className="bg-slate-900/50 border-slate-600 text-white focus:border-blue-400"
+                                                                    min="1"
+                                                                    max="64"
                                                                 />
                                                             </div>
-                                                            <div>
-                                                                <Label className="mb-2 block text-white">
-                                                                    Memória RAM (GB)
-                                                                </Label>
+                                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                                <div className="flex items-center gap-2 mb-3">
+                                                                    <MemoryStick className="h-4 w-4 text-purple-400" />
+                                                                    <h3 className="text-white font-semibold">Memória RAM (GB)</h3>
+                                                                </div>
                                                                 <Input
                                                                     type="number"
                                                                     value={vmRamGb}
                                                                     onChange={(e) => setVmRamGb(Number(e.target.value))}
-                                                                    className="bg-slate-800 border-slate-700 text-white"
+                                                                    className="bg-slate-900/50 border-slate-600 text-white focus:border-purple-400"
+                                                                    min="1"
+                                                                    max="512"
                                                                 />
                                                             </div>
                                                         </div>
 
-                                                        {/* Tipo de Armazenamento */}
-                                                        <div>
-                                                            <Label className="mb-2 block text-white">
-                                                                Tipo de Armazenamento
-                                                            </Label>
-                                                            <Select value={vmStorageType} onValueChange={setVmStorageType}>
-                                                                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent className="bg-slate-800 text-white">
-                                                                    <SelectItem value="HDD SAS">HDD SAS</SelectItem>
-                                                                    <SelectItem value="SSD Performance">SSD Performance</SelectItem>
-                                                                    <SelectItem value="NVMe">NVMe</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
+                                                        {/* Card: Armazenamento */}
+                                                        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <HardDrive className="h-4 w-4 text-green-400" />
+                                                                <h3 className="text-white font-semibold">Armazenamento</h3>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <Label className="text-sm text-slate-300 mb-2 block">Tipo de Armazenamento</Label>
+                                                                    <Select value={vmStorageType} onValueChange={setVmStorageType}>
+                                                                        <SelectTrigger className="bg-slate-900/50 border-slate-600 text-white focus:border-green-400">
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="bg-slate-800 text-white border-slate-600">
+                                                                            <SelectItem value="HDD SAS">HDD SAS</SelectItem>
+                                                                            <SelectItem value="SSD Performance">SSD Performance</SelectItem>
+                                                                            <SelectItem value="NVMe">NVMe</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="text-sm text-slate-300 mb-2 block">Tamanho (GB)</Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        value={vmStorageSize}
+                                                                        onChange={(e) => setVmStorageSize(Number(e.target.value))}
+                                                                        className="bg-slate-900/50 border-slate-600 text-white focus:border-green-400"
+                                                                        min="10"
+                                                                        max="10000"
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         </div>
 
-                                                        {/* Armazenamento */}
-                                                        <div>
-                                                            <Label className="mb-2 block text-white">
-                                                                Armazenamento {vmStorageType} (GB)
-                                                            </Label>
-                                                            <Input
-                                                                type="number"
-                                                                value={vmStorageSize}
-                                                                onChange={(e) => setVmStorageSize(Number(e.target.value))}
-                                                                className="bg-slate-800 border-slate-700 text-white"
-                                                            />
+                                                        {/* Grid: Rede e Sistema */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                                <div className="flex items-center gap-2 mb-3">
+                                                                    <Network className="h-4 w-4 text-orange-400" />
+                                                                    <h3 className="text-white font-semibold">Placa de Rede</h3>
+                                                                </div>
+                                                                <Select value={vmNetworkSpeed} onValueChange={setVmNetworkSpeed}>
+                                                                    <SelectTrigger className="bg-slate-900/50 border-slate-600 text-white focus:border-orange-400">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="bg-slate-800 text-white border-slate-600">
+                                                                        <SelectItem value="1 Gbps">1 Gbps</SelectItem>
+                                                                        <SelectItem value="10 Gbps">10 Gbps</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                                <div className="flex items-center gap-2 mb-3">
+                                                                    <Settings className="h-4 w-4 text-yellow-400" />
+                                                                    <h3 className="text-white font-semibold">Sistema Operacional</h3>
+                                                                </div>
+                                                                <Select value={vmOperatingSystem} onValueChange={setVmOperatingSystem}>
+                                                                    <SelectTrigger className="bg-slate-900/50 border-slate-600 text-white focus:border-yellow-400">
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="bg-slate-800 text-white border-slate-600">
+                                                                        <SelectItem value="Ubuntu Server 22.04 LTS">Ubuntu Server 22.04 LTS</SelectItem>
+                                                                        <SelectItem value="Windows Server 2022 Standard">Windows Server 2022 Standard</SelectItem>
+                                                                        <SelectItem value="Windows 10 Pro">Windows 10 Pro</SelectItem>
+                                                                        <SelectItem value="Windows 11 Pro">Windows 11 Pro</SelectItem>
+                                                                        <SelectItem value="CentOS Stream 9">CentOS Stream 9</SelectItem>
+                                                                        <SelectItem value="Debian 12">Debian 12</SelectItem>
+                                                                        <SelectItem value="Rocky Linux 9">Rocky Linux 9</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
                                                         </div>
 
-                                                        {/* Placa de Rede */}
-                                                        <div>
-                                                            <Label className="mb-2 block text-white">
-                                                                Placa de Rede
-                                                            </Label>
-                                                            <Select value={vmNetworkSpeed} onValueChange={setVmNetworkSpeed}>
-                                                                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent className="bg-slate-800 text-white">
-                                                                    <SelectItem value="1 Gbps">1 Gbps</SelectItem>
-                                                                    <SelectItem value="10 Gbps">10 Gbps</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-
-                                                        {/* Sistema Operacional */}
-                                                        <div>
-                                                            <Label className="mb-2 block text-white">
-                                                                Sistema Operacional
-                                                            </Label>
-                                                            <Select value={vmOperatingSystem} onValueChange={setVmOperatingSystem}>
-                                                                <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent className="bg-slate-800 text-white">
-                                                                    <SelectItem value="Ubuntu Server 22.04 LTS">Ubuntu Server 22.04 LTS</SelectItem>
-                                                                    <SelectItem value="Windows Server 2022 Standard">Windows Server 2022 Standard</SelectItem>
-                                                                    <SelectItem value="Windows 10 Pro">Windows 10 Pro</SelectItem>
-                                                                    <SelectItem value="Windows 11 Pro">Windows 11 Pro</SelectItem>
-                                                                    <SelectItem value="CentOS Stream 9">CentOS Stream 9</SelectItem>
-                                                                    <SelectItem value="Debian 12">Debian 12</SelectItem>
-                                                                    <SelectItem value="Rocky Linux 9">Rocky Linux 9</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-
-                                                        {/* Serviços Adicionais */}
-                                                        <div>
-                                                            <h3 className="text-cyan-400 text-lg font-semibold mb-4">Serviços Adicionais</h3>
-
-                                                            {/* Backup em Bloco */}
+                                                        {/* Card: Serviços Adicionais */}
+                                                        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                            <div className="flex items-center gap-2 mb-4">
+                                                                <Plus className="h-4 w-4 text-cyan-400" />
+                                                                <h3 className="text-white font-semibold">Serviços Adicionais</h3>
+                                                            </div>
+                                                            
+                                                            {/* Backup */}
                                                             <div className="mb-4">
-                                                                <Label className="mb-2 block">
-                                                                    Backup em Bloco: <span className="text-cyan-400">{vmBackupSize} GB</span>
+                                                                <Label className="text-sm text-slate-300 mb-2 block">
+                                                                    Backup em Bloco (GB) - Atual: <span className="text-cyan-400 font-semibold">{vmBackupSize} GB</span>
                                                                 </Label>
                                                                 <Input
                                                                     type="number"
                                                                     value={vmBackupSize}
                                                                     onChange={(e) => setVmBackupSize(Number(e.target.value))}
-                                                                    className="bg-slate-800 border-slate-700 text-white"
+                                                                    className="bg-slate-900/50 border-slate-600 text-white focus:border-cyan-400"
                                                                     placeholder="0"
+                                                                    min="0"
                                                                 />
                                                             </div>
 
-                                                            {/* Checkboxes para serviços adicionais */}
-                                                            <div className="space-y-3">
-                                                                <div className="flex items-center space-x-2">
+                                                            {/* Checkboxes em grid */}
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                                <div className="flex items-center space-x-3 p-3 bg-slate-900/30 rounded-lg border border-slate-600/50">
                                                                     <Checkbox
                                                                         id="vmAdditionalIp"
                                                                         checked={vmAdditionalIp}
                                                                         onCheckedChange={(checked) => setVmAdditionalIp(Boolean(checked))}
-                                                                        className="border-cyan-400"
+                                                                        className="border-cyan-400 data-[state=checked]:bg-cyan-500"
                                                                     />
-                                                                    <Label htmlFor="vmAdditionalIp" className="text-white">IP Adicional</Label>
+                                                                    <Label htmlFor="vmAdditionalIp" className="text-white text-sm">IP Adicional</Label>
                                                                 </div>
-                                                                <div className="flex items-center space-x-2">
+                                                                <div className="flex items-center space-x-3 p-3 bg-slate-900/30 rounded-lg border border-slate-600/50">
                                                                     <Checkbox
                                                                         id="vmSnapshot"
                                                                         checked={vmSnapshot}
                                                                         onCheckedChange={(checked) => setVmSnapshot(Boolean(checked))}
-                                                                        className="border-cyan-400"
+                                                                        className="border-cyan-400 data-[state=checked]:bg-cyan-500"
                                                                     />
-                                                                    <Label htmlFor="vmSnapshot" className="text-white">Snapshot Adicional</Label>
+                                                                    <Label htmlFor="vmSnapshot" className="text-white text-sm">Snapshot Adicional</Label>
                                                                 </div>
-                                                                <div className="flex items-center space-x-2">
+                                                                <div className="flex items-center space-x-3 p-3 bg-slate-900/30 rounded-lg border border-slate-600/50">
                                                                     <Checkbox
                                                                         id="vmVpnSiteToSite"
                                                                         checked={vmVpnSiteToSite}
                                                                         onCheckedChange={(checked) => setVmVpnSiteToSite(Boolean(checked))}
-                                                                        className="border-cyan-400"
+                                                                        className="border-cyan-400 data-[state=checked]:bg-cyan-500"
                                                                     />
-                                                                    <Label htmlFor="vmVpnSiteToSite" className="text-white">VPN Site-to-Site</Label>
+                                                                    <Label htmlFor="vmVpnSiteToSite" className="text-white text-sm">VPN Site-to-Site</Label>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </CardContent>
-                                                </Card>
+                                                    </div>
+                                                </div>
 
                                                 {/* Período Contratual */}
                                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
