@@ -862,6 +862,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         markupValue,
         commissionValue,
         estimatedNetMargin,
+        realMarkupPercentage,
         costBreakdown
     } = useMemo(() => {
         const C = calculateVMCost;
@@ -936,12 +937,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         const calculatedNetMargin = finalPrice > 0 ? (netProfit / finalPrice) * 100 : 0;
         const calculatedMarkupValue = C * M; // This represents the actual markup amount added to cost
+        
+        // Calcular o markup real baseado no lucro líquido e custo total
+        const totalCostWithCommissions = directCosts + totalCommissions;
+        const realMarkupPercentage = totalCostWithCommissions > 0 ? (netProfit / totalCostWithCommissions) * 100 : 0;
 
         return {
             vmFinalPrice: Math.max(0, finalPrice) || 0,
             markupValue: Math.max(0, calculatedMarkupValue) || 0,
             commissionValue: Math.max(0, calculatedCommissionValue) || 0,
             estimatedNetMargin: calculatedNetMargin || 0,
+            realMarkupPercentage: realMarkupPercentage || 0,
             costBreakdown: {
                 baseCost: C,
                 taxAmount: 0,
@@ -2733,15 +2739,26 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <CardTitle className="text-cyan-400">Markup e Margem Líquida</CardTitle>
                                                         </CardHeader>
                                                         <CardContent>
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                                                 <div>
-                                                                    <Label htmlFor="markup-cost">Markup (%)</Label>
+                                                                    <Label htmlFor="markup-config">Markup Config (%)</Label>
                                                                     <Input
-                                                                        id="markup-cost"
+                                                                        id="markup-config"
                                                                         type="number"
                                                                         value={markup}
                                                                         onChange={(e) => setMarkup(parseFloat(e.target.value) || 0)}
                                                                         className="bg-slate-800 border-slate-700"
+                                                                        placeholder="Ex: 30"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label htmlFor="markup-real">Markup Real (%)</Label>
+                                                                    <Input
+                                                                        id="markup-real"
+                                                                        type="text"
+                                                                        value={realMarkupPercentage.toFixed(2) + '%'}
+                                                                        readOnly
+                                                                        className="bg-slate-800 border-slate-700 text-white cursor-not-allowed"
                                                                     />
                                                                 </div>
                                                                 <div>
