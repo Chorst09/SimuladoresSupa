@@ -9,47 +9,81 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export async function GET() {
   try {
     console.log('🔄 API /users - Carregando usuários...')
+    console.log('🔑 Debug - URL:', supabaseUrl ? 'OK' : 'MISSING')
+    console.log('🔑 Debug - Service Key:', supabaseServiceKey ? 'OK' : 'MISSING')
+    console.log('🔑 Debug - Anon Key:', supabaseAnonKey ? 'OK' : 'MISSING')
     
-    // Try service role key first, fallback to anon key
-    const keyToUse = supabaseServiceKey || supabaseAnonKey
-    console.log('🔑 Usando chave:', supabaseServiceKey ? 'Service Role' : 'Anon')
-    
-    const supabaseClient = createClient(supabaseUrl, keyToUse, {
+    // First, try with service role key if available
+    if (supabaseServiceKey) {
+      try {
+        console.log('🔑 Tentando com Service Role Key...')
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        })
+
+        const { data: profiles, error: profilesError } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (!profilesError && profiles) {
+          console.log(`✅ ${profiles.length} usuários encontrados com Service Role Key`)
+          return NextResponse.json({
+            success: true,
+            users: profiles,
+            count: profiles.length,
+            method: 'service_role'
+          })
+        } else {
+          console.log('❌ Erro com Service Role Key:', profilesError)
+        }
+      } catch (serviceError) {
+        console.log('❌ Falha ao usar Service Role Key:', serviceError)
+      }
+    }
+
+    // Fallback: try with anon key
+    console.log('🔑 Tentando com Anon Key...')
+    const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
       }
     })
 
-    // Get all users from profiles table
-    const { data: profiles, error: profilesError } = await supabaseClient
+    const { data: profiles, error: profilesError } = await supabaseAnon
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false })
 
     if (profilesError) {
-      console.error('❌ Erro ao buscar profiles:', profilesError)
+      console.error('❌ Erro ao buscar profiles com Anon Key:', profilesError)
       
       // If RLS is blocking, return helpful message
       if (profilesError.message?.includes('RLS') || profilesError.message?.includes('policy')) {
         return NextResponse.json({
           success: false,
-          error: 'Políticas RLS estão bloqueando o acesso. Execute o script SQL de correção.',
+          error: 'Políticas RLS estão bloqueando o acesso. Clique em "🚨 Corrigir RLS" para resolver.',
           users: [],
           count: 0,
-          needsRlsFix: true
+          needsRlsFix: true,
+          method: 'anon_blocked'
         })
       }
       
       throw profilesError
     }
 
-    console.log(`✅ ${profiles?.length || 0} usuários encontrados`)
+    console.log(`✅ ${profiles?.length || 0} usuários encontrados com Anon Key`)
 
     return NextResponse.json({
       success: true,
       users: profiles || [],
-      count: profiles?.length || 0
+      count: profiles?.length || 0,
+      method: 'anon'
     })
 
   } catch (error: any) {
@@ -59,7 +93,8 @@ export async function GET() {
       success: false,
       error: error.message,
       users: [],
-      count: 0
+      count: 0,
+      method: 'error'
     }, { status: 500 })
   }
 }

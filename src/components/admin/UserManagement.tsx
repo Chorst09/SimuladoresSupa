@@ -50,7 +50,9 @@ export default function UserManagement() {
 
   const disableRLS = async () => {
     try {
-      const response = await fetch('/api/fix-rls-emergency', {
+      console.log('🔧 Executando correção RLS...');
+      
+      const response = await fetch('/api/fix-rls-direct', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,11 +62,12 @@ export default function UserManagement() {
       const result = await response.json();
 
       if (result.success) {
-        alert('✅ RLS corrigido com sucesso!\n\n' + result.message);
+        alert(`✅ RLS corrigido com sucesso!\n\n${result.message}\n\nRecarregando usuários...`);
         // Recarregar usuários
         await loadUsers();
       } else {
-        alert('❌ Erro na correção RLS:\n\n' + result.error);
+        const instructions = result.instructions?.join('\n') || '';
+        alert(`❌ Não foi possível corrigir automaticamente.\n\n${result.message}\n\nInstruções:\n${instructions}`);
       }
     } catch (error: any) {
       alert('❌ Erro ao executar correção RLS:\n\n' + error.message);
@@ -89,6 +92,12 @@ export default function UserManagement() {
       console.log('📊 Resposta da API:', result);
       
       if (!result.success) {
+        // Handle RLS blocking specifically
+        if (result.needsRlsFix) {
+          alert('🚨 Políticas RLS estão bloqueando o acesso aos usuários.\n\nClique no botão "🚨 Corrigir RLS" para resolver este problema.');
+          setUsers([]);
+          return;
+        }
         throw new Error(result.error || 'Erro ao carregar usuários');
       }
       
