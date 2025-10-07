@@ -78,27 +78,12 @@ export const DRETable: React.FC<DRETableProps> = ({
     return revenue > 0 ? revenue : propMonthlyRevenue;
   };
 
-  // Calculate total costs (operational costs based on industry standards)
+  // Calculate total costs (CORREÇÃO: Não calcular custos operacionais automáticos)
   const calculateTotalCosts = () => {
-    // If we have actual cost data from products, use it
-    if (pabxResult || sipResult) {
-      let actualCosts = 0;
-
-      // PABX costs: estimated at 50% of revenue for infrastructure and licensing
-      if (pabxResult) {
-        actualCosts += (pabxResult.totalMonthly || 0) * 0.50;
-      }
-
-      // SIP costs: estimated at 70% of revenue for telecom services
-      if (sipResult) {
-        actualCosts += (sipResult.monthly || 0) * 0.70;
-      }
-
-      return actualCosts;
-    }
-
-    // Fallback to provided costs or estimate based on revenue
-    return propTotalCosts > 0 ? propTotalCosts : monthlyRevenue * 0.60;
+    // CORREÇÃO: Não considerar custos PABX e SIP como custos operacionais
+    // Estes valores já são preços de venda, não custos reais
+    // Retornar apenas os custos passados como parâmetro (Custo/Desp 10%)
+    return propTotalCosts;
   };
 
   // Calculate values
@@ -249,29 +234,8 @@ export const DRETable: React.FC<DRETableProps> = ({
                 </TableCell>
               </TableRow>
 
-              {/* Detalhamento dos Custos Operacionais */}
-              {(pabxResult || sipResult) && (
-                <>
-                  {pabxResult && (
-                    <TableRow className="bg-slate-800/30">
-                      <TableCell className="pl-8">Custos PABX (Infraestrutura e Licenças)</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency((pabxResult.totalMonthly || 0) * 0.50)}
-                      </TableCell>
-                      <TableCell className="text-right"></TableCell>
-                    </TableRow>
-                  )}
-                  {sipResult && (
-                    <TableRow className="bg-slate-800/30">
-                      <TableCell className="pl-8">Custos SIP (Serviços de Telecomunicações)</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency((sipResult.monthly || 0) * 0.70)}
-                      </TableCell>
-                      <TableCell className="text-right"></TableCell>
-                    </TableRow>
-                  )}
-                </>
-              )}
+              {/* CORREÇÃO: Detalhamento dos Custos Operacionais removido - 
+                  Custos PABX e SIP são valores de venda, não custos operacionais */}
 
               {/* Lucro Bruto */}
               <TableRow className="bg-green-900/20">
