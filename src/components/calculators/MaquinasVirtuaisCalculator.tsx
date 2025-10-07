@@ -288,6 +288,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     setPisCofins(String(settingsData.pisCofins || '15,00').replace('.', ','));
                     setIss(String(settingsData.iss || '0,00').replace('.', ','));
                     setCsllIr(String(settingsData.csllIr || '0,00').replace('.', ','));
+                    setVmQuantity(settingsData.vmQuantity || 1);
                     if (settingsData.contractDiscounts) {
                         setContractDiscounts(settingsData.contractDiscounts);
                     }
@@ -368,6 +369,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [includeReferralPartner, setIncludeReferralPartner] = useState<boolean>(false);
     const [includeInfluencerPartner, setIncludeInfluencerPartner] = useState<boolean>(false);
     const [vmContractPeriod, setVmContractPeriod] = useState<number>(12);
+    const [vmQuantity, setVmQuantity] = useState<number>(1);
 
     // Hook para comissões editáveis
     const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
@@ -398,7 +400,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         if (currentProposal?.id) {
             setHasChanged(true);
         }
-    }, [addedProducts, clientData, accountManagerData, selectedTaxRegime, taxRates, setupFee, vmContractPeriod]);
+    }, [addedProducts, clientData, accountManagerData, selectedTaxRegime, taxRates, setupFee, vmContractPeriod, vmQuantity]);
 
 
 
@@ -1017,7 +1019,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     // Funções de manipulação
     const handleAddVMProduct = () => {
         // Criar descrição completa incluindo serviços adicionais
-        let description = `${vmName} - ${vmCpuCores} vCPU, ${vmRamGb}GB RAM, ${vmStorageSize}GB ${vmStorageType}, ${vmOperatingSystem}`;
+        let description = `${vmQuantity}x ${vmName} - ${vmCpuCores} vCPU, ${vmRamGb}GB RAM, ${vmStorageSize}GB ${vmStorageType}, ${vmOperatingSystem}`;
 
         // Adicionar serviços adicionais na descrição
         const additionalServices = [];
@@ -1034,9 +1036,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             id: Date.now().toString(),
             type: 'VM' as ProductType,
             description: description,
-            setup: setupFee,
-            monthly: vmFinalPrice,
+            setup: setupFee * vmQuantity, // Multiplicar pela quantidade
+            monthly: vmFinalPrice * vmQuantity, // Multiplicar pela quantidade
             details: {
+                quantity: vmQuantity, // Adicionar quantidade nos detalhes
                 cpuCores: vmCpuCores,
                 ramGb: vmRamGb,
                 storageType: vmStorageType,
@@ -1047,7 +1050,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 additionalIp: vmAdditionalIp,
                 snapshot: vmSnapshot,
                 vpnSiteToSite: vmVpnSiteToSite,
-                contractPeriod: vmContractPeriod
+                contractPeriod: vmContractPeriod,
+                unitSetup: setupFee, // Valor unitário do setup
+                unitMonthly: vmFinalPrice // Valor unitário mensal
             }
         };
         setAddedProducts([...addedProducts, newProduct]);
@@ -1422,6 +1427,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 csllIr: parseFloat(csllIr.replace(',', '.')),
                 contractDiscounts,
                 taxRates,
+                vmQuantity,
                 updatedAt: new Date().toISOString(),
                 userId: currentUser.id
             };
@@ -2273,6 +2279,24 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                     </CardHeader>
                                                     <CardContent>
                                                         <div className="space-y-4">
+                                                            {/* Campo de Quantidade */}
+                                                            <div className="bg-slate-800 p-3 rounded-lg border border-slate-700">
+                                                                <Label htmlFor="vm-quantity" className="text-cyan-400 font-semibold">Quantidade de VMs:</Label>
+                                                                <div className="flex items-center space-x-2 mt-2">
+                                                                    <Input
+                                                                        id="vm-quantity"
+                                                                        type="number"
+                                                                        value={vmQuantity}
+                                                                        onChange={(e) => setVmQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                                                        min="1"
+                                                                        max="100"
+                                                                        className="bg-slate-900 border-slate-600 text-white w-20"
+                                                                    />
+                                                                    <span className="text-sm text-slate-400">
+                                                                        {vmQuantity === 1 ? 'VM' : 'VMs'} idêntica{vmQuantity === 1 ? '' : 's'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
                                                             <div className="grid grid-cols-2 gap-4">
                                                                 <div>
                                                                     <Label className="text-cyan-400">Resumo da VM:</Label>
@@ -2303,16 +2327,30 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <Separator className="bg-slate-700 my-4" />
                                                             <div className="text-lg font-bold mb-2">Cálculo de Preços:</div>
                                                             <div className="space-y-2">
-                                                                <div className="flex justify-between"><span>Custo Base:</span> <span>{formatCurrency(calculateVMCost)}</span></div>
+                                                                <div className="text-sm text-slate-400 mb-2">Valores por VM:</div>
+                                                                <div className="flex justify-between"><span>• Custo Base (unitário):</span> <span>{formatCurrency(calculateVMCost)}</span></div>
                                                                 {contractDiscount > 0 && (
-                                                                    <div className="flex justify-between text-orange-400"><span>Desconto Contrato ({contractDiscount}%):</span> <span>-{formatCurrency(costBreakdown.contractDiscount.amount)}</span></div>
+                                                                    <div className="flex justify-between text-orange-400"><span>• Desconto Contrato ({contractDiscount}%):</span> <span>-{formatCurrency(costBreakdown.contractDiscount.amount)}</span></div>
                                                                 )}
-                                                                <div className="flex justify-between"><span>Taxa de Setup:</span> <span>R$ {formatBrazilianNumber(setupFee)}</span></div>
-
+                                                                <div className="flex justify-between"><span>• Taxa de Setup (unitária):</span> <span>R$ {formatBrazilianNumber(setupFee)}</span></div>
+                                                                <div className="flex justify-between text-blue-400"><span>• Subtotal por VM:</span> <span>{formatCurrency(vmFinalPrice)}</span></div>
+                                                                
+                                                                <Separator className="bg-slate-700 my-2" />
+                                                                <div className="text-sm text-slate-400 mb-2">Valores Totais ({vmQuantity} VM{vmQuantity === 1 ? '' : 's'}):</div>
+                                                                <div className="flex justify-between"><span>• Custo Base Total:</span> <span>{formatCurrency(calculateVMCost * vmQuantity)}</span></div>
+                                                                {contractDiscount > 0 && (
+                                                                    <div className="flex justify-between text-orange-400"><span>• Desconto Total ({contractDiscount}%):</span> <span>-{formatCurrency(costBreakdown.contractDiscount.amount * vmQuantity)}</span></div>
+                                                                )}
+                                                                <div className="flex justify-between"><span>• Taxa de Setup Total:</span> <span>R$ {formatBrazilianNumber(setupFee * vmQuantity)}</span></div>
+                                                                
                                                                 <Separator className="bg-slate-700 my-2" />
                                                                 <div className="flex justify-between text-green-400 font-bold text-lg">
-                                                                    <span>Total Mensal:</span>
-                                                                    <span>{formatCurrency(vmFinalPrice)}</span>
+                                                                    <span>Total Mensal Final:</span>
+                                                                    <span>{formatCurrency(vmFinalPrice * vmQuantity)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-yellow-400 font-bold">
+                                                                    <span>Total Setup Final:</span>
+                                                                    <span>R$ {formatBrazilianNumber(setupFee * vmQuantity)}</span>
                                                                 </div>
                                                                 {contractDiscount > 0 && (
                                                                     <div className="text-sm text-orange-400 mt-2">
