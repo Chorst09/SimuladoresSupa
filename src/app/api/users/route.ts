@@ -24,13 +24,41 @@ export async function GET() {
           }
         })
 
-        const { data: profiles, error: profilesError } = await supabaseAdmin
+        // Try different approaches to get all users
+        let profiles = null;
+        let profilesError = null;
+
+        // Approach 1: Simple select all
+        console.log('🔍 Tentativa 1: SELECT * simples...')
+        const result1 = await supabaseAdmin
           .from('profiles')
           .select('*')
-          .order('created_at', { ascending: false })
 
-        if (!profilesError && profiles) {
+        if (!result1.error && result1.data) {
+          profiles = result1.data;
+          console.log(`✅ Abordagem 1 funcionou: ${profiles.length} usuários`)
+        } else {
+          console.log('❌ Abordagem 1 falhou:', result1.error)
+          
+          // Approach 2: Select with specific columns
+          console.log('🔍 Tentativa 2: SELECT com colunas específicas...')
+          const result2 = await supabaseAdmin
+            .from('profiles')
+            .select('id, email, full_name, role, created_at, updated_at')
+
+          if (!result2.error && result2.data) {
+            profiles = result2.data;
+            console.log(`✅ Abordagem 2 funcionou: ${profiles.length} usuários`)
+          } else {
+            console.log('❌ Abordagem 2 falhou:', result2.error)
+            profilesError = result2.error;
+          }
+        }
+
+        if (profiles && profiles.length > 0) {
           console.log(`✅ ${profiles.length} usuários encontrados com Service Role Key`)
+          console.log('👥 Usuários encontrados:', profiles.map(u => ({ email: u.email, role: u.role })))
+          
           return NextResponse.json({
             success: true,
             users: profiles,
@@ -38,7 +66,7 @@ export async function GET() {
             method: 'service_role'
           })
         } else {
-          console.log('❌ Erro com Service Role Key:', profilesError)
+          console.log('❌ Nenhum usuário encontrado com Service Role Key:', profilesError)
         }
       } catch (serviceError) {
         console.log('❌ Falha ao usar Service Role Key:', serviceError)

@@ -15,20 +15,28 @@ export async function POST() {
 
     const supabase = createClient(supabaseUrl, keyToUse)
 
-    // First, try to disable RLS
-    try {
-      console.log('🔧 Desabilitando RLS...')
-      const { error: disableError } = await supabase.rpc('exec_sql', {
-        sql: 'ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;'
-      })
+    // Try multiple approaches to disable RLS
+    const sqlCommands = [
+      'ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;',
+      'DROP POLICY IF EXISTS "users_can_view_own_profile" ON profiles;',
+      'DROP POLICY IF EXISTS "users_can_update_own_profile" ON profiles;',
+      'DROP POLICY IF EXISTS "enable_insert_for_authenticated_users" ON profiles;',
+      'DROP POLICY IF EXISTS "admins_can_manage_all_profiles" ON profiles;'
+    ];
 
-      if (disableError) {
-        console.log('❌ Erro ao desabilitar RLS via RPC:', disableError)
-      } else {
-        console.log('✅ RLS desabilitado via RPC')
+    for (const sql of sqlCommands) {
+      try {
+        console.log(`🔧 Executando: ${sql}`)
+        const { error } = await supabase.rpc('exec_sql', { sql })
+        
+        if (error) {
+          console.log(`❌ Erro: ${error.message}`)
+        } else {
+          console.log(`✅ Sucesso: ${sql}`)
+        }
+      } catch (err) {
+        console.log(`❌ Falha: ${err}`)
       }
-    } catch (rpcError) {
-      console.log('❌ RPC não disponível:', rpcError)
     }
 
     // Test if we can now access the profiles table

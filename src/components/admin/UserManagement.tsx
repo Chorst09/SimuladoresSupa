@@ -313,6 +313,27 @@ export default function UserManagement() {
           >
             🚨 Corrigir RLS
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/users-debug');
+                const result = await response.json();
+                console.log('🔍 Debug results:', result);
+                
+                const summary = result.results?.map((r: any) => 
+                  `${r.method}: ${r.success ? `✅ ${r.count} usuários` : `❌ ${r.error}`}`
+                ).join('\n');
+                
+                alert(`🔍 Debug Results:\n\n${summary}\n\nRecomendação: ${result.recommendation?.message}`);
+              } catch (error) {
+                alert('Erro no debug: ' + error);
+              }
+            }}
+          >
+            🔍 Debug
+          </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
