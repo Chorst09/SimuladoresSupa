@@ -2402,23 +2402,26 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
                         const parceiroRate = parceiroIndicadorRate + parceiroInfluenciadorRate;
 
-                        // Calculate operational costs (estimated at 60% of revenue for PABX/SIP services)
-                        const estimatedOperationalCosts = dreMonthlyRevenue * 0.60;
-
+                        // CORREÇÃO: Não considerar custos PABX e SIP como custos operacionais (já são valores de venda)
+                        // Considerar apenas Custo/Desp (10%) e Impostos (15%)
+                        
                         // Cálculo do DRE seguindo o modelo contábil correto
                         const receitaOperacionalBruta = dreMonthlyRevenue;
 
                         // Deduções da Receita Bruta (Impostos sobre a Receita - 15% conforme solicitado)
                         const impostosSobreReceita = receitaOperacionalBruta * 0.15;
 
-                        // Receita Operacional Líquida
-                        const receitaOperacionalLiquida = receitaOperacionalBruta - impostosSobreReceita;
+                        // Custo/Despesa (10% da receita bruta)
+                        const custosDespesas = receitaOperacionalBruta * 0.10;
+
+                        // Receita Operacional Líquida (após impostos e custos/despesas)
+                        const receitaOperacionalLiquida = receitaOperacionalBruta - impostosSobreReceita - custosDespesas;
 
                         // Despesas Operacionais (Comissões)
                         const despesasComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador + (dreMonthlyRevenue * (diretorRate / 100));
 
                         // Lucro/Prejuízo Operacional
-                        const lucroOperacional = receitaOperacionalLiquida - despesasComissoes - estimatedOperationalCosts;
+                        const lucroOperacional = receitaOperacionalLiquida - despesasComissoes;
 
                         // Lucro/Prejuízo Líquido (considerando que não há outras despesas/receitas financeiras)
                         const lucroLiquido = lucroOperacional;
@@ -2429,7 +2432,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                         const dreCalculations = {
                             receitaBruta: receitaOperacionalBruta,
                             receitaLiquida: receitaOperacionalLiquida,
-                            custoServico: estimatedOperationalCosts,
+                            custoServico: custosDespesas, // Agora representa apenas Custo/Desp (10%)
                             comissaoVendedor: comissaoVendedor,
                             comissaoDiretor: dreMonthlyRevenue * (diretorRate / 100),
                             comissaoParceiroIndicador: comissaoParceiroIndicador,
@@ -2446,7 +2449,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                             <div className="space-y-6">
                                 <DRETable
                                     monthlyRevenue={dreMonthlyRevenue}
-                                    totalCosts={estimatedOperationalCosts}
+                                    totalCosts={custosDespesas} // Agora apenas Custo/Desp (10%)
                                     commissionVendedor={vendedorRate}
                                     commissionDiretor={diretorRate}
                                     commissionParceiro={parceiroRate}
@@ -2490,7 +2493,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                 <h3 className="text-sm font-semibold text-red-300 mb-3 uppercase tracking-wide">CUSTOS</h3>
                                                 <div className="space-y-2">
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-300">Operacional:</span>
+                                                        <span className="text-gray-300">Custo/Desp (10%):</span>
                                                         <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.custoServico)}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
