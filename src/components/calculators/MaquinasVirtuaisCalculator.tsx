@@ -2048,50 +2048,56 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     {/* Conteúdo principal com grid moderno */}
                                                     <div className="p-6 space-y-6">
-                                                        
+
                                                         {/* Card: Identificação */}
-                                                        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                        <div className="bg-gradient-to-br from-cyan-900/30 to-slate-800/50 rounded-xl p-4 border border-cyan-500/30 shadow-lg hover:shadow-cyan-500/20 transition-all duration-300">
                                                             <div className="flex items-center gap-2 mb-3">
-                                                                <Edit className="h-4 w-4 text-cyan-400" />
+                                                                <div className="p-2 bg-cyan-500/20 rounded-lg">
+                                                                    <Edit className="h-4 w-4 text-cyan-400" />
+                                                                </div>
                                                                 <h3 className="text-white font-semibold">Nome da VM</h3>
                                                             </div>
                                                             <Input
                                                                 value={vmName}
                                                                 onChange={(e) => setVmName(e.target.value)}
-                                                                className="bg-slate-900/50 border-slate-600 text-white focus:border-cyan-400"
+                                                                className="bg-slate-900/70 border-cyan-500/50 text-white focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
                                                                 placeholder="Ex: Servidor Principal"
                                                             />
                                                         </div>
 
                                                         {/* Grid: Recursos Computacionais */}
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                            <div className="bg-gradient-to-br from-blue-900/30 to-slate-800/50 rounded-xl p-4 border border-blue-500/30 shadow-lg hover:shadow-blue-500/20 transition-all duration-300">
                                                                 <div className="flex items-center gap-2 mb-3">
-                                                                    <Cpu className="h-4 w-4 text-blue-400" />
+                                                                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                                                                        <Cpu className="h-4 w-4 text-blue-400" />
+                                                                    </div>
                                                                     <h3 className="text-white font-semibold">vCPU Cores</h3>
                                                                 </div>
                                                                 <Input
                                                                     type="number"
                                                                     value={vmCpuCores}
                                                                     onChange={(e) => setVmCpuCores(Number(e.target.value))}
-                                                                    className="bg-slate-900/50 border-slate-600 text-white focus:border-blue-400"
+                                                                    className="bg-slate-900/70 border-blue-500/50 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
                                                                     min="1"
                                                                     max="64"
                                                                 />
                                                             </div>
-                                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                            <div className="bg-gradient-to-br from-purple-900/30 to-slate-800/50 rounded-xl p-4 border border-purple-500/30 shadow-lg hover:shadow-purple-500/20 transition-all duration-300">
                                                                 <div className="flex items-center gap-2 mb-3">
-                                                                    <MemoryStick className="h-4 w-4 text-purple-400" />
+                                                                    <div className="p-2 bg-purple-500/20 rounded-lg">
+                                                                        <MemoryStick className="h-4 w-4 text-purple-400" />
+                                                                    </div>
                                                                     <h3 className="text-white font-semibold">Memória RAM (GB)</h3>
                                                                 </div>
                                                                 <Input
                                                                     type="number"
                                                                     value={vmRamGb}
                                                                     onChange={(e) => setVmRamGb(Number(e.target.value))}
-                                                                    className="bg-slate-900/50 border-slate-600 text-white focus:border-purple-400"
+                                                                    className="bg-slate-900/70 border-purple-500/50 text-white focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20"
                                                                     min="1"
                                                                     max="512"
                                                                 />
@@ -2099,19 +2105,21 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                         </div>
 
                                                         {/* Card: Armazenamento */}
-                                                        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                        <div className="bg-gradient-to-br from-green-900/30 to-slate-800/50 rounded-xl p-4 border border-green-500/30 shadow-lg hover:shadow-green-500/20 transition-all duration-300">
                                                             <div className="flex items-center gap-2 mb-3">
-                                                                <HardDrive className="h-4 w-4 text-green-400" />
+                                                                <div className="p-2 bg-green-500/20 rounded-lg">
+                                                                    <HardDrive className="h-4 w-4 text-green-400" />
+                                                                </div>
                                                                 <h3 className="text-white font-semibold">Armazenamento</h3>
                                                             </div>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                 <div>
-                                                                    <Label className="text-sm text-slate-300 mb-2 block">Tipo de Armazenamento</Label>
+                                                                    <Label className="text-sm text-green-200 mb-2 block font-medium">Tipo de Armazenamento</Label>
                                                                     <Select value={vmStorageType} onValueChange={setVmStorageType}>
-                                                                        <SelectTrigger className="bg-slate-900/50 border-slate-600 text-white focus:border-green-400">
+                                                                        <SelectTrigger className="bg-slate-900/70 border-green-500/50 text-white focus:border-green-400 focus:ring-2 focus:ring-green-400/20">
                                                                             <SelectValue />
                                                                         </SelectTrigger>
-                                                                        <SelectContent className="bg-slate-800 text-white border-slate-600">
+                                                                        <SelectContent className="bg-slate-800 text-white border-green-600">
                                                                             <SelectItem value="HDD SAS">HDD SAS</SelectItem>
                                                                             <SelectItem value="SSD Performance">SSD Performance</SelectItem>
                                                                             <SelectItem value="NVMe">NVMe</SelectItem>
@@ -2119,12 +2127,12 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     </Select>
                                                                 </div>
                                                                 <div>
-                                                                    <Label className="text-sm text-slate-300 mb-2 block">Tamanho (GB)</Label>
+                                                                    <Label className="text-sm text-green-200 mb-2 block font-medium">Tamanho (GB)</Label>
                                                                     <Input
                                                                         type="number"
                                                                         value={vmStorageSize}
                                                                         onChange={(e) => setVmStorageSize(Number(e.target.value))}
-                                                                        className="bg-slate-900/50 border-slate-600 text-white focus:border-green-400"
+                                                                        className="bg-slate-900/70 border-green-500/50 text-white focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
                                                                         min="10"
                                                                         max="10000"
                                                                     />
@@ -2134,13 +2142,15 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                         {/* Grid: Rede e Sistema */}
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                            <div className="bg-gradient-to-br from-orange-900/30 to-slate-800/50 rounded-xl p-4 border border-orange-500/30 shadow-lg hover:shadow-orange-500/20 transition-all duration-300">
                                                                 <div className="flex items-center gap-2 mb-3">
-                                                                    <Network className="h-4 w-4 text-orange-400" />
+                                                                    <div className="p-2 bg-orange-500/20 rounded-lg">
+                                                                        <Network className="h-4 w-4 text-orange-400" />
+                                                                    </div>
                                                                     <h3 className="text-white font-semibold">Placa de Rede</h3>
                                                                 </div>
                                                                 <Select value={vmNetworkSpeed} onValueChange={setVmNetworkSpeed}>
-                                                                    <SelectTrigger className="bg-slate-900/50 border-slate-600 text-white focus:border-orange-400">
+                                                                    <SelectTrigger className="bg-slate-900/70 border-orange-500/50 text-white focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20">
                                                                         <SelectValue />
                                                                     </SelectTrigger>
                                                                     <SelectContent className="bg-slate-800 text-white border-slate-600">
@@ -2149,16 +2159,18 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     </SelectContent>
                                                                 </Select>
                                                             </div>
-                                                            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                            <div className="bg-gradient-to-br from-yellow-900/30 to-slate-800/50 rounded-xl p-4 border border-yellow-500/30 shadow-lg hover:shadow-yellow-500/20 transition-all duration-300">
                                                                 <div className="flex items-center gap-2 mb-3">
-                                                                    <Settings className="h-4 w-4 text-yellow-400" />
+                                                                    <div className="p-2 bg-yellow-500/20 rounded-lg">
+                                                                        <Settings className="h-4 w-4 text-yellow-400" />
+                                                                    </div>
                                                                     <h3 className="text-white font-semibold">Sistema Operacional</h3>
                                                                 </div>
                                                                 <Select value={vmOperatingSystem} onValueChange={setVmOperatingSystem}>
-                                                                    <SelectTrigger className="bg-slate-900/50 border-slate-600 text-white focus:border-yellow-400">
+                                                                    <SelectTrigger className="bg-slate-900/70 border-yellow-500/50 text-white focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20">
                                                                         <SelectValue />
                                                                     </SelectTrigger>
-                                                                    <SelectContent className="bg-slate-800 text-white border-slate-600">
+                                                                    <SelectContent className="bg-slate-800 text-white border-yellow-600">
                                                                         <SelectItem value="Ubuntu Server 22.04 LTS">Ubuntu Server 22.04 LTS</SelectItem>
                                                                         <SelectItem value="Windows Server 2022 Standard">Windows Server 2022 Standard</SelectItem>
                                                                         <SelectItem value="Windows 10 Pro">Windows 10 Pro</SelectItem>
@@ -2172,12 +2184,14 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                         </div>
 
                                                         {/* Card: Serviços Adicionais */}
-                                                        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                                                        <div className="bg-gradient-to-br from-indigo-900/30 to-slate-800/50 rounded-xl p-4 border border-indigo-500/30 shadow-lg hover:shadow-indigo-500/20 transition-all duration-300">
                                                             <div className="flex items-center gap-2 mb-4">
-                                                                <Plus className="h-4 w-4 text-cyan-400" />
+                                                                <div className="p-2 bg-indigo-500/20 rounded-lg">
+                                                                    <Plus className="h-4 w-4 text-indigo-400" />
+                                                                </div>
                                                                 <h3 className="text-white font-semibold">Serviços Adicionais</h3>
                                                             </div>
-                                                            
+
                                                             {/* Backup */}
                                                             <div className="mb-4">
                                                                 <Label className="text-sm text-slate-300 mb-2 block">
