@@ -2369,7 +2369,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <Calculator className="h-5 w-5 text-green-400" />
                                                                     <h3 className="text-lg font-bold text-white">Resumo de Preços</h3>
                                                                 </div>
-                                                                
+
                                                                 {/* Configuração da VM */}
                                                                 <div className="bg-slate-900/50 rounded-lg p-3 mb-4">
                                                                     <div className="text-sm text-slate-300 mb-2">Configuração: {vmQuantity}x {vmName}</div>
@@ -2377,35 +2377,28 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 </div>
 
                                                                 {/* Cálculos */}
-                                                                <div className="space-y-2">
-                                                                    <div className="flex justify-between text-slate-300">
-                                                                        <span>Custo Base ({vmQuantity}x {formatCurrency(calculateVMCost)}):</span>
-                                                                        <span>{formatCurrency(calculateVMCost * vmQuantity)}</span>
-                                                                    </div>
-                                                                    
-                                                                    {contractDiscount > 0 && (
-                                                                        <div className="flex justify-between text-orange-400">
-                                                                            <span>Desconto Contrato ({contractDiscount}%):</span>
-                                                                            <span>-{formatCurrency(costBreakdown.contractDiscount.amount * vmQuantity)}</span>
-                                                                        </div>
-                                                                    )}
-                                                                    
-                                                                    <Separator className="bg-slate-600 my-3" />
-                                                                    
-                                                                    <div className="flex justify-between text-green-400 font-bold text-lg">
-                                                                        <span>Total Mensal:</span>
+                                                                <div className="space-y-3">
+                                                                    <div className="flex justify-between text-green-400 font-bold text-xl">
+                                                                        <span>Valor Mensal:</span>
                                                                         <span>{formatCurrency(vmFinalPrice * vmQuantity)}</span>
                                                                     </div>
                                                                     
+                                                                    <div className="flex justify-between text-blue-400 font-bold text-lg">
+                                                                        <span>Total do Contrato ({vmContractPeriod} meses):</span>
+                                                                        <span>{formatCurrency((vmFinalPrice * vmQuantity) * vmContractPeriod)}</span>
+                                                                    </div>
+                                                                    
+                                                                    <Separator className="bg-slate-600 my-3" />
+                                                                    
                                                                     <div className="flex justify-between text-yellow-400 font-semibold">
-                                                                        <span>Taxa de Setup:</span>
+                                                                        <span>Taxa de Setup (única):</span>
                                                                         <span>{formatCurrency(setupFee * vmQuantity)}</span>
                                                                     </div>
                                                                     
                                                                     {contractDiscount > 0 && (
                                                                         <div className="flex items-center gap-2 text-sm text-orange-300 mt-3 p-2 bg-orange-900/20 rounded-lg">
                                                                             <span>💰</span>
-                                                                            <span>Desconto de {contractDiscount}% por contrato de {vmContractPeriod} meses</span>
+                                                                            <span>Desconto de {contractDiscount}% aplicado por contrato de {vmContractPeriod} meses</span>
                                                                         </div>
                                                                     )}
                                                                 </div>
