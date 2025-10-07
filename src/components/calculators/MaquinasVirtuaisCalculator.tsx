@@ -41,7 +41,24 @@ import {
 } from 'lucide-react';
 
 // Import shared components
-import { ClientManagerForm, ClientData, AccountManagerData } from '@/components/calculators/ClientManagerForm';
+import { ClientManagerForm } from '@/components/calculators/ClientManagerForm';
+
+// Local interfaces
+interface ClientData {
+    name: string;
+    contact?: string;
+    projectName?: string;
+    email?: string;
+    phone?: string;
+    companyName?: string;
+}
+
+interface AccountManagerData {
+    name: string;
+    email?: string;
+    phone?: string;
+    distributorId?: string;
+}
 import { ClientManagerInfo } from '@/components/calculators/ClientManagerInfo';
 
 // Brazilian currency formatter
@@ -108,6 +125,9 @@ interface Proposal {
     // Campos opcionais para compatibilidade
     clientData?: ClientData;
     items?: Product[];
+    applySalespersonDiscount?: boolean;
+    appliedDirectorDiscountPercentage?: number;
+    expiryDate?: string;
 }
 
 import { Separator } from '@/components/ui/separator';
@@ -404,7 +424,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [vpnSiteToSiteCost, setVpnSiteToSiteCost] = useState<number>(50);
 
     // Estados para controlar edição de cada card
-    const [editingCards, setEditingCards] = useState<{[key: string]: boolean}>({
+    const [editingCards, setEditingCards] = useState<{ [key: string]: boolean }>({
         recursosBase: false,
         armazenamento: false,
         placaRede: false,
@@ -937,7 +957,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         const calculatedNetMargin = finalPrice > 0 ? (netProfit / finalPrice) * 100 : 0;
         const calculatedMarkupValue = C * M; // This represents the actual markup amount added to cost
-        
+
         // Calcular o markup real baseado no lucro líquido e custo total
         const totalCostWithCommissions = directCosts + totalCommissions;
         const realMarkupPercentage = totalCostWithCommissions > 0 ? (netProfit / totalCostWithCommissions) * 100 : 0;
@@ -998,14 +1018,14 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const handleAddVMProduct = () => {
         // Criar descrição completa incluindo serviços adicionais
         let description = `${vmName} - ${vmCpuCores} vCPU, ${vmRamGb}GB RAM, ${vmStorageSize}GB ${vmStorageType}, ${vmOperatingSystem}`;
-        
+
         // Adicionar serviços adicionais na descrição
         const additionalServices = [];
         if (vmBackupSize > 0) additionalServices.push(`Backup ${vmBackupSize}GB`);
         if (vmAdditionalIp) additionalServices.push('IP Adicional');
         if (vmSnapshot) additionalServices.push('Snapshot');
         if (vmVpnSiteToSite) additionalServices.push('VPN Site-to-Site');
-        
+
         if (additionalServices.length > 0) {
             description += ` - ${additionalServices.join(', ')}`;
         }
@@ -1099,7 +1119,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         }
 
         // Handle products - check multiple possible locations and formats
-        let products = [];
+        let products: Product[] = [];
         if (proposal.products && Array.isArray(proposal.products)) {
             products = proposal.products;
         } else if (proposal.items && Array.isArray(proposal.items)) {
@@ -1116,12 +1136,12 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         setAddedProducts(products);
         setSelectedStatus(proposal.status); // Load the status
-        
+
         // Load contract period
         if (proposal.contractPeriod) {
             setVmContractPeriod(proposal.contractPeriod);
         }
-        
+
         // Load VM specific data from the first product if available
         if (products && products.length > 0) {
             const firstProduct = products[0];
@@ -1133,7 +1153,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 if (firstProduct.details.storageSize) setVmStorageSize(firstProduct.details.storageSize);
                 if (firstProduct.details.networkSpeed) setVmNetworkSpeed(firstProduct.details.networkSpeed);
                 if (firstProduct.details.operatingSystem) setVmOperatingSystem(firstProduct.details.operatingSystem);
-                
+
                 // Carregar serviços adicionais
                 if (firstProduct.details.backupSize !== undefined) setVmBackupSize(firstProduct.details.backupSize);
                 if (firstProduct.details.additionalIp !== undefined) setVmAdditionalIp(firstProduct.details.additionalIp);
@@ -1141,7 +1161,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 if (firstProduct.details.vpnSiteToSite !== undefined) setVmVpnSiteToSite(firstProduct.details.vpnSiteToSite);
             }
         }
-        
+
         // Load discount settings if available
         if (proposal.applySalespersonDiscount !== undefined) {
             setApplySalespersonDiscount(proposal.applySalespersonDiscount);
@@ -1149,7 +1169,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         if (proposal.appliedDirectorDiscountPercentage !== undefined) {
             setAppliedDirectorDiscountPercentage(proposal.appliedDirectorDiscountPercentage);
         }
-        
+
         setViewMode('calculator');
     };
 
@@ -1177,7 +1197,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         }
 
         // Handle products - check multiple possible locations and formats
-        let products = [];
+        let products: Product[] = [];
         if (proposal.products && Array.isArray(proposal.products)) {
             products = proposal.products;
         } else if (proposal.items && Array.isArray(proposal.items)) {
@@ -1194,12 +1214,12 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         setAddedProducts(products);
         setSelectedStatus(proposal.status);
-        
+
         // Load contract period
         if (proposal.contractPeriod) {
             setVmContractPeriod(proposal.contractPeriod);
         }
-        
+
         // Load VM specific data from the first product if available
         if (products && products.length > 0) {
             const firstProduct = products[0];
@@ -1211,7 +1231,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 if (firstProduct.details.storageSize) setVmStorageSize(firstProduct.details.storageSize);
                 if (firstProduct.details.networkSpeed) setVmNetworkSpeed(firstProduct.details.networkSpeed);
                 if (firstProduct.details.operatingSystem) setVmOperatingSystem(firstProduct.details.operatingSystem);
-                
+
                 // Carregar serviços adicionais
                 if (firstProduct.details.backupSize !== undefined) setVmBackupSize(firstProduct.details.backupSize);
                 if (firstProduct.details.additionalIp !== undefined) setVmAdditionalIp(firstProduct.details.additionalIp);
@@ -1219,7 +1239,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 if (firstProduct.details.vpnSiteToSite !== undefined) setVmVpnSiteToSite(firstProduct.details.vpnSiteToSite);
             }
         }
-        
+
         setViewMode('proposal-summary');
     };
 
@@ -1609,12 +1629,12 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         try {
             setSaving(true);
-            
+
             // Calcular totais
             const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const calculatedTotalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
             const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
-            
+
             // Determinar versão
             let version = 1;
             if (saveAsNewVersion && currentProposal) {
@@ -1622,7 +1642,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             } else if (currentProposal) {
                 version = currentProposal.version || 1;
             }
-            
+
             // Preparar dados da proposta
             const proposalData = {
                 title: `Proposta VM V${version} - ${clientData?.name || 'Cliente'}`,
@@ -1648,7 +1668,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             };
 
             let response;
-            
+
             if (saveAsNewVersion || !proposalId) {
                 // Criar nova proposta/versão
                 response = await fetch('/api/proposals', {
@@ -1718,24 +1738,24 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Dados do Cliente</h3>
                                 <div className="space-y-2 text-sm">
                                     <p><strong>Nome:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.name 
-                                            ? currentProposal.client.name 
-                                            : currentProposal.clientData?.name || 
-                                              (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.name
+                                            ? currentProposal.client.name
+                                            : currentProposal.clientData?.name ||
+                                            (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
                                     }</p>
                                     <p><strong>Email:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.email 
-                                            ? currentProposal.client.email 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.email
+                                            ? currentProposal.client.email
                                             : currentProposal.clientData?.email || 'N/A'
                                     }</p>
                                     <p><strong>Telefone:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.phone 
-                                            ? currentProposal.client.phone 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.phone
+                                            ? currentProposal.client.phone
                                             : currentProposal.clientData?.phone || 'N/A'
                                     }</p>
                                     <p><strong>Contato:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.contact 
-                                            ? currentProposal.client.contact 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.contact
+                                            ? currentProposal.client.contact
                                             : currentProposal.clientData?.contact || 'N/A'
                                     }</p>
                                 </div>
@@ -1744,8 +1764,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Nome do Projeto</h3>
                                 <div className="space-y-2 text-sm">
                                     <p className="font-medium text-base">{
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.projectName 
-                                            ? currentProposal.client.projectName 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.projectName
+                                            ? currentProposal.client.projectName
                                             : currentProposal.clientData?.projectName || 'Projeto não informado'
                                     }</p>
                                     <p className="text-gray-600 text-xs mt-2">
@@ -1874,8 +1894,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                     <TableCell>{p.baseId || p.id}</TableCell>
                                                     <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Sem nome'} (v{p.version})</TableCell>
                                                     <TableCell>{
-                                                        typeof p.client === 'object' && p.client?.projectName 
-                                                            ? p.client.projectName 
+                                                        typeof p.client === 'object' && p.client?.projectName
+                                                            ? p.client.projectName
                                                             : p.clientData?.projectName || 'Projeto não informado'
                                                     }</TableCell>
                                                     <TableCell>{p.createdAt ? (
@@ -2284,7 +2304,6 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div className="text-lg font-bold mb-2">Cálculo de Preços:</div>
                                                             <div className="space-y-2">
                                                                 <div className="flex justify-between"><span>Custo Base:</span> <span>{formatCurrency(calculateVMCost)}</span></div>
-                                                                <div className="flex justify-between"><span>Lucro (Markup de {markup}%):</span> <span>{formatCurrency(costBreakdown.markupAmount)}</span></div>
                                                                 {contractDiscount > 0 && (
                                                                     <div className="flex justify-between text-orange-400"><span>Desconto Contrato ({contractDiscount}%):</span> <span>-{formatCurrency(costBreakdown.contractDiscount.amount)}</span></div>
                                                                 )}
@@ -2301,7 +2320,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            {currentUser?.role === 'diretor' && (
+                                                            {currentUser?.role === 'director' && (
                                                                 <div className="space-y-2 mt-4">
                                                                     <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
                                                                     <div className="flex items-center space-x-2">
@@ -2855,10 +2874,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
                                                                     {editingCards.recursosBase ? (
-                                                                        <Input 
-                                                                            value={formatBrazilianNumber(vcpuWindowsCost)} 
-                                                                            onChange={(e) => { setVcpuWindowsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(vcpuWindowsCost)}
+                                                                            onChange={(e) => { setVcpuWindowsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -2872,10 +2891,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
                                                                     {editingCards.recursosBase ? (
-                                                                        <Input 
-                                                                            value={formatBrazilianNumber(vcpuLinuxCost)} 
-                                                                            onChange={(e) => { setVcpuLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(vcpuLinuxCost)}
+                                                                            onChange={(e) => { setVcpuLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -2890,10 +2909,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div>
                                                                 <Label>Custo Mensal</Label>
                                                                 {editingCards.recursosBase ? (
-                                                                    <Input 
-                                                                        value={formatBrazilianNumber(ramCost)} 
-                                                                        onChange={(e) => { setRamCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    <Input
+                                                                        value={formatBrazilianNumber(ramCost)}
+                                                                        onChange={(e) => { setRamCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                        className="bg-slate-800 border-slate-700"
                                                                     />
                                                                 ) : (
                                                                     <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -2949,10 +2968,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
                                                                     {editingCards.armazenamento ? (
-                                                                        <Input 
-                                                                            value={formatBrazilianNumber(hddSasCost)} 
-                                                                            onChange={(e) => { setHddSasCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(hddSasCost)}
+                                                                            onChange={(e) => { setHddSasCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -2966,10 +2985,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
                                                                     {editingCards.armazenamento ? (
-                                                                        <Input 
-                                                                            value={formatBrazilianNumber(ssdPerformanceCost)} 
-                                                                            onChange={(e) => { setSsdPerformanceCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(ssdPerformanceCost)}
+                                                                            onChange={(e) => { setSsdPerformanceCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -2983,10 +3002,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
                                                                     {editingCards.armazenamento ? (
-                                                                        <Input 
-                                                                            value={formatBrazilianNumber(nvmeCost)} 
-                                                                            onChange={(e) => { setNvmeCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(nvmeCost)}
+                                                                            onChange={(e) => { setNvmeCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3043,10 +3062,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
                                                                     {editingCards.placaRede ? (
-                                                                        <Input 
-                                                                            value={formatBrazilianNumber(network1GbpsCost)} 
-                                                                            onChange={(e) => { setNetwork1GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(network1GbpsCost)}
+                                                                            onChange={(e) => { setNetwork1GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3060,10 +3079,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Custo Mensal</Label>
                                                                     {editingCards.placaRede ? (
-                                                                        <Input 
-                                                                            value={formatBrazilianNumber(network10GbpsCost)} 
-                                                                            onChange={(e) => { setNetwork10GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(network10GbpsCost)}
+                                                                            onChange={(e) => { setNetwork10GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3118,10 +3137,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
                                                                         {editingCards.sistemaOperacional ? (
-                                                                            <Input 
-                                                                                value={formatBrazilianNumber(windowsServerCost)} 
-                                                                                onChange={(e) => { setWindowsServerCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(windowsServerCost)}
+                                                                                onChange={(e) => { setWindowsServerCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
                                                                             />
                                                                         ) : (
                                                                             <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3135,10 +3154,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
                                                                         {editingCards.sistemaOperacional ? (
-                                                                            <Input 
-                                                                                value={formatBrazilianNumber(windows10ProCost)} 
-                                                                                onChange={(e) => { setWindows10ProCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(windows10ProCost)}
+                                                                                onChange={(e) => { setWindows10ProCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
                                                                             />
                                                                         ) : (
                                                                             <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3154,10 +3173,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
                                                                         {editingCards.sistemaOperacional ? (
-                                                                            <Input 
-                                                                                value={formatBrazilianNumber(ubuntuCost)} 
-                                                                                onChange={(e) => { setUbuntuCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(ubuntuCost)}
+                                                                                onChange={(e) => { setUbuntuCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
                                                                             />
                                                                         ) : (
                                                                             <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3171,10 +3190,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
                                                                         {editingCards.sistemaOperacional ? (
-                                                                            <Input 
-                                                                                value={formatBrazilianNumber(centosCost)} 
-                                                                                onChange={(e) => { setCentosCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(centosCost)}
+                                                                                onChange={(e) => { setCentosCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
                                                                             />
                                                                         ) : (
                                                                             <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3190,10 +3209,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
                                                                         {editingCards.sistemaOperacional ? (
-                                                                            <Input 
-                                                                                value={formatBrazilianNumber(debianCost)} 
-                                                                                onChange={(e) => { setDebianCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(debianCost)}
+                                                                                onChange={(e) => { setDebianCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
                                                                             />
                                                                         ) : (
                                                                             <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3207,10 +3226,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <div>
                                                                         <Label>Custo Mensal</Label>
                                                                         {editingCards.sistemaOperacional ? (
-                                                                            <Input 
-                                                                                value={formatBrazilianNumber(rockyLinuxCost)} 
-                                                                                onChange={(e) => { setRockyLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                                className="bg-slate-800 border-slate-700" 
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(rockyLinuxCost)}
+                                                                                onChange={(e) => { setRockyLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
                                                                             />
                                                                         ) : (
                                                                             <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3266,10 +3285,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div>
                                                                 <Label>Custo Mensal</Label>
                                                                 {editingCards.backup ? (
-                                                                    <Input 
-                                                                        value={formatBrazilianNumber(backupCostPerGb)} 
-                                                                        onChange={(e) => { setBackupCostPerGb(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    <Input
+                                                                        value={formatBrazilianNumber(backupCostPerGb)}
+                                                                        onChange={(e) => { setBackupCostPerGb(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                        className="bg-slate-800 border-slate-700"
                                                                     />
                                                                 ) : (
                                                                     <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3320,10 +3339,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div>
                                                                 <Label>Custo Mensal</Label>
                                                                 {editingCards.ipAdicional ? (
-                                                                    <Input 
-                                                                        value={formatBrazilianNumber(additionalIpCost)} 
-                                                                        onChange={(e) => { setAdditionalIpCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    <Input
+                                                                        value={formatBrazilianNumber(additionalIpCost)}
+                                                                        onChange={(e) => { setAdditionalIpCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                        className="bg-slate-800 border-slate-700"
                                                                     />
                                                                 ) : (
                                                                     <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3377,10 +3396,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div>
                                                                 <Label>Custo Mensal</Label>
                                                                 {editingCards.snapshot ? (
-                                                                    <Input 
-                                                                        value={formatBrazilianNumber(snapshotCost)} 
-                                                                        onChange={(e) => { setSnapshotCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    <Input
+                                                                        value={formatBrazilianNumber(snapshotCost)}
+                                                                        onChange={(e) => { setSnapshotCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                        className="bg-slate-800 border-slate-700"
                                                                     />
                                                                 ) : (
                                                                     <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3431,10 +3450,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div>
                                                                 <Label>Custo Mensal</Label>
                                                                 {editingCards.vpnSiteToSite ? (
-                                                                    <Input 
-                                                                        value={formatBrazilianNumber(vpnSiteToSiteCost)} 
-                                                                        onChange={(e) => { setVpnSiteToSiteCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    <Input
+                                                                        value={formatBrazilianNumber(vpnSiteToSiteCost)}
+                                                                        onChange={(e) => { setVpnSiteToSiteCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                        className="bg-slate-800 border-slate-700"
                                                                     />
                                                                 ) : (
                                                                     <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3490,10 +3509,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Desconto (%)</Label>
                                                                     {editingCards.prazosContratuais ? (
-                                                                        <Input 
-                                                                            value={contractDiscounts[12]} 
-                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 12: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={contractDiscounts[12]}
+                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 12: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3507,10 +3526,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Desconto (%)</Label>
                                                                     {editingCards.prazosContratuais ? (
-                                                                        <Input 
-                                                                            value={contractDiscounts[24]} 
-                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 24: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={contractDiscounts[24]}
+                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 24: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3524,10 +3543,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Desconto (%)</Label>
                                                                     {editingCards.prazosContratuais ? (
-                                                                        <Input 
-                                                                            value={contractDiscounts[36]} 
-                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 36: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={contractDiscounts[36]}
+                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 36: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3541,10 +3560,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Desconto (%)</Label>
                                                                     {editingCards.prazosContratuais ? (
-                                                                        <Input 
-                                                                            value={contractDiscounts[48]} 
-                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 48: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={contractDiscounts[48]}
+                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 48: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3558,10 +3577,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 <div>
                                                                     <Label>Desconto (%)</Label>
                                                                     {editingCards.prazosContratuais ? (
-                                                                        <Input 
-                                                                            value={contractDiscounts[60]} 
-                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 60: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }} 
-                                                                            className="bg-slate-800 border-slate-700" 
+                                                                        <Input
+                                                                            value={contractDiscounts[60]}
+                                                                            onChange={(e) => { setContractDiscounts(prev => ({ ...prev, 60: parseFloat(e.target.value.replace(",", ".")) || 0 })); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
                                                                         />
                                                                     ) : (
                                                                         <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3617,10 +3636,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div>
                                                                 <Label>Valor Base</Label>
                                                                 {editingCards.taxaSetup ? (
-                                                                    <Input 
-                                                                        value={formatBrazilianNumber(setupFee)} 
-                                                                        onChange={(e) => { setSetupFee(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    <Input
+                                                                        value={formatBrazilianNumber(setupFee)}
+                                                                        onChange={(e) => { setSetupFee(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                        className="bg-slate-800 border-slate-700"
                                                                     />
                                                                 ) : (
                                                                     <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3675,10 +3694,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div>
                                                                 <Label>Valor Mensal</Label>
                                                                 {editingCards.gestaoSuporte ? (
-                                                                    <Input 
-                                                                        value={formatBrazilianNumber(managementAndSupportCost)} 
-                                                                        onChange={(e) => { setManagementAndSupportCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }} 
-                                                                        className="bg-slate-800 border-slate-700" 
+                                                                    <Input
+                                                                        value={formatBrazilianNumber(managementAndSupportCost)}
+                                                                        onChange={(e) => { setManagementAndSupportCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                        className="bg-slate-800 border-slate-700"
                                                                     />
                                                                 ) : (
                                                                     <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
@@ -3757,7 +3776,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                                 {/* Controles de Desconto */}
                                                                 <div className="space-y-4 p-4 bg-slate-800 rounded-lg mt-4">
-                                                                    {(currentUser?.role !== 'diretor' && currentUser?.role !== 'admin') && (
+                                                                    {(currentUser?.role !== 'director' && currentUser?.role !== 'admin') && (
                                                                         <div className="flex items-center space-x-2">
                                                                             <Checkbox
                                                                                 id="salesperson-discount-toggle"
@@ -3767,7 +3786,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                             <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                                                         </div>
                                                                     )}
-                                                                    {(currentUser?.role === 'diretor' || currentUser?.role === 'admin') && (
+                                                                    {(currentUser?.role === 'director' || currentUser?.role === 'admin') && (
                                                                         <div className="space-y-2">
                                                                             <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
                                                                             <div className="flex items-center space-x-2">
@@ -3850,13 +3869,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                 <div className="flex justify-end gap-4 mt-8">
                                     {hasChanged && currentProposal?.id && (
-                                        <Button 
+                                        <Button
                                             onClick={() => {
                                                 if (currentProposal.id) {
                                                     handleSave(currentProposal.id, true);
                                                     setHasChanged(false);
                                                 }
-                                            }} 
+                                            }}
                                             className="bg-blue-600 hover:bg-blue-700"
                                             disabled={addedProducts.length === 0}
                                         >

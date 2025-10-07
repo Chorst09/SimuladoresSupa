@@ -23,16 +23,16 @@ import { ClientManagerForm } from './ClientManagerForm';
 // Interfaces locais
 interface ClientData {
     name: string;
-    contact: string;
-    projectName: string;
-    email: string;
-    phone: string;
+    contact?: string;
+    projectName?: string;
+    email?: string;
+    phone?: string;
 }
 
 interface AccountManagerData {
     name: string;
-    email: string;
-    phone: string;
+    email?: string;
+    phone?: string;
     distributorId?: string;
 }
 import { ClientManagerInfo } from './ClientManagerInfo';
@@ -776,7 +776,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 pabxPrices.hosting[range as keyof typeof pabxPrices.hosting];
             const deviceRentalCost = pabxIncludeDevices ?
                 (pabxPrices.device[range as keyof typeof pabxPrices.device] * pabxDeviceQuantity) : 0;
-            const aiAgentCost = pabxIncludeAI ? (aiAgentPrices as any)[pabxAIPlan]?.price || 0 : 0;
+            const aiAgentCost = pabxIncludeAI ? (aiAgentPrices as Record<string, any>)[pabxAIPlan]?.price || 0 : 0;
 
             return {
                 setup,
@@ -836,7 +836,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             const deviceRentalCost = 0;
 
             // Custo do Agente IA (se incluído)
-            const aiAgentCost = pabxIncludeAI ? (aiAgentPrices as any)[pabxAIPlan]?.price || 0 : 0;
+            const aiAgentCost = pabxIncludeAI ? (aiAgentPrices as Record<string, any>)[pabxAIPlan]?.price || 0 : 0;
 
             console.log('Cálculo Premium:', {
                 contractDuration,
@@ -1034,7 +1034,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         }
 
         // Handle items/products - check multiple possible locations
-        let items = [];
+        let items: ProposalItem[] = [];
         if (proposal.items && Array.isArray(proposal.items)) {
             items = proposal.items;
         } else if (proposal.products && Array.isArray(proposal.products)) {
@@ -1079,7 +1079,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         console.log("Proposal products from Firebase in editProposal:", proposal.products);
 
         // Handle items/products - check multiple possible locations
-        let items = [];
+        let items: ProposalItem[] = [];
         if (proposal.items && Array.isArray(proposal.items)) {
             items = proposal.items;
         } else if (proposal.products && Array.isArray(proposal.products)) {
@@ -1325,7 +1325,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     };
 
     const filteredProposals = savedProposals.filter(p => {
-        const clientName = p.client?.name || '';
+        const clientName = typeof p.client === 'string' ? p.client : p.client?.name || '';
         const proposalId = p.id || '';
         const searchTermLower = searchTerm.toLowerCase();
         return (
@@ -1692,8 +1692,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                             </div>
                             <div>
                                 <p><strong>Data da Proposta:</strong> {currentProposal.createdAt ? (
-                                    (typeof currentProposal.createdAt === 'object' && 'toDate' in currentProposal.createdAt)
-                                        ? new Date(currentProposal.createdAt.toDate()).toLocaleDateString('pt-BR')
+                                    (typeof currentProposal.createdAt === 'object' && currentProposal.createdAt && 'toDate' in currentProposal.createdAt)
+                                        ? new Date((currentProposal.createdAt as any).toDate()).toLocaleDateString('pt-BR')
                                         : (isNaN(new Date(currentProposal.createdAt).getTime()) ? 'N/A' : new Date(currentProposal.createdAt).toLocaleDateString('pt-BR'))
                                 ) : 'N/A'}</p>
                                 <p><strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}</p>
@@ -2292,7 +2292,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
                                 {/* Controles de Desconto */}
                                 <div className="space-y-4 p-4 bg-slate-800 rounded-lg mt-4">
-                                    {(currentUser?.role !== 'diretor' && currentUser?.role !== 'admin') && (
+                                    {(currentUser?.role !== 'director' && currentUser?.role !== 'admin') && (
                                         <div className="flex items-center space-x-2">
                                             <Checkbox
                                                 id="salesperson-discount-toggle"
@@ -2302,7 +2302,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                             <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                         </div>
                                     )}
-                                    {(currentUser?.role === 'diretor' || currentUser?.role === 'admin') && (
+                                    {(currentUser?.role === 'director' || currentUser?.role === 'admin') && (
                                         <div className="space-y-2">
                                             <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
                                             <div className="flex items-center space-x-2">
@@ -2442,7 +2442,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                             lucroLiquido: lucroLiquido,
                             rentabilidade: rentabilidade,
                             paybackMeses: 0, // PABX/SIP typically has no setup fee
-                            taxaInstalacao: pabxResult?.setupFee || 0
+                            taxaInstalacao: pabxResult?.setup || 0
                         };
 
                         return (
@@ -2651,7 +2651,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                             const newPrice = parseFloat(e.target.value) || 0;
                                                             setAiAgentPrices(prev => ({
                                                                 ...prev,
-                                                                [plan]: { ...prev[plan], price: newPrice }
+                                                                [plan]: { ...(prev as any)[plan], price: newPrice }
                                                             }));
                                                         }}
                                                     />
@@ -2680,7 +2680,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                     variant={isEditingSIP ? "secondary" : "outline"}
                                     size="sm"
                                     onClick={isEditingSIP ? () => {
-                                        if (currentProposal.id) {
+                                        if (currentProposal?.id) {
                                             handleSave(currentProposal.id, true); // Salvar como nova versão
                                         }
                                     } : () => setIsEditingSIP(true)}
@@ -2735,8 +2735,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                     <TableCell key={`assinatura-${plan}`} className="text-center bg-blue-600/20">
                                                         {isEditingSIP ? (
                                                             <div className="space-y-1">
-                                                                <Input type="number" value={data.max} onChange={(e) => setSipConfig(prev => ({ ...prev, additionalChannels: { ...prev.additionalChannels, assinatura: { ...prev.additionalChannels.assinatura, [plan]: { ...prev.additionalChannels.assinatura[plan], max: Number(e.target.value) } } } }))} className="bg-slate-800 text-center text-xs" placeholder="Canais" />
-                                                                <Input type="number" value={data.price} onChange={(e) => setSipConfig(prev => ({ ...prev, additionalChannels: { ...prev.additionalChannels, assinatura: { ...prev.additionalChannels.assinatura, [plan]: { ...prev.additionalChannels.assinatura[plan], price: Number(e.target.value) } } } }))} className="bg-slate-800 text-center text-xs" placeholder="Preço" />
+                                                                <Input type="number" value={data.max} onChange={(e) => setSipConfig(prev => ({ ...prev, additionalChannels: { ...prev.additionalChannels, assinatura: { ...prev.additionalChannels.assinatura, [plan]: { ...(prev.additionalChannels.assinatura as any)[plan], max: Number(e.target.value) } } } }))} className="bg-slate-800 text-center text-xs" placeholder="Canais" />
+                                                                <Input type="number" value={data.price} onChange={(e) => setSipConfig(prev => ({ ...prev, additionalChannels: { ...prev.additionalChannels, assinatura: { ...prev.additionalChannels.assinatura, [plan]: { ...(prev.additionalChannels.assinatura as any)[plan], price: Number(e.target.value) } } } }))} className="bg-slate-800 text-center text-xs" placeholder="Preço" />
                                                             </div>
                                                         ) : (
                                                             `Até ${data.max} canais<br/>${formatCurrency(data.price)} por canal adicional`
@@ -2754,8 +2754,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                     <TableCell key={`franquia-${plan}`} className="text-center">
                                                         {isEditingSIP ? (
                                                             <div className="space-y-1">
-                                                                <Input type="number" value={data.max} onChange={(e) => setSipConfig(prev => ({ ...prev, additionalChannels: { ...prev.additionalChannels, franquia: { ...prev.additionalChannels.franquia, [plan]: { ...prev.additionalChannels.franquia[plan], max: Number(e.target.value) } } } }))} className="bg-slate-800 text-center text-xs" placeholder="Canais" />
-                                                                <Input type="number" value={data.price} onChange={(e) => setSipConfig(prev => ({ ...prev, additionalChannels: { ...prev.additionalChannels, franquia: { ...prev.additionalChannels.franquia, [plan]: { ...prev.additionalChannels.franquia[plan], price: Number(e.target.value) } } } }))} className="bg-slate-800 text-center text-xs" placeholder="Preço" />
+                                                                <Input type="number" value={data.max} onChange={(e) => setSipConfig(prev => ({ ...prev, additionalChannels: { ...prev.additionalChannels, franquia: { ...prev.additionalChannels.franquia, [plan]: { ...(prev.additionalChannels.franquia as any)[plan], max: Number(e.target.value) } } } }))} className="bg-slate-800 text-center text-xs" placeholder="Canais" />
+                                                                <Input type="number" value={data.price} onChange={(e) => setSipConfig(prev => ({ ...prev, additionalChannels: { ...prev.additionalChannels, franquia: { ...prev.additionalChannels.franquia, [plan]: { ...(prev.additionalChannels.franquia as any)[plan], price: Number(e.target.value) } } } }))} className="bg-slate-800 text-center text-xs" placeholder="Preço" />
                                                             </div>
                                                         ) : (
                                                             `Até ${data.max} canais<br/>${formatCurrency(data.price)} por canal adicional/mês`
