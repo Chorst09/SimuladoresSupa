@@ -2042,11 +2042,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             </div>
                                                         </div>
                                                     </CardHeader>
-                                                    <CardContent className="space-y-4">
+                                                    <CardContent className="space-y-3">
                                                         {/* Nome da VM */}
                                                         <div>
-                                                            <Label className="flex items-center gap-2 mb-2 text-white">
-                                                                <Edit className="h-4 w-4" />
+                                                            <Label className="mb-2 block text-white">
                                                                 Nome da VM
                                                             </Label>
                                                             <Input
@@ -2057,10 +2056,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                         </div>
 
                                                         {/* vCPU Cores e Memória RAM - Layout compacto */}
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                             <div>
-                                                                <Label className="flex items-center gap-2 mb-2 text-white">
-                                                                    <Cpu className="h-4 w-4" />
+                                                                <Label className="mb-2 block text-white">
                                                                     vCPU Cores
                                                                 </Label>
                                                                 <Input
@@ -2071,8 +2069,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 />
                                                             </div>
                                                             <div>
-                                                                <Label className="flex items-center gap-2 mb-2 text-white">
-                                                                    <MemoryStick className="h-4 w-4" />
+                                                                <Label className="mb-2 block text-white">
                                                                     Memória RAM (GB)
                                                                 </Label>
                                                                 <Input
@@ -2086,8 +2083,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                         {/* Tipo de Armazenamento */}
                                                         <div>
-                                                            <Label className="flex items-center gap-2 mb-2 text-white">
-                                                                <HardDrive className="h-4 w-4" />
+                                                            <Label className="mb-2 block text-white">
                                                                 Tipo de Armazenamento
                                                             </Label>
                                                             <Select value={vmStorageType} onValueChange={setVmStorageType}>
@@ -2104,8 +2100,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                         {/* Armazenamento */}
                                                         <div>
-                                                            <Label className="flex items-center gap-2 mb-2 text-white">
-                                                                <HardDrive className="h-4 w-4" />
+                                                            <Label className="mb-2 block text-white">
                                                                 Armazenamento {vmStorageType} (GB)
                                                             </Label>
                                                             <Input
@@ -2118,8 +2113,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                         {/* Placa de Rede */}
                                                         <div>
-                                                            <Label className="flex items-center gap-2 mb-2 text-white">
-                                                                <Network className="h-4 w-4" />
+                                                            <Label className="mb-2 block text-white">
                                                                 Placa de Rede
                                                             </Label>
                                                             <Select value={vmNetworkSpeed} onValueChange={setVmNetworkSpeed}>
@@ -2135,8 +2129,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                         {/* Sistema Operacional */}
                                                         <div>
-                                                            <Label className="flex items-center gap-2 mb-2 text-white">
-                                                                <Settings className="h-4 w-4" />
+                                                            <Label className="mb-2 block text-white">
                                                                 Sistema Operacional
                                                             </Label>
                                                             <Select value={vmOperatingSystem} onValueChange={setVmOperatingSystem}>
