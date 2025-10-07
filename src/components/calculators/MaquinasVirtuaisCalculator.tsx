@@ -2042,10 +2042,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             </div>
                                                         </div>
                                                     </CardHeader>
-                                                    <CardContent className="space-y-6">
+                                                    <CardContent className="space-y-4">
                                                         {/* Nome da VM */}
                                                         <div>
-                                                            <Label className="flex items-center gap-2 mb-2">
+                                                            <Label className="flex items-center gap-2 mb-2 text-white">
                                                                 <Edit className="h-4 w-4" />
                                                                 Nome da VM
                                                             </Label>
@@ -2056,10 +2056,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             />
                                                         </div>
 
-                                                        {/* vCPU Cores e Memória RAM */}
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        {/* vCPU Cores e Memória RAM - Layout compacto */}
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div>
-                                                                <Label className="flex items-center gap-2 mb-2">
+                                                                <Label className="flex items-center gap-2 mb-2 text-white">
                                                                     <Cpu className="h-4 w-4" />
                                                                     vCPU Cores
                                                                 </Label>
@@ -2071,7 +2071,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 />
                                                             </div>
                                                             <div>
-                                                                <Label className="flex items-center gap-2 mb-2">
+                                                                <Label className="flex items-center gap-2 mb-2 text-white">
                                                                     <MemoryStick className="h-4 w-4" />
                                                                     Memória RAM (GB)
                                                                 </Label>
@@ -2086,7 +2086,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                         {/* Tipo de Armazenamento */}
                                                         <div>
-                                                            <Label className="flex items-center gap-2 mb-2">
+                                                            <Label className="flex items-center gap-2 mb-2 text-white">
                                                                 <HardDrive className="h-4 w-4" />
                                                                 Tipo de Armazenamento
                                                             </Label>
@@ -2104,7 +2104,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                         {/* Armazenamento */}
                                                         <div>
-                                                            <Label className="flex items-center gap-2 mb-2">
+                                                            <Label className="flex items-center gap-2 mb-2 text-white">
                                                                 <HardDrive className="h-4 w-4" />
                                                                 Armazenamento {vmStorageType} (GB)
                                                             </Label>
@@ -2118,7 +2118,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                         {/* Placa de Rede */}
                                                         <div>
-                                                            <Label className="flex items-center gap-2 mb-2">
+                                                            <Label className="flex items-center gap-2 mb-2 text-white">
                                                                 <Network className="h-4 w-4" />
                                                                 Placa de Rede
                                                             </Label>
@@ -2135,7 +2135,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                         {/* Sistema Operacional */}
                                                         <div>
-                                                            <Label className="flex items-center gap-2 mb-2">
+                                                            <Label className="flex items-center gap-2 mb-2 text-white">
                                                                 <Settings className="h-4 w-4" />
                                                                 Sistema Operacional
                                                             </Label>
