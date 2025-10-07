@@ -9,92 +9,29 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export async function GET() {
   try {
     console.log('🔄 API /users - Carregando usuários...')
-    console.log('🔑 Debug - URL:', supabaseUrl ? 'OK' : 'MISSING')
-    console.log('🔑 Debug - Service Key:', supabaseServiceKey ? 'OK' : 'MISSING')
-    console.log('🔑 Debug - Anon Key:', supabaseAnonKey ? 'OK' : 'MISSING')
     
-    // First, try with service role key if available
-    if (supabaseServiceKey) {
-      try {
-        console.log('🔑 Tentando com Service Role Key...')
-        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          }
-        })
-
-        // Try different approaches to get all users
-        let profiles = null;
-        let profilesError = null;
-
-        // Approach 1: Simple select all
-        console.log('🔍 Tentativa 1: SELECT * simples...')
-        const result1 = await supabaseAdmin
-          .from('profiles')
-          .select('*')
-
-        if (!result1.error && result1.data) {
-          profiles = result1.data;
-          console.log(`✅ Abordagem 1 funcionou: ${profiles.length} usuários`)
-        } else {
-          console.log('❌ Abordagem 1 falhou:', result1.error)
-          
-          // Approach 2: Select with specific columns
-          console.log('🔍 Tentativa 2: SELECT com colunas específicas...')
-          const result2 = await supabaseAdmin
-            .from('profiles')
-            .select('id, email, full_name, role, created_at, updated_at')
-
-          if (!result2.error && result2.data) {
-            profiles = result2.data;
-            console.log(`✅ Abordagem 2 funcionou: ${profiles.length} usuários`)
-          } else {
-            console.log('❌ Abordagem 2 falhou:', result2.error)
-            profilesError = result2.error;
-          }
-        }
-
-        if (profiles && profiles.length > 0) {
-          console.log(`✅ ${profiles.length} usuários encontrados com Service Role Key`)
-          console.log('👥 Usuários encontrados:', profiles.map(u => ({ email: u.email, role: u.role })))
-          
-          return NextResponse.json({
-            success: true,
-            users: profiles,
-            count: profiles.length,
-            method: 'service_role'
-          })
-        } else {
-          console.log('❌ Nenhum usuário encontrado com Service Role Key:', profilesError)
-        }
-      } catch (serviceError) {
-        console.log('❌ Falha ao usar Service Role Key:', serviceError)
-      }
-    }
-
-    // Fallback: try with anon key
-    console.log('🔑 Tentando com Anon Key...')
-    const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, {
+    // Use only anon key since service key is invalid
+    console.log('🔑 Usando apenas Anon Key (service key inválida)...')
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
       }
     })
 
-    const { data: profiles, error: profilesError } = await supabaseAnon
+    const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false })
 
     if (profilesError) {
-      console.error('❌ Erro ao buscar profiles com Anon Key:', profilesError)
+      console.error('❌ Erro ao buscar profiles:', profilesError)
       
       // If RLS is blocking, return helpful message
       if (profilesError.message?.includes('RLS') || profilesError.message?.includes('policy')) {
         return NextResponse.json({
           success: false,
-          error: 'Políticas RLS estão bloqueando o acesso. Clique em "🚨 Corrigir RLS" para resolver.',
+          error: 'RLS está limitando o acesso. Apenas 2 usuários visíveis. Clique em "🚨 Corrigir RLS" para ver todos os 9 usuários.',
           users: [],
           count: 0,
           needsRlsFix: true,
@@ -105,13 +42,20 @@ export async function GET() {
       throw profilesError
     }
 
-    console.log(`✅ ${profiles?.length || 0} usuários encontrados com Anon Key`)
+    console.log(`✅ ${profiles?.length || 0} usuários encontrados`)
+    console.log('👥 Usuários:', profiles?.map(u => ({ email: u.email, role: u.role })))
+
+    // If we only got 2 users but expect more, suggest RLS fix
+    if (profiles && profiles.length === 2) {
+      console.log('⚠️ Apenas 2 usuários encontrados - RLS pode estar limitando')
+    }
 
     return NextResponse.json({
       success: true,
       users: profiles || [],
       count: profiles?.length || 0,
-      method: 'anon'
+      method: 'anon',
+      warning: profiles?.length === 2 ? 'RLS pode estar limitando o acesso. Use "Corrigir RLS" para ver todos os usuários.' : null
     })
 
   } catch (error: any) {

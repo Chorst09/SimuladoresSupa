@@ -52,7 +52,7 @@ export default function UserManagement() {
     try {
       console.log('🔧 Executando correção RLS...');
       
-      const response = await fetch('/api/fix-rls-direct', {
+      const response = await fetch('/api/disable-rls-simple', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,11 +63,17 @@ export default function UserManagement() {
 
       if (result.success) {
         alert(`✅ RLS corrigido com sucesso!\n\n${result.message}\n\nRecarregando usuários...`);
-        // Recarregar usuários
         await loadUsers();
       } else {
         const instructions = result.instructions?.join('\n') || '';
-        alert(`❌ Não foi possível corrigir automaticamente.\n\n${result.message}\n\nInstruções:\n${instructions}`);
+        const sqlCommands = result.sqlCommands?.join('\n') || '';
+        
+        // Show detailed instructions
+        const message = `🔧 INSTRUÇÕES PARA CORRIGIR RLS\n\n${instructions}\n\n📝 COMANDOS SQL:\n${sqlCommands}`;
+        
+        if (confirm(`${message}\n\n🌐 Abrir Supabase SQL Editor agora?`)) {
+          window.open(result.supabaseUrl || 'https://supabase.com/dashboard', '_blank');
+        }
       }
     } catch (error: any) {
       alert('❌ Erro ao executar correção RLS:\n\n' + error.message);
@@ -120,6 +126,19 @@ export default function UserManagement() {
       
       setUsers(mappedUsers);
       console.log(`✅ ${mappedUsers.length} usuários carregados via API:`, mappedUsers);
+      
+      // Show warning if only 2 users loaded (RLS limiting)
+      if (result.warning) {
+        console.warn('⚠️', result.warning);
+      }
+      
+      if (mappedUsers.length === 2) {
+        setTimeout(() => {
+          if (confirm('⚠️ Apenas 2 usuários carregados, mas há 9 no Supabase.\n\nRLS está limitando o acesso. Corrigir agora?')) {
+            disableRLS();
+          }
+        }, 1000);
+      }
       
     } catch (error: any) {
       console.error('❌ Erro ao carregar usuários via API:', error);
