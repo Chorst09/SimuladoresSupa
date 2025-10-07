@@ -48,37 +48,7 @@ export default function UserManagement() {
     }
   }, [isAdmin]);
 
-  const disableRLS = async () => {
-    try {
-      console.log('🔧 Executando correção RLS...');
-      
-      const response = await fetch('/api/disable-rls-simple', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
 
-      const result = await response.json();
-
-      if (result.success) {
-        alert(`✅ RLS corrigido com sucesso!\n\n${result.message}\n\nRecarregando usuários...`);
-        await loadUsers();
-      } else {
-        const instructions = result.instructions?.join('\n') || '';
-        const sqlCommands = result.sqlCommands?.join('\n') || '';
-        
-        // Show detailed instructions
-        const message = `🔧 INSTRUÇÕES PARA CORRIGIR RLS\n\n${instructions}\n\n📝 COMANDOS SQL:\n${sqlCommands}`;
-        
-        if (confirm(`${message}\n\n🌐 Abrir Supabase SQL Editor agora?`)) {
-          window.open(result.supabaseUrl || 'https://supabase.com/dashboard', '_blank');
-        }
-      }
-    } catch (error: any) {
-      alert('❌ Erro ao executar correção RLS:\n\n' + error.message);
-    }
-  };
 
   const loadUsers = async () => {
     try {
@@ -126,19 +96,6 @@ export default function UserManagement() {
       
       setUsers(mappedUsers);
       console.log(`✅ ${mappedUsers.length} usuários carregados via API:`, mappedUsers);
-      
-      // Show warning if only 2 users loaded (RLS limiting)
-      if (result.warning) {
-        console.warn('⚠️', result.warning);
-      }
-      
-      if (mappedUsers.length === 2) {
-        setTimeout(() => {
-          if (confirm('⚠️ Apenas 2 usuários carregados, mas há 9 no Supabase.\n\nRLS está limitando o acesso. Corrigir agora?')) {
-            disableRLS();
-          }
-        }, 1000);
-      }
       
     } catch (error: any) {
       console.error('❌ Erro ao carregar usuários via API:', error);
@@ -325,34 +282,6 @@ export default function UserManagement() {
         </div>
         
         <div className="flex space-x-2">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={disableRLS}
-          >
-            🚨 Corrigir RLS
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              try {
-                const response = await fetch('/api/users-debug');
-                const result = await response.json();
-                console.log('🔍 Debug results:', result);
-                
-                const summary = result.results?.map((r: any) => 
-                  `${r.method}: ${r.success ? `✅ ${r.count} usuários` : `❌ ${r.error}`}`
-                ).join('\n');
-                
-                alert(`🔍 Debug Results:\n\n${summary}\n\nRecomendação: ${result.recommendation?.message}`);
-              } catch (error) {
-                alert('Erro no debug: ' + error);
-              }
-            }}
-          >
-            🔍 Debug
-          </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
