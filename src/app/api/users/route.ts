@@ -1,16 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-// Use service role key for admin operations
+// Use available keys
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export async function GET() {
   try {
     console.log('🔄 API /users - Carregando usuários...')
     
-    // Create admin client with service role key to bypass RLS
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    // Try service role key first, fallback to anon key
+    const keyToUse = supabaseServiceKey || supabaseAnonKey
+    console.log('🔑 Usando chave:', supabaseServiceKey ? 'Service Role' : 'Anon')
+    
+    const supabaseClient = createClient(supabaseUrl, keyToUse, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
@@ -18,13 +22,25 @@ export async function GET() {
     })
 
     // Get all users from profiles table
-    const { data: profiles, error: profilesError } = await supabaseAdmin
+    const { data: profiles, error: profilesError } = await supabaseClient
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false })
 
     if (profilesError) {
       console.error('❌ Erro ao buscar profiles:', profilesError)
+      
+      // If RLS is blocking, return helpful message
+      if (profilesError.message?.includes('RLS') || profilesError.message?.includes('policy')) {
+        return NextResponse.json({
+          success: false,
+          error: 'Políticas RLS estão bloqueando o acesso. Execute o script SQL de correção.',
+          users: [],
+          count: 0,
+          needsRlsFix: true
+        })
+      }
+      
       throw profilesError
     }
 
@@ -59,6 +75,15 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: false,
         error: 'Email e senha são obrigatórios'
+      }, { status: 400 })
+    }
+
+    // Check if we have service role key for admin operations
+    if (!supabaseServiceKey) {
+      return NextResponse.json({
+        success: false,
+        error: 'Service Role Key não configurada. Use o cadastro público em /signup',
+        needsServiceKey: true
       }, { status: 400 })
     }
 

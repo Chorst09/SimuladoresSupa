@@ -160,7 +160,8 @@ export default function UserManagement() {
     try {
       console.log('🔄 Criando usuário via API...');
       
-      const response = await fetch('/api/users', {
+      // Try main API first
+      let response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,13 +174,33 @@ export default function UserManagement() {
         })
       });
 
-      const result = await response.json();
+      let result = await response.json();
+      
+      // If service key is missing, try simple API
+      if (!result.success && result.needsServiceKey) {
+        console.log('🔄 Service key não disponível, tentando API simples...');
+        
+        response = await fetch('/api/create-user-simple', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: newUserEmail,
+            password: newUserPassword,
+            name: newUserName,
+            role: newUserRole
+          })
+        });
+
+        result = await response.json();
+      }
       
       if (!result.success) {
         throw new Error(result.error || 'Erro ao criar usuário');
       }
 
-      alert('✅ Usuário criado com sucesso!');
+      alert('✅ Usuário criado com sucesso!\n\n' + (result.message || ''));
 
       // Reset form
       setNewUserEmail('');
