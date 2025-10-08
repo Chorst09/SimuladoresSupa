@@ -80,9 +80,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
     setIsFormOpen(true);
   };
 
-  const handleCreate = () => {
-    router.push('/calculators/maquinas-virtuais');
-  };
+
 
   const handleProposalTypeSelect = (type: 'commercial' | 'technical') => {
     setShowProposalTypeDialog(false);
@@ -156,15 +154,12 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-white">Propostas</h1>
               <p className="text-slate-400">
-                Gerencie suas propostas comerciais
+                Visualize e gerencie as propostas geradas nas calculadoras
               </p>
             </div>
           </div>
         </div>
-        <Button onClick={handleCreate} className="shrink-0 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0">
-          <PlusCircle className="h-4 w-4 mr-2" />
-          Nova Proposta
-        </Button>
+
       </div>
 
       {/* Estatísticas Modernas */}
@@ -373,14 +368,14 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
                   <h3 className="text-lg font-semibold text-white mb-2">Nenhuma proposta encontrada</h3>
                   <p className="text-slate-400">
                     {proposals.length === 0 
-                      ? "Você ainda não possui propostas. Crie sua primeira proposta!" 
+                      ? "Você ainda não possui propostas salvas. Use as calculadoras para gerar suas propostas!" 
                       : "Nenhuma proposta corresponde aos critérios de busca."}
                   </p>
                 </div>
-                {proposals.length === 0 && (
-                  <Button onClick={handleCreate} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0">
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Criar Primeira Proposta
+                {proposals.length === 0 && onBackToTop && (
+                  <Button onClick={onBackToTop} className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white border-0">
+                    <Calculator className="h-4 w-4 mr-2" />
+                    Ir para Calculadoras
                   </Button>
                 )}
               </div>
