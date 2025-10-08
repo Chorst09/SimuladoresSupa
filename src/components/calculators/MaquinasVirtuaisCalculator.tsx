@@ -404,17 +404,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
 
     // Estados para custos de recursos VM
-    const [vcpuWindowsCost, setVcpuWindowsCost] = useState<number>(0.2);
+    const [vcpuWindowsCost, setVcpuWindowsCost] = useState<number>(15);
     const [vcpuLinuxCost, setVcpuLinuxCost] = useState<number>(10);
     const [ramCost, setRamCost] = useState<number>(8);
-    const [hddSasCost, setHddSasCost] = useState<number>(0.2);
+    const [hddSasCost, setHddSasCost] = useState<number>(0.5);
     const [ssdPerformanceCost, setSsdPerformanceCost] = useState<number>(1.5);
     const [nvmeCost, setNvmeCost] = useState<number>(2.5);
     const [network1GbpsCost, setNetwork1GbpsCost] = useState<number>(0);
     const [network10GbpsCost, setNetwork10GbpsCost] = useState<number>(100);
     const [windowsServerCost, setWindowsServerCost] = useState<number>(135);
     const [windows10ProCost, setWindows10ProCost] = useState<number>(120);
-    const [windows11ProCost, setWindows11ProCost] = useState<number>(25);
+    const [windows11ProCost, setWindows11ProCost] = useState<number>(74);
     const [ubuntuCost, setUbuntuCost] = useState<number>(0);
     const [centosCost, setCentosCost] = useState<number>(0);
     const [debianCost, setDebianCost] = useState<number>(0);
