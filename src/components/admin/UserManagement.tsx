@@ -143,12 +143,10 @@ export default function UserManagement() {
     }
 
     try {
-      console.log('🔄 Criando usuário via API...');
+      console.log('🔄 Criando usuário via API admin...');
       
-      // Use simple API directly for now to avoid service key issues
-      console.log('🔄 Usando API simples para evitar problemas de service key...');
-      
-      const response = await fetch('/api/create-user-simple', {
+      // Use admin API that bypasses email confirmation
+      const response = await fetch('/api/create-user-admin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -164,10 +162,32 @@ export default function UserManagement() {
       const result = await response.json();
       
       if (!result.success) {
-        throw new Error(result.error || 'Erro ao criar usuário');
-      }
+        // Fallback to simple API if admin API fails
+        console.log('🔄 Admin API falhou, tentando API simples...');
+        
+        const fallbackResponse = await fetch('/api/create-user-simple', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: newUserEmail,
+            password: newUserPassword,
+            name: newUserName,
+            role: newUserRole
+          })
+        });
 
-      alert('✅ Usuário criado com sucesso!\n\n' + (result.message || ''));
+        const fallbackResult = await fallbackResponse.json();
+        
+        if (!fallbackResult.success) {
+          throw new Error(fallbackResult.error || 'Erro ao criar usuário');
+        }
+
+        alert('✅ Usuário criado com sucesso!\n\n⚠️ Nota: Pode ser necessário confirmar o email.\n\n' + (fallbackResult.message || ''));
+      } else {
+        alert('✅ Usuário criado com sucesso!\n\n✨ Email confirmado automaticamente!\n\n' + (result.message || ''));
+      }
 
       // Reset form
       setNewUserEmail('');
@@ -180,7 +200,7 @@ export default function UserManagement() {
       await loadUsers();
       
     } catch (error: any) {
-      console.error('❌ Erro ao criar usuário via API:', error);
+      console.error('❌ Erro ao criar usuário:', error);
       
       let description = error.message || 'Não foi possível criar o usuário.';
       if (error.message.includes('User already registered')) {
