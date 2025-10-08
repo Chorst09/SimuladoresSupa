@@ -55,17 +55,21 @@ export default function UserManagement() {
       console.log('🔄 Carregando usuários via API...');
       setLoading(true);
       
+      // Add timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      
       // Use the new API endpoint that bypasses RLS
-      const response = await fetch('/api/users', {
+      const response = await fetch(`/api/users?t=${timestamp}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
         },
       });
 
       const result = await response.json();
       
-      console.log('📊 Resposta da API:', result);
+      console.log('📊 Resposta da API (timestamp:', timestamp, '):', result);
       
       if (!result.success) {
         // Handle RLS blocking specifically
@@ -218,8 +222,12 @@ export default function UserManagement() {
       setNewUserRole('user');
       setIsAddDialogOpen(false);
 
-      // Reload users
-      await loadUsers();
+      // Reload users with a small delay to ensure database consistency
+      console.log('🔄 Recarregando lista de usuários...');
+      setTimeout(async () => {
+        await loadUsers();
+        console.log('✅ Lista de usuários recarregada');
+      }, 1000);
       
     } catch (error: any) {
       console.error('❌ Erro ao criar usuário:', error);

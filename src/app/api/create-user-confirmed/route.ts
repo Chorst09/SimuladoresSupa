@@ -84,26 +84,50 @@ export async function POST(request: Request) {
       }
     }
 
+    // Wait a moment for database consistency
+    await new Promise(resolve => setTimeout(resolve, 500))
+
     // Create or update profile with password_changed flag
-    const { error: profileError } = await supabaseAdmin
+    console.log('🔄 Criando profile para usuário:', authData.user.id)
+    
+    const profileData = {
+      id: authData.user.id,
+      email: email,
+      full_name: name || email,
+      role: role || 'user',
+      password_changed: false, // Force password change on first login
+      created_by_admin: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+    
+    console.log('📝 Dados do profile:', profileData)
+    
+    const { data: profileData_result, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .upsert({
-        id: authData.user.id,
-        email: email,
-        full_name: name || email,
-        role: role || 'user',
-        password_changed: false, // Force password change on first login
-        created_by_admin: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, {
+      .upsert(profileData, {
         onConflict: 'id'
       })
+      .select()
 
     if (profileError) {
       console.error('❌ Erro ao criar/atualizar profile:', profileError)
+      // Don't throw error, user was created successfully
     } else {
-      console.log('✅ Profile criado/atualizado')
+      console.log('✅ Profile criado/atualizado:', profileData_result)
+    }
+
+    // Verify the user was created by querying it back
+    const { data: verifyUser, error: verifyError } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('id', authData.user.id)
+      .single()
+    
+    if (verifyError) {
+      console.error('⚠️ Erro ao verificar usuário criado:', verifyError)
+    } else {
+      console.log('✅ Usuário verificado no banco:', verifyUser)
     }
 
     return NextResponse.json({
