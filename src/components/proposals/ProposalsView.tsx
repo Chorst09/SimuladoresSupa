@@ -26,6 +26,15 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
   const router = useRouter();
   const { user } = useAuth(); // Get the user object
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  // Debug effect
+  React.useEffect(() => {
+    console.log('ProposalsView Debug:', {
+      totalProposals: proposals.length,
+      proposals: proposals.slice(0, 3),
+      user: user
+    });
+  }, [proposals, user]);
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showProposalTypeDialog, setShowProposalTypeDialog] = useState(false);
@@ -126,77 +135,131 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 space-y-8">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div className="flex items-center space-x-4">
           {onBackToTop && (
             <Button 
               variant="outline" 
               onClick={onBackToTop}
-              className="flex items-center shrink-0"
+              className="flex items-center shrink-0 bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50"
               aria-label="Voltar para as calculadoras"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Voltar</span>
             </Button>
           )}
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Propostas</h1>
-            <p className="text-muted-foreground">
-              Gerencie suas propostas comerciais
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg">
+              <FileText className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-white">Propostas</h1>
+              <p className="text-slate-400">
+                Gerencie suas propostas comerciais
+              </p>
+            </div>
           </div>
         </div>
-        <Button onClick={handleCreate} className="shrink-0">
+        <Button onClick={handleCreate} className="shrink-0 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0">
           <PlusCircle className="h-4 w-4 mr-2" />
           Nova Proposta
         </Button>
       </div>
 
-      {/* Estatísticas */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Propostas</CardTitle>
-            <FileDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{proposals.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(proposals.reduce((sum, p) => sum + p.value, 0))}
+      {/* Estatísticas Modernas */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl hover:shadow-blue-500/25 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-slate-700/50 group overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-blue-800 opacity-10 group-hover:opacity-20 transition-opacity duration-300" />
+          <div className="relative p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 shadow-lg">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-white group-hover:text-cyan-300 transition-colors">
+                  {proposals.length}
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aprovadas</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {proposals.filter(p => p.status === 'Aprovada').length}
+            <div>
+              <h3 className="text-white font-semibold mb-1 group-hover:text-cyan-300 transition-colors">
+                Total de Propostas
+              </h3>
+              <p className="text-slate-400 text-sm">Todas as propostas</p>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Em Análise</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {proposals.filter(p => p.status === 'Em Análise').length}
+          </div>
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-white/5 to-transparent rounded-bl-full" />
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl hover:shadow-green-500/25 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-slate-700/50 group overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-600 to-green-800 opacity-10 group-hover:opacity-20 transition-opacity duration-300" />
+          <div className="relative p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-green-600 to-green-800 shadow-lg">
+                <DollarSign className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-white group-hover:text-cyan-300 transition-colors">
+                  {formatCurrency(proposals.reduce((sum, p) => sum + (p.value || 0), 0))}
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            <div>
+              <h3 className="text-white font-semibold mb-1 group-hover:text-cyan-300 transition-colors">
+                Valor Total
+              </h3>
+              <p className="text-slate-400 text-sm">Soma de todas as propostas</p>
+            </div>
+          </div>
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-white/5 to-transparent rounded-bl-full" />
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl hover:shadow-emerald-500/25 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-slate-700/50 group overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-emerald-800 opacity-10 group-hover:opacity-20 transition-opacity duration-300" />
+          <div className="relative p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 shadow-lg">
+                <User className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-white group-hover:text-cyan-300 transition-colors">
+                  {proposals.filter(p => p.status === 'Aprovada').length}
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-1 group-hover:text-cyan-300 transition-colors">
+                Aprovadas
+              </h3>
+              <p className="text-slate-400 text-sm">Propostas aprovadas</p>
+            </div>
+          </div>
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-white/5 to-transparent rounded-bl-full" />
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl hover:shadow-yellow-500/25 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-slate-700/50 group overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-600 to-yellow-800 opacity-10 group-hover:opacity-20 transition-opacity duration-300" />
+          <div className="relative p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-600 to-yellow-800 shadow-lg">
+                <Calendar className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold text-white group-hover:text-cyan-300 transition-colors">
+                  {proposals.filter(p => p.status === 'Em Análise').length}
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-1 group-hover:text-cyan-300 transition-colors">
+                Em Análise
+              </h3>
+              <p className="text-slate-400 text-sm">Aguardando aprovação</p>
+            </div>
+          </div>
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-white/5 to-transparent rounded-bl-full" />
+        </div>
       </div>
 
       {/* Filtro de Busca */}
@@ -205,96 +268,126 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
           placeholder="Buscar propostas..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
+          className="max-w-sm bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400 focus:border-cyan-400"
         />
       </div>
 
-      {/* Tabela de Propostas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Propostas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Título</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Gerente de Conta</TableHead>
-                <TableHead>Distribuidor</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data de Criação</TableHead>
-                <TableHead>Validade</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredProposals.map((proposal) => (
-                <TableRow key={proposal.id}>
-                  <TableCell className="font-medium">{proposal.title}</TableCell>
-                  <TableCell>{proposal.client}</TableCell>
-                  <TableCell>{proposal.accountManager}</TableCell>
-                  <TableCell>{getDistributorName(proposal.distributorId)}</TableCell>
-                  <TableCell>{formatCurrency(proposal.value)}</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(proposal.status)}>
-                      {proposal.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatDate(proposal.date)}</TableCell>
-                  <TableCell>{formatDate(proposal.expiryDate)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewCommercialProposal(proposal)}
-                        className="flex items-center"
-                      >
-                        <FileText className="h-4 w-4 mr-1" />
-                        <span>Ver Proposta</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleNavigateToCalculator(proposal)}
-                        className="flex items-center"
-                      >
-                        <Calculator className="h-4 w-4 mr-1" />
-                        <span>Calcular</span>
-                      </Button>
-                      {(user?.role === 'admin' || proposal.createdBy === user?.uid) && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(proposal)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onDelete(proposal.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
+      {/* Tabela de Propostas Moderna */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl border border-slate-700/50 overflow-hidden">
+        <div className="p-6 border-b border-slate-700/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg">
+              <FileText className="h-5 w-5 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-white">Lista de Propostas</h3>
+          </div>
+        </div>
+        <div className="p-6">
+          {/* Debug info - moved to useEffect */}
+          
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-slate-700 hover:bg-slate-800/50">
+                  <TableHead className="text-slate-300">Título</TableHead>
+                  <TableHead className="text-slate-300">Cliente</TableHead>
+                  <TableHead className="text-slate-300">Gerente de Conta</TableHead>
+                  <TableHead className="text-slate-300">Distribuidor</TableHead>
+                  <TableHead className="text-slate-300">Valor</TableHead>
+                  <TableHead className="text-slate-300">Status</TableHead>
+                  <TableHead className="text-slate-300">Data de Criação</TableHead>
+                  <TableHead className="text-slate-300">Validade</TableHead>
+                  <TableHead className="text-right text-slate-300">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredProposals.map((proposal) => (
+                  <TableRow key={proposal.id} className="border-slate-700 hover:bg-slate-800/30 transition-colors">
+                    <TableCell className="font-medium text-white">{proposal.title}</TableCell>
+                    <TableCell className="text-slate-300">{typeof proposal.client === 'string' ? proposal.client : proposal.client?.name || 'N/A'}</TableCell>
+                    <TableCell className="text-slate-300">{typeof proposal.accountManager === 'string' ? proposal.accountManager : proposal.accountManager?.name || 'N/A'}</TableCell>
+                    <TableCell className="text-slate-300">{getDistributorName(proposal.distributorId)}</TableCell>
+                    <TableCell className="text-slate-300">{formatCurrency(proposal.value || 0)}</TableCell>
+                    <TableCell>
+                      <Badge className={`${getStatusColor(proposal.status)} border-0`}>
+                        {proposal.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-slate-300">{formatDate(proposal.date)}</TableCell>
+                    <TableCell className="text-slate-300">{formatDate(proposal.expiryDate)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewCommercialProposal(proposal)}
+                          className="flex items-center text-cyan-400 hover:text-cyan-300 hover:bg-slate-700/50"
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          <span>Ver</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleNavigateToCalculator(proposal)}
+                          className="flex items-center text-blue-400 hover:text-blue-300 hover:bg-slate-700/50"
+                        >
+                          <Calculator className="h-4 w-4 mr-1" />
+                          <span>Calcular</span>
+                        </Button>
+                        {(user?.role === 'admin' || proposal.createdBy === user?.id) && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(proposal)}
+                              className="text-yellow-400 hover:text-yellow-300 hover:bg-slate-700/50"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onDelete(proposal.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-slate-700/50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          
           {filteredProposals.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhuma proposta encontrada.
+            <div className="text-center py-12">
+              <div className="flex flex-col items-center gap-4">
+                <div className="p-4 bg-slate-800/50 rounded-full">
+                  <FileText className="h-12 w-12 text-slate-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Nenhuma proposta encontrada</h3>
+                  <p className="text-slate-400">
+                    {proposals.length === 0 
+                      ? "Você ainda não possui propostas. Crie sua primeira proposta!" 
+                      : "Nenhuma proposta corresponde aos critérios de busca."}
+                  </p>
+                </div>
+                {proposals.length === 0 && (
+                  <Button onClick={handleCreate} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white border-0">
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Criar Primeira Proposta
+                  </Button>
+                )}
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Diálogo de Seleção do Tipo de Proposta */}
       <Dialog open={showProposalTypeDialog} onOpenChange={setShowProposalTypeDialog}>
