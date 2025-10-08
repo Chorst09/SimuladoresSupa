@@ -101,6 +101,18 @@ export default function UserManagement() {
       setUsers(mappedUsers);
       console.log(`✅ ${mappedUsers.length} usuários carregados via API:`, mappedUsers);
       
+      // Debug: Show detailed user info
+      console.log('🔍 DETALHES DOS USUÁRIOS CARREGADOS:');
+      mappedUsers.forEach((user, index) => {
+        console.log(`👤 Usuário ${index + 1}:`, {
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          role: user.role,
+          created_at: user.created_at
+        });
+      });
+      
     } catch (error: any) {
       console.error('❌ Erro ao carregar usuários via API:', error);
       
@@ -124,6 +136,19 @@ export default function UserManagement() {
           
           setUsers(mappedUsers);
           console.log(`✅ ${mappedUsers.length} usuários carregados via fallback:`, mappedUsers);
+          
+          // Debug: Show detailed fallback user info
+          console.log('🔍 DETALHES DOS USUÁRIOS FALLBACK:');
+          mappedUsers.forEach((user, index) => {
+            console.log(`👤 Fallback Usuário ${index + 1}:`, {
+              id: user.id,
+              email: user.email,
+              full_name: user.full_name,
+              role: user.role,
+              created_at: user.created_at
+            });
+          });
+          
           return;
         }
       } catch (fallbackError) {
@@ -403,6 +428,24 @@ export default function UserManagement() {
             onClick={() => window.open('/signup', '_blank')}
           >
             📝 Cadastro Público
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={async () => {
+              console.log('🔍 Executando debug de usuários...');
+              try {
+                const response = await fetch('/api/debug-users');
+                const result = await response.json();
+                console.log('🔍 RESULTADO DEBUG:', result);
+                alert('Debug executado! Verifique o console (F12) para ver os resultados detalhados.');
+              } catch (error) {
+                console.error('❌ Erro no debug:', error);
+                alert('Erro no debug. Verifique o console.');
+              }
+            }}
+          >
+            🔍 Debug Usuários
           </Button>
         </div>
       </div>
