@@ -145,8 +145,8 @@ export default function UserManagement() {
     try {
       console.log('🔄 Criando usuário via API admin...');
       
-      // Use admin API that bypasses email confirmation
-      const response = await fetch('/api/create-user-admin', {
+      // Try the new confirmed API first
+      let response = await fetch('/api/create-user-confirmed', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -159,13 +159,13 @@ export default function UserManagement() {
         })
       });
 
-      const result = await response.json();
+      let result = await response.json();
       
       if (!result.success) {
-        // Fallback to simple API if admin API fails
-        console.log('🔄 Admin API falhou, tentando API simples...');
+        console.log('🔄 API confirmada falhou, tentando API admin...');
         
-        const fallbackResponse = await fetch('/api/create-user-simple', {
+        // Fallback to admin API
+        response = await fetch('/api/create-user-admin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -178,15 +178,37 @@ export default function UserManagement() {
           })
         });
 
-        const fallbackResult = await fallbackResponse.json();
+        result = await response.json();
         
-        if (!fallbackResult.success) {
-          throw new Error(fallbackResult.error || 'Erro ao criar usuário');
-        }
+        if (!result.success) {
+          console.log('🔄 API admin falhou, tentando API simples...');
+          
+          // Final fallback to simple API
+          const fallbackResponse = await fetch('/api/create-user-simple', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: newUserEmail,
+              password: newUserPassword,
+              name: newUserName,
+              role: newUserRole
+            })
+          });
 
-        alert('✅ Usuário criado com sucesso!\n\n⚠️ Nota: Pode ser necessário confirmar o email.\n\n' + (fallbackResult.message || ''));
+          const fallbackResult = await fallbackResponse.json();
+          
+          if (!fallbackResult.success) {
+            throw new Error(fallbackResult.error || 'Erro ao criar usuário');
+          }
+
+          alert('✅ Usuário criado com sucesso!\n\n⚠️ IMPORTANTE: O usuário precisa confirmar o email antes de fazer login.\n\n' + (fallbackResult.message || ''));
+        } else {
+          alert('✅ Usuário criado com sucesso!\n\n✨ Email confirmado automaticamente pelo admin!\n\n' + (result.message || ''));
+        }
       } else {
-        alert('✅ Usuário criado com sucesso!\n\n✨ Email confirmado automaticamente!\n\n' + (result.message || ''));
+        alert('✅ Usuário criado com sucesso!\n\n🎉 Email confirmado automaticamente! O usuário pode fazer login imediatamente.\n\n' + (result.message || ''));
       }
 
       // Reset form

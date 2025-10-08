@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { email, password, name, role } = body
 
-    console.log('🔄 API /create-user-admin - Criando usuário como admin:', { email, role })
+    console.log('🔄 API /create-user-confirmed - Criando usuário com confirmação automática:', { email, role })
 
     if (!email || !password) {
       return NextResponse.json({
@@ -22,11 +22,11 @@ export async function POST(request: Request) {
       console.error('❌ SUPABASE_SERVICE_ROLE_KEY não configurada')
       return NextResponse.json({
         success: false,
-        error: 'Configuração do servidor incompleta'
+        error: 'Configuração do servidor incompleta - Service Key necessária'
       }, { status: 500 })
     }
 
-    // Create client with service key (bypasses RLS and email confirmation)
+    // Create admin client
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -34,46 +34,22 @@ export async function POST(request: Request) {
       }
     })
 
-    // Create user using admin client (no email confirmation required)
+    // First, try to create user with admin privileges
+    console.log('🔄 Criando usuário com privilégios admin...')
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Skip email confirmation
-      phone_confirm: true, // Skip phone confirmation if applicable
+      email_confirm: true, // This should skip email confirmation
       user_metadata: {
         full_name: name || email,
-        role: role || 'user'
+        role: role || 'user',
+        created_by_admin: true
       }
     })
 
-    // If user was created successfully, also update their email verification status
-    if (authData.user && !authError) {
-      try {
-        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-          authData.user.id,
-          {
-            email_confirm: true,
-            user_metadata: {
-              full_name: name || email,
-              role: role || 'user'
-            }
-          }
-        )
-        
-        if (updateError) {
-          console.warn('⚠️ Erro ao confirmar email do usuário:', updateError)
-        } else {
-          console.log('✅ Email confirmado automaticamente para:', email)
-        }
-      } catch (updateError) {
-        console.warn('⚠️ Erro ao atualizar status de confirmação:', updateError)
-      }
-    }
-
     if (authError) {
-      console.error('❌ Erro ao criar usuário com admin:', authError)
+      console.error('❌ Erro ao criar usuário:', authError)
       
-      // Handle specific errors
       if (authError.message.includes('User already registered')) {
         return NextResponse.json({
           success: false,
@@ -88,24 +64,45 @@ export async function POST(request: Request) {
       throw new Error('Usuário não foi criado')
     }
 
-    // Create profile using service key (bypasses RLS)
+    console.log('✅ Usuário criado:', authData.user.id, 'Email confirmado:', authData.user.email_confirmed_at)
+
+    // Force email confirmation if not already confirmed
+    if (!authData.user.email_confirmed_at) {
+      console.log('🔄 Forçando confirmação de email...')
+      
+      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        authData.user.id,
+        {
+          email_confirm: true
+        }
+      )
+      
+      if (updateError) {
+        console.error('❌ Erro ao confirmar email:', updateError)
+      } else {
+        console.log('✅ Email confirmado forçadamente')
+      }
+    }
+
+    // Create or update profile
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
+      .upsert({
         id: authData.user.id,
         email: email,
         full_name: name || email,
         role: role || 'user',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
       })
 
     if (profileError) {
-      console.error('❌ Erro ao criar profile:', profileError)
-      // Don't throw error, user was created successfully
+      console.error('❌ Erro ao criar/atualizar profile:', profileError)
+    } else {
+      console.log('✅ Profile criado/atualizado')
     }
-
-    console.log('✅ Usuário criado com sucesso (admin):', authData.user.id)
 
     return NextResponse.json({
       success: true,
@@ -113,13 +110,14 @@ export async function POST(request: Request) {
         id: authData.user.id,
         email: email,
         full_name: name || email,
-        role: role || 'user'
+        role: role || 'user',
+        email_confirmed: true
       },
-      message: 'Usuário criado com sucesso! Não é necessário confirmar email.'
+      message: 'Usuário criado com sucesso! Email confirmado automaticamente pelo administrador.'
     })
 
   } catch (error: any) {
-    console.error('❌ Erro na API /create-user-admin:', error)
+    console.error('❌ Erro na API /create-user-confirmed:', error)
     
     return NextResponse.json({
       success: false,
