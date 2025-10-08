@@ -27,7 +27,6 @@ import {
     Edit,
     Plus,
     User,
-    Briefcase,
     Trash2,
     Server,
     Brain,
@@ -378,7 +377,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [markup, setMarkup] = useState<number>(30);
     const [commissionPercentage, setCommissionPercentage] = useState<number>(3);
     const [setupFee, setSetupFee] = useState<number>(500);
-    const [managementAndSupportCost, setManagementAndSupportCost] = useState<number>(250);
+    const [managementAndSupportCost, setManagementAndSupportCost] = useState<number>(49);
     const [contractDiscounts, setContractDiscounts] = useState<{ [key: number]: number }>({
         12: 0,
         24: 5,
@@ -405,17 +404,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
 
     // Estados para custos de recursos VM
-    const [vcpuWindowsCost, setVcpuWindowsCost] = useState<number>(15);
+    const [vcpuWindowsCost, setVcpuWindowsCost] = useState<number>(0.2);
     const [vcpuLinuxCost, setVcpuLinuxCost] = useState<number>(10);
     const [ramCost, setRamCost] = useState<number>(8);
-    const [hddSasCost, setHddSasCost] = useState<number>(0.5);
+    const [hddSasCost, setHddSasCost] = useState<number>(0.2);
     const [ssdPerformanceCost, setSsdPerformanceCost] = useState<number>(1.5);
     const [nvmeCost, setNvmeCost] = useState<number>(2.5);
     const [network1GbpsCost, setNetwork1GbpsCost] = useState<number>(0);
     const [network10GbpsCost, setNetwork10GbpsCost] = useState<number>(100);
     const [windowsServerCost, setWindowsServerCost] = useState<number>(135);
     const [windows10ProCost, setWindows10ProCost] = useState<number>(120);
-    const [windows11ProCost, setWindows11ProCost] = useState<number>(130);
+    const [windows11ProCost, setWindows11ProCost] = useState<number>(25);
     const [ubuntuCost, setUbuntuCost] = useState<number>(0);
     const [centosCost, setCentosCost] = useState<number>(0);
     const [debianCost, setDebianCost] = useState<number>(0);
@@ -857,16 +856,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             cost += vpnSiteToSiteCost;
         }
 
-        // Adicionar custo de gestão e suporte
-        cost += managementAndSupportCost;
-
         return cost;
     }, [
         vmCpuCores, vmRamGb, vmStorageType, vmStorageSize, vmNetworkSpeed, vmOperatingSystem,
         vmBackupSize, vmAdditionalIp, vmSnapshot, vmVpnSiteToSite,
         vcpuWindowsCost, vcpuLinuxCost, ramCost, hddSasCost, ssdPerformanceCost, nvmeCost,
         network10GbpsCost, windowsServerCost, windows10ProCost, windows11ProCost, backupCostPerGb,
-        additionalIpCost, snapshotCost, vpnSiteToSiteCost, managementAndSupportCost
+        additionalIpCost, snapshotCost, vpnSiteToSiteCost
     ]);
 
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
@@ -942,7 +938,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         // 3. Net Revenue (no revenue taxes)
         const netRevenue = grossRevenue;
 
-        // 4. Direct Costs (VM operational costs)
+        // 4. Direct Costs (VM operational costs only - as calculated)
         const directCosts = C;
 
         // 5. Gross Profit (after direct costs)
