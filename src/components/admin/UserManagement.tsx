@@ -437,8 +437,43 @@ export default function UserManagement() {
               try {
                 const response = await fetch('/api/debug-users');
                 const result = await response.json();
-                console.log('🔍 RESULTADO DEBUG:', result);
-                alert('Debug executado! Verifique o console (F12) para ver os resultados detalhados.');
+                console.log('🔍 RESULTADO DEBUG COMPLETO:', result);
+                
+                // Show detailed info in alert
+                let message = '🔍 RESULTADO DEBUG:\n\n';
+                
+                if (result.results?.anonKey) {
+                  message += `📊 Anon Key: ${result.results.anonKey.count} usuários\n`;
+                  if (result.results.anonKey.users) {
+                    result.results.anonKey.users.forEach((user: any, i: number) => {
+                      message += `  ${i+1}. ${user.email} (${user.role})\n`;
+                    });
+                  }
+                  message += '\n';
+                }
+                
+                if (result.results?.serviceKey) {
+                  message += `🔑 Service Key: ${result.results.serviceKey.count} usuários\n`;
+                  if (result.results.serviceKey.users) {
+                    result.results.serviceKey.users.forEach((user: any, i: number) => {
+                      message += `  ${i+1}. ${user.email} (${user.role})\n`;
+                    });
+                  }
+                  message += '\n';
+                }
+                
+                if (result.results?.authUsers) {
+                  message += `🔐 Auth Users: ${result.results.authUsers.count} usuários\n`;
+                  if (result.results.authUsers.users) {
+                    result.results.authUsers.users.forEach((user: any, i: number) => {
+                      message += `  ${i+1}. ${user.email}\n`;
+                    });
+                  }
+                }
+                
+                message += '\n📋 Verifique o console para detalhes completos!';
+                
+                alert(message);
               } catch (error) {
                 console.error('❌ Erro no debug:', error);
                 alert('Erro no debug. Verifique o console.');
@@ -446,6 +481,39 @@ export default function UserManagement() {
             }}
           >
             🔍 Debug Usuários
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={async () => {
+              console.log('📋 Mostrando informações do Supabase...');
+              
+              const info = `
+📊 INFORMAÇÕES DO SUPABASE:
+
+🔗 URL do Projeto: ${process.env.NEXT_PUBLIC_SUPABASE_URL || 'Não encontrada'}
+
+📋 ONDE VERIFICAR NO SUPABASE:
+1. Acesse: https://supabase.com/dashboard
+2. Selecione o projeto correto
+3. Vá em "Table Editor" (lado esquerdo)
+4. Procure pela tabela "profiles" (não "users")
+5. Os usuários devem estar lá
+
+🔍 TABELAS PARA VERIFICAR:
+• "profiles" - Dados dos usuários da aplicação
+• "auth.users" - Usuários de autenticação (aba Authentication > Users)
+
+⚠️ IMPORTANTE:
+Se você está olhando "auth.users", os dados podem ser diferentes.
+A aplicação usa a tabela "profiles" para mostrar os usuários.
+              `;
+              
+              console.log(info);
+              alert(info);
+            }}
+          >
+            📋 Info Supabase
           </Button>
         </div>
       </div>
