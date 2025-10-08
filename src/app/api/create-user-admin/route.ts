@@ -59,7 +59,7 @@ export async function POST(request: Request) {
             }
           }
         )
-        
+
         if (updateError) {
           console.warn('⚠️ Erro ao confirmar email do usuário:', updateError)
         } else {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 
     if (authError) {
       console.error('❌ Erro ao criar usuário com admin:', authError)
-      
+
       // Handle specific errors
       if (authError.message.includes('User already registered')) {
         return NextResponse.json({
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
           error: 'Este email já está cadastrado no sistema'
         }, { status: 400 })
       }
-      
+
       throw authError
     }
 
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('❌ Erro na API /create-user-admin:', error)
-    
+
     return NextResponse.json({
       success: false,
       error: error.message || 'Erro interno do servidor'
