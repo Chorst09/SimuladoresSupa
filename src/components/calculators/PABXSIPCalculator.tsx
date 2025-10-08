@@ -897,8 +897,9 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         const setup = sipIncludeSetup ? (planData.setup || 0) : 0;
         let monthly = sipWithEquipment && planData.monthlyWithEquipment ? planData.monthlyWithEquipment : planData.monthly;
 
-        // Handle additional channels
-        if (sipAdditionalChannels > 0) {
+        // Handle additional channels - Skip for restricted plans
+        const restrictedPlans = ['SIP TARIFADO 30 Canais', 'SIP TARIFADO 60 Canais', 'SIP ILIMITADO 60 Canais'];
+        if (sipAdditionalChannels > 0 && !restrictedPlans.includes(sipPlan)) {
             const planChannelsStr = sipPlan.match(/\d+/)?.[0];
             if (planChannelsStr) {
                 let additionalCost = 0;
@@ -926,6 +927,15 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         const result = calculateSIP();
         setSipResult(result);
     }, [calculateSIP]);
+
+    // Reset additional channels when restricted plans are selected
+    useEffect(() => {
+        if (sipPlan === 'SIP TARIFADO 30 Canais' || 
+            sipPlan === 'SIP TARIFADO 60 Canais' || 
+            sipPlan === 'SIP ILIMITADO 60 Canais') {
+            setSipAdditionalChannels(0);
+        }
+    }, [sipPlan]);
 
 
 
@@ -2174,13 +2184,21 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
                                 <div>
                                     <Label htmlFor="sip-additional-channels">Canais Adicionais</Label>
-                                    <Input
-                                        id="sip-additional-channels"
-                                        type="number"
-                                        value={sipAdditionalChannels}
-                                        onChange={(e) => setSipAdditionalChannels(parseInt(e.target.value) || 0)}
-                                        className="bg-slate-800 border-slate-700 text-white"
-                                    />
+                                    {(sipPlan === 'SIP TARIFADO 30 Canais' || 
+                                      sipPlan === 'SIP TARIFADO 60 Canais' || 
+                                      sipPlan === 'SIP ILIMITADO 60 Canais') ? (
+                                        <div className="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-orange-400 font-medium">
+                                            Sem Possibilidade
+                                        </div>
+                                    ) : (
+                                        <Input
+                                            id="sip-additional-channels"
+                                            type="number"
+                                            value={sipAdditionalChannels}
+                                            onChange={(e) => setSipAdditionalChannels(parseInt(e.target.value) || 0)}
+                                            className="bg-slate-800 border-slate-700 text-white"
+                                        />
+                                    )}
                                 </div>
 
                                 <div>
