@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create or update profile
+    // Create or update profile with password_changed flag
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
@@ -92,6 +92,8 @@ export async function POST(request: Request) {
         email: email,
         full_name: name || email,
         role: role || 'user',
+        password_changed: false, // Force password change on first login
+        created_by_admin: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }, {
