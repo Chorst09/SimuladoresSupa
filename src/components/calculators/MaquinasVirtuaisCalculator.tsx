@@ -857,13 +857,16 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             cost += vpnSiteToSiteCost;
         }
 
+        // Adicionar custo de gestão e suporte
+        cost += managementAndSupportCost;
+
         return cost;
     }, [
         vmCpuCores, vmRamGb, vmStorageType, vmStorageSize, vmNetworkSpeed, vmOperatingSystem,
         vmBackupSize, vmAdditionalIp, vmSnapshot, vmVpnSiteToSite,
         vcpuWindowsCost, vcpuLinuxCost, ramCost, hddSasCost, ssdPerformanceCost, nvmeCost,
         network10GbpsCost, windowsServerCost, windows10ProCost, windows11ProCost, backupCostPerGb,
-        additionalIpCost, snapshotCost, vpnSiteToSiteCost
+        additionalIpCost, snapshotCost, vpnSiteToSiteCost, managementAndSupportCost
     ]);
 
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
