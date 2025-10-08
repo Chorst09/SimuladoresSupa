@@ -117,51 +117,57 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
       if (!user) return;
 
       try {
-        let query = supabase.from('proposals').select('*');
+        console.log('Fetching proposals for user:', user.id, user.email);
+        
+        const response = await fetch('/api/proposals', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
-        // Se não for admin ou director, filtra apenas as propostas do usuário
-        if (user.role !== 'admin' && user.role !== 'director') {
-          query = query.eq('user_id', user.id);
-        }
-
-        const { data: proposalsData, error } = await query;
-
-        if (error) {
-          console.error('Erro ao buscar propostas:', error);
+        if (!response.ok) {
+          console.error('Error response:', response.status, response.statusText);
           return;
         }
 
-        const proposalsList = (proposalsData || []).map(data => {
-          let title = "Proposta";
-          if (data.base_id) {
-            if (data.base_id.startsWith("Prop_MV_")) title = `Proposta Máquinas Virtuais - ${data.base_id.split("_")[2]}`;
-            else if (data.base_id.startsWith("Prop_PabxSip_")) title = `Proposta PABX/SIP - ${data.base_id.split("_")[2]}`;
-            else if (data.base_id.startsWith("Prop_InterMan_")) title = `Proposta Internet MAN - ${data.base_id.split("_")[2]}`;
-            else if (data.base_id.startsWith("Prop_Double_")) title = `Proposta Double-Fibra/Radio - ${data.base_id.split("_")[2]}`;
-            else if (data.base_id.startsWith("Prop_Fibra_")) title = `Proposta Internet Fibra - ${data.base_id.split("_")[2]}`;
-            else if (data.base_id.startsWith("Prop_Radio_")) title = `Proposta Internet Rádio - ${data.base_id.split("_")[2]}`;
+        const proposalsData = await response.json();
+        console.log('Fetched proposals from API:', proposalsData);
+
+        const proposalsList = (proposalsData || []).map((data: any) => {
+          let title = data.title || "Proposta";
+          
+          // If title is not set, generate from baseId
+          if (!data.title && data.baseId) {
+            if (data.baseId.startsWith("Prop_MV_")) title = `Proposta Máquinas Virtuais - ${data.baseId.split("_")[2]}`;
+            else if (data.baseId.startsWith("Prop_PabxSip_")) title = `Proposta PABX/SIP - ${data.baseId.split("_")[2]}`;
+            else if (data.baseId.startsWith("Prop_InterMan_")) title = `Proposta Internet MAN - ${data.baseId.split("_")[2]}`;
+            else if (data.baseId.startsWith("Prop_Double_")) title = `Proposta Double-Fibra/Radio - ${data.baseId.split("_")[2]}`;
+            else if (data.baseId.startsWith("Prop_Fibra_")) title = `Proposta Internet Fibra - ${data.baseId.split("_")[2]}`;
+            else if (data.baseId.startsWith("Prop_Radio_")) title = `Proposta Internet Rádio - ${data.baseId.split("_")[2]}`;
           }
 
-          const createdAtDate = data.created_at ? new Date(data.created_at) : new Date();
-          const expiryDate = new Date(createdAtDate);
-          expiryDate.setDate(createdAtDate.getDate() + 30); // Default 30 days validity
+          const createdAtDate = data.createdAt ? new Date(data.createdAt) : new Date();
+          const expiryDate = data.expiryDate ? new Date(data.expiryDate) : new Date(createdAtDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
           return {
             id: data.id,
-            baseId: data.base_id || '',
+            baseId: data.baseId || '',
             version: data.version || 1,
             title: title,
             client: data.client || 'N/A',
             value: data.value || 0,
             status: data.status || 'Rascunho',
-            createdBy: data.created_by || 'N/A',
-            accountManager: data.account_manager || 'N/A',
-            createdAt: data.created_at,
-            distributorId: data.distributor_id || 'N/A',
+            createdBy: data.createdBy || 'N/A',
+            accountManager: data.accountManager || 'N/A',
+            createdAt: data.createdAt,
+            distributorId: data.distributorId || 'N/A',
             date: createdAtDate.toISOString(),
             expiryDate: expiryDate.toISOString(),
           } as Proposal;
         });
+        
+        console.log('Processed proposals:', proposalsList);
         setProposals(proposalsList);
       } catch (error) {
         console.error("Error fetching proposals:", error);
