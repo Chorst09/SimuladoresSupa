@@ -9,6 +9,12 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 let supabase: any = null;
 if (supabaseUrl && supabaseServiceKey) {
   supabase = createClient(supabaseUrl, supabaseServiceKey);
+  console.log('✅ Supabase client initialized successfully');
+} else {
+  console.error('❌ Supabase environment variables missing:', {
+    hasUrl: !!supabaseUrl,
+    hasServiceKey: !!supabaseServiceKey
+  });
 }
 
 // Mock storage for proposals (fallback if Supabase fails)
@@ -182,11 +188,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Try Supabase first, fallback to mock storage
     if (supabase) {
       try {
+        console.log('🔄 Attempting to save proposal to Supabase...');
+        
         // Generate base_id using Supabase function
         const { data: baseIdResult, error: baseIdError } = await supabase
           .rpc('generate_proposal_base_id', { proposal_type: proposalType });
 
+        if (baseIdError) {
+          console.error('❌ Error generating base_id:', baseIdError);
+          throw baseIdError;
+        }
+
         if (!baseIdError && baseIdResult) {
+          console.log('✅ Generated base_id:', baseIdResult);
           baseId = baseIdResult;
 
           // Prepare data for Supabase
@@ -212,13 +226,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             metadata: body.metadata || {}
           };
 
+          console.log('📝 Inserting proposal data:', proposalData);
+          
           const { data: proposal, error } = await supabase
             .from('proposals')
             .insert([proposalData])
             .select()
             .single();
 
+          if (error) {
+            console.error('❌ Error inserting proposal:', error);
+            throw error;
+          }
+
           if (!error && proposal) {
+            console.log('✅ Proposal saved successfully:', proposal.id);
             // Transform response to match expected format
             const transformedProposal = {
               id: proposal.id,
@@ -249,11 +271,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }
         }
       } catch (supabaseError) {
-        console.error('Supabase error:', supabaseError);
+        console.error('❌ Supabase error - falling back to mock storage:', supabaseError);
       }
+    } else {
+      console.log('⚠️ Supabase not available - using mock storage');
     }
 
     // Fallback to mock storage
+    console.log('📦 Using mock storage for proposal');
     createdProposal = {
       ...body,
       id: `mock_${Date.now()}`,
