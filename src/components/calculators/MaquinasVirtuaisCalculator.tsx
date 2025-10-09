@@ -257,53 +257,46 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         const loadSettings = async () => {
             try {
-                // Try to load from localStorage first
-                const savedSettings = localStorage.getItem(`vmPricingSettings_${currentUser.id}`);
-                if (savedSettings) {
-                    const settingsData = JSON.parse(savedSettings);
-                    setMarkup(settingsData.markup || 30);
-                    setCommissionPercentage(settingsData.commissionPercentage || 3);
-                    setSetupFee(settingsData.setupFee || 500);
-                    setManagementAndSupportCost(settingsData.managementAndSupportCost || 250);
-                    setVcpuWindowsCost(settingsData.vcpuWindowsCost || 20);
-                    setVcpuLinuxCost(settingsData.vcpuLinuxCost || 10);
-                    setRamCost(settingsData.ramCost || 7);
-                    setHddSasCost(settingsData.hddSasCost || 0.2);
-                    setSsdPerformanceCost(settingsData.ssdPerformanceCost || 1.5);
-                    setNvmeCost(settingsData.nvmeCost || 2.5);
-                    setNetwork1GbpsCost(settingsData.network1GbpsCost || 0);
-                    setNetwork10GbpsCost(settingsData.network10GbpsCost || 100);
-                    setWindowsServerCost(settingsData.windowsServerCost || 135);
-                    setWindows10ProCost(settingsData.windows10ProCost || 120);
-                    setWindows11ProCost(settingsData.windows11ProCost || 25);
-                    setUbuntuCost(settingsData.ubuntuCost || 0);
-                    setCentosCost(settingsData.centosCost || 0);
-                    setDebianCost(settingsData.debianCost || 0);
-                    setRockyLinuxCost(settingsData.rockyLinuxCost || 0);
-                    setBackupCostPerGb(settingsData.backupCostPerGb || 1.25);
-                    setAdditionalIpCost(settingsData.additionalIpCost || 15);
-                    setSnapshotCost(settingsData.snapshotCost || 25);
-                    setVpnSiteToSiteCost(settingsData.vpnSiteToSiteCost || 50);
-                    setPisCofins(String(settingsData.pisCofins || '15,00').replace('.', ','));
-                    setIss(String(settingsData.iss || '0,00').replace('.', ','));
-                    setCsllIr(String(settingsData.csllIr || '0,00').replace('.', ','));
-                    setVmQuantity(settingsData.vmQuantity || 1);
-                    if (settingsData.contractDiscounts) {
-                        setContractDiscounts(settingsData.contractDiscounts);
-                    }
-                    return;
-                }
+                // Force correct values - ignore localStorage for now to fix the 1412 issue
+                setMarkup(30);
+                setCommissionPercentage(3);
+                setSetupFee(500);
+                setManagementAndSupportCost(49);
+                setVcpuWindowsCost(20);
+                setVcpuLinuxCost(10);
+                setRamCost(7);
+                setHddSasCost(0.2);
+                setSsdPerformanceCost(1.5);
+                setNvmeCost(2.5);
+                setNetwork1GbpsCost(0);
+                setNetwork10GbpsCost(100);
+                setWindowsServerCost(135);
+                setWindows10ProCost(120);
+                setWindows11ProCost(25);
+                setUbuntuCost(0);
+                setCentosCost(0);
+                setDebianCost(0);
+                setRockyLinuxCost(0);
+                setBackupCostPerGb(1.25);
+                setAdditionalIpCost(15);
+                setSnapshotCost(25);
+                setVpnSiteToSiteCost(50);
+                setPisCofins('15,00');
+                setIss('0,00');
+                setCsllIr('0,00');
+                setVmQuantity(1);
+                setContractDiscounts({
+                    12: 0,
+                    24: 5,
+                    36: 10,
+                    48: 15,
+                    60: 20,
+                });
+                
+                // Clear old localStorage to prevent conflicts
+                localStorage.removeItem(`vmPricingSettings_${currentUser.id}`);
 
-                // Try to fetch from API as fallback
-                const response = await fetch(`/api/vm-settings?userId=${currentUser.id}`);
-                if (response.ok) {
-                    const settingsData = await response.json();
-                    setMarkup(settingsData.markup || 30);
-                    setCommissionPercentage(settingsData.commissionPercentage || 3);
-                    setSetupFee(settingsData.setupFee || 500);
-                    setManagementAndSupportCost(settingsData.managementAndSupportCost || 250);
-                    // ... outros settings
-                }
+                // API fallback removed - using forced correct values
             } catch (error) {
                 console.error("Erro ao buscar configurações de preço:", error);
             }
