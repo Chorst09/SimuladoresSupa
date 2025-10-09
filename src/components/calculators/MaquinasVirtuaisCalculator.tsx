@@ -265,17 +265,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     setCommissionPercentage(settingsData.commissionPercentage || 3);
                     setSetupFee(settingsData.setupFee || 500);
                     setManagementAndSupportCost(settingsData.managementAndSupportCost || 250);
-                    setVcpuWindowsCost(settingsData.vcpuWindowsCost || 15);
+                    setVcpuWindowsCost(settingsData.vcpuWindowsCost || 20);
                     setVcpuLinuxCost(settingsData.vcpuLinuxCost || 10);
-                    setRamCost(settingsData.ramCost || 8);
-                    setHddSasCost(settingsData.hddSasCost || 0.5);
+                    setRamCost(settingsData.ramCost || 7);
+                    setHddSasCost(settingsData.hddSasCost || 0.2);
                     setSsdPerformanceCost(settingsData.ssdPerformanceCost || 1.5);
                     setNvmeCost(settingsData.nvmeCost || 2.5);
                     setNetwork1GbpsCost(settingsData.network1GbpsCost || 0);
                     setNetwork10GbpsCost(settingsData.network10GbpsCost || 100);
                     setWindowsServerCost(settingsData.windowsServerCost || 135);
                     setWindows10ProCost(settingsData.windows10ProCost || 120);
-                    setWindows11ProCost(settingsData.windows11ProCost || 130);
+                    setWindows11ProCost(settingsData.windows11ProCost || 25);
                     setUbuntuCost(settingsData.ubuntuCost || 0);
                     setCentosCost(settingsData.centosCost || 0);
                     setDebianCost(settingsData.debianCost || 0);
@@ -856,17 +856,6 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             cost += vpnSiteToSiteCost;
         }
 
-        console.log('VM Cost Breakdown:', {
-            vmCpuCores,
-            vcpuWindowsCost,
-            vmRamGb,
-            ramCost,
-            vmStorageSize,
-            hddSasCost,
-            windows11ProCost,
-            vmOperatingSystem,
-            totalCost: cost
-        });
         return cost;
     }, [
         vmCpuCores, vmRamGb, vmStorageType, vmStorageSize, vmNetworkSpeed, vmOperatingSystem,
