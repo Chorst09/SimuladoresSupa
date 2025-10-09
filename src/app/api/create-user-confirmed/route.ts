@@ -49,14 +49,14 @@ export async function POST(request: Request) {
 
     if (authError) {
       console.error('❌ Erro ao criar usuário:', authError)
-      
+
       if (authError.message.includes('User already registered')) {
         return NextResponse.json({
           success: false,
           error: 'Este email já está cadastrado no sistema'
         }, { status: 400 })
       }
-      
+
       throw authError
     }
 
@@ -69,14 +69,14 @@ export async function POST(request: Request) {
     // Force email confirmation if not already confirmed
     if (!authData.user.email_confirmed_at) {
       console.log('🔄 Forçando confirmação de email...')
-      
+
       const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
         authData.user.id,
         {
           email_confirm: true
         }
       )
-      
+
       if (updateError) {
         console.error('❌ Erro ao confirmar email:', updateError)
       } else {
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 
     // Create or update profile with password_changed flag
     console.log('🔄 Criando profile para usuário:', authData.user.id)
-    
+
     const profileData = {
       id: authData.user.id,
       email: email,
@@ -100,9 +100,9 @@ export async function POST(request: Request) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
-    
+
     console.log('📝 Dados do profile:', profileData)
-    
+
     const { data: profileData_result, error: profileError } = await supabaseAdmin
       .from('profiles')
       .upsert(profileData, {
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       .select('*')
       .eq('id', authData.user.id)
       .single()
-    
+
     if (verifyError) {
       console.error('⚠️ Erro ao verificar usuário criado:', verifyError)
     } else {
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('❌ Erro na API /create-user-confirmed:', error)
-    
+
     return NextResponse.json({
       success: false,
       error: error.message || 'Erro interno do servidor'
