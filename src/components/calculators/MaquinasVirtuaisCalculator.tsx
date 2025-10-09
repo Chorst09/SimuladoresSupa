@@ -856,6 +856,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             cost += vpnSiteToSiteCost;
         }
 
+        console.log('VM Cost Breakdown:', {
+            vmCpuCores,
+            vcpuWindowsCost,
+            vmRamGb,
+            ramCost,
+            vmStorageSize,
+            hddSasCost,
+            windows11ProCost,
+            vmOperatingSystem,
+            totalCost: cost
+        });
         return cost;
     }, [
         vmCpuCores, vmRamGb, vmStorageType, vmStorageSize, vmNetworkSpeed, vmOperatingSystem,
