@@ -44,9 +44,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const type = searchParams.get('type');
     const baseId = searchParams.get('baseId');
 
+    console.log('🔍 GET proposals request:', { type, baseId });
+
     // Try Supabase first, fallback to mock data
     if (supabase) {
       try {
+        console.log('🔄 Attempting to load proposals from Supabase...');
+        
         // Build query for Supabase
         let query = supabase
           .from('proposals')
@@ -63,7 +67,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
         const { data: proposals, error } = await query;
 
+        if (error) {
+          console.error('❌ Error loading proposals from Supabase:', error);
+          throw error;
+        }
+
         if (!error && proposals) {
+          console.log('✅ Loaded proposals from Supabase:', proposals.length, 'proposals');
           // Transform Supabase data to match expected format
           const transformedProposals = proposals.map((p: any) => ({
             id: p.id,
@@ -93,11 +103,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           return NextResponse.json(transformedProposals, { status: 200 });
         }
       } catch (supabaseError) {
-        console.error('Supabase error:', supabaseError);
+        console.error('❌ Supabase GET error - falling back to mock storage:', supabaseError);
       }
+    } else {
+      console.log('⚠️ Supabase not available for GET - using mock storage');
     }
 
     // Fallback to mock data
+    console.log('📦 Using mock storage for GET proposals');
     let filteredProposals = mockProposals;
     if (type) {
       filteredProposals = filteredProposals.filter(p => p.type === type);
