@@ -414,7 +414,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [network10GbpsCost, setNetwork10GbpsCost] = useState<number>(100);
     const [windowsServerCost, setWindowsServerCost] = useState<number>(135);
     const [windows10ProCost, setWindows10ProCost] = useState<number>(120);
-    const [windows11ProCost, setWindows11ProCost] = useState<number>(200);
+    const [windows11ProCost, setWindows11ProCost] = useState<number>(25);
     const [ubuntuCost, setUbuntuCost] = useState<number>(0);
     const [centosCost, setCentosCost] = useState<number>(0);
     const [debianCost, setDebianCost] = useState<number>(0);
@@ -833,13 +833,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             cost += network10GbpsCost;
         }
 
-        // Custo do Sistema Operacional
+        // Custo do Sistema Operacional (licenciamento por vCPU para Windows)
         if (vmOperatingSystem === 'Windows Server 2022 Standard') {
-            cost += windowsServerCost;
+            cost += windowsServerCost * vmCpuCores;
         } else if (vmOperatingSystem === 'Windows 10 Pro') {
-            cost += windows10ProCost;
+            cost += windows10ProCost * vmCpuCores;
         } else if (vmOperatingSystem === 'Windows 11 Pro') {
-            cost += windows11ProCost;
+            cost += windows11ProCost * vmCpuCores;
         }
 
         // Serviços adicionais
