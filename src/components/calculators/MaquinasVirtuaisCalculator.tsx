@@ -1101,10 +1101,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         } else if (typeof proposal.client === 'string') {
             setClientData({
                 name: proposal.client,
-                contact: '',
-                projectName: '',
-                email: '',
-                phone: ''
+                contact: proposal.clientData?.contact || '',
+                projectName: proposal.clientData?.projectName || '',
+                email: proposal.clientData?.email || '',
+                phone: proposal.clientData?.phone || ''
             });
         } else if (proposal.clientData) {
             setClientData(proposal.clientData);
@@ -1179,10 +1179,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         } else if (typeof proposal.client === 'string') {
             setClientData({
                 name: proposal.client,
-                contact: '',
-                projectName: '',
-                email: '',
-                phone: ''
+                contact: proposal.clientData?.contact || '',
+                projectName: proposal.clientData?.projectName || '',
+                email: proposal.clientData?.email || '',
+                phone: proposal.clientData?.phone || ''
             });
         } else if (proposal.clientData) {
             setClientData(proposal.clientData);
