@@ -186,29 +186,29 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           
           const transformed = proposals.map((p: any) => ({
             id: p.id,
-            baseId: p.base_id,
-            title: p.title,
-            client: p.client,
-            accountManager: p.account_manager,
-            type: p.type,
-            status: p.status,
-            value: p.value,
-            totalSetup: p.total_setup,
-            totalMonthly: p.total_monthly,
-            contractPeriod: p.contract_period,
+            baseId: p.id_base || p.base_id,
+            title: p.titulo || p.title,
+            client: p.cliente || p.client,
+            accountManager: p.account_manager || '',
+            type: p.type || 'VM',
+            status: p.status || 'Rascunho',
+            value: p.value || 0,
+            totalSetup: p.total_setup || 0,
+            totalMonthly: p.total_monthly || 0,
+            contractPeriod: p.contract_period || 12,
             date: p.date,
             expiryDate: p.expiry_date,
-            createdBy: p.created_by,
-            distributorId: p.distributor_id,
-            version: p.version,
-            products: p.products,
-            items: p.items,
+            createdBy: p.created_by || 'system',
+            distributorId: p.distributor_id || '',
+            version: p.version || 1,
+            products: p.products || [],
+            items: p.items || [],
             clientData: p.client_data,
-            metadata: p.metadata,
-            changes: p.changes,
-            applySalespersonDiscount: p.apply_salesperson_discount,
-            appliedDirectorDiscountPercentage: p.applied_director_discount_percentage,
-            baseTotalMonthly: p.base_total_monthly,
+            metadata: p.metadata || {},
+            changes: p.changes || '',
+            applySalespersonDiscount: p.apply_salesperson_discount || false,
+            appliedDirectorDiscountPercentage: p.applied_director_discount_percentage || 0,
+            baseTotalMonthly: p.base_total_monthly || 0,
             createdAt: p.created_at,
             updatedAt: p.updated_at
           }));
@@ -271,36 +271,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }
         });
         
-        // Build proposal data with only essential fields first
+        // Build proposal data matching current table structure
+        // Based on the screenshot, the table has: id_base, titulo, cliente
         const proposalData: any = {
-          base_id: baseId,
-          title: body.title,
-          client: body.client,
-          type: proposalType,
-          status: body.status || 'Rascunho',
-          value: body.value || 0,
-          created_by: body.createdBy || 'system',
-          version: body.version || 1
+          id_base: baseId,
+          titulo: body.title,
+          cliente: body.client
         };
 
-        // Add optional fields only if they exist
-        if (body.accountManager) proposalData.account_manager = body.accountManager;
-        if (body.totalSetup !== undefined) proposalData.total_setup = body.totalSetup;
-        if (body.totalMonthly !== undefined) proposalData.total_monthly = body.totalMonthly;
-        if (body.contractPeriod !== undefined) proposalData.contract_period = body.contractPeriod;
-        if (body.date) proposalData.date = body.date;
-        else proposalData.date = currentDate.toISOString().split('T')[0];
-        if (body.expiryDate) proposalData.expiry_date = body.expiryDate;
-        else proposalData.expiry_date = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        if (body.distributorId) proposalData.distributor_id = body.distributorId;
-        if (body.products) proposalData.products = body.products;
-        if (body.items) proposalData.items = body.items;
-        if (body.clientData) proposalData.client_data = body.clientData;
-        if (body.metadata) proposalData.metadata = body.metadata;
-        if (body.changes) proposalData.changes = body.changes;
-        if (body.applySalespersonDiscount !== undefined) proposalData.apply_salesperson_discount = body.applySalespersonDiscount;
-        if (body.appliedDirectorDiscountPercentage !== undefined) proposalData.applied_director_discount_percentage = body.appliedDirectorDiscountPercentage;
-        if (body.baseTotalMonthly !== undefined) proposalData.base_total_monthly = body.baseTotalMonthly;
+        console.log('📤 Proposal data to insert:', proposalData);
 
         console.log('📤 Inserting data:', JSON.stringify(proposalData, null, 2));
         
@@ -324,16 +303,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           console.log('✅ Successfully saved to Supabase!');
           console.log('📄 Saved proposal details:', {
             id: proposal.id,
-            base_id: proposal.base_id,
-            title: proposal.title,
-            client: proposal.client,
+            id_base: proposal.id_base,
+            titulo: proposal.titulo,
+            cliente: proposal.cliente,
             created_at: proposal.created_at
           });
           
           // Verify the proposal was actually saved by reading it back
           const { data: verifyProposal, error: verifyError } = await adminSupabase
             .from('proposals')
-            .select('id, title, client, created_at')
+            .select('id, titulo, cliente, created_at')
             .eq('id', proposal.id)
             .single();
             
@@ -342,31 +321,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           } else {
             console.log('✅ Verification successful - proposal exists in database:', verifyProposal);
           }
+          
           const transformed = {
             id: proposal.id,
-            baseId: proposal.base_id,
-            title: proposal.title,
-            client: proposal.client,
-            accountManager: proposal.account_manager,
-            type: proposal.type,
-            status: proposal.status,
-            value: proposal.value,
-            totalSetup: proposal.total_setup,
-            totalMonthly: proposal.total_monthly,
-            contractPeriod: proposal.contract_period,
-            date: proposal.date,
-            expiryDate: proposal.expiry_date,
-            createdBy: proposal.created_by,
-            distributorId: proposal.distributor_id,
-            version: proposal.version,
-            products: proposal.products,
-            items: proposal.items,
-            clientData: proposal.client_data,
-            metadata: proposal.metadata,
-            changes: proposal.changes,
-            applySalespersonDiscount: proposal.apply_salesperson_discount,
-            appliedDirectorDiscountPercentage: proposal.applied_director_discount_percentage,
-            baseTotalMonthly: proposal.base_total_monthly,
+            baseId: proposal.id_base,
+            title: proposal.titulo,
+            client: proposal.cliente,
+            accountManager: '',
+            type: 'VM',
+            status: 'Rascunho',
+            value: 0,
+            totalSetup: 0,
+            totalMonthly: 0,
+            contractPeriod: 12,
+            date: new Date().toISOString().split('T')[0],
+            expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            createdBy: 'system',
+            distributorId: '',
+            version: 1,
+            products: [],
+            items: [],
+            clientData: null,
+            metadata: {},
+            changes: '',
+            applySalespersonDiscount: false,
+            appliedDirectorDiscountPercentage: 0,
+            baseTotalMonthly: 0,
             createdAt: proposal.created_at,
             updatedAt: proposal.updated_at
           };
