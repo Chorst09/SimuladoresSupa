@@ -1683,7 +1683,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 client: clientData?.name || '',
                 type: 'VM',
                 value: finalTotalMonthly,
-                status: 'Rascunho' as const,
+                status: selectedStatus,
                 createdBy: currentUser.id,
                 accountManager: accountManagerData?.name || '',
                 date: new Date().toISOString().split('T')[0],

@@ -788,7 +788,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
                     type: 'FIBER',
-                    status: 'Rascunho',
+                    status: selectedStatus,
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
                     version: proposalVersion,

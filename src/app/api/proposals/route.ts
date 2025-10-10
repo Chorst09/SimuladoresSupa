@@ -75,6 +75,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             items: p.items,
             clientData: p.client_data,
             metadata: p.metadata,
+            changes: p.changes,
+            applySalespersonDiscount: p.apply_salesperson_discount,
+            appliedDirectorDiscountPercentage: p.applied_director_discount_percentage,
+            baseTotalMonthly: p.base_total_monthly,
             createdAt: p.created_at,
             updatedAt: p.updated_at
           }));
@@ -136,7 +140,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           products: body.products || [],
           items: body.items || [],
           client_data: body.clientData,
-          metadata: body.metadata || {}
+          metadata: body.metadata || {},
+          changes: body.changes || '',
+          apply_salesperson_discount: body.applySalespersonDiscount || false,
+          applied_director_discount_percentage: body.appliedDirectorDiscountPercentage || 0,
+          base_total_monthly: body.baseTotalMonthly || 0
         };
 
         console.log('📤 Inserting data:', JSON.stringify(proposalData, null, 2));
@@ -180,6 +188,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             items: proposal.items,
             clientData: proposal.client_data,
             metadata: proposal.metadata,
+            changes: proposal.changes,
+            applySalespersonDiscount: proposal.apply_salesperson_discount,
+            appliedDirectorDiscountPercentage: proposal.applied_director_discount_percentage,
+            baseTotalMonthly: proposal.base_total_monthly,
             createdAt: proposal.created_at,
             updatedAt: proposal.updated_at
           };
@@ -242,6 +254,10 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         if (body.items) updateData.items = body.items;
         if (body.clientData) updateData.client_data = body.clientData;
         if (body.metadata) updateData.metadata = body.metadata;
+        if (body.changes !== undefined) updateData.changes = body.changes;
+        if (body.applySalespersonDiscount !== undefined) updateData.apply_salesperson_discount = body.applySalespersonDiscount;
+        if (body.appliedDirectorDiscountPercentage !== undefined) updateData.applied_director_discount_percentage = body.appliedDirectorDiscountPercentage;
+        if (body.baseTotalMonthly !== undefined) updateData.base_total_monthly = body.baseTotalMonthly;
 
         const { data: proposal, error } = await supabase
           .from('proposals')
@@ -272,6 +288,10 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
             items: proposal.items,
             clientData: proposal.client_data,
             metadata: proposal.metadata,
+            changes: proposal.changes,
+            applySalespersonDiscount: proposal.apply_salesperson_discount,
+            appliedDirectorDiscountPercentage: proposal.applied_director_discount_percentage,
+            baseTotalMonthly: proposal.base_total_monthly,
             createdAt: proposal.created_at,
             updatedAt: proposal.updated_at
           };

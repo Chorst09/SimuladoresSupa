@@ -808,7 +808,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
                     type: 'FIBER',
-                    status: 'Rascunho',
+                    status: selectedStatus,
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
                     version: proposalVersion,
@@ -821,7 +821,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                    userId: user.id
+                    userId: user.id,
+                    changes: proposalChanges
                 };
 
                 const response = await fetch('/api/proposals', {
