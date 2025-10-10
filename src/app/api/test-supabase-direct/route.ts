@@ -3,26 +3,36 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export async function GET(): Promise<NextResponse> {
   console.log('🧪 DIRECT SUPABASE TEST');
   console.log('🔑 URL:', supabaseUrl);
   console.log('🔑 Service Key present:', !!supabaseServiceKey);
   console.log('🔑 Service Key length:', supabaseServiceKey?.length);
+  console.log('🔑 Service Key first 50 chars:', supabaseServiceKey?.substring(0, 50));
+  console.log('🔑 Service Key last 10 chars:', supabaseServiceKey?.substring(supabaseServiceKey.length - 10));
 
-  if (!supabaseUrl || !supabaseServiceKey) {
+  if (!supabaseUrl || (!supabaseServiceKey && !supabaseAnonKey)) {
     return NextResponse.json({
       success: false,
       error: 'Environment variables missing',
       details: {
         hasUrl: !!supabaseUrl,
-        hasServiceKey: !!supabaseServiceKey
+        hasServiceKey: !!supabaseServiceKey,
+        hasAnonKey: !!supabaseAnonKey
       }
     });
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    // Try service key first, fallback to anon key
+    const keyToUse = supabaseServiceKey || supabaseAnonKey;
+    const keyType = supabaseServiceKey ? 'service_role' : 'anon';
+    
+    console.log('🔑 Using key type:', keyType);
+    
+    const supabase = createClient(supabaseUrl, keyToUse!, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
