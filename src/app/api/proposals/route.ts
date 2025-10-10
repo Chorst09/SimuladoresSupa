@@ -36,11 +36,44 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
     
-    console.log('🔍 GET proposals request:', { type });
+    console.log('🔍 GET proposals request:', { type, timestamp: new Date().toISOString() });
 
     if (supabase) {
       try {
         console.log('🔄 Loading from Supabase...');
+        
+        // First, let's check if we can connect to the table
+        const { count, error: countError } = await supabase
+          .from('proposals')
+          .select('*', { count: 'exact', head: true });
+          
+        if (countError) {
+          console.error('❌ Error checking proposals table:', countError);
+          console.error('❌ Count error details:', {
+            message: countError.message,
+            details: countError.details,
+            hint: countError.hint,
+            code: countError.code
+          });
+          throw countError;
+        }
+        
+        console.log('📊 Total proposals in database:', count);
+        
+        // Check if RLS is causing issues by trying without filters first
+        const { data: allProposals, error: allError } = await supabase
+          .from('proposals')
+          .select('id, title, type, created_at')
+          .limit(10);
+          
+        if (allError) {
+          console.error('❌ Error getting sample proposals:', allError);
+        } else {
+          console.log('📋 Sample proposals (all types):', allProposals?.length || 0);
+          if (allProposals && allProposals.length > 0) {
+            console.log('📄 Sample proposal:', allProposals[0]);
+          }
+        }
         
         let query = supabase.from('proposals').select('*').order('created_at', { ascending: false });
         if (type) query = query.eq('type', type);
@@ -48,12 +81,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const { data: proposals, error } = await query;
 
         if (error) {
-          console.error('❌ Supabase error:', error);
+          console.error('❌ Supabase query error:', error);
           throw error;
         }
 
         if (proposals) {
-          console.log('✅ Loaded from Supabase:', proposals.length);
+          console.log('✅ Loaded from Supabase:', proposals.length, 'proposals');
+          console.log('📋 First proposal sample:', proposals[0] ? {
+            id: proposals[0].id,
+            title: proposals[0].title,
+            created_at: proposals[0].created_at
+          } : 'No proposals found');
+          
           const transformed = proposals.map((p: any) => ({
             id: p.id,
             baseId: p.base_id,
@@ -101,9 +140,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    console.log('📥 POST /api/proposals - Request received');
+    console.log('📥 POST /api/proposals - Request received at:', new Date().toISOString());
     const body = await request.json();
-    console.log('📋 Request body:', JSON.stringify(body, null, 2));
+    console.log('📋 Request body keys:', Object.keys(body));
+    console.log('📋 Essential fields:', {
+      title: body.title,
+      client: body.client,
+      type: body.type,
+      status: body.status,
+      accountManager: body.accountManager
+    });
     
     const validation = validateProposalData(body);
     console.log('✅ Validation result:', validation);
@@ -116,10 +162,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const proposalType = body.type || 'GENERAL';
     const currentDate = new Date();
     let baseId = generateProposalId(proposalType);
+    
+    console.log('🏷️ Generated baseId:', baseId);
 
     if (supabase) {
       try {
-        console.log('🔄 Saving to Supabase...');
+        console.log('🔄 Attempting to save to Supabase...');
         
         const proposalData = {
           base_id: baseId,
@@ -166,7 +214,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
 
         if (proposal) {
-          console.log('✅ Saved to Supabase:', proposal.id);
+          console.log('✅ Successfully saved to Supabase!');
+          console.log('📄 Saved proposal details:', {
+            id: proposal.id,
+            base_id: proposal.base_id,
+            title: proposal.title,
+            client: proposal.client,
+            created_at: proposal.created_at
+          });
+          
+          // Verify the proposal was actually saved by reading it back
+          const { data: verifyProposal, error: verifyError } = await supabase
+            .from('proposals')
+            .select('id, title, client, created_at')
+            .eq('id', proposal.id)
+            .single();
+            
+          if (verifyError) {
+            console.error('⚠️ Could not verify saved proposal:', verifyError);
+          } else {
+            console.log('✅ Verification successful - proposal exists in database:', verifyProposal);
+          }
           const transformed = {
             id: proposal.id,
             baseId: proposal.base_id,

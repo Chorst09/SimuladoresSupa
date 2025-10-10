@@ -218,41 +218,63 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [sipResult, setSipResult] = useState<SIPResult | null>(null);
 
     const fetchProposals = React.useCallback(async () => {
-        console.log('fetchProposals chamado, currentUser:', currentUser);
+        console.log('🔄 fetchProposals called at:', new Date().toISOString());
+        console.log('👤 Current user:', currentUser ? { id: currentUser.id, role: currentUser.role } : 'null');
+        
         if (!currentUser || !currentUser.role) {
-            console.log('Usuário não encontrado ou sem role');
+            console.log('❌ User not found or no role - clearing proposals');
             setProposals([]);
             return;
         }
 
         try {
-            console.log('🔍 Fetching VM proposals...');
+            console.log('🔍 Fetching VM proposals from API...');
             const response = await fetch('/api/proposals?type=VM', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                 },
             });
-            console.log('📡 Fetch response status:', response.status);
+            console.log('📡 API response status:', response.status);
 
             if (response.ok) {
                 const proposalsData = await response.json();
-                console.log('✅ Propostas carregadas:', proposalsData.length, 'propostas');
-                console.log('📋 Dados das propostas:', proposalsData);
+                console.log('✅ Raw proposals loaded:', proposalsData.length);
+                
+                if (proposalsData.length > 0) {
+                    console.log('📋 Sample proposal:', {
+                        id: proposalsData[0].id,
+                        baseId: proposalsData[0].baseId,
+                        title: proposalsData[0].title,
+                        type: proposalsData[0].type,
+                        createdAt: proposalsData[0].createdAt
+                    });
+                }
                 
                 // Filter for VM proposals (API já filtra por type=VM, mas vamos garantir)
                 const vmProposals = proposalsData.filter((p: any) =>
                     p.type === 'VM' || p.baseId?.startsWith('Prop_MV_')
                 );
-                console.log('🔧 Propostas VM após filtro:', vmProposals.length);
+                console.log('🔧 VM proposals after filter:', vmProposals.length);
+                
+                if (vmProposals.length !== proposalsData.length) {
+                    console.log('⚠️ Some proposals were filtered out');
+                    console.log('📊 Filtered proposals by type:', proposalsData.reduce((acc: any, p: any) => {
+                        acc[p.type] = (acc[p.type] || 0) + 1;
+                        return acc;
+                    }, {}));
+                }
+                
                 setProposals(vmProposals);
+                console.log('✅ Proposals set in state:', vmProposals.length);
             } else {
-                console.error('❌ Erro ao buscar propostas - Status:', response.status);
-                console.error('❌ Response text:', await response.text());
+                console.error('❌ API error - Status:', response.status);
+                const errorText = await response.text();
+                console.error('❌ Error response:', errorText);
                 setProposals([]);
             }
         } catch (error) {
-            console.error("Erro ao buscar propostas: ", error);
+            console.error("❌ Exception in fetchProposals:", error);
             setProposals([]);
         }
     }, [currentUser]);
