@@ -291,7 +291,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         const loadSettings = async () => {
             try {
                 // Force correct values - ignore localStorage for now to fix the 1412 issue
-                setMarkup(30);
+                setMarkup(1.85);
                 setCommissionPercentage(3);
                 setSetupFee(500);
                 setManagementAndSupportCost(49);
@@ -400,7 +400,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
 
     // Estados para configurações de preço
-    const [markup, setMarkup] = useState<number>(30);
+    const [markup, setMarkup] = useState<number>(1.85);
     const [commissionPercentage, setCommissionPercentage] = useState<number>(3);
     const [setupFee, setSetupFee] = useState<number>(500);
     const [managementAndSupportCost, setManagementAndSupportCost] = useState<number>(49);
@@ -2892,26 +2892,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <CardTitle className="text-cyan-400">Markup e Margem Líquida</CardTitle>
                                                         </CardHeader>
                                                         <CardContent>
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                                                 <div>
-                                                                    <Label htmlFor="markup-config">Markup Config (%)</Label>
+                                                                    <Label htmlFor="markup-config">Markup (%)</Label>
                                                                     <Input
                                                                         id="markup-config"
                                                                         type="number"
+                                                                        step="0.01"
                                                                         value={markup}
                                                                         onChange={(e) => setMarkup(parseFloat(e.target.value) || 0)}
                                                                         className="bg-slate-800 border-slate-700"
-                                                                        placeholder="Ex: 30"
-                                                                    />
-                                                                </div>
-                                                                <div>
-                                                                    <Label htmlFor="markup-real">Markup Real (%)</Label>
-                                                                    <Input
-                                                                        id="markup-real"
-                                                                        type="text"
-                                                                        value={realMarkupPercentage.toFixed(2) + '%'}
-                                                                        readOnly
-                                                                        className="bg-slate-800 border-slate-700 text-white cursor-not-allowed"
+                                                                        placeholder="Ex: 1.85"
                                                                     />
                                                                 </div>
                                                                 <div>
