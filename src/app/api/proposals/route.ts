@@ -44,15 +44,111 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
+    const debug = searchParams.get('debug');
     
-    console.log('🔍 GET proposals request:', { type, timestamp: new Date().toISOString() });
+    console.log('🔍 GET proposals request:', { type, debug, timestamp: new Date().toISOString() });
+
+    // Debug mode - return diagnostic information
+    if (debug === 'true') {
+      console.log('🧪 DEBUG MODE ACTIVATED');
+      
+      if (!supabase) {
+        return NextResponse.json({
+          success: false,
+          error: 'Supabase not configured',
+          details: {
+            hasUrl: !!supabaseUrl,
+            hasServiceKey: !!supabaseServiceKey
+          }
+        });
+      }
+
+      try {
+        // Test 1: Count all proposals
+        const { count, error: countError } = await supabase
+          .from('proposals')
+          .select('*', { count: 'exact', head: true });
+
+        // Test 2: Get recent proposals
+        const { data: recentProposals, error: recentError } = await supabase
+          .from('proposals')
+          .select('id, title, client, type, status, created_at')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        // Test 3: Test insert and read
+        const testProposal = {
+          base_id: `Debug_${Date.now()}`,
+          title: 'Debug Test',
+          client: 'Debug Client',
+          type: 'VM',
+          status: 'Rascunho',
+          value: 100,
+          created_by: 'debug-system',
+          version: 1
+        };
+
+        const { data: insertResult, error: insertError } = await supabase
+          .from('proposals')
+          .insert([testProposal])
+          .select()
+          .single();
+
+        let readBackResult = null;
+        if (!insertError && insertResult) {
+          const { data: readBack, error: readError } = await supabase
+            .from('proposals')
+            .select('*')
+            .eq('id', insertResult.id)
+            .single();
+          
+          readBackResult = { success: !readError, data: readBack, error: readError?.message };
+          
+          // Clean up
+          await supabase.from('proposals').delete().eq('id', insertResult.id);
+        }
+
+        return NextResponse.json({
+          debug: true,
+          timestamp: new Date().toISOString(),
+          supabaseConfig: {
+            hasUrl: !!supabaseUrl,
+            hasServiceKey: !!supabaseServiceKey,
+            url: supabaseUrl
+          },
+          tests: {
+            count: { success: !countError, count, error: countError?.message },
+            recentProposals: { success: !recentError, count: recentProposals?.length || 0, data: recentProposals, error: recentError?.message },
+            insertTest: { success: !insertError, insertedId: insertResult?.id, error: insertError?.message },
+            readBackTest: readBackResult
+          }
+        });
+      } catch (debugError) {
+        return NextResponse.json({
+          debug: true,
+          error: 'Debug test failed',
+          details: debugError
+        });
+      }
+    }
 
     if (supabase) {
       try {
         console.log('🔄 Loading from Supabase...');
         
+        // Create a new client with explicit RLS bypass for service key
+        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          },
+          db: {
+            schema: 'public'
+          }
+        });
+        
         // First, let's check if we can connect to the table
-        const { count, error: countError } = await supabase
+        const { count, error: countError } = await adminSupabase
           .from('proposals')
           .select('*', { count: 'exact', head: true });
           
@@ -69,22 +165,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         
         console.log('📊 Total proposals in database:', count);
         
-        // Check if RLS is causing issues by trying without filters first
-        const { data: allProposals, error: allError } = await supabase
-          .from('proposals')
-          .select('id, title, type, created_at')
-          .limit(10);
-          
-        if (allError) {
-          console.error('❌ Error getting sample proposals:', allError);
-        } else {
-          console.log('📋 Sample proposals (all types):', allProposals?.length || 0);
-          if (allProposals && allProposals.length > 0) {
-            console.log('📄 Sample proposal:', allProposals[0]);
-          }
-        }
-        
-        let query = supabase.from('proposals').select('*').order('created_at', { ascending: false });
+        // Try to get all proposals without any RLS restrictions
+        let query = adminSupabase.from('proposals').select('*').order('created_at', { ascending: false });
         if (type) query = query.eq('type', type);
 
         const { data: proposals, error } = await query;
@@ -178,6 +260,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       try {
         console.log('🔄 Attempting to save to Supabase...');
         
+        // Create admin client to bypass RLS
+        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          },
+          db: {
+            schema: 'public'
+          }
+        });
+        
         // Build proposal data with only essential fields first
         const proposalData: any = {
           base_id: baseId,
@@ -211,7 +304,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         console.log('📤 Inserting data:', JSON.stringify(proposalData, null, 2));
         
-        const { data: proposal, error } = await supabase
+        const { data: proposal, error } = await adminSupabase
           .from('proposals')
           .insert([proposalData])
           .select()
@@ -238,7 +331,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           });
           
           // Verify the proposal was actually saved by reading it back
-          const { data: verifyProposal, error: verifyError } = await supabase
+          const { data: verifyProposal, error: verifyError } = await adminSupabase
             .from('proposals')
             .select('id, title, client, created_at')
             .eq('id', proposal.id)
@@ -323,6 +416,17 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
     if (supabase) {
       try {
+        // Create admin client to bypass RLS
+        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          },
+          db: {
+            schema: 'public'
+          }
+        });
+        
         const updateData: any = {};
         if (body.title) updateData.title = body.title;
         if (body.client) updateData.client = body.client;
@@ -341,7 +445,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         if (body.appliedDirectorDiscountPercentage !== undefined) updateData.applied_director_discount_percentage = body.appliedDirectorDiscountPercentage;
         if (body.baseTotalMonthly !== undefined) updateData.base_total_monthly = body.baseTotalMonthly;
 
-        const { data: proposal, error } = await supabase
+        const { data: proposal, error } = await adminSupabase
           .from('proposals')
           .update(updateData)
           .eq('id', proposalId)
@@ -411,7 +515,18 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 
     if (supabase) {
       try {
-        const { data: proposal, error } = await supabase
+        // Create admin client to bypass RLS
+        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          },
+          db: {
+            schema: 'public'
+          }
+        });
+        
+        const { data: proposal, error } = await adminSupabase
           .from('proposals')
           .delete()
           .eq('id', proposalId)
