@@ -36,7 +36,7 @@ export function usePasswordCheck(): PasswordCheckResult {
           .single();
 
         if (profileError) {
-          console.error('Erro ao verificar status da senha:', profileError);
+          console.error('Erro ao verificar status da senha:', profileError?.message || profileError);
           setError('Erro ao verificar status da senha');
           setNeedsPasswordChange(false);
         } else {
