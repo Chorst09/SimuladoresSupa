@@ -3,26 +3,19 @@ import { Proposal } from '@/lib/types';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 let supabase: any = null;
-if (supabaseUrl && supabaseServiceKey) {
-  supabase = createClient(supabaseUrl, supabaseServiceKey, {
+if (supabaseUrl && supabaseAnonKey) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
     }
   });
-  console.log('✅ Supabase client initialized with service key');
-  console.log('🔑 Using URL:', supabaseUrl);
-  console.log('🔑 Service key length:', supabaseServiceKey.length);
-  console.log('🔑 Service key starts with:', supabaseServiceKey.substring(0, 20) + '...');
+  console.log('✅ Supabase client initialized');
 } else {
   console.error('❌ Supabase environment variables missing');
-  console.error('❌ URL present:', !!supabaseUrl);
-  console.error('❌ URL value:', supabaseUrl);
-  console.error('❌ Service key present:', !!supabaseServiceKey);
-  console.error('❌ Service key length:', supabaseServiceKey?.length || 0);
 }
 
 let mockProposals: Proposal[] = [];
@@ -36,497 +29,229 @@ function generateProposalId(type: string = 'PROP'): string {
   }
 }
 
-function validateProposalData(data: any): { isValid: boolean; errors: string[] } {
-  const errors: string[] = [];
-  if (!data.title) errors.push('title is required');
-  if (!data.client) errors.push('client is required');
-  return { isValid: errors.length === 0, errors };
-}
-
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
-    const debug = searchParams.get('debug');
     
-    console.log('🔍 GET proposals request:', { type, debug, timestamp: new Date().toISOString() });
+    console.log('🔍 GET proposals request:', { type, timestamp: new Date().toISOString() });
 
-    // Debug mode - return diagnostic information
-    if (debug === 'true') {
-      console.log('🧪 DEBUG MODE ACTIVATED');
-      
-      if (!supabase) {
-        return NextResponse.json({
-          success: false,
-          error: 'Supabase not configured',
-          details: {
-            hasUrl: !!supabaseUrl,
-            hasServiceKey: !!supabaseServiceKey
-          }
-        });
-      }
-
-      try {
-        // Create admin client
-        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          },
-          db: {
-            schema: 'public'
-          }
-        });
-
-        // Test 1: Count all proposals
-        const { count, error: countError } = await adminSupabase
-          .from('proposals')
-          .select('*', { count: 'exact', head: true });
-
-        // Test 2: Get recent proposals with actual column names
-        const { data: recentProposals, error: recentError } = await adminSupabase
-          .from('proposals')
-          .select('id, id_base, titulo, cliente, created_at')
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        // Test 3: Check table structure first
-        const { data: debugTableInfo, error: debugTableError } = await adminSupabase
-          .from('information_schema.columns')
-          .select('column_name, data_type, is_nullable')
-          .eq('table_name', 'proposals')
-          .eq('table_schema', 'public');
-          
-        console.log('🧪 Table structure:', debugTableInfo);
-
-        // Test insert with minimal data based on actual columns
-        const testProposal: any = {};
-        const debugColumnNames = debugTableInfo?.map(col => col.column_name) || [];
-        
-        if (debugColumnNames.includes('base_id')) {
-          testProposal.base_id = `Debug_${Date.now()}`;
-        }
-        if (debugColumnNames.includes('title')) {
-          testProposal.title = 'Debug Test';
-        }
-        if (debugColumnNames.includes('client')) {
-          testProposal.client = 'Debug Client';
-        }
-
-        console.log('🧪 Attempting to insert test proposal:', testProposal);
-
-        const { data: insertResult, error: insertError } = await adminSupabase
-          .from('proposals')
-          .insert([testProposal])
-          .select()
-          .single();
-
-        console.log('🧪 Insert result:', { insertResult, insertError });
-
-        let readBackResult = null;
-        if (!insertError && insertResult) {
-          const { data: readBack, error: readError } = await adminSupabase
-            .from('proposals')
-            .select('*')
-            .eq('id', insertResult.id)
-            .single();
-          
-          readBackResult = { success: !readError, data: readBack, error: readError?.message };
-          
-          // Clean up
-          await adminSupabase.from('proposals').delete().eq('id', insertResult.id);
-        }
-
-        return NextResponse.json({
-          debug: true,
-          timestamp: new Date().toISOString(),
-          supabaseConfig: {
-            hasUrl: !!supabaseUrl,
-            hasServiceKey: !!supabaseServiceKey,
-            url: supabaseUrl
-          },
-          tests: {
-            count: { success: !countError, count, error: countError?.message },
-            recentProposals: { success: !recentError, count: recentProposals?.length || 0, data: recentProposals, error: recentError?.message },
-            insertTest: { success: !insertError, insertedId: insertResult?.id, error: insertError?.message, data: insertResult },
-            readBackTest: readBackResult
-          }
-        });
-      } catch (debugError) {
-        console.error('🧪 Debug error:', debugError);
-        return NextResponse.json({
-          debug: true,
-          error: 'Debug test failed',
-          details: debugError
-        });
-      }
-    }
-
+    // Try Supabase first
     if (supabase) {
       try {
         console.log('🔄 Loading from Supabase...');
         
-        // Create a new client with explicit RLS bypass for service key
-        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          },
-          db: {
-            schema: 'public'
-          }
-        });
-        
-        // First, let's check if we can connect to the table
-        const { count, error: countError } = await adminSupabase
+        const { data: proposals, error: supabaseError } = await supabase
           .from('proposals')
-          .select('*', { count: 'exact', head: true });
+          .select('*')
+          .order('created_at', { ascending: false });
           
-        if (countError) {
-          console.error('❌ Error checking proposals table:', countError);
-          console.error('❌ Count error details:', {
-            message: countError.message,
-            details: countError.details,
-            hint: countError.hint,
-            code: countError.code
-          });
-          throw countError;
-        }
-        
-        console.log('📊 Total proposals in database:', count);
-        
-        // Try to get all proposals without any RLS restrictions
-        let query = adminSupabase.from('proposals').select('*').order('created_at', { ascending: false });
-        if (type) query = query.eq('type', type);
-
-        const { data: proposals, error } = await query;
-
-        if (error) {
-          console.error('❌ Supabase query error:', error);
-          throw error;
-        }
-
-        if (proposals) {
-          console.log('✅ Loaded from Supabase:', proposals.length, 'proposals');
-          console.log('📋 First proposal sample:', proposals[0] ? {
-            id: proposals[0].id,
-            title: proposals[0].title,
-            created_at: proposals[0].created_at
-          } : 'No proposals found');
+        if (supabaseError) {
+          console.error('❌ Supabase error:', supabaseError);
+          console.log('📦 Falling back to mock storage');
+        } else {
+          console.log('✅ Loaded from Supabase:', proposals?.length || 0, 'proposals');
           
-          const transformed = proposals.map((p: any) => ({
-            id: p.id,
-            baseId: p.id_base || p.base_id,
-            title: p.titulo || p.title,
-            client: p.cliente || p.client,
-            accountManager: p.account_manager || '',
-            type: p.type || 'VM',
-            status: p.status || 'Rascunho',
-            value: p.value || 0,
-            totalSetup: p.total_setup || 0,
-            totalMonthly: p.total_monthly || 0,
-            contractPeriod: p.contract_period || 12,
-            date: p.date,
-            expiryDate: p.expiry_date,
-            createdBy: p.created_by || 'system',
-            distributorId: p.distributor_id || '',
-            version: p.version || 1,
-            products: p.products || [],
-            items: p.items || [],
-            clientData: p.client_data,
-            metadata: p.metadata || {},
-            changes: p.changes || '',
-            applySalespersonDiscount: p.apply_salesperson_discount || false,
-            appliedDirectorDiscountPercentage: p.applied_director_discount_percentage || 0,
-            baseTotalMonthly: p.base_total_monthly || 0,
-            createdAt: p.created_at,
-            updatedAt: p.updated_at
-          }));
-          return NextResponse.json(transformed, { status: 200 });
+          // Filter by type if specified
+          let filteredProposals = proposals || [];
+          if (type) {
+            filteredProposals = filteredProposals.filter(p => p.type === type);
+          }
+          
+          return NextResponse.json(filteredProposals);
         }
-      } catch (supabaseError) {
-        console.error('❌ Supabase error:', supabaseError);
+      } catch (err) {
+        console.error('❌ Supabase connection error:', err);
+        console.log('📦 Falling back to mock storage');
       }
     }
 
+    // Fallback to mock storage
     console.log('📦 Using mock storage');
-    let filtered = mockProposals;
-    if (type) filtered = filtered.filter(p => p.type === type);
-    return NextResponse.json(filtered, { status: 200 });
-  } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    let filteredMockProposals = mockProposals;
+    if (type) {
+      filteredMockProposals = mockProposals.filter(p => p.type === type);
+    }
+    
+    return NextResponse.json(filteredMockProposals);
+    
+  } catch (err) {
+    console.error('❌ GET error:', err);
+    return NextResponse.json({ error: 'Failed to fetch proposals' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    console.log('📥 POST /api/proposals - Request received at:', new Date().toISOString());
     const body = await request.json();
-    console.log('📋 Request body keys:', Object.keys(body));
-    console.log('📋 Essential fields:', {
-      title: body.title,
-      client: body.client,
-      type: body.type,
-      status: body.status,
-      accountManager: body.accountManager
-    });
-    
-    const validation = validateProposalData(body);
-    console.log('✅ Validation result:', validation);
-    
-    if (!validation.isValid) {
-      console.error('❌ Validation failed:', validation.errors);
-      return NextResponse.json({ error: 'Validation failed', details: validation.errors }, { status: 400 });
+    console.log('📝 POST proposal request:', { timestamp: new Date().toISOString() });
+
+    // Validate required fields
+    if (!body.title || !body.client) {
+      return NextResponse.json(
+        { error: 'Missing required fields: title and client' },
+        { status: 400 }
+      );
     }
 
-    const proposalType = body.type || 'GENERAL';
-    const currentDate = new Date();
-    let baseId = generateProposalId(proposalType);
-    
-    console.log('🏷️ Generated baseId:', baseId);
+    // Create proposal object
+    const proposal: Proposal = {
+      id: crypto.randomUUID(),
+      baseId: body.baseId || generateProposalId(body.type),
+      title: body.title,
+      client: body.client,
+      accountManager: body.accountManager || '',
+      type: body.type || 'GENERAL',
+      status: body.status || 'Rascunho',
+      value: body.value || 0,
+      totalSetup: body.totalSetup || 0,
+      totalMonthly: body.totalMonthly || 0,
+      contractPeriod: body.contractPeriod || 12,
+      date: body.date || new Date().toISOString().split('T')[0],
+      expiryDate: body.expiryDate || null,
+      createdBy: body.createdBy || 'system',
+      distributorId: body.distributorId || '',
+      version: body.version || 1,
+      products: body.products || [],
+      items: body.items || [],
+      clientData: body.clientData || null,
+      metadata: body.metadata || {},
+      changes: body.changes || '',
+      applySalespersonDiscount: body.applySalespersonDiscount || false,
+      appliedDirectorDiscountPercentage: body.appliedDirectorDiscountPercentage || 0,
+      baseTotalMonthly: body.baseTotalMonthly || 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
 
-    // Try Supabase first, but fall back to mock storage if it fails
+    // Try Supabase first
     if (supabase) {
       try {
-        console.log('🔄 Attempting to save to Supabase...');
+        console.log('💾 Saving to Supabase...');
         
-        // Create admin client
-        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          }
-        });
-        
-        // Try simple insert with basic fields
-        const proposalData = {
-          title: body.title,
-          client: body.client
-        };
-
-        console.log('📤 Attempting Supabase insert:', proposalData);
-        
-        const { data: proposal, error } = await adminSupabase
+        const { data: savedProposal, error: saveError } = await supabase
           .from('proposals')
-          .insert([proposalData])
+          .insert([{
+            base_id: proposal.baseId,
+            title: proposal.title,
+            client: proposal.client,
+            account_manager: proposal.accountManager,
+            type: proposal.type,
+            status: proposal.status,
+            value: proposal.value,
+            total_setup: proposal.totalSetup,
+            total_monthly: proposal.totalMonthly,
+            contract_period: proposal.contractPeriod,
+            date: proposal.date,
+            expiry_date: proposal.expiryDate,
+            created_by: proposal.createdBy,
+            distributor_id: proposal.distributorId,
+            version: proposal.version,
+            products: proposal.products,
+            items: proposal.items,
+            client_data: proposal.clientData,
+            metadata: proposal.metadata,
+            changes: proposal.changes,
+            apply_salesperson_discount: proposal.applySalespersonDiscount,
+            applied_director_discount_percentage: proposal.appliedDirectorDiscountPercentage,
+            base_total_monthly: proposal.baseTotalMonthly
+          }])
           .select()
           .single();
 
-        if (!error && proposal) {
-          console.log('✅ Successfully saved to Supabase!', proposal.id);
-          
-          const transformed = {
-            id: proposal.id,
-            baseId: proposal.id || `Prop_${Date.now()}`,
-            title: proposal.title,
-            client: proposal.client,
-            accountManager: body.accountManager || '',
-            type: body.type || 'VM',
-            status: body.status || 'Rascunho',
-            value: body.value || 0,
-            totalSetup: body.totalSetup || 0,
-            totalMonthly: body.totalMonthly || 0,
-            contractPeriod: body.contractPeriod || 12,
-            date: new Date().toISOString().split('T')[0],
-            expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            createdBy: body.createdBy || 'system',
-            distributorId: body.distributorId || '',
-            version: body.version || 1,
-            products: body.products || [],
-            items: body.items || [],
-            clientData: body.clientData,
-            metadata: body.metadata || {},
-            changes: body.changes || '',
-            applySalespersonDiscount: body.applySalespersonDiscount || false,
-            appliedDirectorDiscountPercentage: body.appliedDirectorDiscountPercentage || 0,
-            baseTotalMonthly: body.baseTotalMonthly || 0,
-            createdAt: proposal.created_at,
-            updatedAt: proposal.updated_at
-          };
-          return NextResponse.json(transformed, { status: 201 });
+        if (saveError) {
+          console.error('❌ Supabase save error:', saveError);
+          console.log('📦 Falling back to mock storage');
         } else {
-          console.error('❌ Supabase insert failed:', error);
-          throw error;
+          console.log('✅ Saved to Supabase:', savedProposal.id);
+          return NextResponse.json(savedProposal, { status: 201 });
         }
-      } catch (supabaseError) {
-        console.error('❌ Supabase error, falling back to mock storage:', supabaseError);
+      } catch (err) {
+        console.error('❌ Supabase save error:', err);
+        console.log('📦 Falling back to mock storage');
       }
     }
 
-    console.log('📦 Using mock storage');
-    const createdProposal = {
-      ...body,
-      id: `mock_${Date.now()}`,
-      baseId,
-      title: body.title,
-      client: body.client,
-      type: proposalType,
-      status: body.status || 'Rascunho',
-      value: body.value || 0,
-      date: body.date || currentDate.toISOString().split('T')[0],
-      expiryDate: body.expiryDate || new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      createdBy: 'anonymous',
-      createdAt: currentDate,
-      version: body.version || 1,
-      distributorId: body.distributorId || '',
-      accountManager: body.accountManager || ''
-    };
+    // Fallback to mock storage
+    console.log('📦 Saving to mock storage');
+    mockProposals.push(proposal);
+    return NextResponse.json(proposal, { status: 201 });
 
-    mockProposals.push(createdProposal);
-    return NextResponse.json(createdProposal, { status: 201 });
-  } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  } catch (err) {
+    console.error('❌ POST error:', err);
+    return NextResponse.json({ error: 'Failed to create proposal' }, { status: 500 });
   }
 }
 
 export async function PUT(request: NextRequest): Promise<NextResponse> {
   try {
-    const { searchParams } = new URL(request.url);
-    const proposalId = searchParams.get('id');
     const body = await request.json();
-
-    if (!proposalId) {
-      return NextResponse.json({ error: 'Proposal ID is required' }, { status: 400 });
-    }
-
-    if (supabase) {
-      try {
-        // Create admin client to bypass RLS
-        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          },
-          db: {
-            schema: 'public'
-          }
-        });
-        
-        const updateData: any = {};
-        if (body.title) updateData.title = body.title;
-        if (body.client) updateData.client = body.client;
-        if (body.accountManager) updateData.account_manager = body.accountManager;
-        if (body.status) updateData.status = body.status;
-        if (body.value !== undefined) updateData.value = body.value;
-        if (body.totalSetup !== undefined) updateData.total_setup = body.totalSetup;
-        if (body.totalMonthly !== undefined) updateData.total_monthly = body.totalMonthly;
-        if (body.contractPeriod !== undefined) updateData.contract_period = body.contractPeriod;
-        if (body.products) updateData.products = body.products;
-        if (body.items) updateData.items = body.items;
-        if (body.clientData) updateData.client_data = body.clientData;
-        if (body.metadata) updateData.metadata = body.metadata;
-        if (body.changes !== undefined) updateData.changes = body.changes;
-        if (body.applySalespersonDiscount !== undefined) updateData.apply_salesperson_discount = body.applySalespersonDiscount;
-        if (body.appliedDirectorDiscountPercentage !== undefined) updateData.applied_director_discount_percentage = body.appliedDirectorDiscountPercentage;
-        if (body.baseTotalMonthly !== undefined) updateData.base_total_monthly = body.baseTotalMonthly;
-
-        const { data: proposal, error } = await adminSupabase
-          .from('proposals')
-          .update(updateData)
-          .eq('id', proposalId)
-          .select()
-          .single();
-
-        if (!error && proposal) {
-          const transformed = {
-            id: proposal.id,
-            baseId: proposal.base_id,
-            title: proposal.title,
-            client: proposal.client,
-            accountManager: proposal.account_manager,
-            type: proposal.type,
-            status: proposal.status,
-            value: proposal.value,
-            totalSetup: proposal.total_setup,
-            totalMonthly: proposal.total_monthly,
-            contractPeriod: proposal.contract_period,
-            date: proposal.date,
-            expiryDate: proposal.expiry_date,
-            createdBy: proposal.created_by,
-            distributorId: proposal.distributor_id,
-            version: proposal.version,
-            products: proposal.products,
-            items: proposal.items,
-            clientData: proposal.client_data,
-            metadata: proposal.metadata,
-            changes: proposal.changes,
-            applySalespersonDiscount: proposal.apply_salesperson_discount,
-            appliedDirectorDiscountPercentage: proposal.applied_director_discount_percentage,
-            baseTotalMonthly: proposal.base_total_monthly,
-            createdAt: proposal.created_at,
-            updatedAt: proposal.updated_at
-          };
-          return NextResponse.json(transformed, { status: 200 });
-        }
-      } catch (supabaseError) {
-        console.error('Supabase update error:', supabaseError);
-      }
-    }
-
-    const proposalIndex = mockProposals.findIndex(p => p.id === proposalId);
-    if (proposalIndex === -1) {
-      return NextResponse.json({ error: 'Proposal not found' }, { status: 404 });
-    }
-
-    const existingProposal = mockProposals[proposalIndex];
-    const updatedProposal = { ...existingProposal, ...body, id: proposalId, updatedAt: new Date() };
-    mockProposals[proposalIndex] = updatedProposal;
-
-    return NextResponse.json(updatedProposal, { status: 200 });
-  } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  try {
     const { searchParams } = new URL(request.url);
-    const proposalId = searchParams.get('id');
+    const id = searchParams.get('id');
 
-    if (!proposalId) {
-      return NextResponse.json({ error: 'Proposal ID is required' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'Missing proposal ID' }, { status: 400 });
     }
 
+    console.log('✏️ PUT proposal request:', { id, timestamp: new Date().toISOString() });
+
+    // Try Supabase first
     if (supabase) {
       try {
-        // Create admin client to bypass RLS
-        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          },
-          db: {
-            schema: 'public'
-          }
-        });
+        console.log('💾 Updating in Supabase...');
         
-        const { data: proposal, error } = await adminSupabase
+        const { data: updatedProposal, error: updateError } = await supabase
           .from('proposals')
-          .delete()
-          .eq('id', proposalId)
+          .update({
+            title: body.title,
+            client: body.client,
+            account_manager: body.accountManager,
+            status: body.status,
+            value: body.value,
+            total_setup: body.totalSetup,
+            total_monthly: body.totalMonthly,
+            contract_period: body.contractPeriod,
+            date: body.date,
+            expiry_date: body.expiryDate,
+            products: body.products,
+            items: body.items,
+            client_data: body.clientData,
+            metadata: body.metadata,
+            changes: body.changes,
+            apply_salesperson_discount: body.applySalespersonDiscount,
+            applied_director_discount_percentage: body.appliedDirectorDiscountPercentage,
+            base_total_monthly: body.baseTotalMonthly,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
           .select()
           .single();
 
-        if (!error && proposal) {
-          return NextResponse.json({ message: 'Proposal deleted successfully', proposal }, { status: 200 });
+        if (updateError) {
+          console.error('❌ Supabase update error:', updateError);
+          console.log('📦 Falling back to mock storage');
+        } else {
+          console.log('✅ Updated in Supabase:', id);
+          return NextResponse.json(updatedProposal);
         }
-      } catch (supabaseError) {
-        console.error('Supabase delete error:', supabaseError);
+      } catch (err) {
+        console.error('❌ Supabase update error:', err);
+        console.log('📦 Falling back to mock storage');
       }
     }
 
-    const proposalIndex = mockProposals.findIndex(p => p.id === proposalId);
+    // Fallback to mock storage
+    console.log('📦 Updating in mock storage');
+    const proposalIndex = mockProposals.findIndex(p => p.id === id);
     if (proposalIndex === -1) {
       return NextResponse.json({ error: 'Proposal not found' }, { status: 404 });
     }
 
-    const deletedProposal = mockProposals.splice(proposalIndex, 1)[0];
-    return NextResponse.json({ message: 'Proposal deleted successfully', proposal: deletedProposal }, { status: 200 });
-  } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    mockProposals[proposalIndex] = { ...mockProposals[proposalIndex], ...body, updatedAt: new Date().toISOString() };
+    return NextResponse.json(mockProposals[proposalIndex]);
+
+  } catch (err) {
+    console.error('❌ PUT error:', err);
+    return NextResponse.json({ error: 'Failed to update proposal' }, { status: 500 });
   }
 }
