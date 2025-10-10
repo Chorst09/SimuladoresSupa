@@ -2280,19 +2280,17 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                     </Select>
                                 </div>
                                 
-                                {currentProposal && (
-                                    <div className="mb-4">
-                                        <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
-                                        <textarea
-                                            id="proposal-changes"
-                                            value={proposalChanges}
-                                            onChange={(e) => setProposalChanges(e.target.value)}
-                                            placeholder="Descreva as alterações feitas nesta versão da proposta..."
-                                            className="w-full p-3 bg-slate-800 border border-slate-700 text-white rounded-md resize-none"
-                                            rows={3}
-                                        />
-                                    </div>
-                                )}
+                                <div className="mb-4">
+                                    <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
+                                    <textarea
+                                        id="proposal-changes"
+                                        value={proposalChanges}
+                                        onChange={(e) => setProposalChanges(e.target.value)}
+                                        placeholder="Descreva as alterações feitas nesta versão da proposta..."
+                                        className="w-full p-3 bg-slate-800 border border-slate-700 text-white rounded-md resize-none"
+                                        rows={3}
+                                    />
+                                </div>
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="border-slate-700">
