@@ -100,11 +100,11 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
           counts.pabx++;
         } else if (proposal.baseId?.startsWith('Prop_MV_')) {
           counts.maquinasVirtuais++;
-        } else if (proposal.baseId?.startsWith('Prop_Fibra_')) {
+        } else if (proposal.baseId?.startsWith('Prop_InternetFibra_')) {
           counts.fibra++;
         } else if (proposal.baseId?.startsWith('Prop_Double_')) {
           counts.doubleFibraRadio++;
-        } else if (proposal.baseId?.startsWith('Prop_InterMan_')) {
+        } else if (proposal.baseId?.startsWith('Prop_ManFibra_')) {
           counts.man++;
         } else if (proposal.baseId?.startsWith('Prop_ManRadio_')) {
           counts.manRadio++;
@@ -144,10 +144,10 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
           if (!data.title && data.baseId) {
             if (data.baseId.startsWith("Prop_MV_")) title = `Proposta Máquinas Virtuais - ${data.baseId.split("_")[2]}`;
             else if (data.baseId.startsWith("Prop_PabxSip_")) title = `Proposta PABX/SIP - ${data.baseId.split("_")[2]}`;
-            else if (data.baseId.startsWith("Prop_InterMan_")) title = `Proposta Internet Man Fibra - ${data.baseId.split("_")[2]}`;
+            else if (data.baseId.startsWith("Prop_ManFibra_")) title = `Proposta Internet Man Fibra - ${data.baseId.split("_")[2]}`;
             else if (data.baseId.startsWith("Prop_Double_")) title = `Proposta Double-Fibra/Radio - ${data.baseId.split("_")[2]}`;
-            else if (data.baseId.startsWith("Prop_Fibra_")) title = `Proposta Internet Fibra - ${data.baseId.split("_")[2]}`;
-            else if (data.baseId.startsWith("Prop_Radio_")) title = `Proposta Internet Rádio - ${data.baseId.split("_")[2]}`;
+            else if (data.baseId.startsWith("Prop_InternetFibra_")) title = `Proposta Internet Fibra - ${data.baseId.split("_")[2]}`;
+            else if (data.baseId.startsWith("Prop_InternetRadio_")) title = `Proposta Internet Rádio - ${data.baseId.split("_")[2]}`;
             else if (data.baseId.startsWith("Prop_ManRadio_")) title = `Proposta Internet Man Radio - ${data.baseId.split("_")[2]}`;
           }
 

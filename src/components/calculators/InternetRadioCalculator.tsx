@@ -377,11 +377,11 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
 
             if (response.ok) {
                 const proposalsData = await response.json();
-                // Filter for Fibra Internet proposals
-                const fibraProposals = proposalsData.filter((p: any) =>
-                    p.type === 'FIBER' || p.baseId?.startsWith('Prop_InterFibra_')
+                // Filter for Radio Internet proposals
+                const radioProposals = proposalsData.filter((p: any) =>
+                    p.type === 'RADIO' || p.baseId?.startsWith('Prop_InternetRadio_')
                 );
-                setProposals(fibraProposals);
+                setProposals(radioProposals);
             } else {
                 console.error('Erro ao buscar propostas:', response.statusText);
                 setProposals([]);

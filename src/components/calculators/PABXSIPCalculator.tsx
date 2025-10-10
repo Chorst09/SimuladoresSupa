@@ -1255,7 +1255,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 const proposalsData = await response.json();
                 // Filter for PABX proposals
                 const pabxProposals = proposalsData.filter((p: any) =>
-                    p.type === 'PABX' || p.baseId?.startsWith('Prop_PABX_') || p.baseId?.startsWith('Prop_Pabx/Sip_')
+                    p.type === 'PABX' || p.baseId?.startsWith('Prop_PabxSip_')
                 );
                 setSavedProposals(pabxProposals);
             } else {

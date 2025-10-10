@@ -394,23 +394,23 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
 
     useEffect(() => {
         const initialRadioPlans: RadioPlan[] = [
-            { speed: 25, price12: 720.00, price24: 527.00, price36: 474.00, price48: 474.00, price60: 474.00, installationCost: 998.00, description: "25 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
-            { speed: 30, price12: 740.08, price24: 579.00, price36: 527.00, price48: 527.00, price60: 527.00, installationCost: 998.00, description: "30 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
-            { speed: 40, price12: 915.01, price24: 632.00, price36: 579.00, price48: 579.00, price60: 579.00, installationCost: 998.00, description: "40 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
-            { speed: 50, price12: 1103.39, price24: 685.00, price36: 632.00, price48: 632.00, price60: 632.00, installationCost: 998.00, description: "50 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
-            { speed: 60, price12: 1547.44, price24: 790.00, price36: 737.00, price48: 737.00, price60: 737.00, installationCost: 998.00, description: "60 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
-            { speed: 80, price12: 1825.98, price24: 1000.00, price36: 948.00, price48: 948.00, price60: 948.00, installationCost: 998.00, description: "80 Mbps", baseCost: 5700.00, radioCost: 6700.00 },
-            { speed: 100, price12: 2017.05, price24: 1578.00, price36: 1316.00, price48: 1316.00, price60: 1316.00, installationCost: 1996.00, description: "100 Mbps", baseCost: 5700.00, radioCost: 6700.00 },
-            { speed: 150, price12: 2543.18, price24: 1789.00, price36: 1527.00, price48: 1527.00, price60: 1527.00, installationCost: 1996.00, description: "150 Mbps", baseCost: 5700.00, radioCost: 6700.00 },
-            { speed: 200, price12: 3215.98, price24: 2053.00, price36: 1737.00, price48: 1737.00, price60: 1737.00, installationCost: 1996.00, description: "200 Mbps", baseCost: 5700.00, radioCost: 6700.00 },
-            { speed: 300, price12: 7522.00, price24: 4316.00, price36: 4000.00, price48: 4000.00, price60: 4000.00, installationCost: 2500.00, description: "300 Mbps", baseCost: 23300.00, radioCost: 23200.00 },
-            { speed: 400, price12: 9469.00, price24: 5211.00, price36: 4736.00, price48: 4736.00, price60: 4736.00, installationCost: 2500.00, description: "400 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
-            { speed: 500, price12: 11174.00, price24: 5789.00, price36: 5253.00, price48: 5253.00, price60: 5253.00, installationCost: 2500.00, description: "500 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
-            { speed: 600, price12: 12500.00, price24: 6315.00, price36: 5790.00, price48: 5790.00, price60: 5790.00, installationCost: 2500.00, description: "600 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
-            { speed: 700, price12: 13800.00, price24: 6900.00, price36: 6300.00, price48: 6300.00, price60: 6300.00, installationCost: 2500.00, description: "700 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
-            { speed: 800, price12: 15000.00, price24: 7500.00, price36: 6800.00, price48: 6800.00, price60: 6800.00, installationCost: 2500.00, description: "800 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
-            { speed: 900, price12: 16200.00, price24: 8100.00, price36: 7300.00, price48: 7300.00, price60: 7300.00, installationCost: 2500.00, description: "900 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
-            { speed: 1000, price12: 17500.00, price24: 8750.00, price36: 7900.00, price48: 7900.00, price60: 7900.00, installationCost: 2500.00, description: "1000 Mbps (1 Gbps)", baseCost: 23300.00, radioCost: 25360.00 }
+            { speed: 25, price12: 864.00, price24: 632.40, price36: 568.80, price48: 568.80, price60: 568.80, installationCost: 998.00, description: "25 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
+            { speed: 30, price12: 888.10, price24: 694.80, price36: 632.40, price48: 632.40, price60: 632.40, installationCost: 998.00, description: "30 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
+            { speed: 40, price12: 1098.01, price24: 758.40, price36: 694.80, price48: 694.80, price60: 694.80, installationCost: 998.00, description: "40 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
+            { speed: 50, price12: 1324.07, price24: 822.00, price36: 758.40, price48: 758.40, price60: 758.40, installationCost: 998.00, description: "50 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
+            { speed: 60, price12: 1856.93, price24: 948.00, price36: 884.40, price48: 884.40, price60: 884.40, installationCost: 998.00, description: "60 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
+            { speed: 80, price12: 2191.18, price24: 1200.00, price36: 1137.60, price48: 1137.60, price60: 1137.60, installationCost: 998.00, description: "80 Mbps", baseCost: 5700.00, radioCost: 6700.00 },
+            { speed: 100, price12: 2420.46, price24: 1893.60, price36: 1579.20, price48: 1579.20, price60: 1579.20, installationCost: 1996.00, description: "100 Mbps", baseCost: 5700.00, radioCost: 6700.00 },
+            { speed: 150, price12: 3051.82, price24: 2146.80, price36: 1832.40, price48: 1832.40, price60: 1832.40, installationCost: 1996.00, description: "150 Mbps", baseCost: 5700.00, radioCost: 6700.00 },
+            { speed: 200, price12: 3859.18, price24: 2463.60, price36: 2084.40, price48: 2084.40, price60: 2084.40, installationCost: 1996.00, description: "200 Mbps", baseCost: 5700.00, radioCost: 6700.00 },
+            { speed: 300, price12: 9026.40, price24: 5179.20, price36: 4800.00, price48: 4800.00, price60: 4800.00, installationCost: 2500.00, description: "300 Mbps", baseCost: 23300.00, radioCost: 23200.00 },
+            { speed: 400, price12: 11362.80, price24: 6253.20, price36: 5683.20, price48: 5683.20, price60: 5683.20, installationCost: 2500.00, description: "400 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
+            { speed: 500, price12: 13408.80, price24: 6946.80, price36: 6303.60, price48: 6303.60, price60: 6303.60, installationCost: 2500.00, description: "500 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
+            { speed: 600, price12: 15000.00, price24: 7578.00, price36: 6948.00, price48: 6948.00, price60: 6948.00, installationCost: 2500.00, description: "600 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
+            { speed: 700, price12: 16560.00, price24: 8280.00, price36: 7560.00, price48: 7560.00, price60: 7560.00, installationCost: 2500.00, description: "700 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
+            { speed: 800, price12: 18000.00, price24: 9000.00, price36: 8160.00, price48: 8160.00, price60: 8160.00, installationCost: 2500.00, description: "800 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
+            { speed: 900, price12: 19440.00, price24: 9720.00, price36: 8760.00, price48: 8760.00, price60: 8760.00, installationCost: 2500.00, description: "900 Mbps", baseCost: 23300.00, radioCost: 25360.00 },
+            { speed: 1000, price12: 21000.00, price24: 10500.00, price36: 9480.00, price48: 9480.00, price60: 9480.00, installationCost: 2500.00, description: "1000 Mbps (1 Gbps)", baseCost: 23300.00, radioCost: 25360.00 }
         ];
         // Force update with new radio cost values
         setRadioPlans(initialRadioPlans);

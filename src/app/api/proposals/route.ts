@@ -25,6 +25,11 @@ function generateProposalId(type: string = 'PROP'): string {
   switch (type) {
     case 'VM': return `Prop_MV_${nextNumber}_v1`;
     case 'PABX': return `Prop_PabxSip_${nextNumber}_v1`;
+    case 'FIBER': return `Prop_InternetFibra_${nextNumber}_v1`;
+    case 'RADIO': return `Prop_InternetRadio_${nextNumber}_v1`;
+    case 'DOUBLE': return `Prop_Double_${nextNumber}_v1`;
+    case 'MAN': return `Prop_ManFibra_${nextNumber}_v1`;
+    case 'MANRADIO': return `Prop_ManRadio_${nextNumber}_v1`;
     default: return `Prop_General_${nextNumber}_v1`;
   }
 }

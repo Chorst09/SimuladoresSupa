@@ -381,11 +381,11 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
             if (response.ok) {
                 const proposalsData = await response.json();
-                // Filter for Fibra Internet proposals
-                const fibraProposals = proposalsData.filter((p: any) =>
-                    p.type === 'FIBER' || p.baseId?.startsWith('Prop_InterFibra_')
+                // Filter for Double Fibra Radio proposals
+                const doubleProposals = proposalsData.filter((p: any) =>
+                    p.type === 'DOUBLE' || p.baseId?.startsWith('Prop_Double_')
                 );
-                setProposals(fibraProposals);
+                setProposals(doubleProposals);
             } else {
                 console.error('Erro ao buscar propostas:', response.statusText);
                 setProposals([]);
