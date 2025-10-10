@@ -57,8 +57,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         } else {
           console.log('✅ Loaded from Supabase:', proposals?.length || 0, 'proposals');
           
+          // Map Supabase column names to frontend expected names
+          const mappedProposals = proposals?.map(p => ({
+            ...p,
+            baseId: p.base_id, // Map base_id to baseId
+            totalSetup: p.total_setup,
+            totalMonthly: p.total_monthly,
+            contractPeriod: p.contract_period,
+            expiryDate: p.expiry_date,
+            createdBy: p.created_by,
+            distributorId: p.distributor_id,
+            clientData: p.client_data,
+            applySalespersonDiscount: p.apply_salesperson_discount,
+            appliedDirectorDiscountPercentage: p.applied_director_discount_percentage,
+            baseTotalMonthly: p.base_total_monthly,
+            createdAt: p.created_at,
+            updatedAt: p.updated_at
+          })) || [];
+          
           // Filter by type if specified
-          let filteredProposals = proposals || [];
+          let filteredProposals = mappedProposals;
           if (type) {
             filteredProposals = filteredProposals.filter(p => p.type === type);
           }

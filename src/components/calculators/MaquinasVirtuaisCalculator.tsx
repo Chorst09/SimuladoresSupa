@@ -3381,7 +3381,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                                     <Card className="bg-slate-900/80 border-slate-800 text-white">
                                                         <CardHeader className="flex flex-row items-center justify-between">
-                                                            <CardTitle className="text-cyan-400">Backup (por GB)</CardTitle>
+                                                            <CardTitle className="text-cyan-400">Backup Local (por GB)</CardTitle>
                                                             <div className="flex gap-2">
                                                                 {!editingCards.backup ? (
                                                                     <Button
