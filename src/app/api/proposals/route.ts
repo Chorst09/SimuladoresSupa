@@ -286,8 +286,73 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     console.log('🏷️ Generated baseId:', baseId);
 
-    // Skip Supabase for now and go directly to mock storage
-    console.log('⚠️ Skipping Supabase temporarily - using mock storage');
+    // Try Supabase first, but fall back to mock storage if it fails
+    if (supabase) {
+      try {
+        console.log('🔄 Attempting to save to Supabase...');
+        
+        // Create admin client
+        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        });
+        
+        // Try simple insert with basic fields
+        const proposalData = {
+          title: body.title,
+          client: body.client
+        };
+
+        console.log('📤 Attempting Supabase insert:', proposalData);
+        
+        const { data: proposal, error } = await adminSupabase
+          .from('proposals')
+          .insert([proposalData])
+          .select()
+          .single();
+
+        if (!error && proposal) {
+          console.log('✅ Successfully saved to Supabase!', proposal.id);
+          
+          const transformed = {
+            id: proposal.id,
+            baseId: proposal.id || `Prop_${Date.now()}`,
+            title: proposal.title,
+            client: proposal.client,
+            accountManager: body.accountManager || '',
+            type: body.type || 'VM',
+            status: body.status || 'Rascunho',
+            value: body.value || 0,
+            totalSetup: body.totalSetup || 0,
+            totalMonthly: body.totalMonthly || 0,
+            contractPeriod: body.contractPeriod || 12,
+            date: new Date().toISOString().split('T')[0],
+            expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            createdBy: body.createdBy || 'system',
+            distributorId: body.distributorId || '',
+            version: body.version || 1,
+            products: body.products || [],
+            items: body.items || [],
+            clientData: body.clientData,
+            metadata: body.metadata || {},
+            changes: body.changes || '',
+            applySalespersonDiscount: body.applySalespersonDiscount || false,
+            appliedDirectorDiscountPercentage: body.appliedDirectorDiscountPercentage || 0,
+            baseTotalMonthly: body.baseTotalMonthly || 0,
+            createdAt: proposal.created_at,
+            updatedAt: proposal.updated_at
+          };
+          return NextResponse.json(transformed, { status: 201 });
+        } else {
+          console.error('❌ Supabase insert failed:', error);
+          throw error;
+        }
+      } catch (supabaseError) {
+        console.error('❌ Supabase error, falling back to mock storage:', supabaseError);
+      }
+    }
 
     console.log('📦 Using mock storage');
     const createdProposal = {
