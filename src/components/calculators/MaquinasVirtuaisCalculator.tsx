@@ -1240,7 +1240,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         }
 
         setAddedProducts(products);
-        setSelectedStatus(proposal.status);
+        setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
+        setProposalChanges(proposal.changes || '');
 
         // Load contract period
         if (proposal.contractPeriod) {

@@ -1063,6 +1063,11 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         }
 
         setProposalItems(items);
+        
+        // Load status and changes
+        setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
+        setProposalChanges(proposal.changes || '');
+        
         setCurrentView('proposal-summary');
     };
 

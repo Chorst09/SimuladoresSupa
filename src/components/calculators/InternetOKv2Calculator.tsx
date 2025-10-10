@@ -909,6 +909,11 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         }
 
         setAddedProducts(products);
+        
+        // Load status and changes
+        setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
+        setProposalChanges(proposal.changes || '');
+        
         setViewMode('proposal-summary');
     };
 

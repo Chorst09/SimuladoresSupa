@@ -1098,6 +1098,11 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }
 
         setAddedProducts(products);
+        
+        // Load status and changes
+        setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
+        setProposalChanges(proposal.changes || '');
+        
         setViewMode('proposal-summary');
     };
 
