@@ -31,7 +31,7 @@ export function usePasswordCheck(): PasswordCheckResult {
         // Check if user needs to change password
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('password_changed, created_by_admin')
+          .select('password_changed')
           .eq('id', user.id)
           .single();
 
@@ -40,16 +40,12 @@ export function usePasswordCheck(): PasswordCheckResult {
           setError('Erro ao verificar status da senha');
           setNeedsPasswordChange(false);
         } else {
-          // User needs to change password if:
-          // 1. password_changed is false OR null
-          // 2. AND was created by admin
-          const needsChange = (profile.password_changed === false || profile.password_changed === null) && 
-                             profile.created_by_admin === true;
+          // User needs to change password if password_changed is false OR null
+          const needsChange = (profile.password_changed === false || profile.password_changed === null);
           
           console.log('Password check result:', {
             userId: user.id,
             passwordChanged: profile.password_changed,
-            createdByAdmin: profile.created_by_admin,
             needsChange
           });
           
