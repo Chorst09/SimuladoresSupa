@@ -173,6 +173,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     });
     const [addedProducts, setAddedProducts] = useState<Product[]>([]);
     const [selectedStatus, setSelectedStatus] = useState<string>('Aguardando Aprovação do Cliente');
+    const [proposalChanges, setProposalChanges] = useState<string>('');
 
     // Estados PABX
     const [pabxExtensions, setPabxExtensions] = useState<number>(0);
@@ -1116,7 +1117,16 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            if (typeof proposal.accountManager === 'string') {
+                // If accountManager is a string, try to get full data from metadata or create basic object
+                setAccountManagerData({
+                    name: proposal.accountManager,
+                    email: proposal.metadata?.accountManagerEmail || '',
+                    phone: proposal.metadata?.accountManagerPhone || ''
+                });
+            } else {
+                setAccountManagerData(proposal.accountManager);
+            }
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1137,6 +1147,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         setAddedProducts(products);
         setSelectedStatus(proposal.status); // Load the status
+        setProposalChanges(proposal.changes || ''); // Load changes if available
 
         // Load contract period
         if (proposal.contractPeriod) {
@@ -1194,7 +1205,16 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            if (typeof proposal.accountManager === 'string') {
+                // If accountManager is a string, try to get full data from metadata or create basic object
+                setAccountManagerData({
+                    name: proposal.accountManager,
+                    email: proposal.metadata?.accountManagerEmail || '',
+                    phone: proposal.metadata?.accountManagerPhone || ''
+                });
+            } else {
+                setAccountManagerData(proposal.accountManager);
+            }
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1578,7 +1598,12 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 baseTotalMonthly: baseTotalMonthly,
                 applySalespersonDiscount: applySalespersonDiscount,
                 appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                userId: currentUser.id
+                userId: currentUser.id,
+                metadata: {
+                    accountManagerEmail: accountManagerData.email,
+                    accountManagerPhone: accountManagerData.phone,
+                    fullAccountManagerData: accountManagerData
+                }
             };
 
             const response = await fetch('/api/proposals', {
@@ -1666,7 +1691,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 // Dados adicionais para controle de versão
                 applySalespersonDiscount: applySalespersonDiscount,
                 appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                baseTotalMonthly: baseTotalMonthly
+                baseTotalMonthly: baseTotalMonthly,
+                changes: proposalChanges
             };
 
             let response;
@@ -3824,6 +3850,20 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </div>
+                                                                
+                                                                {currentProposal && (
+                                                                    <div className="mb-4">
+                                                                        <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
+                                                                        <textarea
+                                                                            id="proposal-changes"
+                                                                            value={proposalChanges}
+                                                                            onChange={(e) => setProposalChanges(e.target.value)}
+                                                                            placeholder="Descreva as alterações feitas nesta versão da proposta..."
+                                                                            className="w-full p-3 bg-slate-800 border border-slate-700 text-white rounded-md resize-none"
+                                                                            rows={3}
+                                                                        />
+                                                                    </div>
+                                                                )}
                                                                 <Table>
                                                                     <TableHeader>
                                                                         <TableRow className="border-slate-700">

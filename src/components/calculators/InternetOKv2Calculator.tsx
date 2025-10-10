@@ -100,6 +100,14 @@ interface Proposal {
     expiryDate?: string;
     value: number;
     type: string;
+    changes?: string;
+    clientData?: ClientData;
+    items?: any[];
+    applySalespersonDiscount?: boolean;
+    appliedDirectorDiscountPercentage?: number;
+    baseTotalMonthly?: number;
+    contractPeriod?: string;
+    createdBy?: string;
 }
 
 // Helper function to get monthly price based on contract term
@@ -249,6 +257,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
     // Estados do produto
     const [addedProducts, setAddedProducts] = useState<Product[]>([]);
     const [doubleFiberRadioPlans, setDoubleFiberRadioPlans] = useState<DoubleFiberRadioPlan[]>([]);
+    const [selectedStatus, setSelectedStatus] = useState<string>('Aguardando Aprovação do Cliente');
+    const [proposalChanges, setProposalChanges] = useState<string>('');
 
     // Estados da calculadora
     const [selectedSpeed, setSelectedSpeed] = useState<number>(0);
@@ -751,7 +761,9 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                    userId: user.id
+                    userId: user.id,
+                    status: selectedStatus,
+                    changes: proposalChanges
                 };
 
                 const response = await fetch(`/api/proposals?id=${currentProposal.id}`, {
@@ -789,7 +801,9 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                    userId: user.id
+                    userId: user.id,
+                    status: selectedStatus,
+                    changes: proposalChanges
                 };
 
                 const response = await fetch('/api/proposals', {
@@ -964,6 +978,10 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                 if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
             }
         }
+
+        // Load status and changes
+        setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
+        setProposalChanges(proposal.changes || '');
 
         setViewMode('calculator');
     };
@@ -1601,6 +1619,34 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
                                     <CardHeader><CardTitle className="flex items-center"><FileText className="mr-2" />Resumo da Proposta</CardTitle></CardHeader>
                                     <CardContent>
+                                        <div className="mb-4">
+                                            <Label htmlFor="proposal-status" className="mb-2 block">Status da Proposta</Label>
+                                            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                                                <SelectTrigger id="proposal-status" className="bg-slate-800 border-slate-700 text-white">
+                                                    <SelectValue placeholder="Selecione o status" />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-slate-800 text-white">
+                                                    <SelectItem value="Aguardando aprovação desconto Diretoria">Aguardando aprovação desconto Diretoria</SelectItem>
+                                                    <SelectItem value="Aguardando Aprovação do Cliente">Aguardando Aprovação do Cliente</SelectItem>
+                                                    <SelectItem value="Fechado Ganho">Fechado Ganho</SelectItem>
+                                                    <SelectItem value="Perdido">Perdido</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        
+                                        {currentProposal && (
+                                            <div className="mb-4">
+                                                <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
+                                                <textarea
+                                                    id="proposal-changes"
+                                                    value={proposalChanges}
+                                                    onChange={(e) => setProposalChanges(e.target.value)}
+                                                    placeholder="Descreva as alterações feitas nesta versão da proposta..."
+                                                    className="w-full p-3 bg-slate-800 border border-slate-700 text-white rounded-md resize-none"
+                                                    rows={3}
+                                                />
+                                            </div>
+                                        )}
 
                                         {addedProducts.length === 0 ? (
                                             <p className="text-slate-400">Nenhum produto adicionado.</p>

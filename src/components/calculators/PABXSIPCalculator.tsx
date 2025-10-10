@@ -84,6 +84,8 @@ interface Proposal {
         directorDiscountFactor: number;
         hasDiscounts: boolean;
     };
+    status?: string;
+    changes?: string;
 }
 
 interface PABXSIPCalculatorProps {
@@ -144,6 +146,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     // Estados da Proposta
     const [proposalItems, setProposalItems] = useState<ProposalItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [selectedStatus, setSelectedStatus] = useState<string>('Aguardando Aprovação do Cliente');
+    const [proposalChanges, setProposalChanges] = useState<string>('');
 
     const { user: currentUser } = useAuth();
 
@@ -1120,6 +1124,10 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             setContractDuration(proposal.contractPeriod.toString());
         }
 
+        // Load status and changes
+        setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
+        setProposalChanges(proposal.changes || '');
+
         setCurrentView('calculator');
     };
 
@@ -1165,7 +1173,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 title: `Proposta PABX/SIP - ${clientData.name}`,
                 client: clientData.name,
                 type: 'PABX',
-                status: 'Rascunho',
+                status: selectedStatus,
                 value: finalTotalMonthly, // Use discounted value
                 totalMonthly: finalTotalMonthly, // Use discounted value
                 totalSetup: finalTotalSetup, // Use discounted value
@@ -1186,7 +1194,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     hasDiscounts: hasDiscounts
                 },
                 contractPeriod: contractDuration,
-                version: proposalVersion // Set version based on discount application
+                version: proposalVersion, // Set version based on discount application
+                changes: proposalChanges
             };
 
             const response = await fetch('/api/proposals', {
@@ -2255,6 +2264,34 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                 <CardTitle>Resumo da Proposta</CardTitle>
                             </CardHeader>
                             <CardContent>
+                                <div className="mb-4">
+                                    <Label htmlFor="proposal-status" className="mb-2 block">Status da Proposta</Label>
+                                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                                        <SelectTrigger id="proposal-status" className="bg-slate-800 border-slate-700 text-white">
+                                            <SelectValue placeholder="Selecione o status" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-800 text-white">
+                                            <SelectItem value="Aguardando aprovação desconto Diretoria">Aguardando aprovação desconto Diretoria</SelectItem>
+                                            <SelectItem value="Aguardando Aprovação do Cliente">Aguardando Aprovação do Cliente</SelectItem>
+                                            <SelectItem value="Fechado Ganho">Fechado Ganho</SelectItem>
+                                            <SelectItem value="Perdido">Perdido</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                
+                                {currentProposal && (
+                                    <div className="mb-4">
+                                        <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
+                                        <textarea
+                                            id="proposal-changes"
+                                            value={proposalChanges}
+                                            onChange={(e) => setProposalChanges(e.target.value)}
+                                            placeholder="Descreva as alterações feitas nesta versão da proposta..."
+                                            className="w-full p-3 bg-slate-800 border border-slate-700 text-white rounded-md resize-none"
+                                            rows={3}
+                                        />
+                                    </div>
+                                )}
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="border-slate-700">

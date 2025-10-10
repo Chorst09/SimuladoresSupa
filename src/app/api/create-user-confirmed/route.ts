@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     if (!authData.user.email_confirmed_at) {
       console.log('🔄 Forçando confirmação de email...')
 
-      const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
         authData.user.id,
         {
           email_confirm: true
