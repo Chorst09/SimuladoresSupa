@@ -1558,6 +1558,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             const proposalToSave = {
                 title: `Proposta Máquinas Virtuais V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                 client: clientData.companyName || clientData.name || 'Cliente não informado',
+                accountManager: accountManagerData.name || 'Gerente não informado',
                 value: finalTotalMonthly,
                 type: 'VM',
                 status: 'Rascunho',
@@ -1566,11 +1567,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 version: proposalVersion,
                 // Store additional data as metadata
                 clientData: clientData,
-                accountManager: accountManagerData,
                 products: addedProducts,
                 totalSetup: totalSetup,
                 totalMonthly: finalTotalMonthly,
-                contractPeriod: vmContractPeriod, // Incluir período do contrato
+                contractPeriod: vmContractPeriod,
                 baseTotalMonthly: baseTotalMonthly,
                 applySalespersonDiscount: applySalespersonDiscount,
                 appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
