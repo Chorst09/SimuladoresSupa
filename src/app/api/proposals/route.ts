@@ -203,18 +203,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       try {
         console.log('🔄 Attempting to save proposal to Supabase...');
         
-        // Generate base_id using Supabase function
-        const { data: baseIdResult, error: baseIdError } = await supabase
-          .rpc('generate_proposal_base_id', { proposal_type: proposalType });
-
-        if (baseIdError) {
-          console.error('❌ Error generating base_id:', baseIdError);
-          throw baseIdError;
-        }
-
-        if (!baseIdError && baseIdResult) {
-          console.log('✅ Generated base_id:', baseIdResult);
-          baseId = baseIdResult;
+        // Generate base_id locally (simpler approach)
+        console.log('🔄 Generating base_id locally...');
+        baseId = generateProposalId(proposalType);
+        console.log('✅ Generated base_id:', baseId);
 
           // Prepare data for Supabase
           const proposalData = {
@@ -230,7 +222,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             contract_period: body.contractPeriod || 12,
             date: body.date || currentDate.toISOString().split('T')[0],
             expiry_date: body.expiryDate || new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            created_by: null,
+            created_by: body.createdBy || 'system',
             distributor_id: body.distributorId || '',
             version: body.version || 1,
             products: body.products || [],
