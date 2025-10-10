@@ -90,12 +90,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           .order('created_at', { ascending: false })
           .limit(10);
 
-        // Test 3: Test insert with minimal data matching table structure
-        const testProposal = {
-          id_base: `Debug_${Date.now()}`,
-          titulo: 'Debug Test',
-          cliente: 'Debug Client'
-        };
+        // Test 3: Check table structure first
+        const { data: debugTableInfo, error: debugTableError } = await adminSupabase
+          .from('information_schema.columns')
+          .select('column_name, data_type, is_nullable')
+          .eq('table_name', 'proposals')
+          .eq('table_schema', 'public');
+          
+        console.log('🧪 Table structure:', debugTableInfo);
+
+        // Test insert with minimal data based on actual columns
+        const testProposal: any = {};
+        const debugColumnNames = debugTableInfo?.map(col => col.column_name) || [];
+        
+        if (debugColumnNames.includes('base_id')) {
+          testProposal.base_id = `Debug_${Date.now()}`;
+        }
+        if (debugColumnNames.includes('title')) {
+          testProposal.title = 'Debug Test';
+        }
+        if (debugColumnNames.includes('client')) {
+          testProposal.client = 'Debug Client';
+        }
 
         console.log('🧪 Attempting to insert test proposal:', testProposal);
 
@@ -285,15 +301,51 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }
         });
         
-        // Build proposal data matching current table structure
-        // Based on the screenshot, the table has: id_base, titulo, cliente
-        const proposalData: any = {
-          id_base: baseId,
-          titulo: body.title,
-          cliente: body.client
-        };
+        // First, let's check what columns actually exist in the table
+        console.log('🔍 Checking table structure...');
+        
+        const { data: tableInfo, error: tableError } = await adminSupabase
+          .from('information_schema.columns')
+          .select('column_name, data_type')
+          .eq('table_name', 'proposals')
+          .eq('table_schema', 'public');
+          
+        console.log('📋 Available columns:', tableInfo);
+        
+        if (tableError) {
+          console.error('❌ Error checking table structure:', tableError);
+        }
 
-        console.log('📤 Proposal data to insert:', proposalData);
+        // Build proposal data with only the most basic fields that should exist
+        const proposalData: any = {};
+        
+        // Try different possible column names based on common patterns
+        const columnNames = tableInfo?.map(col => col.column_name) || [];
+        console.log('📝 Column names found:', columnNames);
+        
+        // Map our data to whatever columns exist
+        if (columnNames.includes('id')) {
+          // id is auto-generated, don't include it
+        }
+        if (columnNames.includes('base_id')) {
+          proposalData.base_id = baseId;
+        } else if (columnNames.includes('id_base')) {
+          proposalData.id_base = baseId;
+        }
+        
+        if (columnNames.includes('title')) {
+          proposalData.title = body.title;
+        } else if (columnNames.includes('titulo')) {
+          proposalData.titulo = body.title;
+        }
+        
+        if (columnNames.includes('client')) {
+          proposalData.client = body.client;
+        } else if (columnNames.includes('cliente')) {
+          proposalData.cliente = body.client;
+        }
+
+        console.log('📤 Final proposal data to insert:', proposalData);
 
         console.log('📤 Inserting data:', JSON.stringify(proposalData, null, 2));
         
