@@ -219,25 +219,29 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         }
 
         try {
-            const response = await fetch('/api/proposals', {
+            console.log('🔍 Fetching VM proposals...');
+            const response = await fetch('/api/proposals?type=VM', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentUser.token}`,
                 },
             });
+            console.log('📡 Fetch response status:', response.status);
 
             if (response.ok) {
                 const proposalsData = await response.json();
-                console.log('Todas as propostas:', proposalsData);
-                // Filter for VM proposals
+                console.log('✅ Propostas carregadas:', proposalsData.length, 'propostas');
+                console.log('📋 Dados das propostas:', proposalsData);
+                
+                // Filter for VM proposals (API já filtra por type=VM, mas vamos garantir)
                 const vmProposals = proposalsData.filter((p: any) =>
                     p.type === 'VM' || p.baseId?.startsWith('Prop_MV_')
                 );
-                console.log('Propostas VM filtradas:', vmProposals);
+                console.log('🔧 Propostas VM após filtro:', vmProposals.length);
                 setProposals(vmProposals);
             } else {
-                console.error('Erro ao buscar propostas:', response.statusText);
+                console.error('❌ Erro ao buscar propostas - Status:', response.status);
+                console.error('❌ Response text:', await response.text());
                 setProposals([]);
             }
         } catch (error) {
@@ -1577,16 +1581,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 userId: currentUser.id
             };
 
-            console.log('🚀 Sending proposal data:', proposalToSave);
-            const response = await fetch('/api/proposals-test', {
+            const response = await fetch('/api/proposals', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(proposalToSave),
             });
-            console.log('📡 Response status:', response.status);
-            console.log('📡 Response ok:', response.ok);
 
             if (response.ok) {
                 const savedProposal = await response.json();
