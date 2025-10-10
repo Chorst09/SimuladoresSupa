@@ -520,19 +520,24 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
         const simplesNacional = receitaTotalPrimeiromes * simplesNacionalRate;
         
         // CORREÇÃO: Cálculo das comissões seguindo o modelo do Internet Rádio
+        // Se é cliente existente, comissão apenas sobre a diferença de valor
+        const baseComissionValue = isExistingClient && previousMonthlyFee > 0 
+            ? Math.max(0, (monthlyValue - previousMonthlyFee) * months) // Comissão apenas sobre a diferença
+            : receitaTotalPrimeiromes; // Comissão sobre valor total
+        
         const comissaoParceiroIndicador = includeReferralPartner 
-            ? receitaTotalPrimeiromes * (getPartnerIndicatorRate(monthlyValue, contractTerm))
+            ? baseComissionValue * (getPartnerIndicatorRate(monthlyValue, contractTerm))
             : 0;
         
         const comissaoParceiroInfluenciador = includeInfluencerPartner 
-            ? receitaTotalPrimeiromes * (getPartnerInfluencerRate(monthlyValue, contractTerm))
+            ? baseComissionValue * (getPartnerInfluencerRate(monthlyValue, contractTerm))
             : 0;
         
         // Calcular a comissão do vendedor baseado na presença de parceiros
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
         const comissaoVendedor = temParceiros 
-            ? (receitaTotalPrimeiromes * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
-            : (receitaTotalPrimeiromes * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
+            ? (baseComissionValue * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
+            : (baseComissionValue * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
         
         // Total das comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;

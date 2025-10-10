@@ -291,7 +291,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         const loadSettings = async () => {
             try {
                 // Force correct values - ignore localStorage for now to fix the 1412 issue
-                setMarkup(1.85);
+                setMarkup(10.42);
                 setCommissionPercentage(3);
                 setSetupFee(500);
                 setManagementAndSupportCost(49);
@@ -400,7 +400,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
 
     // Estados para configurações de preço
-    const [markup, setMarkup] = useState<number>(1.85);
+    const [markup, setMarkup] = useState<number>(10.42);
     const [commissionPercentage, setCommissionPercentage] = useState<number>(3);
     const [setupFee, setSetupFee] = useState<number>(500);
     const [managementAndSupportCost, setManagementAndSupportCost] = useState<number>(49);
@@ -2902,7 +2902,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                         value={markup}
                                                                         onChange={(e) => setMarkup(parseFloat(e.target.value) || 0)}
                                                                         className="bg-slate-800 border-slate-700"
-                                                                        placeholder="Ex: 1.85"
+                                                                        placeholder="Ex: 10.42"
                                                                     />
                                                                 </div>
                                                                 <div>
