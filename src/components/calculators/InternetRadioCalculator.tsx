@@ -523,7 +523,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         // Se é cliente existente, comissão apenas sobre a diferença de valor
         const baseComissionValue = isExistingClient && previousMonthlyFee > 0 
             ? Math.max(0, (monthlyValue - previousMonthlyFee) * months) // Comissão apenas sobre a diferença
-            : receitaTotalPrimeiromes; // Comissão sobre valor total
+            : totalRevenue; // Comissão apenas sobre valor mensal (sem taxa de instalação)
         
         const comissaoParceiroIndicador = includeReferralPartner 
             ? baseComissionValue * (getPartnerIndicatorRate(monthlyValue, contractTerm))
