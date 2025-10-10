@@ -1577,13 +1577,16 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 userId: currentUser.id
             };
 
-            const response = await fetch('/api/proposals', {
+            console.log('🚀 Sending proposal data:', proposalToSave);
+            const response = await fetch('/api/proposals-test', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(proposalToSave),
             });
+            console.log('📡 Response status:', response.status);
+            console.log('📡 Response ok:', response.ok);
 
             if (response.ok) {
                 const savedProposal = await response.json();
