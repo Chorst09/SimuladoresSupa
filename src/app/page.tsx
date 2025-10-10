@@ -80,7 +80,7 @@ export default function App() {
                 { id: 'calculator-internet-fibra', label: 'Internet Fibra', icon: <Wifi className="h-4 w-4" /> },
                 { id: 'calculator-internet-radio', label: 'Internet Radio', icon: <Wifi className="h-4 w-4" /> },
                 { id: 'calculator-internet-ok-v2', label: 'Double-Fibra/Radio', icon: <Wifi className="h-4 w-4" /> },
-                { id: 'calculator-internet-man', label: 'Internet MAN', icon: <Wifi className="h-4 w-4" /> },
+                { id: 'calculator-internet-man', label: 'Internet Man Fibra', icon: <Wifi className="h-4 w-4" /> },
             ]
         },
         // Gestão de Oportunidades - apenas para admin e director

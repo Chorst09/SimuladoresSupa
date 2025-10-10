@@ -933,7 +933,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             if (currentProposal?.id && proposalVersion === 1) {
                 const proposalToUpdate = {
                     id: currentProposal.id,
-                    title: `Proposta Internet Man V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta Internet Man Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
                     type: 'MAN',
@@ -975,7 +975,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 }
             } else {
                 const proposalToSave = {
-                    title: `Proposta Internet Man V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta Internet Man Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
                     type: 'MAN',
@@ -1350,7 +1350,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Voltar
                         </Button>
-                        <CardTitle>Buscar Propostas - Internet Man</CardTitle>
+                        <CardTitle>Buscar Propostas - Internet Man Fibra</CardTitle>
                         <CardDescription>Encontre propostas existentes ou crie uma nova.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -1420,7 +1420,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                         <div className="flex justify-between items-start mb-4 print:mb-2">
                             <div>
                                 <h1 className="text-2xl font-bold text-gray-900">Proposta Comercial</h1>
-                                <p className="text-gray-600">Internet Man</p>
+                                <p className="text-gray-600">Internet Man Fibra</p>
                             </div>
                             <div className="flex gap-2 no-print">
                                 <Button variant="outline" onClick={() => setViewMode('search')}>
@@ -2650,7 +2650,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                             <TabsContent value="prices">
                                 <Card className="bg-slate-900/80 border-slate-800 text-white mt-4">
                                     <CardHeader>
-                                        <CardTitle className="text-white">Tabela de Preços - Internet Man</CardTitle>
+                                        <CardTitle className="text-white">Tabela de Preços - Internet Man Fibra</CardTitle>
                                         <CardDescription>Atualize os preços conforme necessário</CardDescription>
                                     </CardHeader>
                                     <CardContent>

@@ -141,7 +141,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
           if (!data.title && data.baseId) {
             if (data.baseId.startsWith("Prop_MV_")) title = `Proposta Máquinas Virtuais - ${data.baseId.split("_")[2]}`;
             else if (data.baseId.startsWith("Prop_PabxSip_")) title = `Proposta PABX/SIP - ${data.baseId.split("_")[2]}`;
-            else if (data.baseId.startsWith("Prop_InterMan_")) title = `Proposta Internet MAN - ${data.baseId.split("_")[2]}`;
+            else if (data.baseId.startsWith("Prop_InterMan_")) title = `Proposta Internet Man Fibra - ${data.baseId.split("_")[2]}`;
             else if (data.baseId.startsWith("Prop_Double_")) title = `Proposta Double-Fibra/Radio - ${data.baseId.split("_")[2]}`;
             else if (data.baseId.startsWith("Prop_Fibra_")) title = `Proposta Internet Fibra - ${data.baseId.split("_")[2]}`;
             else if (data.baseId.startsWith("Prop_Radio_")) title = `Proposta Internet Rádio - ${data.baseId.split("_")[2]}`;
@@ -300,7 +300,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
             onNavigate={onNavigateToCalculator || (() => {})}
           />
           <CalculatorCard
-            title="Internet MAN"
+            title="Internet Man Fibra"
             description="Calcule valores para redes metropolitanas"
             icon={<Wifi className="w-5 h-5 text-cyan-500" />}
             calculatorId="calculator-internet-man"
@@ -351,7 +351,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
           />
           <StatCard 
             icon={<Wifi className="w-6 h-6 text-cyan-500" />} 
-            title="Propostas Internet MAN" 
+            title="Propostas Internet Man Fibra" 
             value={countProposalsByType.man.toString()} 
             subtext="Este mês" 
           />

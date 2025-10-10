@@ -86,14 +86,14 @@ export default function AnaliseConcorrencia() {
     const productPricing: Record<string, any> = {
       'Internet Fibra': { base: 120, tiers: { 100: 2.5, 500: 2.0, 1000: 1.5, default: 1.2 } },
       'Internet Radio': { base: 250, tiers: { 100: 4.0, 500: 3.5, 1000: 3.0, default: 2.8 } },
-      'Internet Man': { base: 800, tiers: { 100: 8.0, 500: 6.5, 1000: 5.0, default: 4.5 } },
+      'Internet Man Fibra': { base: 800, tiers: { 100: 8.0, 500: 6.5, 1000: 5.0, default: 4.5 } },
       'Dupla abordagem (Fibra mais Radio)': { base: 1200, tiers: { 100: 10.0, 500: 8.0, 1000: 6.5, default: 6.0 } }
     };
 
     const installationPricing: Record<string, number> = {
       'Internet Fibra': 800,
       'Internet Radio': 1500,
-      'Internet Man': 3000,
+      'Internet Man Fibra': 3000,
       'Dupla abordagem (Fibra mais Radio)': 4500
     };
 
@@ -298,7 +298,7 @@ export default function AnaliseConcorrencia() {
               >
                 <option value="Internet Fibra">Internet Fibra</option>
                 <option value="Internet Radio">Internet Rádio</option>
-                <option value="Internet Man">Internet Man (Metro Ethernet)</option>
+                <option value="Internet Man Fibra">Internet Man Fibra (Metro Ethernet)</option>
                 <option value="Dupla abordagem (Fibra mais Radio)">Dupla abordagem (Fibra + Rádio)</option>
               </select>
             </div>
