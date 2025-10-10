@@ -1645,6 +1645,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                 <SelectContent className="bg-slate-800 text-white">
                                                     <SelectItem value="Aguardando aprovação desconto Diretoria">Aguardando aprovação desconto Diretoria</SelectItem>
                                                     <SelectItem value="Aguardando Aprovação do Cliente">Aguardando Aprovação do Cliente</SelectItem>
+                                                    <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
                                                     <SelectItem value="Fechado Ganho">Fechado Ganho</SelectItem>
                                                     <SelectItem value="Perdido">Perdido</SelectItem>
                                                 </SelectContent>
