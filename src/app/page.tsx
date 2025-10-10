@@ -25,6 +25,7 @@ const InternetFibraCalculator = lazy(() => import('@/components/calculators/Inte
 const InternetRadioCalculator = lazy(() => import('@/components/calculators/InternetRadioCalculator'));
 const DoubleFibraRadioCalculator = lazy(() => import('@/components/calculators/DoubleFibraRadioCalculator'));
 const InternetManCalculator = lazy(() => import('@/components/calculators/InternetManCalculator'));
+const InternetManRadioCalculator = lazy(() => import('@/components/calculators/InternetManRadioCalculator'));
 const AnaliseConcorrencia = lazy(() => import('@/app/ferramentas/analise-concorrencia/page'));
 const PhysicalVirtualConversion = lazy(() => import('@/components/tools/PhysicalVirtualConversion'));
 const UserManagement = lazy(() => import('@/components/admin/UserManagement'));
@@ -81,6 +82,7 @@ export default function App() {
                 { id: 'calculator-internet-radio', label: 'Internet Radio', icon: <Wifi className="h-4 w-4" /> },
                 { id: 'calculator-internet-ok-v2', label: 'Double-Fibra/Radio', icon: <Wifi className="h-4 w-4" /> },
                 { id: 'calculator-internet-man', label: 'Internet Man Fibra', icon: <Wifi className="h-4 w-4" /> },
+                { id: 'calculator-internet-man-radio', label: 'Internet Man Radio', icon: <Wifi className="h-4 w-4" /> },
             ]
         },
         // Gestão de Oportunidades - apenas para admin e director
@@ -181,6 +183,12 @@ export default function App() {
                 return (
                     <Suspense fallback={<LoadingSpinner />}>
                         <InternetManCalculator onBackToDashboard={() => setActiveTab('dashboard')} />
+                    </Suspense>
+                );
+            case 'calculator-internet-man-radio':
+                return (
+                    <Suspense fallback={<LoadingSpinner />}>
+                        <InternetManRadioCalculator onBackToDashboard={() => setActiveTab('dashboard')} />
                     </Suspense>
                 );
             case 'user-management':

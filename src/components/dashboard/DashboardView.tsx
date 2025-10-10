@@ -86,7 +86,8 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
       maquinasVirtuais: 0,
       fibra: 0,
       doubleFibraRadio: 0,
-      man: 0
+      man: 0,
+      manRadio: 0
     };
     
     const currentMonth = new Date().getMonth();
@@ -105,6 +106,8 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
           counts.doubleFibraRadio++;
         } else if (proposal.baseId?.startsWith('Prop_InterMan_')) {
           counts.man++;
+        } else if (proposal.baseId?.startsWith('Prop_ManRadio_')) {
+          counts.manRadio++;
         }
       }
     });
@@ -145,6 +148,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
             else if (data.baseId.startsWith("Prop_Double_")) title = `Proposta Double-Fibra/Radio - ${data.baseId.split("_")[2]}`;
             else if (data.baseId.startsWith("Prop_Fibra_")) title = `Proposta Internet Fibra - ${data.baseId.split("_")[2]}`;
             else if (data.baseId.startsWith("Prop_Radio_")) title = `Proposta Internet Rádio - ${data.baseId.split("_")[2]}`;
+            else if (data.baseId.startsWith("Prop_ManRadio_")) title = `Proposta Internet Man Radio - ${data.baseId.split("_")[2]}`;
           }
 
           const createdAtDate = data.createdAt ? new Date(data.createdAt) : new Date();
@@ -307,6 +311,14 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
             color="border-l-cyan-500"
             onNavigate={onNavigateToCalculator || (() => {})}
           />
+          <CalculatorCard
+            title="Internet Man Radio"
+            description="Calcule valores para internet via rádio"
+            icon={<Wifi className="w-5 h-5 text-orange-500" />}
+            calculatorId="calculator-internet-man-radio"
+            color="border-l-orange-500"
+            onNavigate={onNavigateToCalculator || (() => {})}
+          />
         </div>
       </div>
       
@@ -353,6 +365,12 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
             icon={<Wifi className="w-6 h-6 text-cyan-500" />} 
             title="Propostas Internet Man Fibra" 
             value={countProposalsByType.man.toString()} 
+            subtext="Este mês" 
+          />
+          <StatCard 
+            icon={<Radio className="w-6 h-6 text-orange-500" />} 
+            title="Propostas Internet Man Radio" 
+            value={countProposalsByType.manRadio.toString()} 
             subtext="Este mês" 
           />
         </div>
