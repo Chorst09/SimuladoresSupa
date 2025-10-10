@@ -7,10 +7,19 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 let supabase: any = null;
 if (supabaseUrl && supabaseServiceKey) {
-  supabase = createClient(supabaseUrl, supabaseServiceKey);
-  console.log('✅ Supabase client initialized successfully');
+  supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  console.log('✅ Supabase client initialized with service key');
+  console.log('🔑 Using URL:', supabaseUrl);
+  console.log('🔑 Service key present:', !!supabaseServiceKey);
 } else {
   console.error('❌ Supabase environment variables missing');
+  console.error('❌ URL present:', !!supabaseUrl);
+  console.error('❌ Service key present:', !!supabaseServiceKey);
 }
 
 let mockProposals: Proposal[] = [];
@@ -169,31 +178,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       try {
         console.log('🔄 Attempting to save to Supabase...');
         
-        const proposalData = {
+        // Build proposal data with only essential fields first
+        const proposalData: any = {
           base_id: baseId,
           title: body.title,
           client: body.client,
-          account_manager: body.accountManager,
           type: proposalType,
           status: body.status || 'Rascunho',
           value: body.value || 0,
-          total_setup: body.totalSetup || 0,
-          total_monthly: body.totalMonthly || 0,
-          contract_period: body.contractPeriod || 12,
-          date: body.date || currentDate.toISOString().split('T')[0],
-          expiry_date: body.expiryDate || new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           created_by: body.createdBy || 'system',
-          distributor_id: body.distributorId || '',
-          version: body.version || 1,
-          products: body.products || [],
-          items: body.items || [],
-          client_data: body.clientData,
-          metadata: body.metadata || {},
-          changes: body.changes || '',
-          apply_salesperson_discount: body.applySalespersonDiscount || false,
-          applied_director_discount_percentage: body.appliedDirectorDiscountPercentage || 0,
-          base_total_monthly: body.baseTotalMonthly || 0
+          version: body.version || 1
         };
+
+        // Add optional fields only if they exist
+        if (body.accountManager) proposalData.account_manager = body.accountManager;
+        if (body.totalSetup !== undefined) proposalData.total_setup = body.totalSetup;
+        if (body.totalMonthly !== undefined) proposalData.total_monthly = body.totalMonthly;
+        if (body.contractPeriod !== undefined) proposalData.contract_period = body.contractPeriod;
+        if (body.date) proposalData.date = body.date;
+        else proposalData.date = currentDate.toISOString().split('T')[0];
+        if (body.expiryDate) proposalData.expiry_date = body.expiryDate;
+        else proposalData.expiry_date = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        if (body.distributorId) proposalData.distributor_id = body.distributorId;
+        if (body.products) proposalData.products = body.products;
+        if (body.items) proposalData.items = body.items;
+        if (body.clientData) proposalData.client_data = body.clientData;
+        if (body.metadata) proposalData.metadata = body.metadata;
+        if (body.changes) proposalData.changes = body.changes;
+        if (body.applySalespersonDiscount !== undefined) proposalData.apply_salesperson_discount = body.applySalespersonDiscount;
+        if (body.appliedDirectorDiscountPercentage !== undefined) proposalData.applied_director_discount_percentage = body.appliedDirectorDiscountPercentage;
+        if (body.baseTotalMonthly !== undefined) proposalData.base_total_monthly = body.baseTotalMonthly;
 
         console.log('📤 Inserting data:', JSON.stringify(proposalData, null, 2));
         
