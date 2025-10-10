@@ -245,11 +245,29 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           return NextResponse.json(transformed, { status: 200 });
         }
       } catch (supabaseError) {
-        console.error('❌ Supabase error:', supabaseError);
+        console.error('❌ Supabase error in GET:', supabaseError);
+        // Don't fall back to mock - return the actual error
+        return NextResponse.json({
+          success: false,
+          error: 'Supabase connection failed during GET',
+          details: supabaseError,
+          message: 'Check Supabase configuration and connection'
+        }, { status: 500 });
       }
     }
 
-    console.log('📦 Using mock storage');
+    // If we get here, Supabase is not configured
+    return NextResponse.json({
+      success: false,
+      error: 'Supabase not configured for GET',
+      details: {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey,
+        url: supabaseUrl
+      }
+    }, { status: 500 });
+
+    console.log('📦 Using mock storage (this should not happen in GET)');
     let filtered = mockProposals;
     if (type) filtered = filtered.filter(p => p.type === type);
     return NextResponse.json(filtered, { status: 200 });
@@ -419,11 +437,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           return NextResponse.json(transformed, { status: 201 });
         }
       } catch (supabaseError) {
-        console.error('❌ Supabase error:', supabaseError);
+        console.error('❌ Supabase error in POST:', supabaseError);
+        // Don't fall back to mock - return the actual error
+        return NextResponse.json({
+          success: false,
+          error: 'Supabase connection failed during POST',
+          details: supabaseError,
+          message: 'Check Supabase configuration and connection'
+        }, { status: 500 });
       }
     }
 
-    console.log('📦 Using mock storage');
+    // If we get here, Supabase is not configured
+    return NextResponse.json({
+      success: false,
+      error: 'Supabase not configured for POST',
+      details: {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey,
+        url: supabaseUrl
+      }
+    }, { status: 500 });
+
+    console.log('📦 Using mock storage (this should not happen in POST)');
     const createdProposal = {
       ...body,
       id: `mock_${Date.now()}`,
