@@ -15,11 +15,14 @@ if (supabaseUrl && supabaseServiceKey) {
   });
   console.log('✅ Supabase client initialized with service key');
   console.log('🔑 Using URL:', supabaseUrl);
-  console.log('🔑 Service key present:', !!supabaseServiceKey);
+  console.log('🔑 Service key length:', supabaseServiceKey.length);
+  console.log('🔑 Service key starts with:', supabaseServiceKey.substring(0, 20) + '...');
 } else {
   console.error('❌ Supabase environment variables missing');
   console.error('❌ URL present:', !!supabaseUrl);
+  console.error('❌ URL value:', supabaseUrl);
   console.error('❌ Service key present:', !!supabaseServiceKey);
+  console.error('❌ Service key length:', supabaseServiceKey?.length || 0);
 }
 
 let mockProposals: Proposal[] = [];
@@ -64,39 +67,49 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
 
       try {
+        // Create admin client
+        const adminSupabase = createClient(supabaseUrl!, supabaseServiceKey!, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          },
+          db: {
+            schema: 'public'
+          }
+        });
+
         // Test 1: Count all proposals
-        const { count, error: countError } = await supabase
+        const { count, error: countError } = await adminSupabase
           .from('proposals')
           .select('*', { count: 'exact', head: true });
 
-        // Test 2: Get recent proposals
-        const { data: recentProposals, error: recentError } = await supabase
+        // Test 2: Get recent proposals with actual column names
+        const { data: recentProposals, error: recentError } = await adminSupabase
           .from('proposals')
-          .select('id, title, client, type, status, created_at')
+          .select('id, id_base, titulo, cliente, created_at')
           .order('created_at', { ascending: false })
           .limit(10);
 
-        // Test 3: Test insert and read
+        // Test 3: Test insert with minimal data matching table structure
         const testProposal = {
-          base_id: `Debug_${Date.now()}`,
-          title: 'Debug Test',
-          client: 'Debug Client',
-          type: 'VM',
-          status: 'Rascunho',
-          value: 100,
-          created_by: 'debug-system',
-          version: 1
+          id_base: `Debug_${Date.now()}`,
+          titulo: 'Debug Test',
+          cliente: 'Debug Client'
         };
 
-        const { data: insertResult, error: insertError } = await supabase
+        console.log('🧪 Attempting to insert test proposal:', testProposal);
+
+        const { data: insertResult, error: insertError } = await adminSupabase
           .from('proposals')
           .insert([testProposal])
           .select()
           .single();
 
+        console.log('🧪 Insert result:', { insertResult, insertError });
+
         let readBackResult = null;
         if (!insertError && insertResult) {
-          const { data: readBack, error: readError } = await supabase
+          const { data: readBack, error: readError } = await adminSupabase
             .from('proposals')
             .select('*')
             .eq('id', insertResult.id)
@@ -105,7 +118,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           readBackResult = { success: !readError, data: readBack, error: readError?.message };
           
           // Clean up
-          await supabase.from('proposals').delete().eq('id', insertResult.id);
+          await adminSupabase.from('proposals').delete().eq('id', insertResult.id);
         }
 
         return NextResponse.json({
@@ -119,11 +132,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           tests: {
             count: { success: !countError, count, error: countError?.message },
             recentProposals: { success: !recentError, count: recentProposals?.length || 0, data: recentProposals, error: recentError?.message },
-            insertTest: { success: !insertError, insertedId: insertResult?.id, error: insertError?.message },
+            insertTest: { success: !insertError, insertedId: insertResult?.id, error: insertError?.message, data: insertResult },
             readBackTest: readBackResult
           }
         });
       } catch (debugError) {
+        console.error('🧪 Debug error:', debugError);
         return NextResponse.json({
           debug: true,
           error: 'Debug test failed',
