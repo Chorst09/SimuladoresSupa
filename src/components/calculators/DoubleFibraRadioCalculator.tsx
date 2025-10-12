@@ -605,7 +605,9 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         includeReferralPartner,
         includeInfluencerPartner,
         createLastMile,
-        lastMileCost
+        lastMileCost,
+        isExistingClient,
+        previousMonthlyFee
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo

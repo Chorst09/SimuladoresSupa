@@ -2962,9 +2962,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <Input
                                                                         id="markup-calculado"
                                                                         type="text"
-                                                                        value={markup.toFixed(2) + '%'}
+                                                                        value={(markup / 100).toFixed(2).replace('.', ',') + '%'}
                                                                         readOnly
-                                                                        className="bg-slate-800 border-slate-700 text-green-400 cursor-not-allowed font-semibold"
+                                                                        className="bg-slate-800"
                                                                     />
                                                                     <p className="text-xs text-slate-400 mt-1">Calculado automaticamente</p>
                                                                 </div>

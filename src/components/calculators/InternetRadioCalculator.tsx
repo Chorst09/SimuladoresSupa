@@ -604,7 +604,9 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         includeReferralPartner,
         includeInfluencerPartner,
         createLastMile,
-        lastMileCost
+        lastMileCost,
+        isExistingClient,
+        previousMonthlyFee
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo

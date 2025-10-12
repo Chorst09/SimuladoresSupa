@@ -629,7 +629,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
         // Calculate referral partner commission if applicable
         const calculatedReferralPartnerCommission = includeReferralPartner
-            ? priceAfterDirectorDiscount * getPartnerIndicatorRate(priceAfterDirectorDiscount, contractTerm)
+            ? priceAfterDirectorDiscount * (getPartnerIndicatorRate(priceAfterDirectorDiscount, contractTerm) / 100)
             : 0;
 
         // Calculate final net profit after referral partner commission
@@ -792,12 +792,17 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         taxaInstalacao,
         custoMan,
         taxRates.simplesNacional,
-        taxRates.banda,
+        taxRates.cofins,
+        taxRates.pis,
+        revenueTaxes,
+        profitTaxes,
         commissionPercentage,
         includeReferralPartner,
         includeInfluencerPartner,
         createLastMile,
-        lastMileCost
+        lastMileCost,
+        isExistingClient,
+        previousMonthlyFee
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo
