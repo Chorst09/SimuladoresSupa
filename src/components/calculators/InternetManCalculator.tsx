@@ -777,7 +777,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             lucratividade,
             margemLiquida,
             markup,
-            paybackMonths // Adicionando o payback
+            paybackMonths, // Adicionando o payback
+            diferencaValoresContrato: isExistingClient && previousMonthlyFee > 0 
+                ? (monthlyValue - previousMonthlyFee) * months
+                : 0 // Novo campo para DRE
         };
     }, [
         result,
@@ -2122,6 +2125,21 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         );
                                                     })}
                                                 </TableRow>
+                                                
+                                                {isExistingClient && previousMonthlyFee > 0 && (
+                                                    <TableRow className="border-slate-800 bg-yellow-900/30">
+                                                        <TableCell className="text-white font-semibold">Diferença de Valores Contrato</TableCell>
+                                                        {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
+                                                            const months = (i + 1) * 12;
+                                                            return (
+                                                                <TableCell key={months} className="text-right text-white font-semibold">
+                                                                    {dreCalculations[months].diferencaValoresContrato >= 0 ? '+' : ''}
+                                                                    {formatCurrency(dreCalculations[months].diferencaValoresContrato)}
+                                                                </TableCell>
+                                                            );
+                                                        })}
+                                                    </TableRow>
+                                                )}
 
                                                 {includeReferralPartner && (
                                                     <TableRow className="border-slate-800">
