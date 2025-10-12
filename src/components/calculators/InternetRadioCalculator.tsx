@@ -742,7 +742,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             type: 'RADIO',
             description: `Rádio ${result.speed} Mbps`,
             setup: includeInstallation ? result.installationCost : 0,
-            monthly: getMonthlyPrice(result, contractTerm),
+            monthly: result.monthlyPrice,
             details: {
                 speed: result.speed,
                 contractTerm,
@@ -794,7 +794,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         }
 
         // Validar dados obrigatórios
-        if (!clientData || !clientData.name) {
+        if (!clientData || (!clientData.name && !clientData.companyName)) {
             alert('Por favor, preencha os dados do cliente antes de salvar.');
             return;
         }
@@ -834,6 +834,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     createdAt: currentProposal.createdAt,
                     baseId: currentProposal.baseId,
                     version: proposalVersion,
+                    contractPeriod: contractTerm,
+                    date: new Date().toISOString().split('T')[0],
                     // Atualizar dados editáveis
                     clientData: clientData,
                     accountManager: accountManagerData,
@@ -843,7 +845,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                    userId: user.id
+                    userId: user.id,
+                    changes: proposalChanges
                 };
 
                 const response = await fetch(`/api/proposals?id=${currentProposal.id}`, {
@@ -872,6 +875,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
                     version: proposalVersion,
+                    contractPeriod: contractTerm,
+                    date: new Date().toISOString().split('T')[0],
                     // Store additional data as metadata
                     clientData: clientData,
                     accountManager: accountManagerData,
@@ -884,6 +889,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     userId: user.id,
                     changes: proposalChanges
                 };
+
+                console.log('Dados da proposta a ser salva:', proposalToSave);
 
                 const response = await fetch('/api/proposals', {
                     method: 'POST',
@@ -899,7 +906,9 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     alert(`Proposta ${savedProposal.id} salva com sucesso!`);
                     setCurrentProposal(savedProposal);
                 } else {
-                    throw new Error('Erro ao salvar proposta');
+                    const errorText = await response.text();
+                    console.error('Erro da API:', response.status, errorText);
+                    throw new Error(`Erro ao salvar proposta: ${response.status} - ${errorText}`);
                 }
             }
 
@@ -1536,6 +1545,9 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                             )}
                         </TabsList>
                         <TabsContent value="calculator" key={`calculator-${componentKey}`}>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Calculadora */}
+                                <div>
                             {user?.role === 'admin' || user?.role === 'director' ? (
                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
                                     <CardHeader><CardTitle className="flex items-center"><Calculator className="mr-2" />Calculadora</CardTitle></CardHeader>
@@ -1967,6 +1979,149 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                     </CardContent>
                                 </Card>
                             )}
+                                </div>
+
+                                {/* Resumo da Proposta - Lado direito */}
+                                <div>
+                                    {addedProducts.length > 0 ? (
+                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                            <CardHeader>
+                                                <CardTitle className="flex items-center">
+                                                    <FileText className="mr-2" />
+                                                    Resumo da Proposta
+                                                </CardTitle>
+                                                <CardDescription>Produtos adicionados e valores totais</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="changes">Alterações nesta versão</Label>
+                                                    <textarea
+                                                        id="changes"
+                                                        value={proposalChanges}
+                                                        onChange={(e) => setProposalChanges(e.target.value)}
+                                                        placeholder="Descreva as alterações feitas nesta versão da proposta..."
+                                                        className="w-full p-3 bg-slate-800 border border-slate-700 text-white rounded-md resize-none"
+                                                        rows={3}
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <div className="max-h-60 overflow-y-auto pr-2 space-y-4">
+                                                        {addedProducts.map((product) => (
+                                                            <div key={product.id} className="p-3 bg-slate-800 rounded-lg">
+                                                                <div className="flex justify-between items-start">
+                                                                    <p className="font-semibold flex-1 pr-2">{product.description}</p>
+                                                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveProduct(product.id)} className="text-red-400 hover:bg-red-900/50 h-7 w-7">
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                                <div className="text-sm space-y-1 mt-2">
+                                                                    <div className="flex justify-between"><span>Instalação:</span><span>{formatCurrency(product.setup)}</span></div>
+                                                                    <div className="flex justify-between"><span>Mensal:</span><span>{formatCurrency(product.monthly)}</span></div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <Separator className="my-4 bg-slate-700" />
+
+                                                    {/* Controles de Desconto */}
+                                                    <div className="space-y-4 p-4 bg-slate-800 rounded-lg">
+                                                        {(user?.role && user.role !== 'director' && user.role !== 'admin') && (
+                                                            <div className="flex items-center space-x-2">
+                                                                <Checkbox
+                                                                    id="salesperson-discount-toggle"
+                                                                    checked={applySalespersonDiscount}
+                                                                    onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
+                                                                />
+                                                                <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
+                                                            </div>
+                                                        )}
+                                                        {(user?.role && (user.role === 'director' || user.role === 'admin')) && (
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Input
+                                                                        id="director-discount"
+                                                                        type="number"
+                                                                        value={directorDiscountPercentage}
+                                                                        onChange={(e) => {
+                                                                            const value = Number(e.target.value);
+                                                                            setDirectorDiscountPercentage(value);
+                                                                            setAppliedDirectorDiscountPercentage(value);
+                                                                        }}
+                                                                        placeholder="0-100"
+                                                                        min="0"
+                                                                        max="100"
+                                                                        className="bg-slate-700 border-slate-600 text-white"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {user?.role === 'admin' && (
+                                                            <div className="flex items-center space-x-2">
+                                                                <Checkbox
+                                                                    id="admin-salesperson-discount-toggle"
+                                                                    checked={applySalespersonDiscount}
+                                                                    onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
+                                                                />
+                                                                <Label htmlFor="admin-salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <Separator className="my-4 bg-slate-700" />
+                                                    <div className="space-y-2">
+                                                        {applySalespersonDiscount && (
+                                                            <div className="flex justify-between text-orange-400">
+                                                                <span>Desconto Vendedor (5%):</span>
+                                                                <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.monthly, 0)) * 0.05)}</span>
+                                                            </div>
+                                                        )}
+                                                        {appliedDirectorDiscountPercentage > 0 && (
+                                                            <div className="flex justify-between text-orange-400">
+                                                                <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%):</span>
+                                                                <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1)) * (appliedDirectorDiscountPercentage / 100))}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex justify-between font-semibold text-lg pt-2 border-t border-slate-700">
+                                                            <span>Total Setup:</span>
+                                                            <span>{formatCurrency(finalTotalSetup)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between font-semibold text-lg">
+                                                            <span>Total Mensal:</span>
+                                                            <span>{formatCurrency(finalTotalMonthly)}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex gap-2 pt-4">
+                                                        <Button onClick={() => handleSave()} className="flex-1 bg-green-600 hover:bg-green-700">
+                                                            <Save className="h-4 w-4 mr-2" />
+                                                            Salvar Proposta
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ) : (
+                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                            <CardHeader>
+                                                <CardTitle className="flex items-center">
+                                                    <FileText className="mr-2" />
+                                                    Resumo da Proposta
+                                                </CardTitle>
+                                                <CardDescription>Adicione produtos para ver o resumo</CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <p className="text-slate-400 text-center py-8">
+                                                    Nenhum produto adicionado ainda.
+                                                    <br />
+                                                    Use a calculadora ao lado para adicionar produtos.
+                                                </p>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                </div>
+                            </div>
                         </TabsContent>
                         <TabsContent value="dre">
                             <div className="space-y-6 mt-6">

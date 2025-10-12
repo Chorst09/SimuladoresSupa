@@ -588,9 +588,13 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
             0 // Sem desconto de diretor no DRE
         );
 
-        // Rentabilidade e Lucratividade baseadas na receita total (incluindo instalação)
-        const rentabilidade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
-        const lucratividade = rentabilidade; // Mesmo valor conforme tabela
+        // Rentabilidade: Balance dividido pelo valor investido (custoRadio + lastMile)
+        const valorInvestido = custoRadioCalculadora + lastMile;
+        const rentabilidade = valorInvestido > 0 ? (balance / valorInvestido) * 100 : 0;
+
+        // Lucratividade: Balance dividido pela receita do período contratual (sem instalação)
+        const receitaPeriodo = monthlyValue * months;
+        const lucratividade = receitaPeriodo > 0 ? (balance / receitaPeriodo) * 100 : 0;
 
         const totalCost = custoBanda + custoRadioCalculadora + lastMile + simplesNacional + totalComissoes + custoDespesa;
         const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
@@ -696,7 +700,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
             type: 'MANRADIO',
             description: `Internet Man Radio ${result.speed} Mbps`,
             setup: includeInstallation ? result.installationCost : 0,
-            monthly: getMonthlyPrice(result, contractTerm),
+            monthly: result.monthlyPrice,
             details: {
                 speed: result.speed,
                 contractTerm,
@@ -1400,7 +1404,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Análise de Payback</h3>
                                 {(() => {
                                     const totalSetup = currentProposal.totalSetup;
-                                    const totalMonthly = currentProposal.totalMonthly;
+                                    const totalMonthly = currentProposal.totalMonthly || 0;
                                     const contractTerm = currentProposal.contractTerm || 12;
 
                                     // Usar a função calculatePayback correta
@@ -1743,7 +1747,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
 
                                                 {/* Controles de Desconto */}
                                                 <div className="space-y-4 p-4 bg-slate-800 rounded-lg">
-                                                    {(user?.role !== 'director' && user?.role !== 'admin') && (
+                                                    {(user?.role && user.role !== 'director' && user.role !== 'admin') && (
                                                         <div className="flex items-center space-x-2">
                                                             <Checkbox
                                                                 id="salesperson-discount-toggle"
@@ -1753,7 +1757,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                             <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                                         </div>
                                                     )}
-                                                    {(user?.role === 'director' || user?.role === 'admin') && (
+                                                    {(user?.role && (user.role === 'director' || user.role === 'admin')) && (
                                                         <div className="space-y-2">
                                                             <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
                                                             <div className="flex items-center space-x-2">
@@ -1806,7 +1810,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span>Total Mensal:</span>
-                                                        <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
+                                                        <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</span>
                                                     </div>
 
                                                     <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-700">
@@ -2013,15 +2017,15 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                     <TableCell className="text-white font-semibold">Rentabilidade %</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
                                                         <TableCell key={period} className={`text-right font-semibold ${(dreCalculations as any)[period].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                            {dreCalculations[period].rentabilidade.toFixed(2)}%
+                                                            {(dreCalculations as any)[period].rentabilidade.toFixed(2)}%
                                                         </TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Lucratividade</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className={`text-right font-semibold ${dreCalculations[period].lucratividade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                            {dreCalculations[period].lucratividade.toFixed(2)}%
+                                                        <TableCell key={period} className={`text-right font-semibold ${(dreCalculations as any)[period].lucratividade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {(dreCalculations as any)[period].lucratividade.toFixed(2)}%
                                                         </TableCell>
                                                     ))}
                                                 </TableRow>
@@ -2042,9 +2046,9 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                                 .filter(key => !isNaN(Number(key)))
                                                                 .map(period => ({
                                                                     periodo: `${period} meses`,
-                                                                    receita: dreCalculations[period].receitaMensal,
-                                                                    balance: dreCalculations[period].balance,
-                                                                    rentabilidade: dreCalculations[period].rentabilidade
+                                                                    receita: (dreCalculations as any)[period].receitaMensal,
+                                                                    balance: (dreCalculations as any)[period].balance,
+                                                                    rentabilidade: (dreCalculations as any)[period].rentabilidade
                                                                 }));
 
                                                             const csvContent = "data:text/csv;charset=utf-8,"
@@ -2112,7 +2116,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                     <div className="text-xl font-bold text-blue-400">
                                                         {formatCurrency(
                                                             [12, 24, 36, 48, 60].reduce((sum, period) =>
-                                                                sum + dreCalculations[period].receitaMensal, 0
+                                                                sum + (dreCalculations as any)[period].receitaMensal, 0
                                                             ) / 5
                                                         )}
                                                     </div>
@@ -2130,9 +2134,9 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                             console.log('Debug Payback Radio - appliedDirectorDiscountPercentage:', appliedDirectorDiscountPercentage);
 
                                                             const currentPayback = calculatePayback(
-                                                                dreCalculations[contractTerm].receitaInstalacao,
+                                                                (dreCalculations as any)[contractTerm].receitaInstalacao,
                                                                 result?.radioCost || 0,
-                                                                dreCalculations[contractTerm].receitaMensal,
+                                                                (dreCalculations as any)[contractTerm].receitaMensal,
                                                                 contractTerm,
                                                                 applySalespersonDiscount,
                                                                 appliedDirectorDiscountPercentage
@@ -2150,8 +2154,8 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                 <h4 className="text-sm font-medium text-slate-300 mb-3">Rentabilidade por Período</h4>
                                                 <div className="flex items-end justify-between h-20 gap-2">
                                                     {[12, 24, 36, 48, 60].map(period => {
-                                                        const rentabilidade = dreCalculations[period].rentabilidade;
-                                                        const maxRent = Math.max(...[12, 24, 36, 48, 60].map(p => dreCalculations[p].rentabilidade));
+                                                        const rentabilidade = (dreCalculations as any)[period].rentabilidade;
+                                                        const maxRent = Math.max(...[12, 24, 36, 48, 60].map(p => (dreCalculations as any)[p].rentabilidade));
                                                         const height = maxRent > 0 ? (rentabilidade / maxRent) * 100 : 0;
 
                                                         return (

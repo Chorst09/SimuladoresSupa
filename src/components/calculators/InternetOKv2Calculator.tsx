@@ -714,7 +714,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
             type: 'FIBRA',
             description: `Fibra ${result.speed} Mbps`,
             setup: includeInstallation ? result.installationCost : 0,
-            monthly: getMonthlyPrice(result, contractTerm),
+            monthly: result.monthlyPrice,
             details: {
                 speed: result.speed,
                 contractTerm,
@@ -1793,7 +1793,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span>Total Mensal:</span>
-                                                        <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
+                                                        <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</span>
                                                     </div>
 
                                                     <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-700">
