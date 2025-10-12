@@ -758,6 +758,13 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
         const markup = totalCost > 0 ? (balance / totalCost) * 100 : 0;
 
+        // Calcular diferença de valores contrato para clientes existentes
+        // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
+        const diferencaMensal = isExistingClient && previousMonthlyFee > 0 
+            ? (monthlyValue - previousMonthlyFee) 
+            : 0;
+        const diferencaValoresContrato = diferencaMensal * months;
+
         return {
             receitaMensal: totalRevenue, // Agora é receita total do período
             receitaInstalacao,
@@ -778,14 +785,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             margemLiquida,
             markup,
             paybackMonths, // Adicionando o payback
-            diferencaValoresContrato: (() => {
-                // Calcular diferença de valores contrato para clientes existentes
-                // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
-                const diferencaMensal = isExistingClient && previousMonthlyFee > 0 
-                    ? (monthlyValue - previousMonthlyFee) 
-                    : 0;
-                return diferencaMensal * months;
-            })() // Novo campo para DRE
+            diferencaValoresContrato // Novo campo para DRE
         };
     }, [
         result,
