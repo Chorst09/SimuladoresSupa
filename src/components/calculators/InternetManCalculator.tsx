@@ -1805,6 +1805,29 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     )}
                                                 </div>
 
+                                                {/* Diferença de Valor para Clientes Existentes */}
+                                                {isExistingClient && previousMonthlyFee > 0 && result && (
+                                                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm text-slate-300">Diferença de Valor:</span>
+                                                            <span className={`font-semibold ${
+                                                                result.monthlyPrice - previousMonthlyFee >= 0 
+                                                                    ? 'text-green-400' 
+                                                                    : 'text-red-400'
+                                                            }`}>
+                                                                {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs text-slate-400 mt-1">
+                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
+                                                                ? 'Aumento na mensalidade' 
+                                                                : 'Redução na mensalidade'
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 {/* Alerta de Payback */}
                                                 {includeInstallation && !result.paybackValidation.isValid && (
                                                     <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg">
