@@ -607,9 +607,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             appliedDirectorDiscountPercentage
         );
 
-        // Rentabilidade e Lucratividade baseadas na receita total (incluindo instalação)
-        const rentabilidade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
-        const lucratividade = rentabilidade; // Mesmo valor conforme tabela
+        // Rentabilidade: Balance dividido pelo valor investido (custoFibra + lastMile)
+        const valorInvestido = custoFibraCalculadora + lastMile;
+        const rentabilidade = valorInvestido > 0 ? (balance / valorInvestido) * 100 : 0;
+        
+        // Lucratividade: Balance dividido pela receita do período contratual (sem instalação)
+        const receitaPeriodo = monthlyValue * months;
+        const lucratividade = receitaPeriodo > 0 ? (balance / receitaPeriodo) * 100 : 0;
 
         const totalCost = custoBanda + custoFibraCalculadora + lastMile + simplesNacional + totalComissoes + custoDespesa;
         const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;

@@ -631,9 +631,13 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             0 // Sem desconto de diretor no DRE
         );
 
-        // Rentabilidade e Lucratividade baseadas na receita total (incluindo instalação)
-        const rentabilidade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
-        const lucratividade = rentabilidade; // Mesmo valor conforme tabela
+        // Rentabilidade: Balance dividido pelo valor investido (custoRadio + lastMile)
+        const valorInvestido = custoRadioCalculadora + lastMile;
+        const rentabilidade = valorInvestido > 0 ? (balance / valorInvestido) * 100 : 0;
+        
+        // Lucratividade: Balance dividido pela receita do período contratual (sem instalação)
+        const receitaPeriodo = monthlyValue * months;
+        const lucratividade = receitaPeriodo > 0 ? (balance / receitaPeriodo) * 100 : 0;
 
         const totalCost = custoBanda + custoRadioCalculadora + lastMile + simplesNacional + totalComissoes + custoDespesa;
         const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;

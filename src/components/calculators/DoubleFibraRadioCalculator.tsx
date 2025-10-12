@@ -683,9 +683,13 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         );
 
 
-        // Rentabilidade e Lucratividade baseadas na receita total (incluindo instalação)
-        const rentabilidade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
-        const lucratividade = rentabilidade; // Mesmo valor conforme tabela
+        // Rentabilidade: Balance dividido pelo valor investido (custoDoubleFiberRadio + lastMile)
+        const valorInvestido = custoDoubleFiberRadioCalculadora + lastMile;
+        const rentabilidade = valorInvestido > 0 ? (balance / valorInvestido) * 100 : 0;
+        
+        // Lucratividade: Balance dividido pela receita do período contratual (sem instalação)
+        const receitaPeriodo = monthlyValue * months;
+        const lucratividade = receitaPeriodo > 0 ? (balance / receitaPeriodo) * 100 : 0;
 
         const totalCost = custoBanda + custoDoubleFiberRadioCalculadora + lastMile + simplesNacional + totalComissoes + custoDespesa;
         const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
