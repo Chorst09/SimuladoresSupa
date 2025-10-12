@@ -102,6 +102,8 @@ interface DRECalculationsResult {
     lucratividade: number;
     margemLiquida: number;
     markup: number;
+    roi: number;
+    roiAnualizado: number;
     paybackMonths: number;
     diferencaValoresContrato: number;
 }
@@ -631,17 +633,28 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             0 // Sem desconto de diretor no DRE
         );
 
-        // Rentabilidade: Balance dividido pelo valor investido (custoRadio + lastMile)
-        const valorInvestido = custoRadioCalculadora + lastMile;
-        const rentabilidade = valorInvestido > 0 ? (balance / valorInvestido) * 100 : 0;
+        // Cálculos financeiros corretos:
         
-        // Lucratividade: Balance dividido pela receita do período contratual (sem instalação)
+        // 1. Margem Líquida: (Lucro Líquido / Receita Total) * 100
+        const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
+        
+        // 2. ROI (Return on Investment): (Lucro Líquido / Investimento Inicial) * 100
+        const valorInvestido = custoRadioCalculadora + lastMile + receitaInstalacao; // Investimento inicial total
+        const roi = valorInvestido > 0 ? (balance / valorInvestido) * 100 : 0;
+        
+        // 3. ROI Anualizado: ROI ajustado para base anual
+        const roiAnualizado = months > 0 ? (roi * 12) / months : 0;
+        
+        // 4. Rentabilidade sobre Vendas: mesmo que margem líquida (manter compatibilidade)
+        const rentabilidade = margemLiquida;
+        
+        // 5. Lucratividade: Lucro por período (mantendo para compatibilidade)
         const receitaPeriodo = monthlyValue * months;
         const lucratividade = receitaPeriodo > 0 ? (balance / receitaPeriodo) * 100 : 0;
 
+        // 6. Markup: (Preço de Venda - Custo) / Custo * 100
         const totalCost = custoBanda + custoRadioCalculadora + lastMile + simplesNacional + totalComissoes + custoDespesa;
-        const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
-        const markup = totalCost > 0 ? (balance / totalCost) * 100 : 0;
+        const markup = totalCost > 0 ? ((receitaTotalPrimeiromes - totalCost) / totalCost) * 100 : 0;
 
         // Calcular diferença de valores contrato para clientes existentes
         // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
@@ -669,6 +682,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             lucratividade,
             margemLiquida,
             markup,
+            roi,
+            roiAnualizado,
             paybackMonths, // Adicionando o payback
             diferencaValoresContrato // Novo campo para DRE
         };
@@ -700,9 +715,9 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             36: dre36,
             48: dre48,
             60: dre60,
-            // Manter compatibilidade com código existente
-            receitaBruta: dre12.receitaMensal,
-            receitaLiquida: dre12.receitaMensal - dre12.simplesNacional,
+            // CORREÇÃO: Valores corretos para resumo executivo
+            receitaBruta: dre12.receitaMensal / 12, // Receita mensal real
+            receitaLiquida: (dre12.receitaMensal - dre12.simplesNacional) / 12, // Receita líquida mensal
             custoServico: dre12.custoRadio,
             custoBanda: dre12.custoBanda,
             taxaInstalacao: dre12.receitaInstalacao,
@@ -712,13 +727,13 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             totalComissoes: dre12.totalComissoes,
             totalImpostos: dre12.simplesNacional,
             lucroOperacional: dre12.balance,
-            lucroLiquido: dre12.balance,
+            lucroLiquido: dre12.balance / 12, // Lucro líquido mensal
             rentabilidade: dre12.rentabilidade,
             lucratividade: dre12.lucratividade,
             paybackMeses: calculatePayback(
                 dre12.receitaInstalacao,
                 result?.radioCost || 0,
-                dre12.receitaMensal,
+                dre12.receitaMensal / 12, // Usar receita mensal real
                 12,
                 applySalespersonDiscount,
                 appliedDirectorDiscountPercentage
