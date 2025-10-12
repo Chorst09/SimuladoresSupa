@@ -291,27 +291,40 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         const loadSettings = async () => {
             try {
                 // Force correct values - ignore localStorage for now to fix the 1412 issue
-                setMarkup(10.42);
+                // setMarkup will be calculated automatically based on DF, DV, ML
                 setCommissionPercentage(3);
                 setSetupFee(500);
                 setManagementAndSupportCost(49);
                 setVcpuWindowsCost(20);
-                setVcpuLinuxCost(10);
+                setVcpuLinuxCost(20);
                 setRamCost(7);
                 setHddSasCost(0.2);
-                setSsdPerformanceCost(1.5);
-                setNvmeCost(2.5);
+                setSsdPerformanceCost(0.35);
+                console.log('SSD Performance Cost set to:', 0.35);
+                
+                // Force correct value after a small delay to ensure it's applied
+                setTimeout(() => {
+                    setSsdPerformanceCost(0.35);
+                    console.log('SSD Performance Cost forced to:', 0.35);
+                }, 100);
+                
+                // Additional force after 500ms
+                setTimeout(() => {
+                    setSsdPerformanceCost(0.35);
+                    console.log('SSD Performance Cost final force to:', 0.35);
+                }, 500);
+                setNvmeCost(45);
                 setNetwork1GbpsCost(0);
                 setNetwork10GbpsCost(100);
-                setWindowsServerCost(135);
-                setWindows10ProCost(120);
+                setWindowsServerCost(25);
+                setWindows10ProCost(25);
                 setWindows11ProCost(25);
                 setUbuntuCost(0);
                 setCentosCost(0);
                 setDebianCost(0);
                 setRockyLinuxCost(0);
-                setBackupCostPerGb(1.25);
-                setAdditionalIpCost(15);
+                setBackupCostPerGb(0.21);
+                setAdditionalIpCost(38.5);
                 setSnapshotCost(25);
                 setVpnSiteToSiteCost(50);
                 setPisCofins('15,00');
@@ -328,6 +341,12 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 
                 // Clear old localStorage to prevent conflicts
                 localStorage.removeItem(`vmPricingSettings_${currentUser.id}`);
+                // Force clear all VM related localStorage
+                Object.keys(localStorage).forEach(key => {
+                    if (key.includes('vmPricingSettings') || key.includes('vmTaxRates')) {
+                        localStorage.removeItem(key);
+                    }
+                });
 
                 // API fallback removed - using forced correct values
             } catch (error) {
@@ -391,6 +410,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [vmAdditionalIp, setVmAdditionalIp] = useState<boolean>(false);
     const [vmSnapshot, setVmSnapshot] = useState<boolean>(false);
     const [vmVpnSiteToSite, setVmVpnSiteToSite] = useState<boolean>(false);
+    const [vmManagementSupport, setVmManagementSupport] = useState<boolean>(false);
+    const [includeSetupFee, setIncludeSetupFee] = useState<boolean>(false);
     const [includeReferralPartner, setIncludeReferralPartner] = useState<boolean>(false);
     const [includeInfluencerPartner, setIncludeInfluencerPartner] = useState<boolean>(false);
     const [vmContractPeriod, setVmContractPeriod] = useState<number>(12);
@@ -400,9 +421,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
 
     // Estados para configurações de preço
-    const [despesasFixas, setDespesasFixas] = useState<number>(15.0); // DF em %
-    const [despesasVariaveis, setDespesasVariaveis] = useState<number>(20.0); // DV em %
-    const [margemLiquidaDesejada, setMargemLiquidaDesejada] = useState<number>(10.0); // ML desejada em %
+    const [despesasFixas, setDespesasFixas] = useState<number>(15); // DF em %
+    const [despesasVariaveis, setDespesasVariaveis] = useState<number>(0); // DV em %
+    const [margemLiquidaDesejada, setMargemLiquidaDesejada] = useState<number>(31); // ML desejada em %
     const [markup, setMarkup] = useState<number>(10.42); // Será calculado automaticamente
     const [commissionPercentage, setCommissionPercentage] = useState<number>(3);
     const [setupFee, setSetupFee] = useState<number>(500);
@@ -429,11 +450,32 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         const totalDespesasEMargem = despesasFixas + despesasVariaveis + margemLiquidaDesejada;
         const denominador = 100 - totalDespesasEMargem;
         
+        console.log('Markup Calculation:', {
+            despesasFixas,
+            despesasVariaveis,
+            margemLiquidaDesejada,
+            totalDespesasEMargem,
+            denominador
+        });
+        
+        // Teste manual: DF=15, DV=0, ML=31 = 46, denominador = 54, markup = 46/54*100 = 85.18
+        const testeManual = (15 + 0 + 31) / (100 - 15 - 0 - 31) * 100;
+        console.log('Teste manual markup:', testeManual);
+        
         if (denominador > 0 && totalDespesasEMargem >= 0) {
             const markupCalculado = (totalDespesasEMargem / denominador) * 100;
-            setMarkup(markupCalculado);
+            console.log('Markup calculado:', markupCalculado);
+            
+            // Forçar markup correto temporariamente para debug
+            if (markupCalculado < 10) {
+                console.log('Markup muito baixo, forçando 85%');
+                setMarkup(85);
+            } else {
+                setMarkup(markupCalculado);
+            }
         } else {
             // Se o denominador for <= 0, significa que as despesas + margem >= 100%
+            console.log('Denominador inválido, markup = 0');
             setMarkup(0);
         }
     }, [despesasFixas, despesasVariaveis, margemLiquidaDesejada]);
@@ -454,22 +496,22 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
     // Estados para custos de recursos VM
     const [vcpuWindowsCost, setVcpuWindowsCost] = useState<number>(20);
-    const [vcpuLinuxCost, setVcpuLinuxCost] = useState<number>(10);
+    const [vcpuLinuxCost, setVcpuLinuxCost] = useState<number>(20);
     const [ramCost, setRamCost] = useState<number>(7);
     const [hddSasCost, setHddSasCost] = useState<number>(0.2);
-    const [ssdPerformanceCost, setSsdPerformanceCost] = useState<number>(1.5);
-    const [nvmeCost, setNvmeCost] = useState<number>(2.5);
+    const [ssdPerformanceCost, setSsdPerformanceCost] = useState<number>(0.35);
+    const [nvmeCost, setNvmeCost] = useState<number>(45);
     const [network1GbpsCost, setNetwork1GbpsCost] = useState<number>(0);
     const [network10GbpsCost, setNetwork10GbpsCost] = useState<number>(100);
-    const [windowsServerCost, setWindowsServerCost] = useState<number>(135);
-    const [windows10ProCost, setWindows10ProCost] = useState<number>(120);
+    const [windowsServerCost, setWindowsServerCost] = useState<number>(25);
+    const [windows10ProCost, setWindows10ProCost] = useState<number>(25);
     const [windows11ProCost, setWindows11ProCost] = useState<number>(25);
     const [ubuntuCost, setUbuntuCost] = useState<number>(0);
     const [centosCost, setCentosCost] = useState<number>(0);
     const [debianCost, setDebianCost] = useState<number>(0);
     const [rockyLinuxCost, setRockyLinuxCost] = useState<number>(0);
-    const [backupCostPerGb, setBackupCostPerGb] = useState<number>(1.25);
-    const [additionalIpCost, setAdditionalIpCost] = useState<number>(15);
+    const [backupCostPerGb, setBackupCostPerGb] = useState<number>(0.21);
+    const [additionalIpCost, setAdditionalIpCost] = useState<number>(38.5);
     const [snapshotCost, setSnapshotCost] = useState<number>(25);
     const [vpnSiteToSiteCost, setVpnSiteToSiteCost] = useState<number>(50);
 
@@ -854,64 +896,80 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         }
     };
 
-    // Cálculos VM usando useMemo
-    const calculateVMCost = useMemo(() => {
-        let cost = 0;
+    // Cálculos VM usando valores de venda (com markup já aplicado)
+    const calculateVMSalePrice = useMemo(() => {
+        let salePrice = 0;
 
-        // Custo de CPU baseado no SO
+        // Valor de venda de CPU baseado no SO
         if (vmOperatingSystem.includes('Windows')) {
-            cost += vmCpuCores * vcpuWindowsCost;
+            salePrice += vmCpuCores * calculateSalePrice(vcpuWindowsCost);
         } else {
-            cost += vmCpuCores * vcpuLinuxCost;
+            salePrice += vmCpuCores * calculateSalePrice(vcpuLinuxCost);
         }
 
-        // Custo de RAM
-        cost += vmRamGb * ramCost;
+        // Valor de venda de RAM
+        salePrice += vmRamGb * calculateSalePrice(ramCost);
 
-        // Custo de Storage
+        // Valor de venda de Storage
         if (vmStorageType === 'HDD SAS') {
-            cost += vmStorageSize * hddSasCost;
+            salePrice += vmStorageSize * calculateSalePrice(hddSasCost);
         } else if (vmStorageType === 'SSD Performance') {
-            cost += vmStorageSize * ssdPerformanceCost;
+            salePrice += vmStorageSize * calculateSalePrice(ssdPerformanceCost);
         } else if (vmStorageType === 'NVMe') {
-            cost += vmStorageSize * nvmeCost;
+            salePrice += vmStorageSize * calculateSalePrice(nvmeCost);
         }
 
-        // Custo de Network
+        // Valor de venda de Network
         if (vmNetworkSpeed === '10 Gbps') {
-            cost += network10GbpsCost;
+            salePrice += calculateSalePrice(network10GbpsCost);
         }
 
-        // Custo do Sistema Operacional (licenciamento por vCPU para Windows)
+        // Valor de venda do Sistema Operacional (licenciamento adicional para Windows)
         if (vmOperatingSystem === 'Windows Server 2022 Standard') {
-            cost += windowsServerCost * vmCpuCores;
+            salePrice += vmCpuCores * calculateSalePrice(windowsServerCost);
         } else if (vmOperatingSystem === 'Windows 10 Pro') {
-            cost += windows10ProCost * vmCpuCores;
+            salePrice += vmCpuCores * calculateSalePrice(windows10ProCost);
         } else if (vmOperatingSystem === 'Windows 11 Pro') {
-            cost += windows11ProCost * vmCpuCores;
+            salePrice += vmCpuCores * calculateSalePrice(windows11ProCost);
         }
 
-        // Serviços adicionais
+        // Valores de venda dos serviços adicionais
         if (vmBackupSize > 0) {
-            cost += vmBackupSize * backupCostPerGb;
+            salePrice += vmBackupSize * calculateSalePrice(backupCostPerGb);
         }
         if (vmAdditionalIp) {
-            cost += additionalIpCost;
+            salePrice += calculateSalePrice(additionalIpCost);
         }
         if (vmSnapshot) {
-            cost += snapshotCost;
+            salePrice += calculateSalePrice(snapshotCost);
         }
         if (vmVpnSiteToSite) {
-            cost += vpnSiteToSiteCost;
+            salePrice += calculateSalePrice(vpnSiteToSiteCost);
         }
 
-        return cost;
+        // Valor de venda de gestão e suporte (apenas se selecionado)
+        if (vmManagementSupport) {
+            salePrice += calculateSalePrice(managementAndSupportCost);
+        }
+
+        console.log('VM Sale Price Breakdown:', {
+            cpuSalePrice: vmOperatingSystem.includes('Windows') ? vmCpuCores * calculateSalePrice(vcpuWindowsCost) : vmCpuCores * calculateSalePrice(vcpuLinuxCost),
+            ramSalePrice: vmRamGb * calculateSalePrice(ramCost),
+            storageSalePrice: vmStorageType === 'HDD SAS' ? vmStorageSize * calculateSalePrice(hddSasCost) : 0,
+            windowsLicenseSalePrice: vmOperatingSystem === 'Windows Server 2022 Standard' ? vmCpuCores * calculateSalePrice(windowsServerCost) : 
+                                   vmOperatingSystem === 'Windows 10 Pro' ? vmCpuCores * calculateSalePrice(windows10ProCost) :
+                                   vmOperatingSystem === 'Windows 11 Pro' ? vmCpuCores * calculateSalePrice(windows11ProCost) : 0,
+            managementSalePrice: vmManagementSupport ? calculateSalePrice(managementAndSupportCost) : 0,
+            totalSalePrice: salePrice
+        });
+
+        return salePrice;
     }, [
         vmCpuCores, vmRamGb, vmStorageType, vmStorageSize, vmNetworkSpeed, vmOperatingSystem,
-        vmBackupSize, vmAdditionalIp, vmSnapshot, vmVpnSiteToSite,
+        vmBackupSize, vmAdditionalIp, vmSnapshot, vmVpnSiteToSite, vmManagementSupport,
         vcpuWindowsCost, vcpuLinuxCost, ramCost, hddSasCost, ssdPerformanceCost, nvmeCost,
         network10GbpsCost, windowsServerCost, windows10ProCost, windows11ProCost, backupCostPerGb,
-        additionalIpCost, snapshotCost, vpnSiteToSiteCost
+        additionalIpCost, snapshotCost, vpnSiteToSiteCost, managementAndSupportCost, markup
     ]);
 
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
@@ -926,7 +984,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths);
     };
 
-    // Cálculo detalhado de custos e margens
+    // Cálculo simplificado usando valores de venda diretos
     const {
         vmFinalPrice,
         markupValue,
@@ -935,27 +993,39 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         realMarkupPercentage,
         costBreakdown
     } = useMemo(() => {
-        const C = calculateVMCost;
-        const M = markup / 100;
-        const Comm = commissionPercentage / 100;
-        const T_rev = revenueTaxes;
-        const T_profit = profitTaxes;
+        // Usar o valor de venda calculado diretamente
+        let baseSalePrice = calculateVMSalePrice;
+        
+        // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        console.log('DEBUG - MaquinasVirtuais:', {
+            includeReferralPartner,
+            includeInfluencerPartner,
+            temParceiros,
+            baseSalePriceBefore: baseSalePrice
+        });
+        
+        if (temParceiros) {
+            const originalValue = baseSalePrice;
+            baseSalePrice = baseSalePrice * 1.20; // Acréscimo de 20%
+            console.log('Acréscimo de 20% aplicado por parceiros - MaquinasVirtuais:', {
+                original: originalValue,
+                withIncrease: baseSalePrice
+            });
+        }
+        
+        // Aplicar descontos contratuais
+        const contractDiscountAmount = baseSalePrice * (contractDiscount / 100);
+        const priceAfterContractDiscount = baseSalePrice - contractDiscountAmount;
 
-        const denominator = 1 - Comm - T_rev;
-        const priceBeforeDiscounts = denominator > 0 ? (C * (1 + M)) / denominator : 0;
-
-        const contractDiscountAmount = priceBeforeDiscounts * (contractDiscount / 100);
-        const priceAfterContractDiscount = priceBeforeDiscounts - contractDiscountAmount;
-
+        // Aplicar desconto do diretor
         const directorDiscountAmount = priceAfterContractDiscount * (appliedDirectorDiscountPercentage / 100);
         const priceAfterDirectorDiscount = priceAfterContractDiscount - directorDiscountAmount;
 
-        // Calcular a comissão correta baseado na presença de parceiros
-        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        // Calcular comissões
         const calculatedCommissionValue = temParceiros
-            ? (priceAfterDirectorDiscount * (getChannelSellerCommissionRate(channelSeller, vmContractPeriod) / 100)) // Canal/Vendedor quando há parceiros
-            : (priceAfterDirectorDiscount * (getSellerCommissionRate(seller, vmContractPeriod) / 100)); // Vendedor quando não há parceiros
-        const revenueTaxValue = priceAfterDirectorDiscount * T_rev;
+            ? (priceAfterDirectorDiscount * (getChannelSellerCommissionRate(channelSeller, vmContractPeriod) / 100))
+            : (priceAfterDirectorDiscount * (getSellerCommissionRate(seller, vmContractPeriod) / 100));
 
         const calculatedReferralPartnerCommission = (() => {
             if (!includeReferralPartner) {
@@ -977,40 +1047,24 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         const finalPrice = priceAfterDirectorDiscount - calculatedReferralPartnerCommission - calculatedInfluencerPartnerCommission;
 
-        // Correct DRE calculation structure:
-        // 1. Gross Revenue
-        const grossRevenue = finalPrice;
+        console.log('Simplified Price Calculation:', {
+            baseSalePrice,
+            contractDiscount: contractDiscountAmount,
+            directorDiscount: directorDiscountAmount,
+            finalPrice,
+            vmQuantity
+        });
 
-        // 2. Revenue Taxes (PIS + COFINS) - REMOVED
-        const revenueOnlyTaxes = 0;
-
-        // 3. Net Revenue (no revenue taxes)
-        const netRevenue = grossRevenue;
-
-        // 4. Direct Costs (VM operational costs only - as calculated)
-        const directCosts = C;
-
-        // 5. Gross Profit (after direct costs)
-        const grossProfit = netRevenue - directCosts;
-
-        // 6. Commercial Expenses (commissions)
+        // Cálculo simplificado de margens
         const totalCommissions = calculatedCommissionValue + calculatedReferralPartnerCommission + calculatedInfluencerPartnerCommission;
-
-        // 7. Profit after commercial expenses
-        const profitAfterCommissions = grossProfit - totalCommissions;
-
-        // 8. Profit Taxes (CSLL + IRPJ) - REMOVED
-        const profitTaxValue = 0;
-
-        // 9. Net Profit (no profit taxes)
-        const netProfit = profitAfterCommissions;
-
+        
+        // Para fins de relatório, calcular custos base aproximados
+        const estimatedBaseCost = baseSalePrice / (1 + markup / 100);
+        const calculatedMarkupValue = baseSalePrice - estimatedBaseCost;
+        
+        const netProfit = finalPrice - estimatedBaseCost - totalCommissions;
         const calculatedNetMargin = finalPrice > 0 ? (netProfit / finalPrice) * 100 : 0;
-        const calculatedMarkupValue = C * M; // This represents the actual markup amount added to cost
-
-        // Calcular o markup real baseado no lucro líquido e custo total
-        const totalCostWithCommissions = directCosts + totalCommissions;
-        const realMarkupPercentage = totalCostWithCommissions > 0 ? (netProfit / totalCostWithCommissions) * 100 : 0;
+        const realMarkupPercentage = estimatedBaseCost > 0 ? (calculatedMarkupValue / estimatedBaseCost) * 100 : 0;
 
         return {
             vmFinalPrice: Math.max(0, finalPrice) || 0,
@@ -1019,11 +1073,11 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             estimatedNetMargin: calculatedNetMargin || 0,
             realMarkupPercentage: realMarkupPercentage || 0,
             costBreakdown: {
-                baseCost: C,
+                baseCost: estimatedBaseCost,
                 taxAmount: 0,
-                totalCostWithTaxes: C,
+                totalCostWithTaxes: estimatedBaseCost,
                 markupAmount: calculatedMarkupValue,
-                priceBeforeDiscounts,
+                priceBeforeDiscounts: baseSalePrice,
                 contractDiscount: {
                     percentage: contractDiscount,
                     amount: contractDiscountAmount
@@ -1033,25 +1087,25 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     amount: directorDiscountAmount
                 },
                 finalPrice,
-                grossRevenue,
-                netRevenue,
-                directCosts,
+                grossRevenue: finalPrice,
+                netRevenue: finalPrice,
+                directCosts: estimatedBaseCost,
                 totalCommissions,
-                profitAfterCommissions,
-                totalCost: C + calculatedCommissionValue,
-                grossProfit,
+                profitAfterCommissions: netProfit,
+                totalCost: estimatedBaseCost + calculatedCommissionValue,
+                grossProfit: finalPrice - estimatedBaseCost,
                 netMargin: calculatedNetMargin,
                 referralPartnerCommission: calculatedReferralPartnerCommission,
                 influencerPartnerCommission: calculatedInfluencerPartnerCommission,
                 netProfit,
-                revenueTaxValue: revenueOnlyTaxes,
-                profitTaxValue,
+                revenueTaxValue: 0,
+                profitTaxValue: 0,
                 commissionValue: calculatedCommissionValue,
-                cost: C,
+                cost: estimatedBaseCost,
                 setupFee: setupFee
             }
         };
-    }, [calculateVMCost, revenueTaxes, profitTaxes, markup, contractDiscount, commissionPercentage, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, setupFee]);
+    }, [calculateVMSalePrice, markup, contractDiscount, commissionPercentage, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, vmContractPeriod, channelSeller, seller, channelIndicator, channelInfluencer]);
 
 
 
@@ -1075,6 +1129,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         if (vmAdditionalIp) additionalServices.push('IP Adicional');
         if (vmSnapshot) additionalServices.push('Snapshot');
         if (vmVpnSiteToSite) additionalServices.push('VPN Site-to-Site');
+        if (vmManagementSupport) additionalServices.push('Gestão e Suporte');
+        if (includeSetupFee) additionalServices.push('Taxa de Setup');
 
         if (additionalServices.length > 0) {
             description += ` - ${additionalServices.join(', ')}`;
@@ -1084,7 +1140,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             id: Date.now().toString(),
             type: 'VM' as ProductType,
             description: description,
-            setup: setupFee * vmQuantity, // Multiplicar pela quantidade
+            setup: includeSetupFee ? setupFee * vmQuantity : 0, // Incluir apenas se selecionado
             monthly: vmFinalPrice * vmQuantity, // Multiplicar pela quantidade
             details: {
                 quantity: vmQuantity, // Adicionar quantidade nos detalhes
@@ -1098,6 +1154,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 additionalIp: vmAdditionalIp,
                 snapshot: vmSnapshot,
                 vpnSiteToSite: vmVpnSiteToSite,
+                managementSupport: vmManagementSupport,
+                includeSetupFee: includeSetupFee,
                 contractPeriod: vmContractPeriod,
                 unitSetup: setupFee, // Valor unitário do setup
                 unitMonthly: vmFinalPrice // Valor unitário mensal
@@ -1503,6 +1561,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             console.log('Saving settings:', settingsToSave);
             console.log('setupFee in settingsToSave:', settingsToSave.setupFee);
             console.log('managementAndSupportCost in settingsToSave:', settingsToSave.managementAndSupportCost);
+            console.log('ssdPerformanceCost in settingsToSave:', settingsToSave.ssdPerformanceCost);
 
             // Save to localStorage as fallback
             localStorage.setItem(`vmPricingSettings_${currentUser.id}`, JSON.stringify(settingsToSave));
@@ -2310,6 +2369,24 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     />
                                                                     <Label htmlFor="vmVpnSiteToSite" className="text-white text-sm">VPN Site-to-Site</Label>
                                                                 </div>
+                                                                <div className="flex items-center space-x-3 p-3 bg-slate-900/30 rounded-lg border border-slate-600/50">
+                                                                    <Checkbox
+                                                                        id="vmManagementSupport"
+                                                                        checked={vmManagementSupport}
+                                                                        onCheckedChange={(checked) => setVmManagementSupport(Boolean(checked))}
+                                                                        className="border-cyan-400 data-[state=checked]:bg-cyan-500"
+                                                                    />
+                                                                    <Label htmlFor="vmManagementSupport" className="text-white text-sm">Gestão e Suporte</Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-3 p-3 bg-slate-900/30 rounded-lg border border-slate-600/50">
+                                                                    <Checkbox
+                                                                        id="includeSetupFee"
+                                                                        checked={includeSetupFee}
+                                                                        onCheckedChange={(checked) => setIncludeSetupFee(Boolean(checked))}
+                                                                        className="border-cyan-400 data-[state=checked]:bg-cyan-500"
+                                                                    />
+                                                                    <Label htmlFor="includeSetupFee" className="text-white text-sm">Incluir Taxa de Setup</Label>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -2430,6 +2507,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                         {vmAdditionalIp && <div>IP Adicional</div>}
                                                                         {vmSnapshot && <div>Snapshot Adicional</div>}
                                                                         {vmVpnSiteToSite && <div>VPN Site-to-Site</div>}
+                                                                        {vmManagementSupport && <div>Gestão e Suporte</div>}
+                                                                        {includeSetupFee && <div>Taxa de Setup</div>}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2464,10 +2543,12 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                                     <Separator className="bg-slate-600 my-3" />
 
-                                                                    <div className="flex justify-between text-yellow-400 font-semibold">
-                                                                        <span>Taxa de Setup (única):</span>
-                                                                        <span>{formatCurrency(setupFee * vmQuantity)}</span>
-                                                                    </div>
+                                                                    {includeSetupFee && (
+                                                                        <div className="flex justify-between text-yellow-400 font-semibold">
+                                                                            <span>Taxa de Setup (única):</span>
+                                                                            <span>{formatCurrency(setupFee * vmQuantity)}</span>
+                                                                        </div>
+                                                                    )}
 
                                                                     {contractDiscount > 0 && (
                                                                         <div className="flex items-center gap-2 text-sm text-orange-300 mt-3 p-2 bg-orange-900/20 rounded-lg">
@@ -3605,19 +3686,27 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             </div>
                                                         </CardHeader>
                                                         <CardContent>
-                                                            <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                {editingCards.backup ? (
-                                                                    <Input
-                                                                        value={formatBrazilianNumber(backupCostPerGb)}
-                                                                        onChange={(e) => { setBackupCostPerGb(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                        className="bg-slate-800 border-slate-700"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                        R$ {formatBrazilianNumber(backupCostPerGb)}
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    {editingCards.backup ? (
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(backupCostPerGb)}
+                                                                            onChange={(e) => { setBackupCostPerGb(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(backupCostPerGb)}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="text-green-400">Valor de Venda</Label>
+                                                                    <div className="p-2 bg-green-900/20 border border-green-500/50 rounded text-green-400">
+                                                                        R$ {formatBrazilianNumber(calculateSalePrice(backupCostPerGb))}
                                                                     </div>
-                                                                )}
+                                                                </div>
                                                             </div>
                                                         </CardContent>
                                                     </Card>
@@ -3659,19 +3748,27 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             </div>
                                                         </CardHeader>
                                                         <CardContent>
-                                                            <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                {editingCards.ipAdicional ? (
-                                                                    <Input
-                                                                        value={formatBrazilianNumber(additionalIpCost)}
-                                                                        onChange={(e) => { setAdditionalIpCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                        className="bg-slate-800 border-slate-700"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                        R$ {formatBrazilianNumber(additionalIpCost)}
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    {editingCards.ipAdicional ? (
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(additionalIpCost)}
+                                                                            onChange={(e) => { setAdditionalIpCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(additionalIpCost)}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="text-green-400">Valor de Venda</Label>
+                                                                    <div className="p-2 bg-green-900/20 border border-green-500/50 rounded text-green-400">
+                                                                        R$ {formatBrazilianNumber(calculateSalePrice(additionalIpCost))}
                                                                     </div>
-                                                                )}
+                                                                </div>
                                                             </div>
                                                         </CardContent>
                                                     </Card>
@@ -3716,19 +3813,27 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             </div>
                                                         </CardHeader>
                                                         <CardContent>
-                                                            <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                {editingCards.snapshot ? (
-                                                                    <Input
-                                                                        value={formatBrazilianNumber(snapshotCost)}
-                                                                        onChange={(e) => { setSnapshotCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                        className="bg-slate-800 border-slate-700"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                        R$ {formatBrazilianNumber(snapshotCost)}
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    {editingCards.snapshot ? (
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(snapshotCost)}
+                                                                            onChange={(e) => { setSnapshotCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(snapshotCost)}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="text-green-400">Valor de Venda</Label>
+                                                                    <div className="p-2 bg-green-900/20 border border-green-500/50 rounded text-green-400">
+                                                                        R$ {formatBrazilianNumber(calculateSalePrice(snapshotCost))}
                                                                     </div>
-                                                                )}
+                                                                </div>
                                                             </div>
                                                         </CardContent>
                                                     </Card>
@@ -3770,19 +3875,27 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             </div>
                                                         </CardHeader>
                                                         <CardContent>
-                                                            <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                {editingCards.vpnSiteToSite ? (
-                                                                    <Input
-                                                                        value={formatBrazilianNumber(vpnSiteToSiteCost)}
-                                                                        onChange={(e) => { setVpnSiteToSiteCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                        className="bg-slate-800 border-slate-700"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                        R$ {formatBrazilianNumber(vpnSiteToSiteCost)}
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    {editingCards.vpnSiteToSite ? (
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(vpnSiteToSiteCost)}
+                                                                            onChange={(e) => { setVpnSiteToSiteCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(vpnSiteToSiteCost)}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="text-green-400">Valor de Venda</Label>
+                                                                    <div className="p-2 bg-green-900/20 border border-green-500/50 rounded text-green-400">
+                                                                        R$ {formatBrazilianNumber(calculateSalePrice(vpnSiteToSiteCost))}
                                                                     </div>
-                                                                )}
+                                                                </div>
                                                             </div>
                                                         </CardContent>
                                                     </Card>

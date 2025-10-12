@@ -10,8 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CommissionTablesUnified from './CommissionTablesUnified';
 import { Separator } from '@/components/ui/separator';
-import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManagerForm';
+import { ClientManagerForm } from './ClientManagerForm';
 import { ClientManagerInfo } from './ClientManagerInfo';
+import { ClientData, AccountManagerData, Proposal, UserRole } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
@@ -51,7 +52,7 @@ ContractTermSelector.displayName = 'ContractTermSelector';
 // Interfaces
 export interface Product {
     id: string;
-    type: 'MAN';
+    type: 'INTERNET_MAN_FIBRA';
     description: string;
     setup: number;
     monthly: number;
@@ -60,7 +61,7 @@ export interface Product {
         contractTerm?: number;
         includeInstallation?: boolean;
         planDescription?: string;
-        fiberCost?: number;
+        cost?: number;
         applySalespersonDiscount?: boolean;
         appliedDirectorDiscountPercentage?: number;
         includeReferralPartner?: boolean;
@@ -68,7 +69,7 @@ export interface Product {
     };
 }
 
-interface ManPlan {
+interface InternetManPlan {
     speed: number;
     price12: number;
     price24: number;
@@ -77,8 +78,7 @@ interface ManPlan {
     price60: number;
     installationCost: number;
     description: string;
-    baseCost: number;
-    fiberCost: number;
+    cost: number;
 }
 
 interface Proposal {
@@ -102,8 +102,54 @@ interface Proposal {
     type: string;
 }
 
+// Interface para o resultado do DRE por período
+interface DRECalculationsResult {
+    receitaMensal: number;
+    receitaInstalacao: number;
+    receitaTotalPrimeiromes: number;
+    custoMan: number;
+    custoBanda: number;
+    fundraising: number;
+    lastMile: number;
+    simplesNacional: number;
+    comissaoVendedor: number;
+    comissaoParceiroIndicador: number;
+    comissaoParceiroInfluenciador: number;
+    totalComissoes: number;
+    custoDespesa: number;
+    balance: number;
+    rentabilidade: number;
+    lucratividade: number;
+    margemLiquida: number;
+    markup: number;
+    paybackMonths: number;
+    diferencaValoresContrato: number;
+}
+
+// Interface para o objeto completo de dreCalculations
+interface FullDRECalculations {
+    [key: number]: DRECalculationsResult;
+    receitaBruta: number;
+    totalSetup?: number;
+    totalMonthly?: number;
+    receitaLiquida: number;
+    custoServico: number;
+    custoBanda: number;
+    taxaInstalacao: number;
+    comissaoVendedor: number;
+    comissaoParceiroIndicador: number;
+    comissaoParceiroInfluenciador: number;
+    totalComissoes: number;
+    totalImpostos: number;
+    lucroOperacional: number;
+    lucroLiquido: number;
+    rentabilidade: number;
+    lucratividade: number;
+    paybackMeses: number;
+}
+
 // Helper function to get monthly price based on contract term
-const getMonthlyPrice = (plan: ManPlan, term: number): number => {
+const getMonthlyPrice = (plan: InternetManPlan, term: number): number => {
     switch (term) {
         case 12: return plan.price12;
         case 24: return plan.price24;
@@ -248,7 +294,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
     // Estados do produto
     const [addedProducts, setAddedProducts] = useState<Product[]>([]);
-    const [manPlans, setManPlans] = useState<ManPlan[]>([]);
+    const [manPlans, setManPlans] = useState<InternetManPlan[]>([]);
     const [selectedStatus, setSelectedStatus] = useState<string>('Aguardando Aprovação do Cliente');
     const [proposalChanges, setProposalChanges] = useState<string>('');
 
@@ -365,31 +411,60 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         return parseFloat(taxRegimeValues.csllIr.replace(',', '.')) || 0;
     }, [taxRegimeValues.csllIr]);
 
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = (baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+
+        // Aplicar desconto do diretor (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+
+        return discountedTotal;
+    };
+
     // Partner indicator ranges handled by getPartnerIndicatorRate
 
     // Calculate the selected MAN plan based on the chosen speed (usando debounced value)
     const result = useMemo(() => {
         if (!selectedSpeed) return null;
-        const plan = manPlans.find((p: ManPlan) => p.speed === selectedSpeed);
+        const plan = manPlans.find((p: InternetManPlan) => p.speed === selectedSpeed);
         if (!plan) return null;
 
-        const monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        
+        // Aplicar descontos
+        monthlyPrice = applyDiscounts(monthlyPrice);
+        
+        // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        if (temParceiros) {
+            monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
+            console.log('Acréscimo de 20% aplicado no result.monthlyPrice - InternetMan:', monthlyPrice);
+        }
+        
         return {
             ...plan,
             monthlyPrice,
             installationCost: plan.installationCost,
-            baseCost: plan.baseCost,
-            fiberCost: plan.fiberCost,
+            baseCost: plan.cost,
+            fiberCost: plan.cost,
             paybackValidation: validatePayback(
                 includeInstallation ? plan.installationCost : 0,
-                plan.fiberCost,
+                plan.cost,
                 monthlyPrice,
                 debouncedContractTerm,
                 applySalespersonDiscount,
                 appliedDirectorDiscountPercentage
             )
         };
-    }, [selectedSpeed, manPlans, debouncedContractTerm]);
+    }, [selectedSpeed, manPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     // Cálculo detalhado de custos e margens (DRE)
     const {
@@ -501,7 +576,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 const proposalsData = await response.json();
                 // Filter for MAN Internet proposals
                 const manProposals = proposalsData.filter((p: any) =>
-                    p.type === 'MAN' || p.baseId?.startsWith('Prop_ManFibra_')
+                    p.type === 'INTERNET_MAN_FIBRA' || p.baseId?.startsWith('Prop_ManFibra_')
                 );
                 setProposals(manProposals);
             } else {
@@ -515,24 +590,24 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     }, [user]);
 
     useEffect(() => {
-        const initialManPlans: ManPlan[] = [
-            { speed: 25, price12: 864.00, price24: 632.40, price36: 568.80, price48: 540.36, price60: 511.92, installationCost: 998.00, description: "25 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
-            { speed: 30, price12: 888.10, price24: 694.80, price36: 632.40, price48: 600.78, price60: 569.16, installationCost: 998.00, description: "30 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
-            { speed: 40, price12: 1098.01, price24: 758.40, price36: 694.80, price48: 660.06, price60: 625.32, installationCost: 998.00, description: "40 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
-            { speed: 50, price12: 1324.07, price24: 822.00, price36: 758.40, price48: 720.48, price60: 682.56, installationCost: 998.00, description: "50 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
-            { speed: 60, price12: 1856.93, price24: 948.00, price36: 884.40, price48: 840.18, price60: 795.96, installationCost: 998.00, description: "60 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
-            { speed: 80, price12: 2191.18, price24: 1200.00, price36: 1137.60, price48: 1080.72, price60: 1023.84, installationCost: 998.00, description: "80 Mbps", baseCost: 5700.00, fiberCost: 3500.00 },
-            { speed: 100, price12: 2420.46, price24: 1893.60, price36: 1579.20, price48: 1500.24, price60: 1421.28, installationCost: 1996.00, description: "100 Mbps", baseCost: 5700.00, fiberCost: 3500.00 },
-            { speed: 150, price12: 3051.82, price24: 2146.80, price36: 1832.40, price48: 1740.78, price60: 1649.16, installationCost: 1996.00, description: "150 Mbps", baseCost: 5700.00, fiberCost: 3500.00 },
-            { speed: 200, price12: 3859.18, price24: 2463.60, price36: 2084.40, price48: 1980.18, price60: 1875.96, installationCost: 1996.00, description: "200 Mbps", baseCost: 5700.00, fiberCost: 3500.00 },
-            { speed: 300, price12: 9026.40, price24: 5179.20, price36: 4800.00, price48: 4560.00, price60: 4320.00, installationCost: 2500.00, description: "300 Mbps", baseCost: 23300.00, fiberCost: 3500.00 },
-            { speed: 400, price12: 11362.80, price24: 6253.20, price36: 5683.20, price48: 5399.04, price60: 5114.88, installationCost: 2500.00, description: "400 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
-            { speed: 500, price12: 13408.80, price24: 6946.80, price36: 6303.60, price48: 5988.42, price60: 5673.24, installationCost: 2500.00, description: "500 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
-            { speed: 600, price12: 15000.00, price24: 7578.00, price36: 6948.00, price48: 6600.60, price60: 6253.20, installationCost: 2500.00, description: "600 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
-            { speed: 700, price12: 16560.00, price24: 8280.00, price36: 7560.00, price48: 7182.00, price60: 6804.00, installationCost: 2500.00, description: "700 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
-            { speed: 800, price12: 18000.00, price24: 9000.00, price36: 8160.00, price48: 7752.00, price60: 7344.00, installationCost: 2500.00, description: "800 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
-            { speed: 900, price12: 19440.00, price24: 9720.00, price36: 8760.00, price48: 8322.00, price60: 7884.00, installationCost: 2500.00, description: "900 Mbps", baseCost: 23300.00, fiberCost: 7000.00 },
-            { speed: 1000, price12: 21000.00, price24: 10500.00, price36: 9480.00, price48: 9006.00, price60: 8532.00, installationCost: 2500.00, description: "1000 Mbps (1 Gbps)", baseCost: 23300.00, fiberCost: 7000.00 }
+        const initialManPlans: InternetManPlan[] = [
+            { speed: 25, price12: 864.00, price24: 632.40, price36: 568.80, price48: 540.36, price60: 511.92, installationCost: 998.00, description: "25 Mbps", cost: 1580.00 },
+            { speed: 30, price12: 888.10, price24: 694.80, price36: 632.40, price48: 600.78, price60: 569.16, installationCost: 998.00, description: "30 Mbps", cost: 1580.00 },
+            { speed: 40, price12: 1098.01, price24: 758.40, price36: 694.80, price48: 660.06, price60: 625.32, installationCost: 998.00, description: "40 Mbps", cost: 1580.00 },
+            { speed: 50, price12: 1324.07, price24: 822.00, price36: 758.40, price48: 720.48, price60: 682.56, installationCost: 998.00, description: "50 Mbps", cost: 1580.00 },
+            { speed: 60, price12: 1856.93, price24: 948.00, price36: 884.40, price48: 840.18, price60: 795.96, installationCost: 998.00, description: "60 Mbps", cost: 1580.00 },
+            { speed: 80, price12: 2191.18, price24: 1200.00, price36: 1137.60, price48: 1080.72, price60: 1023.84, installationCost: 998.00, description: "80 Mbps", cost: 5700.00 },
+            { speed: 100, price12: 2420.46, price24: 1893.60, price36: 1579.20, price48: 1500.24, price60: 1421.28, installationCost: 1996.00, description: "100 Mbps", cost: 5700.00 },
+            { speed: 150, price12: 3051.82, price24: 2146.80, price36: 1832.40, price48: 1740.78, price60: 1649.16, installationCost: 1996.00, description: "150 Mbps", cost: 5700.00 },
+            { speed: 200, price12: 3859.18, price24: 2463.60, price36: 2084.40, price48: 1980.18, price60: 1875.96, installationCost: 1996.00, description: "200 Mbps", cost: 5700.00 },
+            { speed: 300, price12: 9026.40, price24: 5179.20, price36: 4800.00, price48: 4560.00, price60: 4320.00, installationCost: 2500.00, description: "300 Mbps", cost: 23300.00 },
+            { speed: 400, price12: 11362.80, price24: 6253.20, price36: 5683.20, price48: 5399.04, price60: 5114.88, installationCost: 2500.00, description: "400 Mbps", cost: 23300.00 },
+            { speed: 500, price12: 13408.80, price24: 6946.80, price36: 6303.60, price48: 5988.42, price60: 5673.24, installationCost: 2500.00, description: "500 Mbps", cost: 23300.00 },
+            { speed: 600, price12: 15000.00, price24: 7578.00, price36: 6948.00, price48: 6600.60, price60: 6253.20, installationCost: 2500.00, description: "600 Mbps", cost: 23300.00 },
+            { speed: 700, price12: 16560.00, price24: 8280.00, price36: 7560.00, price48: 7182.00, price60: 6804.00, installationCost: 2500.00, description: "700 Mbps", cost: 23300.00 },
+            { speed: 800, price12: 18000.00, price24: 9000.00, price36: 8160.00, price48: 7752.00, price60: 7344.00, installationCost: 2500.00, description: "800 Mbps", cost: 23300.00 },
+            { speed: 900, price12: 19440.00, price24: 9720.00, price36: 8760.00, price48: 8322.00, price60: 7884.00, installationCost: 2500.00, description: "900 Mbps", cost: 23300.00 },
+            { speed: 1000, price12: 21000.00, price24: 10500.00, price36: 9480.00, price48: 9006.00, price60: 8532.00, installationCost: 2500.00, description: "1000 Mbps (1 Gbps)", cost: 23300.00 }
         ];
         // Force update with new MAN cost values
         setManPlans(initialManPlans);
@@ -563,7 +638,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     };
 
-    const handlePriceChange = (index: number, field: keyof Omit<ManPlan, 'description' | 'baseCost' | 'speed'>, value: string) => {
+    const handlePriceChange = (index: number, field: keyof Omit<InternetManPlan, 'description' | 'cost' | 'speed'>, value: string) => {
         const newPlans = [...manPlans];
         const numericValue = parseFloat(value.replace(/[^0-9,.]+/g, "").replace(",", "."));
         if (!isNaN(numericValue)) {
@@ -577,7 +652,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         if (!isNaN(numericValue) && selectedSpeed) {
             const updatedPlans = manPlans.map(plan =>
                 plan.speed === selectedSpeed
-                    ? { ...plan, fiberCost: numericValue }
+                    ? { ...plan, cost: numericValue }
                     : plan
             );
             setManPlans(updatedPlans);
@@ -653,28 +728,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     }, [result, commissionPercentage, revenueTaxes, profitTaxes, appliedDirectorDiscountPercentage, includeReferralPartner]);
 
     // DRE calculations - Melhorado conforme solicitação
-    // Dados base: Velocidade 600 Mbps, Taxa de instalação = 2500,00, Custo Fibra = 7000,00
+    // Dados base: Velocidade 600 Mbps, Taxa de instalação = 2500,00, Custo Fibra/Radio = 7000,00
     const velocidade = result?.speed || 600;
     const taxaInstalacao = includeInstallation ? (result?.installationCost || 2500) : 0;
-    const custoMan = result?.fiberCost || 7000;
-
-    // Função para aplicar descontos no total mensal
-    const applyDiscounts = (baseTotal: number): number => {
-        let discountedTotal = baseTotal;
-
-        // Aplicar desconto do vendedor (5%)
-        if (applySalespersonDiscount) {
-            discountedTotal = discountedTotal * 0.95;
-        }
-
-        // Aplicar desconto do diretor (percentual configurado)
-        if (appliedDirectorDiscountPercentage > 0) {
-            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
-            discountedTotal = discountedTotal * directorDiscountFactor;
-        }
-
-        return discountedTotal;
-    };
+    const custoDoubleFiberRadio = result?.cost || 0;
 
     // Função para calcular DRE por período de contrato
     const calculateDREForPeriod = useCallback((months: number) => {
@@ -686,6 +743,25 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         if (result) {
             // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
             monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
+            
+            // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+            const temParceiros = includeReferralPartner || includeInfluencerPartner;
+            console.log('DEBUG - InternetMan:', {
+                includeReferralPartner,
+                includeInfluencerPartner,
+                temParceiros,
+                monthlyValueBefore: monthlyValue
+            });
+            
+            if (temParceiros) {
+                const originalValue = monthlyValue;
+                monthlyValue = monthlyValue * 1.20; // Acréscimo de 20%
+                console.log('Acréscimo de 20% aplicado por parceiros - InternetMan:', {
+                    original: originalValue,
+                    withIncrease: monthlyValue
+                });
+            }
+            
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
         }
@@ -700,7 +776,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00 (ou 0 se Last Mile)
 
         // Custo Fibra vem da calculadora conforme prazo contratual e velocidade
-        const custoManCalculadora = custoMan;
+        const custoManCalculadora = custoDoubleFiberRadio;
 
         const fundraising = 0; // Conforme tabela
         const lastMile = createLastMile ? lastMileCost : 0; // Incluir custo Last Mile quando selecionado
@@ -790,7 +866,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     }, [
         result,
         taxaInstalacao,
-        custoMan,
+        custoDoubleFiberRadio,
         taxRates.simplesNacional,
         taxRates.cofins,
         taxRates.pis,
@@ -836,7 +912,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             lucratividade: dre12.lucratividade,
             paybackMeses: calculatePayback(
                 dre12.receitaInstalacao,
-                result?.fiberCost || 0,
+                result?.cost || 0,
                 dre12.receitaMensal,
                 12,
                 applySalespersonDiscount,
@@ -868,8 +944,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
         const newProduct: Product = {
             id: `prod-${Date.now()}`,
-            type: 'MAN',
-            description: `MAN ${result.speed} Mbps`,
+            type: 'INTERNET_MAN_FIBRA',
+            description: `INTERNET MAN FIBRA ${result.speed} Mbps`,
             setup: includeInstallation ? result.installationCost : 0,
             monthly: getMonthlyPrice(result, contractTerm),
             details: {
@@ -877,7 +953,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 contractTerm,
                 includeInstallation,
                 planDescription: result.description,
-                fiberCost: result.fiberCost,
+                cost: result.cost,
                 applySalespersonDiscount,
                 appliedDirectorDiscountPercentage,
                 includeReferralPartner
@@ -951,10 +1027,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             if (currentProposal?.id && proposalVersion === 1) {
                 const proposalToUpdate = {
                     id: currentProposal.id,
-                    title: `Proposta Internet Man Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta INTERNET MAN FIBRA V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
-                    type: 'MAN',
+                    type: 'INTERNET_MAN_FIBRA',
                     status: currentProposal.status || 'Rascunho',
                     updatedBy: user.email || user.id,
                     updatedAt: new Date().toISOString(),
@@ -993,10 +1069,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 }
             } else {
                 const proposalToSave = {
-                    title: `Proposta Internet Man Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta INTERNET MAN FIBRA V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
-                    type: 'MAN',
+                    type: 'INTERNET_MAN_FIBRA',
                     status: selectedStatus,
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
@@ -1349,7 +1425,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 onAccountManagerDataChange={setAccountManagerData}
                 onBack={cancelAction}
                 onContinue={() => setViewMode('calculator')}
-                title="Nova Proposta - Internet via Fibra"
+                title="Nova Proposta - INTERNET MAN FIBRA"
                 subtitle="Preencha os dados do cliente e gerente de contas para continuar."
             />
         );
@@ -1368,7 +1444,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Voltar
                         </Button>
-                        <CardTitle>Buscar Propostas - Internet Man Fibra</CardTitle>
+                        <CardTitle>Buscar Propostas - INTERNET MAN FIBRA</CardTitle>
                         <CardDescription>Encontre propostas existentes ou crie uma nova.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -1438,7 +1514,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                         <div className="flex justify-between items-start mb-4 print:mb-2">
                             <div>
                                 <h1 className="text-2xl font-bold text-gray-900">Proposta Comercial</h1>
-                                <p className="text-gray-600">Internet Man Fibra</p>
+                                <p className="text-gray-600">INTERNET MAN FIBRA</p>
                             </div>
                             <div className="flex gap-2 no-print">
                                 <Button variant="outline" onClick={() => setViewMode('search')}>
@@ -1584,7 +1660,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                     if (plan) {
                                         paybackMonths = calculatePayback(
                                             currentProposal.includeInstallation ? plan.installationCost : 0,
-                                            plan.fiberCost,
+                                            plan.cost,
                                             totalMonthly,
                                             contractTerm,
                                             currentProposal.applySalespersonDiscount || false,
@@ -1685,7 +1761,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                             <Input
                                                 type="text"
                                                 id="fiber-cost"
-                                                value={formatCurrency(result?.fiberCost)}
+                                                value={formatCurrency(result?.cost)}
                                                 onChange={(e) => {
                                                     handleCustoManChange(e.target.value);
                                                     setHasChanged(true);
@@ -2052,7 +2128,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                             <div className="w-4 h-4 bg-blue-500 mr-2"></div>
                                             DRE - Demonstrativo de Resultado do Exercício
                                         </CardTitle>
-                                        <CardDescription>Internet Fibra {velocidade} Mbps - Análise por Período de Contrato</CardDescription>
+                                        <CardDescription>INTERNET FIBRA {velocidade} Mbps - Análise por Período de Contrato</CardDescription>
                                     </CardHeader>
                                     <CardContent className="overflow-x-auto">
                                         <Table>
@@ -2305,7 +2381,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                             const encodedUri = encodeURI(csvContent);
                                                             const link = document.createElement("a");
                                                             link.setAttribute("href", encodedUri);
-                                                            link.setAttribute("download", `DRE_Internet_Fibra_${velocidade}Mbps.csv`);
+                                                            link.setAttribute("download", `DRE_INTERNET_FIBRA_${velocidade}Mbps.csv`);
 
                                                             // Safely append and remove link
                                                             document.body.appendChild(link);
@@ -2377,7 +2453,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                             const avgPayback = [12, 24, 36, 48, 60].reduce((sum, period) => {
                                                                 const payback = calculatePayback(
                                                                     dreCalculations[period].receitaInstalacao,
-                                                                    result?.fiberCost || 0,
+                                                                    result?.cost || 0,
                                                                     dreCalculations[period].receitaMensal,
                                                                     period,
                                                                     applySalespersonDiscount,
@@ -2452,7 +2528,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     const highPaybackPeriods = periods.filter(p => {
                                                         const payback = calculatePayback(
                                                             dreCalculations[p].receitaInstalacao,
-                                                            result?.fiberCost || 0,
+                                                            result?.cost || 0,
                                                             dreCalculations[p].receitaMensal,
                                                             p,
                                                             applySalespersonDiscount,
@@ -2706,7 +2782,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                             <TabsContent value="prices">
                                 <Card className="bg-slate-900/80 border-slate-800 text-white mt-4">
                                     <CardHeader>
-                                        <CardTitle className="text-white">Tabela de Preços - Internet Man Fibra</CardTitle>
+                                        <CardTitle className="text-white">Tabela de Preços - INTERNET MAN FIBRA</CardTitle>
                                         <CardDescription>Atualize os preços conforme necessário</CardDescription>
                                     </CardHeader>
                                     <CardContent>
@@ -2779,8 +2855,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                             <TableCell>
                                                                 <Input
                                                                     type="text"
-                                                                    value={(plan.fiberCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    onChange={(e) => handlePriceChange(index, 'fiberCost', e.target.value)}
+                                                                    value={(plan.cost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    onChange={(e) => handlePriceChange(index, 'cost', e.target.value)}
                                                                     className="text-right bg-slate-800 border-slate-700"
                                                                 />
                                                             </TableCell>

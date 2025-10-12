@@ -16,6 +16,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
 import { Proposal, UserProfile, ClientData, AccountManagerData } from '@/lib/types'; // Importar a interface Proposal, UserProfile, ClientData e AccountManagerData do arquivo centralizado
+
+
 import {
     Wifi,
     Calculator,
@@ -214,7 +216,7 @@ interface InternetManRadioCalculatorProps {
     onBackToDashboard?: () => void;
 }
 
-const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBackToDashboard }) => {
+const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({ onBackToDashboard }) => {
     // Estados principais
     const [viewMode, setViewMode] = useState<'search' | 'client-form' | 'calculator' | 'proposal-summary'>('search');
     const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -341,7 +343,17 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
         const plan = radioPlans.find(p => p.speed === selectedSpeed);
         if (!plan) return null;
 
-        const monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+
+
+
+        // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        if (temParceiros) {
+            monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
+            console.log('Acréscimo de 20% aplicado no result.monthlyPrice:', monthlyPrice);
+        }
+
         return {
             ...plan,
             monthlyPrice,
@@ -357,7 +369,7 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
                 appliedDirectorDiscountPercentage
             )
         };
-    }, [selectedSpeed, radioPlans, debouncedContractTerm]);
+    }, [selectedSpeed, radioPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const fetchProposals = React.useCallback(async () => {
@@ -494,6 +506,25 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
         if (result) {
             // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
             monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
+
+            // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+            const temParceiros = includeReferralPartner || includeInfluencerPartner;
+            console.log('DEBUG - InternetManRadio:', {
+                includeReferralPartner,
+                includeInfluencerPartner,
+                temParceiros,
+                monthlyValueBefore: monthlyValue
+            });
+
+            if (temParceiros) {
+                const originalValue = monthlyValue;
+                monthlyValue = monthlyValue * 1.20; // Acréscimo de 20%
+                console.log('Acréscimo de 20% aplicado por parceiros - InternetManRadio:', {
+                    original: originalValue,
+                    withIncrease: monthlyValue
+                });
+            }
+
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
         }
@@ -610,7 +641,7 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo
-    const dreCalculations = useMemo(() => {
+    const dreCalculations: any = useMemo(() => {
         const dre12 = calculateDREForPeriod(12);
         const dre24 = calculateDREForPeriod(24);
         const dre36 = calculateDREForPeriod(36);
@@ -1330,7 +1361,7 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
                             {/* Show discount breakdown if discounts were applied */}
-                            {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) && (
+                            {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
                                 <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
                                     <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
                                     <div className="text-sm space-y-1">
@@ -1342,8 +1373,8 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
                                             <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
                                         )}
 
-                                        {currentProposal.appliedDirectorDiscountPercentage > 0 && (
-                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')}</p>
+                                        {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage || 0}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage || 0) / 100)).toFixed(2).replace('.', ',')}</p>
                                         )}
                                     </div>
                                 </div>
@@ -1351,8 +1382,8 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
-                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
+                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
+                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
@@ -1378,7 +1409,7 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
                                     if (plan) {
                                         paybackMonths = calculatePayback(
                                             currentProposal.includeInstallation ? plan.installationCost : 0,
-                                            plan.radioCost,
+                                            plan.radioCost || 0,
                                             totalMonthly,
                                             contractTerm,
                                             currentProposal.applySalespersonDiscount || false,
@@ -1712,7 +1743,7 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
 
                                                 {/* Controles de Desconto */}
                                                 <div className="space-y-4 p-4 bg-slate-800 rounded-lg">
-                                                    {(user?.role !== 'diretor' && user?.role !== 'admin') && (
+                                                    {(user?.role !== 'director' && user?.role !== 'admin') && (
                                                         <div className="flex items-center space-x-2">
                                                             <Checkbox
                                                                 id="salesperson-discount-toggle"
@@ -1722,7 +1753,7 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
                                                             <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                                         </div>
                                                     )}
-                                                    {(user?.role === 'diretor' || user?.role === 'admin') && (
+                                                    {(user?.role === 'director' || user?.role === 'admin') && (
                                                         <div className="space-y-2">
                                                             <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
                                                             <div className="flex items-center space-x-2">
@@ -1860,49 +1891,49 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
                                                 <TableRow className="border-slate-800 bg-green-900/30">
                                                     <TableCell className="text-white font-semibold">Receita Total do Período</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].receitaMensal)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].receitaMensal)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Receita - Taxa Instalação</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].receitaInstalacao)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].receitaInstalacao)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800 bg-blue-900/30">
                                                     <TableCell className="text-white font-semibold">Total</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].receitaTotalPrimeiromes)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].receitaTotalPrimeiromes)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Custo de banda</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].custoBanda)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].custoBanda)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Custo Rádio</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].custoRadio)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].custoRadio)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Fundraising</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].fundraising)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].fundraising)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Last Mile</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].lastMile)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].lastMile)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Simples Nacional</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].simplesNacional)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].simplesNacional)}</TableCell>
                                                     ))}
                                                 </TableRow>
 
@@ -1911,8 +1942,8 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
                                                         <TableCell className="text-white font-semibold">Diferença de Valores Contrato</TableCell>
                                                         {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
                                                             <TableCell key={period} className="text-right text-white font-semibold">
-                                                                {dreCalculations[period].diferencaValoresContrato >= 0 ? '+' : ''}
-                                                                {formatCurrency(dreCalculations[period].diferencaValoresContrato)}
+                                                                {(dreCalculations as any)[period].diferencaValoresContrato >= 0 ? '+' : ''}
+                                                                {formatCurrency((dreCalculations as any)[period].diferencaValoresContrato)}
                                                             </TableCell>
                                                         ))}
                                                     </TableRow>
@@ -1922,7 +1953,7 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
                                                     <TableRow className="border-slate-800">
                                                         <TableCell className="text-white">Comissão Parceiro Indicador</TableCell>
                                                         {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                            <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].comissaoParceiroIndicador)}</TableCell>
+                                                            <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].comissaoParceiroIndicador)}</TableCell>
                                                         ))}
                                                     </TableRow>
                                                 )}
@@ -1930,7 +1961,7 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
                                                     <TableRow className="border-slate-800">
                                                         <TableCell className="text-white">Comissão Parceiro Influenciador</TableCell>
                                                         {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                            <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].comissaoParceiroInfluenciador)}</TableCell>
+                                                            <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].comissaoParceiroInfluenciador)}</TableCell>
                                                         ))}
                                                     </TableRow>
                                                 )}
@@ -1939,49 +1970,49 @@ const InternetManRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ on
                                                         {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
                                                     </TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].comissaoVendedor)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].comissaoVendedor)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Custo / Despesa</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].custoDespesa)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].custoDespesa)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Total de Custos</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].totalCost)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period].totalCost)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800 bg-green-900/50">
                                                     <TableCell className="text-white font-bold">Balance</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className={`text-right font-bold ${dreCalculations[period].balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                            {formatCurrency(dreCalculations[period].balance)}
+                                                        <TableCell key={period} className={`text-right font-bold ${(dreCalculations as any)[period].balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {formatCurrency((dreCalculations as any)[period].balance)}
                                                         </TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Margem Líquida %</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className={`text-right font-semibold ${dreCalculations[period].margemLiquida >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                            {formatPercentage(dreCalculations[period].margemLiquida)}
+                                                        <TableCell key={period} className={`text-right font-semibold ${(dreCalculations as any)[period].margemLiquida >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {formatPercentage((dreCalculations as any)[period].margemLiquida)}
                                                         </TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Markup %</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className={`text-right font-semibold ${dreCalculations[period].markup >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                            {formatPercentage(dreCalculations[period].markup)}
+                                                        <TableCell key={period} className={`text-right font-semibold ${(dreCalculations as any)[period].markup >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {formatPercentage((dreCalculations as any)[period].markup)}
                                                         </TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Rentabilidade %</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className={`text-right font-semibold ${dreCalculations[period].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                        <TableCell key={period} className={`text-right font-semibold ${(dreCalculations as any)[period].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                                             {dreCalculations[period].rentabilidade.toFixed(2)}%
                                                         </TableCell>
                                                     ))}

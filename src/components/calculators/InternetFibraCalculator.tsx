@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CommissionTablesUnified from './CommissionTablesUnified';
 import { Separator } from '@/components/ui/separator';
-import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManagerForm';
+import { ClientManagerForm } from './ClientManagerForm';
+import { ClientData, AccountManagerData } from '@/lib/types';
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
@@ -377,7 +378,24 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const plan = fibraPlans.find(p => p.speed === selectedSpeed);
         if (!plan) return null;
 
-        const monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        
+        // Aplicar descontos
+        if (applySalespersonDiscount) {
+            monthlyPrice = monthlyPrice * 0.95;
+        }
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            monthlyPrice = monthlyPrice * directorDiscountFactor;
+        }
+        
+        // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        if (temParceiros) {
+            monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
+            console.log('Acréscimo de 20% aplicado no result.monthlyPrice - InternetFibra:', monthlyPrice);
+        }
+        
         return {
             ...plan,
             monthlyPrice,
@@ -393,7 +411,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 appliedDirectorDiscountPercentage
             )
         };
-    }, [selectedSpeed, fibraPlans, debouncedContractTerm]);
+    }, [selectedSpeed, fibraPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const fetchProposals = React.useCallback(async () => {

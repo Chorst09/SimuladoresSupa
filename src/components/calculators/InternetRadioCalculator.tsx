@@ -52,7 +52,7 @@ ContractTermSelector.displayName = 'ContractTermSelector';
 // Interfaces
 export interface Product {
     id: string;
-    type: 'FIBRA';
+    type: 'RADIO';
     description: string;
     setup: number;
     monthly: number;
@@ -61,7 +61,7 @@ export interface Product {
         contractTerm?: number;
         includeInstallation?: boolean;
         planDescription?: string;
-        fiberCost?: number;
+        radioCost?: number;
         applySalespersonDiscount?: boolean;
         appliedDirectorDiscountPercentage?: number;
         includeReferralPartner?: boolean;
@@ -80,6 +80,50 @@ interface RadioPlan {
     description: string;
     baseCost: number;
     radioCost: number;
+}
+
+// Interface para o resultado do DRE por período
+interface DRECalculationsResult {
+    receitaMensal: number;
+    receitaInstalacao: number;
+    receitaTotalPrimeiromes: number;
+    custoRadio: number;
+    custoBanda: number;
+    fundraising: number;
+    lastMile: number;
+    simplesNacional: number;
+    comissaoVendedor: number;
+    comissaoParceiroIndicador: number;
+    comissaoParceiroInfluenciador: number;
+    totalComissoes: number;
+    custoDespesa: number;
+    balance: number;
+    rentabilidade: number;
+    lucratividade: number;
+    margemLiquida: number;
+    markup: number;
+    paybackMonths: number;
+    diferencaValoresContrato: number;
+}
+
+// Interface para o objeto completo de dreCalculations
+interface FullDRECalculations {
+    [key: number]: DRECalculationsResult;
+    receitaBruta: number;
+    receitaLiquida: number;
+    custoServico: number;
+    custoBanda: number;
+    taxaInstalacao: number;
+    comissaoVendedor: number;
+    comissaoParceiroIndicador: number;
+    comissaoParceiroInfluenciador: number;
+    totalComissoes: number;
+    totalImpostos: number;
+    lucroOperacional: number;
+    lucroLiquido: number;
+    rentabilidade: number;
+    lucratividade: number;
+    paybackMeses: number;
 }
 
 // Helper function to get monthly price based on contract term
@@ -333,6 +377,24 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         setContractTerm(Number(value));
     }, []);
 
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = (baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+
+        // Aplicar desconto do diretor (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+
+        return discountedTotal;
+    };
+
     // Partner indicator ranges handled by getPartnerIndicatorRate
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
@@ -341,7 +403,18 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         const plan = radioPlans.find(p => p.speed === selectedSpeed);
         if (!plan) return null;
 
-        const monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        
+        // Aplicar descontos
+        monthlyPrice = applyDiscounts(monthlyPrice);
+        
+        // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        if (temParceiros) {
+            monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
+            console.log('Acréscimo de 20% aplicado no result.monthlyPrice - InternetRadio:', monthlyPrice);
+        }
+        
         return {
             ...plan,
             monthlyPrice,
@@ -357,7 +430,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 appliedDirectorDiscountPercentage
             )
         };
-    }, [selectedSpeed, radioPlans, debouncedContractTerm]);
+    }, [selectedSpeed, radioPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const fetchProposals = React.useCallback(async () => {
@@ -466,26 +539,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
     const taxaInstalacao = includeInstallation ? (result?.installationCost || 2500) : 0;
     const custoRadio = result?.radioCost || 7000;
 
-    // Função para aplicar descontos no total mensal
-    const applyDiscounts = (baseTotal: number): number => {
-        let discountedTotal = baseTotal;
-
-        // Aplicar desconto do vendedor (5%)
-        if (applySalespersonDiscount) {
-            discountedTotal = discountedTotal * 0.95;
-        }
-
-        // Aplicar desconto do diretor (percentual configurado)
-        if (appliedDirectorDiscountPercentage > 0) {
-            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
-            discountedTotal = discountedTotal * directorDiscountFactor;
-        }
-
-        return discountedTotal;
-    };
-
     // Função para calcular DRE por período de contrato
-    const calculateDREForPeriod = useCallback((months: number) => {
+    const calculateDREForPeriod = useCallback((months: number): DRECalculationsResult => {
         // CORREÇÃO: Receita mensal = valor mensal × número de meses do período
         // Ex: Para 12 meses = 12 × R$ 5.211,00 = R$ 62.532,00
         let monthlyValue = 0;
@@ -494,6 +549,25 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         if (result) {
             // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
             monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
+            
+            // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+            const temParceiros = includeReferralPartner || includeInfluencerPartner;
+            console.log('DEBUG - InternetRadio:', {
+                includeReferralPartner,
+                includeInfluencerPartner,
+                temParceiros,
+                monthlyValueBefore: monthlyValue
+            });
+            
+            if (temParceiros) {
+                const originalValue = monthlyValue;
+                monthlyValue = monthlyValue * 1.20; // Acréscimo de 20%
+                console.log('Acréscimo de 20% aplicado por parceiros - InternetRadio:', {
+                    original: originalValue,
+                    withIncrease: monthlyValue
+                });
+            }
+            
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
         }
@@ -609,8 +683,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         previousMonthlyFee
     ]);
 
-    // Calcular DRE para todos os períodos usando useMemo
-    const dreCalculations = useMemo(() => {
+    const dreCalculations: FullDRECalculations = useMemo(() => {
         const dre12 = calculateDREForPeriod(12);
         const dre24 = calculateDREForPeriod(24);
         const dre36 = calculateDREForPeriod(36);
@@ -662,8 +735,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
 
         const newProduct: Product = {
             id: `prod-${Date.now()}`,
-            type: 'FIBRA',
-            description: `Fibra ${result.speed} Mbps`,
+            type: 'RADIO',
+            description: `Rádio ${result.speed} Mbps`,
             setup: includeInstallation ? result.installationCost : 0,
             monthly: getMonthlyPrice(result, contractTerm),
             details: {
@@ -671,7 +744,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 contractTerm,
                 includeInstallation,
                 planDescription: result.description,
-                fiberCost: result.radioCost,
+                radioCost: result.radioCost,
                 applySalespersonDiscount,
                 appliedDirectorDiscountPercentage,
                 includeReferralPartner
@@ -745,10 +818,10 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             if (currentProposal?.id && proposalVersion === 1) {
                 const proposalToUpdate = {
                     id: currentProposal.id,
-                    title: `Proposta Internet Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta Internet Rádio V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
-                    type: 'FIBER',
+                    type: 'RADIO',
                     status: currentProposal.status || 'Rascunho',
                     updatedBy: user.email || user.id,
                     updatedAt: new Date().toISOString(),
@@ -787,10 +860,10 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 }
             } else {
                 const proposalToSave = {
-                    title: `Proposta Internet Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta Internet Rádio V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
-                    type: 'FIBER',
+                    type: 'RADIO',
                     status: selectedStatus,
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
@@ -890,8 +963,16 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         }
 
         // Handle account manager data
-        if (proposal.accountManager) {
+        if (typeof proposal.accountManager === 'object' && proposal.accountManager !== null) {
             setAccountManagerData(proposal.accountManager);
+        } else if (typeof proposal.accountManager === 'string') {
+            setAccountManagerData({
+                name: proposal.accountManager,
+                email: '',
+                phone: ''
+            });
+        } else {
+            setAccountManagerData({ name: '', email: '', phone: '' });
         }
 
         // Handle products - check multiple possible locations and formats
@@ -902,8 +983,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             // Convert items to products format if needed
             products = proposal.items.map((item: any) => ({
                 id: item.id || `item-${Date.now()}`,
-                type: 'FIBER',
-                description: item.description || 'Internet Fibra',
+                type: 'RADIO',
+                description: item.description || 'Internet Rádio',
                 setup: item.setup || 0,
                 monthly: item.monthly || 0,
                 details: item.details || {}
@@ -943,8 +1024,16 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         }
 
         // Handle account manager data
-        if (proposal.accountManager) {
+        if (typeof proposal.accountManager === 'object' && proposal.accountManager !== null) {
             setAccountManagerData(proposal.accountManager);
+        } else if (typeof proposal.accountManager === 'string') {
+            setAccountManagerData({
+                name: proposal.accountManager,
+                email: '',
+                phone: ''
+            });
+        } else {
+            setAccountManagerData({ name: '', email: '', phone: '' });
         }
 
         // Handle products - check multiple possible locations and formats
@@ -955,8 +1044,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             // Convert items to products format if needed
             products = proposal.items.map((item: any) => ({
                 id: item.id || `item-${Date.now()}`,
-                type: 'FIBER',
-                description: item.description || 'Internet Fibra',
+                type: 'RADIO',
+                description: item.description || 'Internet Rádio',
                 setup: item.setup || 0,
                 monthly: item.monthly || 0,
                 details: item.details || {}
@@ -1025,7 +1114,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
     };
 
     const filteredProposals = proposals.filter(p =>
-        p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (typeof p.client === 'object' ? p.client.name : p.client)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -1143,7 +1232,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 onAccountManagerDataChange={setAccountManagerData}
                 onBack={cancelAction}
                 onContinue={() => setViewMode('calculator')}
-                title="Nova Proposta - Internet via Fibra"
+                title="Nova Proposta - Internet via Rádio"
                 subtitle="Preencha os dados do cliente e gerente de contas para continuar."
             />
         );
@@ -1162,7 +1251,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Voltar
                         </Button>
-                        <CardTitle>Buscar Propostas - Internet via Fibra</CardTitle>
+                        <CardTitle>Buscar Propostas - Internet via Rádio</CardTitle>
                         <CardDescription>Encontre propostas existentes ou crie uma nova.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -1232,7 +1321,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                         <div className="flex justify-between items-start mb-4 print:mb-2">
                             <div>
                                 <h1 className="text-2xl font-bold text-gray-900">Proposta Comercial</h1>
-                                <p className="text-gray-600">Internet via Fibra Óptica</p>
+                                <p className="text-gray-600">Internet via Rádio Óptica</p>
                             </div>
                             <div className="flex gap-2 no-print">
                                 <Button variant="outline" onClick={() => setViewMode('search')}>
@@ -1409,7 +1498,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h1 className="text-3xl font-bold text-white">{currentProposal ? 'Editar Proposta' : 'Nova Proposta'}</h1>
-                                <p className="text-slate-400 mt-2">Configure e calcule os custos para links de fibra</p>
+                                <p className="text-slate-400 mt-2">Configure e calcule os custos para links de rádio</p>
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="outline" onClick={cancelAction} className="border-slate-600 text-slate-300 hover:bg-slate-700">
@@ -1443,7 +1532,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                             )}
                         </TabsList>
                         <TabsContent value="calculator" key={`calculator-${componentKey}`}>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
+                            {user?.role === 'admin' || user?.role === 'director' ? (
                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
                                     <CardHeader><CardTitle className="flex items-center"><Calculator className="mr-2" />Calculadora</CardTitle></CardHeader>
                                     <CardContent className="space-y-4">
@@ -1658,183 +1747,222 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                         <Button onClick={handleAddProduct} disabled={!result} className="w-full bg-blue-600 hover:bg-blue-700">Adicionar Produto</Button>
                                     </CardContent>
                                 </Card>
-
+                            ) : (
                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader><CardTitle className="flex items-center"><FileText className="mr-2" />Resumo da Proposta</CardTitle></CardHeader>
-                                    <CardContent>
-                                        <div className="mb-4">
-                                            <Label htmlFor="proposal-status" className="mb-2 block">Status da Proposta</Label>
-                                            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                                                <SelectTrigger id="proposal-status" className="bg-slate-800 border-slate-700 text-white">
-                                                    <SelectValue placeholder="Selecione o status" />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-slate-800 text-white">
-                                                    <SelectItem value="Aguardando aprovação desconto Diretoria">Aguardando aprovação desconto Diretoria</SelectItem>
-                                                    <SelectItem value="Aguardando Aprovação do Cliente">Aguardando Aprovação do Cliente</SelectItem>
-                                                    <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
-                                                    <SelectItem value="Fechado Ganho">Fechado Ganho</SelectItem>
-                                                    <SelectItem value="Perdido">Perdido</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                    <CardHeader><CardTitle className="flex items-center"><Calculator className="mr-2" />Calculadora</CardTitle></CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <ContractTermSelector
+                                                value={contractTerm}
+                                                onChange={handleContractTermChange}
+                                            />
+                                            <div className="space-y-2">
+                                                <Label htmlFor="speed">Velocidade</Label>
+                                                <Select onValueChange={(v) => setSelectedSpeed(Number(v))} value={selectedSpeed.toString()}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Selecione uma velocidade..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {radioPlans.filter(p => getMonthlyPrice(p, contractTerm) > 0).map(plan => (
+                                                            <SelectItem key={plan.speed} value={plan.speed.toString()}>
+                                                                {plan.description}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
-                                        
-                                        <div className="mb-4">
-                                            <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
-                                            <textarea
-                                                id="proposal-changes"
-                                                value={proposalChanges}
-                                                onChange={(e) => setProposalChanges(e.target.value)}
-                                                placeholder="Descreva as alterações feitas nesta versão da proposta..."
-                                                className="w-full p-3 bg-slate-800 border border-slate-700 text-white rounded-md resize-none"
-                                                rows={3}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox id="include-installation" checked={includeInstallation} onCheckedChange={(c) => setIncludeInstallation(c as boolean)} />
+                                                <Label htmlFor="include-installation">Incluir taxa de instalação no cálculo</Label>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="fiber-cost">Custo Rádio</Label>
+                                            <Input
+                                                type="text"
+                                                id="fiber-cost"
+                                                value={formatCurrency(result?.radioCost)}
+                                                onChange={(e) => {
+                                                    handleCustoRadioChange(e.target.value);
+                                                    setHasChanged(true);
+                                                }}
+                                                className="bg-slate-800"
                                             />
                                         </div>
-
-                                        {addedProducts.length === 0 ? (
-                                            <p className="text-slate-400">Nenhum produto adicionado.</p>
-                                        ) : (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="isExistingClient"
+                                                    checked={isExistingClient}
+                                                    onCheckedChange={(checked) => setIsExistingClient(!!checked)}
+                                                />
+                                                <Label htmlFor="isExistingClient">Já é cliente da Base?</Label>
+                                            </div>
+                                        </div>
+                                        {isExistingClient && (
                                             <div className="space-y-4">
-                                                <div className="max-h-60 overflow-y-auto pr-2 space-y-4">
-                                                    {addedProducts.map((product) => (
-                                                        <div key={product.id} className="p-3 bg-slate-800 rounded-lg">
-                                                            <div className="flex justify-between items-start">
-                                                                <p className="font-semibold flex-1 pr-2">{product.description}</p>
-                                                                <Button variant="ghost" size="icon" onClick={() => handleRemoveProduct(product.id)} className="text-red-400 hover:bg-red-900/50 h-7 w-7">
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                            <div className="text-sm space-y-1 mt-2">
-                                                                <div className="flex justify-between"><span>Instalação:</span><span>{formatCurrency(product.setup)}</span></div>
-                                                                <div className="flex justify-between"><span>Mensal:</span><span>{formatCurrency(product.monthly)}</span></div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <Separator className="my-4 bg-slate-700" />
-
-                                                {/* Controles de Desconto */}
-                                                <div className="space-y-4 p-4 bg-slate-800 rounded-lg">
-                                                    {(user?.role !== 'diretor' && user?.role !== 'admin') && (
-                                                        <div className="flex items-center space-x-2">
-                                                            <Checkbox
-                                                                id="salesperson-discount-toggle"
-                                                                checked={applySalespersonDiscount}
-                                                                onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
-                                                            />
-                                                            <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
-                                                        </div>
-                                                    )}
-                                                    {(user?.role === 'diretor' || user?.role === 'admin') && (
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
-                                                            <div className="flex items-center space-x-2">
-                                                                <Input
-                                                                    id="director-discount"
-                                                                    type="number"
-                                                                    value={directorDiscountPercentage}
-                                                                    onChange={(e) => {
-                                                                        const value = Number(e.target.value);
-                                                                        setDirectorDiscountPercentage(value);
-                                                                        setAppliedDirectorDiscountPercentage(value);
-                                                                    }}
-                                                                    placeholder="0-100"
-                                                                    min="0"
-                                                                    max="100"
-                                                                    className="bg-slate-700 border-slate-600 text-white"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {user?.role === 'admin' && (
-                                                        <div className="flex items-center space-x-2">
-                                                            <Checkbox
-                                                                id="admin-salesperson-discount-toggle"
-                                                                checked={applySalespersonDiscount}
-                                                                onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
-                                                            />
-                                                            <Label htmlFor="admin-salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <Separator className="my-4 bg-slate-700" />
                                                 <div className="space-y-2">
-                                                    {applySalespersonDiscount && (
-                                                        <div className="flex justify-between text-orange-400">
-                                                            <span>Desconto Vendedor (5%):</span>
-                                                            <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.monthly, 0)) * 0.05)}</span>
-                                                        </div>
-                                                    )}
-                                                    {appliedDirectorDiscountPercentage > 0 && (
-                                                        <div className="flex justify-between text-orange-400">
-                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%) - Apenas Mensal:</span>
-                                                            <span>-{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex justify-between">
-                                                        <span>Total de Instalação:</span>
-                                                        <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0))}</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span>Total Mensal:</span>
-                                                        <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (1 - appliedDirectorDiscountPercentage / 100))}</span>
-                                                    </div>
-
-                                                    <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-700">
-                                                        <span>Total Anual:</span>
-                                                        <span>{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly * 12, 0))}</span>
-                                                    </div>
-
-                                                    {/* Payback Information */}
-                                                    {result && includeInstallation && (
-                                                        <div className="mt-4 pt-4 border-t border-slate-700">
-                                                            <h4 className="text-sm font-semibold text-slate-300 mb-2">Informações de Payback</h4>
-                                                            <div className="space-y-2 text-sm">
-                                                                <div className="flex justify-between">
-                                                                    <span>Payback Calculado:</span>
-                                                                    <span className="font-semibold">{result.paybackValidation.actualPayback} meses</span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span>Payback Máximo:</span>
-                                                                    <span className="font-semibold">{result.paybackValidation.maxPayback} meses</span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span>Status:</span>
-                                                                    <span className={`font-semibold ${result.paybackValidation.isValid ? 'text-green-400' : 'text-red-400'}`}>
-                                                                        {result.paybackValidation.isValid ? '✅ Dentro do limite' : '⚠️ Acima do limite'}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                    <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
+                                                    <Input
+                                                        id="previousMonthlyFee"
+                                                        type="number"
+                                                        value={previousMonthlyFee}
+                                                        onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
+                                                        placeholder="0.00"
+                                                        className="bg-slate-800"
+                                                    />
                                                 </div>
-                                                <div className="flex justify-end space-x-2 mt-4">
-                                                    <Button variant="outline" onClick={clearForm} className="border-slate-600 text-slate-300 hover:bg-slate-700">
-                                                        Limpar Tudo
-                                                    </Button>
-                                                    {hasChanged && currentProposal?.id && (
-                                                        <Button 
-                                                            onClick={() => {
-                                                                if (currentProposal.id) {
-                                                                    handleSave(currentProposal.id, true);
-                                                                    setHasChanged(false);
-                                                                }
-                                                            }} 
-                                                            className="bg-blue-600 hover:bg-blue-700"
-                                                        >
-                                                            Salvar como Nova Versão
-                                                        </Button>
-                                                    )}
-                                                    <Button onClick={saveProposal} className="bg-green-600 hover:bg-green-700">
-                                                        <Save className="h-4 w-4 mr-2" />
-                                                        {currentProposal ? 'Atualizar Proposta' : 'Salvar Proposta'}
-                                                    </Button>
-                                                </div>
+                                                {previousMonthlyFee > 0 && result && (
+                                                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm text-slate-300">Diferença de Valor:</span>
+                                                            <span className={`font-semibold ${
+                                                                result.monthlyPrice - previousMonthlyFee >= 0 
+                                                                    ? 'text-green-400' 
+                                                                    : 'text-red-400'
+                                                            }`}>
+                                                                {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs text-slate-400 mt-1">
+                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
+                                                                ? 'Aumento na mensalidade' 
+                                                                : 'Redução na mensalidade'
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="createLastMile"
+                                                    checked={createLastMile}
+                                                    onCheckedChange={(checked) => setCreateLastMile(!!checked)}
+                                                />
+                                                <Label htmlFor="createLastMile">Criar Last Mile?</Label>
+                                            </div>
+                                        </div>
+                                        {createLastMile && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="lastMileCost">Custo (Last Mile)</Label>
+                                                <Input
+                                                    id="lastMileCost"
+                                                    type="number"
+                                                    value={lastMileCost}
+                                                    onChange={(e) => setLastMileCost(parseFloat(e.target.value))}
+                                                    placeholder="0.00"
+                                                    className="bg-slate-800"
+                                                />
+                                            </div>
+                                        )}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="includeReferralPartner"
+                                                    checked={includeReferralPartner}
+                                                    onCheckedChange={(checked) => setIncludeReferralPartner(Boolean(checked))}
+                                                />
+                                                <Label htmlFor="includeReferralPartner">Incluir Parceiro Indicador</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="includeInfluencerPartner"
+                                                    checked={includeInfluencerPartner}
+                                                    onCheckedChange={(checked) => setIncludeInfluencerPartner(Boolean(checked))}
+                                                />
+                                                <Label htmlFor="includeInfluencerPartner">Incluir Parceiro Influenciador</Label>
+                                            </div>
+                                        </div>
+
+                                        {/* Seção de Resultado e Validação de Payback */}
+                                        {result && (
+                                            <div className="space-y-3 p-4 bg-slate-800 rounded-lg border border-slate-700">
+                                                <h4 className="text-lg font-semibold text-white">Resultado do Cálculo</h4>
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between">
+                                                        <span>Valor Mensal:</span>
+                                                        <span className="font-semibold">{formatCurrency(result.monthlyPrice)}</span>
+                                                    </div>
+                                                    {includeInstallation && (
+                                                        <div className="flex justify-between">
+                                                            <span>Taxa de Instalação:</span>
+                                                            <span className="font-semibold">{formatCurrency(result.installationCost)}</span>
+                                                        </div>
+                                                    )}
+                                                    {includeInstallation && (
+                                                        <div className="flex justify-between">
+                                                            <span>Payback Calculado:</span>
+                                                            <span className="font-semibold">{result.paybackValidation.actualPayback} meses</span>
+                                                        </div>
+                                                    )}
+                                                    {includeInstallation && (
+                                                        <div className="flex justify-between">
+                                                            <span>Payback Máximo Permitido:</span>
+                                                            <span className="font-semibold">{result.paybackValidation.maxPayback} meses</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Diferença de Valor para Clientes Existentes */}
+                                                {isExistingClient && previousMonthlyFee > 0 && result && (
+                                                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm text-slate-300">Diferença de Valor:</span>
+                                                            <span className={`font-semibold ${
+                                                                result.monthlyPrice - previousMonthlyFee >= 0 
+                                                                    ? 'text-green-400' 
+                                                                    : 'text-red-400'
+                                                            }`}>
+                                                                {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs text-slate-400 mt-1">
+                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
+                                                                ? 'Aumento na mensalidade' 
+                                                                : 'Redução na mensalidade'
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Alerta de Payback */}
+                                                {includeInstallation && !result.paybackValidation.isValid && (
+                                                    <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg">
+                                                        <div className="flex items-center space-x-2">
+                                                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                                            <span className="font-semibold text-red-400">⚠️ Payback acima do permitido!</span>
+                                                        </div>
+                                                        <p className="text-sm text-red-300 mt-1">
+                                                            O payback de {result.paybackValidation.actualPayback} meses excede o limite de {result.paybackValidation.maxPayback} meses para contratos de {contractTerm} meses.
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Alerta de Sucesso */}
+                                                {includeInstallation && result.paybackValidation.isValid && (
+                                                    <div className="p-3 bg-green-900/50 border border-green-700 rounded-lg">
+                                                        <div className="flex items-center space-x-2">
+                                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                            <span className="font-semibold text-green-400">✅ Payback dentro do limite!</span>
+                                                        </div>
+                                                        <p className="text-sm text-green-300 mt-1">
+                                                            O payback de {result.paybackValidation.actualPayback} meses está dentro do limite de {result.paybackValidation.maxPayback} meses.
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <Button onClick={handleAddProduct} disabled={!result} className="w-full bg-blue-600 hover:bg-blue-700">Adicionar Produto</Button>
                                     </CardContent>
                                 </Card>
-                            </div>
+                            )}
                         </TabsContent>
                         <TabsContent value="dre">
                             <div className="space-y-6 mt-6">
@@ -1846,7 +1974,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                             <div className="w-4 h-4 bg-blue-500 mr-2"></div>
                                             DRE - Demonstrativo de Resultado do Exercício
                                         </CardTitle>
-                                        <CardDescription>Internet Fibra {velocidade} Mbps - Análise por Período de Contrato</CardDescription>
+                                        <CardDescription>Internet Rádio {velocidade} Mbps - Análise por Período de Contrato</CardDescription>
                                     </CardHeader>
                                     <CardContent className="overflow-x-auto">
                                         <Table>
@@ -2025,7 +2153,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                                             const encodedUri = encodeURI(csvContent);
                                                             const link = document.createElement("a");
                                                             link.setAttribute("href", encodedUri);
-                                                            link.setAttribute("download", `DRE_Internet_Fibra_${velocidade}Mbps.csv`);
+                                                            link.setAttribute("download", `DRE_Internet_Rádio_${velocidade}Mbps.csv`);
 
                                                             // Safely append and remove link
                                                             document.body.appendChild(link);
@@ -2430,7 +2558,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                             <TabsContent value="prices">
                                 <Card className="bg-slate-900/80 border-slate-800 text-white mt-4">
                                     <CardHeader>
-                                        <CardTitle className="text-white">Tabela de Preços - Internet Fibra</CardTitle>
+                                        <CardTitle className="text-white">Tabela de Preços - Internet Rádio</CardTitle>
                                         <CardDescription>Atualize os preços conforme necessário</CardDescription>
                                     </CardHeader>
                                     <CardContent>

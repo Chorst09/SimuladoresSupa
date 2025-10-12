@@ -18,12 +18,12 @@ export interface Proposal {
   baseId: string; // Base ID, e.g., Prop_MV_0001/2025
   version: number;
   title: string;
-  client: string | ClientData;
+  client: ClientData;
   type: string; // Proposal type: RADIO, FIBER, VM, etc.
   value: number;
   status: 'Rascunho' | 'Enviada' | 'Em Análise' | 'Aprovada' | 'Rejeitada' | 'Aguardando aprovação desconto Diretoria' | 'Aguardando Aprovação do Cliente' | 'Fechado Ganho' | 'Perdido';
-  createdBy: string; // User ID
-  accountManager: string | AccountManagerData; // User name or object
+  createdBy?: string; // User ID
+  accountManager: AccountManagerData; // User name or object
   createdAt: any; // Firestore Timestamp
   distributorId: string;
   date: string;
@@ -32,15 +32,32 @@ export interface Proposal {
   totalSetup?: number;
   totalMonthly?: number;
   contractPeriod?: number;
-  clientData?: ClientData;
+  selectedSpeed?: number; // Adicionado
+  includeInstallation?: boolean; // Adicionado
+  contractTerm?: number; // Adicionado
+  clientData?: ClientData; // Alterado para opcional
   products?: any[];
-  items?: any[];
+  items?: any[]; // Adicionado
   userId?: string;
   updatedAt?: any;
   updatedBy?: string;
   applySalespersonDiscount?: boolean; // Adicionado
   appliedDirectorDiscountPercentage?: number; // Adicionado
+  includeReferralPartner?: boolean; // Adicionado
+  includeInfluencerPartner?: boolean; // Adicionado
   baseTotalMonthly?: number; // Adicionado
+  changes?: string; // Adicionado
+  details?: { // Adicionado para acomodar details de diferentes calculadoras
+    speed?: number;
+    contractTerm?: number;
+    includeInstallation?: boolean;
+    planDescription?: string;
+    doubleFiberRadioCost?: number;
+    applySalespersonDiscount?: boolean;
+    appliedDirectorDiscountPercentage?: number;
+    includeReferralPartner?: boolean;
+    [key: string]: any;
+  };
   discountInfo?: {
     applySalespersonDiscount: boolean;
     appliedDirectorDiscountPercentage: number;

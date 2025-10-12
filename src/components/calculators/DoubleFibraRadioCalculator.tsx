@@ -56,7 +56,7 @@ ContractTermSelector.displayName = 'ContractTermSelector';
 // Interfaces
 interface Product {
     id: string;
-    type: 'FIBRA';
+    type: 'DOUBLEFIBRA_RADIO';
     description: string;
     setup: number;
     monthly: number;
@@ -84,6 +84,52 @@ interface DoubleFiberRadioPlan {
     description: string;
     baseCost: number;
     doubleFiberRadioCost: number;
+}
+
+// Interface para o resultado do DRE por período
+interface DRECalculationsResult {
+    receitaMensal: number;
+    receitaInstalacao: number;
+    receitaTotalPrimeiromes: number;
+    custoDoubleFiberRadio: number;
+    custoBanda: number;
+    fundraising: number;
+    lastMile: number;
+    simplesNacional: number;
+    comissaoVendedor: number;
+    comissaoParceiroIndicador: number;
+    comissaoParceiroInfluenciador: number;
+    totalComissoes: number;
+    custoDespesa: number;
+    balance: number;
+    rentabilidade: number;
+    lucratividade: number;
+    margemLiquida: number;
+    markup: number;
+    paybackMonths: number;
+    diferencaValoresContrato: number;
+}
+
+// Interface para o objeto completo de dreCalculations
+interface FullDRECalculations {
+    [key: number]: DRECalculationsResult;
+    receitaBruta: number;
+    totalSetup?: number;
+    totalMonthly?: number;
+    receitaLiquida: number;
+    custoServico: number;
+    custoBanda: number;
+    taxaInstalacao: number;
+    comissaoVendedor: number;
+    comissaoParceiroIndicador: number;
+    comissaoParceiroInfluenciador: number;
+    totalComissoes: number;
+    totalImpostos: number;
+    lucroOperacional: number;
+    lucroLiquido: number;
+    rentabilidade: number;
+    lucratividade: number;
+    paybackMeses: number;
 }
 
 // Helper function to get monthly price based on contract term
@@ -232,7 +278,25 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
     // Estados do produto
     const [addedProducts, setAddedProducts] = useState<Product[]>([]);
-    const [doubleFiberRadioPlans, setDoubleFiberRadioPlans] = useState<DoubleFiberRadioPlan[]>([]);
+    const [doubleFiberRadioPlans, setDoubleFiberRadioPlans] = useState<DoubleFiberRadioPlan[]>([
+        { speed: 25, price12: 1080.00, price24: 790.50, price36: 711.00, price48: 711.00, price60: 711.00, installationCost: 998.00, description: "25 Mbps", baseCost: 1580.00, doubleFiberRadioCost: 7080.00 },
+        { speed: 30, price12: 1110.12, price24: 868.50, price36: 790.50, price48: 790.50, price60: 790.50, installationCost: 998.00, description: "30 Mbps", baseCost: 1580.00, doubleFiberRadioCost: 7080.00 },
+        { speed: 40, price12: 1372.52, price24: 948.00, price36: 868.50, price48: 868.50, price60: 868.50, installationCost: 998.00, description: "40 Mbps", baseCost: 1580.00, doubleFiberRadioCost: 7080.00 },
+        { speed: 50, price12: 1655.09, price24: 1027.50, price36: 948.00, price48: 948.00, price60: 948.00, installationCost: 998.00, description: "50 Mbps", baseCost: 1580.00, doubleFiberRadioCost: 7080.00 },
+        { speed: 60, price12: 2321.16, price24: 1185.00, price36: 1105.50, price48: 1105.50, price60: 1105.50, installationCost: 998.00, description: "60 Mbps", baseCost: 1580.00, doubleFiberRadioCost: 7080.00 },
+        { speed: 80, price12: 2738.97, price24: 1500.00, price36: 1422.00, price48: 1422.00, price60: 1422.00, installationCost: 998.00, description: "80 Mbps", baseCost: 5700.00, doubleFiberRadioCost: 7080.00 },
+        { speed: 100, price12: 3025.58, price24: 2367.00, price36: 1974.00, price48: 1974.00, price60: 1974.00, installationCost: 1996.00, description: "100 Mbps", baseCost: 5700.00, doubleFiberRadioCost: 10200.00 },
+        { speed: 150, price12: 3814.77, price24: 2682.00, price36: 2290.50, price48: 2290.50, price60: 2290.50, installationCost: 1996.00, description: "150 Mbps", baseCost: 5700.00, doubleFiberRadioCost: 10200.00 },
+        { speed: 200, price12: 4823.97, price24: 3079.50, price36: 2605.50, price48: 2605.50, price60: 2605.50, installationCost: 1996.00, description: "200 Mbps", baseCost: 5700.00, doubleFiberRadioCost: 10200.00 },
+        { speed: 300, price12: 11283.00, price24: 6474.00, price36: 6000.00, price48: 6000.00, price60: 6000.00, installationCost: 2500.00, description: "300 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 26700.00 },
+        { speed: 400, price12: 14203.50, price24: 7816.50, price36: 7104.00, price48: 7104.00, price60: 7104.00, installationCost: 2500.00, description: "400 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
+        { speed: 500, price12: 16761.00, price24: 8683.50, price36: 7879.50, price48: 7879.50, price60: 7879.50, installationCost: 2500.00, description: "500 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
+        { speed: 600, price12: 18750.00, price24: 9472.50, price36: 8685.00, price48: 8685.00, price60: 8685.00, installationCost: 2500.00, description: "600 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
+        { speed: 700, price12: 20700.00, price24: 10350.00, price36: 9450.00, price48: 9450.00, price60: 9450.00, installationCost: 2500.00, description: "700 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
+        { speed: 800, price12: 22500.00, price24: 11250.00, price36: 10200.00, price48: 10200.00, price60: 10200.00, installationCost: 2500.00, description: "800 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
+        { speed: 900, price12: 24300.00, price24: 12150.00, price36: 10950.00, price48: 10950.00, price60: 10950.00, installationCost: 2500.00, description: "900 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
+        { speed: 1000, price12: 26250.00, price24: 13125.00, price36: 11850.00, price48: 11850.00, price60: 11850.00, installationCost: 2500.00, description: "1000 Mbps (1 Gbps)", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 }
+    ]);
     const [selectedStatus, setSelectedStatus] = useState<string>('Aguardando Aprovação do Cliente');
     const [proposalChanges, setProposalChanges] = useState<string>('');
 
@@ -240,10 +304,10 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     const [selectedSpeed, setSelectedSpeed] = useState<number>(0);
     const [contractTerm, setContractTerm] = useState<number>(12);
     const [includeInstallation, setIncludeInstallation] = useState<boolean>(true);
-    const [isExistingClient, setIsExistingClient] = useState(false);
-    const [previousMonthlyFee, setPreviousMonthlyFee] = useState(0);
-    const [createLastMile, setCreateLastMile] = useState(false);
-    const [lastMileCost, setLastMileCost] = useState(0);
+    const [isExistingClient, setIsExistingClient] = useState<boolean>(false);
+    const [previousMonthlyFee, setPreviousMonthlyFee] = useState<number>(0);
+    const [createLastMile, setCreateLastMile] = useState<boolean>(false);
+    const [lastMileCost, setLastMileCost] = useState<number>(0);
     const [projectValue, setProjectValue] = useState<number>(0);
     const [directorDiscountPercentage, setDirectorDiscountPercentage] = useState<number>(0);
     const [appliedDirectorDiscountPercentage, setAppliedDirectorDiscountPercentage] = useState<number>(0);
@@ -337,6 +401,47 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         setContractTerm(Number(value));
     }, []);
 
+    // Função para atualizar propriedades de currentProposal de forma aninhada
+    const handleCurrentProposalChange = useCallback((field: string, value: any) => {
+        setCurrentProposal(prev => {
+            if (!prev) return null;
+            const [mainField, subField] = field.split('.');
+
+            if (subField) {
+                return {
+                    ...prev,
+                    [mainField]: {
+                        ...prev[mainField as keyof Proposal],
+                        [subField]: value,
+                    },
+                } as Proposal;
+            } else {
+                return {
+                    ...prev,
+                    [field]: value,
+                } as Proposal;
+            }
+        });
+    }, []);
+
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = (baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+
+        // Aplicar desconto do director (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+
+        return discountedTotal;
+    };
+
     // Partner indicator ranges handled by getPartnerIndicatorRate
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
@@ -345,7 +450,29 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         const plan = doubleFiberRadioPlans.find(p => p.speed === selectedSpeed);
         if (!plan) return null;
 
-        const monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        
+        // Aplicar descontos
+        monthlyPrice = applyDiscounts(monthlyPrice);
+        
+        // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        console.log('DoubleFibraRadio - Debug:', {
+            selectedSpeed,
+            contractTerm: debouncedContractTerm,
+            basePrice: getMonthlyPrice(plan, debouncedContractTerm),
+            priceAfterDiscounts: applyDiscounts(getMonthlyPrice(plan, debouncedContractTerm)),
+            includeReferralPartner,
+            includeInfluencerPartner,
+            temParceiros,
+            finalPrice: monthlyPrice
+        });
+        
+        if (temParceiros) {
+            monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
+            console.log('Acréscimo de 20% aplicado no result.monthlyPrice - DoubleFibraRadio:', monthlyPrice);
+        }
+        
         return {
             ...plan,
             monthlyPrice,
@@ -361,7 +488,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 appliedDirectorDiscountPercentage
             )
         };
-    }, [selectedSpeed, doubleFiberRadioPlans, debouncedContractTerm]);
+    }, [selectedSpeed, doubleFiberRadioPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const fetchProposals = React.useCallback(async () => {
@@ -397,32 +524,23 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     }, [user]);
 
     useEffect(() => {
-        const initialDoubleFiberRadioPlans: DoubleFiberRadioPlan[] = [
-            { speed: 25, price12: 1080.00, price24: 790.50, price36: 711.00, price48: 711.00, price60: 711.00, installationCost: 998.00, description: "25 Mbps", baseCost: 1580.00, doubleFiberRadioCost: 7080.00 },
-            { speed: 30, price12: 1110.12, price24: 868.50, price36: 790.50, price48: 790.50, price60: 790.50, installationCost: 998.00, description: "30 Mbps", baseCost: 1580.00, doubleFiberRadioCost: 7080.00 },
-            { speed: 40, price12: 1372.52, price24: 948.00, price36: 868.50, price48: 868.50, price60: 868.50, installationCost: 998.00, description: "40 Mbps", baseCost: 1580.00, doubleFiberRadioCost: 7080.00 },
-            { speed: 50, price12: 1655.09, price24: 1027.50, price36: 948.00, price48: 948.00, price60: 948.00, installationCost: 998.00, description: "50 Mbps", baseCost: 1580.00, doubleFiberRadioCost: 7080.00 },
-            { speed: 60, price12: 2321.16, price24: 1185.00, price36: 1105.50, price48: 1105.50, price60: 1105.50, installationCost: 998.00, description: "60 Mbps", baseCost: 1580.00, doubleFiberRadioCost: 7080.00 },
-            { speed: 80, price12: 2738.97, price24: 1500.00, price36: 1422.00, price48: 1422.00, price60: 1422.00, installationCost: 998.00, description: "80 Mbps", baseCost: 5700.00, doubleFiberRadioCost: 7080.00 },
-            { speed: 100, price12: 3025.58, price24: 2367.00, price36: 1974.00, price48: 1974.00, price60: 1974.00, installationCost: 1996.00, description: "100 Mbps", baseCost: 5700.00, doubleFiberRadioCost: 10200.00 },
-            { speed: 150, price12: 3814.77, price24: 2682.00, price36: 2290.50, price48: 2290.50, price60: 2290.50, installationCost: 1996.00, description: "150 Mbps", baseCost: 5700.00, doubleFiberRadioCost: 10200.00 },
-            { speed: 200, price12: 4823.97, price24: 3079.50, price36: 2605.50, price48: 2605.50, price60: 2605.50, installationCost: 1996.00, description: "200 Mbps", baseCost: 5700.00, doubleFiberRadioCost: 10200.00 },
-            { speed: 300, price12: 11283.00, price24: 6474.00, price36: 6000.00, price48: 6000.00, price60: 6000.00, installationCost: 2500.00, description: "300 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 26700.00 },
-            { speed: 400, price12: 14203.50, price24: 7816.50, price36: 7104.00, price48: 7104.00, price60: 7104.00, installationCost: 2500.00, description: "400 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
-            { speed: 500, price12: 16761.00, price24: 8683.50, price36: 7879.50, price48: 7879.50, price60: 7879.50, installationCost: 2500.00, description: "500 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
-            { speed: 600, price12: 18750.00, price24: 9472.50, price36: 8685.00, price48: 8685.00, price60: 8685.00, installationCost: 2500.00, description: "600 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
-            { speed: 700, price12: 20700.00, price24: 10350.00, price36: 9450.00, price48: 9450.00, price60: 9450.00, installationCost: 2500.00, description: "700 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
-            { speed: 800, price12: 22500.00, price24: 11250.00, price36: 10200.00, price48: 10200.00, price60: 10200.00, installationCost: 2500.00, description: "800 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
-            { speed: 900, price12: 24300.00, price24: 12150.00, price36: 10950.00, price48: 10950.00, price60: 10950.00, installationCost: 2500.00, description: "900 Mbps", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 },
-            { speed: 1000, price12: 26250.00, price24: 13125.00, price36: 11850.00, price48: 11850.00, price60: 11850.00, installationCost: 2500.00, description: "1000 Mbps (1 Gbps)", baseCost: 23300.00, doubleFiberRadioCost: 32360.00 }
-        ];
-        // Force update with new fiber cost values
-        setDoubleFiberRadioPlans(initialDoubleFiberRadioPlans);
-        // Save the updated values to localStorage
-        localStorage.setItem('doubleFiberRadioLinkPrices', JSON.stringify(initialDoubleFiberRadioPlans));
+        // Carregar do localStorage se existir, caso contrário usar valores iniciais
+        const storedPrices = localStorage.getItem('doubleFiberRadioLinkPrices');
+        if (storedPrices) {
+            setDoubleFiberRadioPlans(JSON.parse(storedPrices));
+        } else {
+            // Isso não é mais necessário aqui, pois os valores iniciais já estão no useState
+            // const initialDoubleFiberRadioPlans: DoubleFiberRadioPlan[] = [...];
+            // setDoubleFiberRadioPlans(initialDoubleFiberRadioPlans);
+        }
 
         fetchProposals();
-    }, [fetchProposals]);
+
+        // Cleanup function (optional, if there were event listeners to remove)
+        return () => {
+            // any cleanup
+        };
+    }, [fetchProposals]); // Dependência em fetchProposals para buscar propostas quando o componente monta
 
     // Removed debug useEffect to prevent unnecessary re-renders
 
@@ -466,26 +584,14 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     const taxaInstalacao = includeInstallation ? (result?.installationCost || 2500) : 0;
     const custoDoubleFiberRadio = result?.doubleFiberRadioCost || 7000;
 
-    // Função para aplicar descontos no total mensal
-    const applyDiscounts = (baseTotal: number): number => {
-        let discountedTotal = baseTotal;
-
-        // Aplicar desconto do vendedor (5%)
-        if (applySalespersonDiscount) {
-            discountedTotal = discountedTotal * 0.95;
-        }
-
-        // Aplicar desconto do diretor (percentual configurado)
-        if (appliedDirectorDiscountPercentage > 0) {
-            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
-            discountedTotal = discountedTotal * directorDiscountFactor;
-        }
-
-        return discountedTotal;
-    };
-
     // Função para calcular DRE por período de contrato
-    const calculateDREForPeriod = useCallback((months: number) => {
+    const calculateDREForPeriod = useCallback((months: number): DRECalculationsResult => {
+        // Dados do plano selecionado ou valores padrão
+        const plan = doubleFiberRadioPlans.find(p => p.speed === (currentProposal?.details?.selectedSpeed || 600));
+        if (!plan) {
+            throw new Error('Plano de velocidade não encontrado');
+        }
+
         // CORREÇÃO: Receita mensal = valor mensal × número de meses do período
         // Ex: Para 12 meses = 12 × R$ 5.211,00 = R$ 62.532,00
         let monthlyValue = 0;
@@ -493,7 +599,26 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
         if (result) {
             // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
-            monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
+            monthlyValue = applyDiscounts(getMonthlyPrice(plan, contractTerm));
+            
+            // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+            const temParceiros = includeReferralPartner || includeInfluencerPartner;
+            console.log('DEBUG - DoubleFibraRadio:', {
+                includeReferralPartner,
+                includeInfluencerPartner,
+                temParceiros,
+                monthlyValueBefore: monthlyValue
+            });
+            
+            if (temParceiros) {
+                const originalValue = monthlyValue;
+                monthlyValue = monthlyValue * 1.20; // Acréscimo de 20%
+                console.log('Acréscimo de 20% aplicado por parceiros - DoubleFibraRadio:', {
+                    original: originalValue,
+                    withIncrease: monthlyValue
+                });
+            }
+            
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
         }
@@ -610,8 +735,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         previousMonthlyFee
     ]);
 
-    // Calcular DRE para todos os períodos usando useMemo
-    const dreCalculations = useMemo(() => {
+    // Calculate DRE for all periods using useMemo
+    const dreCalculations: FullDRECalculations = useMemo(() => {
         const dre12 = calculateDREForPeriod(12);
         const dre24 = calculateDREForPeriod(24);
         const dre36 = calculateDREForPeriod(36);
@@ -624,7 +749,6 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
             36: dre36,
             48: dre48,
             60: dre60,
-            // Manter compatibilidade com código existente
             receitaBruta: dre12.receitaMensal,
             receitaLiquida: dre12.receitaMensal - dre12.simplesNacional,
             custoServico: dre12.custoDoubleFiberRadio,
@@ -648,7 +772,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 appliedDirectorDiscountPercentage
             ),
         };
-    }, [calculateDREForPeriod]);
+    }, [calculateDREForPeriod, result?.doubleFiberRadioCost, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     const handleSavePrices = () => {
         // Save the prices to local storage
@@ -663,7 +787,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
         const newProduct: Product = {
             id: `prod-${Date.now()}`,
-            type: 'FIBRA',
+            type: 'DOUBLEFIBRA_RADIO',
             description: `Fibra ${result.speed} Mbps`,
             setup: includeInstallation ? result.installationCost : 0,
             monthly: getMonthlyPrice(result, contractTerm),
@@ -1333,20 +1457,20 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
                             {/* Show discount breakdown if discounts were applied */}
-                            {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) && (
+                            {(currentProposal?.details?.applySalespersonDiscount || (currentProposal?.details?.appliedDirectorDiscountPercentage || 0) > 0) && (
                                 <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
                                     <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
                                     <div className="text-sm space-y-1">
                                         <p><strong>Valores Originais:</strong></p>
-                                        <p className="ml-4">Setup: {formatCurrency(currentProposal.totalSetup || 0)}</p>
-                                        <p className="ml-4">Mensal: {formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</p>
+                                        <p className="ml-4">Setup: {formatCurrency(currentProposal?.totalSetup || 0)}</p>
+                                        <p className="ml-4">Mensal: {formatCurrency(currentProposal?.baseTotalMonthly || currentProposal?.totalMonthly || 0)}</p>
 
-                                        {currentProposal.applySalespersonDiscount && (
-                                            <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
+                                        {currentProposal?.details?.applySalespersonDiscount && (
+                                            <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {(((currentProposal?.baseTotalMonthly || currentProposal?.totalMonthly || 0) * 0.05) || 0).toFixed(2).replace('.', ',')}</p>
                                         )}
 
-                                        {currentProposal.appliedDirectorDiscountPercentage > 0 && (
-                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')}</p>
+                                        {(currentProposal?.details?.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                            <p className="text-orange-600"><strong>Desconto Director {(currentProposal?.details?.appliedDirectorDiscountPercentage || 0)}%):</strong> -R$ {((((currentProposal?.baseTotalMonthly || currentProposal?.totalMonthly || 0) * (currentProposal?.details?.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal?.details?.appliedDirectorDiscountPercentage || 0) / 100)) || 0).toFixed(2).replace('.', ',')}</p>
                                         )}
                                     </div>
                                 </div>
@@ -1354,28 +1478,28 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
-                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
+                                    <p><strong>Total Setup {(currentProposal?.details?.applySalespersonDiscount || (currentProposal?.details?.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal?.totalSetup || 0)}</p>
+                                    <p><strong>Total Mensal {(currentProposal?.details?.applySalespersonDiscount || (currentProposal?.details?.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal?.totalMonthly || 0)}</p>
                                 </div>
                                 <div>
-                                    <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
-                                    <p><strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}</p>
-                                    <p><strong>Versão:</strong> {currentProposal.version}</p>
-                                    <p><strong>Período do Contrato:</strong> {currentProposal.contractPeriod ? `${currentProposal.contractPeriod} meses` : 'N/A'}</p>
+                                    <p><strong>Data da Proposta:</strong> {new Date(currentProposal?.createdAt || new Date()).toLocaleDateString('pt-BR')}</p>
+                                    <p><strong>ID da Proposta:</strong> {currentProposal?.baseId || currentProposal?.id}</p>
+                                    <p><strong>Versão:</strong> {currentProposal?.version}</p>
+                                    <p><strong>Período do Contrato:</strong> {currentProposal?.contractPeriod ? `${currentProposal.contractPeriod} meses` : 'N/A'}</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Payback Info se disponível */}
-                        {(currentProposal.items || currentProposal.products || []).some(p => p.setup > 0) && (
+                        {(currentProposal?.items || currentProposal?.products || []).some((p: any) => p.setup > 0) && (
                             <div className="border-t pt-4 print:pt-2">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Análise de Payback</h3>
                                 {(() => {
-                                    const totalSetup = currentProposal.totalSetup;
-                                    const totalMonthly = currentProposal.totalMonthly;
+                                    const totalSetup = currentProposal?.totalSetup || 0;
+                                    const totalMonthly = currentProposal?.totalMonthly || 0;
                                     
                                     // Usar a nova lógica de payback se houver produtos
-                                    const firstProduct = (currentProposal.items || currentProposal.products || [])[0];
+                                    const firstProduct = (currentProposal?.items || currentProposal?.products || [])[0];
                                     let paybackMonths = 0;
                                     
                                     if (firstProduct && totalSetup > 0) {
@@ -1384,26 +1508,24 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                             firstProduct.doubleFiberRadioCost || 0,
                                             totalMonthly,
                                             contractTerm,
-                                            currentProposal.applySalespersonDiscount || false,
-                                            currentProposal.appliedDirectorDiscountPercentage || 0
+                                            currentProposal?.details?.applySalespersonDiscount || false,
+                                            currentProposal?.details?.appliedDirectorDiscountPercentage || 0
                                         );
                                     } else {
                                         // Usar a função calculatePayback correta
-                                        const plan = doubleFibraRadioPlans.find(p => p.speed === currentProposal.selectedSpeed);
+                                        const plan = doubleFiberRadioPlans.find((p: DoubleFiberRadioPlan) => p.speed === (currentProposal?.details?.selectedSpeed || 600));
                                         if (plan) {
                                             paybackMonths = calculatePayback(
-                                                currentProposal.includeInstallation ? plan.installationCost : 0,
-                                                plan.doubleFiberRadioCost,
+                                                (currentProposal?.details?.includeInstallation ? plan.installationCost : 0) || 0,
+                                                plan.doubleFiberRadioCost || 0,
                                                 totalMonthly,
                                                 contractTerm,
-                                                currentProposal.applySalespersonDiscount || false,
-                                                currentProposal.appliedDirectorDiscountPercentage || 0
+                                                currentProposal?.details?.applySalespersonDiscount || false,
+                                                currentProposal?.details?.appliedDirectorDiscountPercentage || 0
                                             );
-                                        } else {
-                                            paybackMonths = 0;
                                         }
                                     }
-                                    
+
                                     const maxPayback = getMaxPaybackMonths(contractTerm);
                                     const isValid = paybackMonths <= maxPayback && paybackMonths > 0;
 
@@ -1472,14 +1594,21 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                             />
                                             <div className="space-y-2">
                                                 <Label htmlFor="speed">Velocidade</Label>
-                                                <Select onValueChange={(v) => setSelectedSpeed(Number(v))} value={selectedSpeed.toString()}>
+                                                <Select
+                                                    onValueChange={(value) => {
+                                                        const speed = Number(value);
+                                                        setSelectedSpeed(speed);
+                                                        handleCurrentProposalChange('selectedSpeed', speed);
+                                                    }}
+                                                    value={(currentProposal?.details?.selectedSpeed || selectedSpeed || 600).toString()}
+                                                >
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="Selecione uma velocidade..." />
+                                                        <SelectValue placeholder="Selecione a velocidade" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {doubleFiberRadioPlans.filter(p => getMonthlyPrice(p, contractTerm) > 0).map(plan => (
-                                                            <SelectItem key={plan.speed} value={plan.speed.toString()}>
-                                                                {plan.description}
+                                                        {doubleFiberRadioPlans.map((p: DoubleFiberRadioPlan) => (
+                                                            <SelectItem key={p.speed} value={p.speed.toString()}>
+                                                                {p.description}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -1697,17 +1826,18 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                         </div>
                                         
                                         <div className="mb-4">
-                                            <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
-                                            <textarea
-                                                id="proposal-changes"
-                                                value={proposalChanges}
-                                                onChange={(e) => setProposalChanges(e.target.value)}
-                                                placeholder="Descreva as alterações feitas nesta versão da proposta..."
-                                                className="w-full p-3 bg-slate-800 border border-slate-700 text-white rounded-md resize-none"
-                                                rows={3}
-                                            />
+                                            <div className="text-gray-600">Descreva as alterações feitas nesta versão da proposta.</div>
+                                            <div>
+                                                <textarea
+                                                    id="proposal-changes"
+                                                    value={proposalChanges}
+                                                    onChange={(e) => setProposalChanges(e.target.value)}
+                                                    placeholder="Descreva as alterações feitas nesta versão da proposta..."
+                                                    className="w-full p-3 bg-slate-800 border border-slate-700 text-white rounded-md resize-none"
+                                                    rows={3}
+                                                />
+                                            </div>
                                         </div>
-                                        {console.log('=== RESUMO DEBUG ===', 'addedProducts.length:', addedProducts.length, 'addedProducts:', addedProducts)}
                                         {addedProducts.length === 0 ? (
                                             <p className="text-slate-400">Nenhum produto adicionado.</p>
                                         ) : (
@@ -1732,7 +1862,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
                                                 {/* Controles de Desconto */}
                                                 <div className="space-y-4 p-4 bg-slate-800 rounded-lg">
-                                                    {(user?.role !== 'diretor' && user?.role !== 'admin') && (
+                                                    {(user?.role !== 'director' && user?.role !== 'admin') && (
                                                         <div className="flex items-center space-x-2">
                                                             <Checkbox
                                                                 id="salesperson-discount-toggle"
@@ -1742,24 +1872,21 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                             <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                                         </div>
                                                     )}
-                                                    {(user?.role === 'diretor' || user?.role === 'admin') && (
+                                                    {user?.role === 'director' && (
                                                         <div className="space-y-2">
-                                                            <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
+                                                            <Label htmlFor="director-discount-percentage">Desconto de Diretoria (%)</Label>
                                                             <div className="flex items-center space-x-2">
                                                                 <Input
-                                                                    id="director-discount"
+                                                                    id="director-discount-percentage"
                                                                     type="number"
-                                                                    value={directorDiscountPercentage}
-                                                                    onChange={(e) => {
-                                                                        const value = Number(e.target.value);
-                                                                        setDirectorDiscountPercentage(value);
-                                                                        setAppliedDirectorDiscountPercentage(value);
-                                                                    }}
                                                                     placeholder="0-100"
+                                                                    value={directorDiscountPercentage}
+                                                                    onChange={(e) => setDirectorDiscountPercentage(Number(e.target.value))}
+                                                                    className="flex-1 bg-slate-800"
                                                                     min="0"
                                                                     max="100"
-                                                                    className="bg-slate-700 border-slate-600 text-white"
                                                                 />
+                                                                <span className="text-sm text-gray-400">%</span>
                                                             </div>
                                                         </div>
                                                     )}
@@ -1785,7 +1912,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                     )}
                                                     {appliedDirectorDiscountPercentage > 0 && (
                                                         <div className="flex justify-between text-orange-400">
-                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%) - Apenas Mensal:</span>
+                                                            <span>Desconto Director ({appliedDirectorDiscountPercentage}%) - Apenas Mensal:</span>
                                                             <span>-{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
                                                         </div>
                                                     )}

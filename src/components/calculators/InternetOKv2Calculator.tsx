@@ -362,7 +362,18 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         const plan = doubleFiberRadioPlans.find(p => p.speed === selectedSpeed);
         if (!plan) return null;
 
-        const monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
+        
+        // Aplicar descontos
+        monthlyPrice = applyDiscounts(monthlyPrice);
+        
+        // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+        if (temParceiros) {
+            monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
+            console.log('Acréscimo de 20% aplicado no result.monthlyPrice - InternetOKv2:', monthlyPrice);
+        }
+        
         return {
             ...plan,
             monthlyPrice,
@@ -378,7 +389,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                 appliedDirectorDiscountPercentage
             )
         };
-    }, [selectedSpeed, doubleFiberRadioPlans, debouncedContractTerm]);
+    }, [selectedSpeed, doubleFiberRadioPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const fetchProposals = React.useCallback(async () => {
@@ -505,6 +516,25 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         if (result) {
             // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
             monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
+            
+            // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+            const temParceiros = includeReferralPartner || includeInfluencerPartner;
+            console.log('DEBUG - InternetOKv2:', {
+                includeReferralPartner,
+                includeInfluencerPartner,
+                temParceiros,
+                monthlyValueBefore: monthlyValue
+            });
+            
+            if (temParceiros) {
+                const originalValue = monthlyValue;
+                monthlyValue = monthlyValue * 1.20; // Acréscimo de 20%
+                console.log('Acréscimo de 20% aplicado por parceiros - InternetOKv2:', {
+                    original: originalValue,
+                    withIncrease: monthlyValue
+                });
+            }
+            
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
         }
