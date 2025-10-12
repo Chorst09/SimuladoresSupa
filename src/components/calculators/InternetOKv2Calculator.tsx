@@ -591,7 +591,15 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
             lucratividade,
             margemLiquida,
             markup,
-            paybackMonths // Adicionando o payback
+            paybackMonths, // Adicionando o payback
+            diferencaValoresContrato: (() => {
+                // Calcular diferença de valores contrato para clientes existentes
+                // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
+                const diferencaMensal = isExistingClient && previousMonthlyFee > 0 
+                    ? (monthlyValue - previousMonthlyFee) 
+                    : 0;
+                return diferencaMensal * months;
+            })() // Novo campo para DRE
         };
     }, [
         result,
@@ -601,7 +609,14 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         taxRates.banda,
         commissionPercentage,
         includeReferralPartner,
-        includeInfluencerPartner
+        includeInfluencerPartner,
+        isExistingClient,
+        previousMonthlyFee,
+        createLastMile,
+        lastMileCost,
+        applySalespersonDiscount,
+        appliedDirectorDiscountPercentage,
+        contractTerm
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo
@@ -1894,6 +1909,16 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                                         <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].comissaoVendedor)}</TableCell>
                                                     ))}
                                                 </TableRow>
+                                                {isExistingClient && previousMonthlyFee > 0 && (
+                                                    <TableRow className="border-slate-800 bg-yellow-900/30">
+                                                        <TableCell className="text-white font-semibold">Diferença de Valores Contrato</TableCell>
+                                                        {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
+                                                            <TableCell key={period} className={`text-right font-semibold ${dreCalculations[period].diferencaValoresContrato >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                {dreCalculations[period].diferencaValoresContrato >= 0 ? '+' : ''}{formatCurrency(dreCalculations[period].diferencaValoresContrato)}
+                                                            </TableCell>
+                                                        ))}
+                                                    </TableRow>
+                                                )}
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Custo / Despesa</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (

@@ -566,9 +566,11 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         const markup = totalCost > 0 ? (balance / totalCost) * 100 : 0;
 
         // Calcular diferença de valores contrato para clientes existentes
-        const diferencaValoresContrato = isExistingClient && previousMonthlyFee > 0 
-            ? (monthlyValue - previousMonthlyFee) * months
+        // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
+        const diferencaMensal = isExistingClient && previousMonthlyFee > 0 
+            ? (monthlyValue - previousMonthlyFee) 
             : 0;
+        const diferencaValoresContrato = diferencaMensal * months;
 
         return {
             receitaMensal: totalRevenue, // Agora é receita total do período

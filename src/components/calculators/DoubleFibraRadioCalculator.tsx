@@ -586,9 +586,14 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
             margemLiquida,
             markup,
             paybackMonths, // Adicionando o payback
-            diferencaValoresContrato: isExistingClient && previousMonthlyFee > 0 
-                ? (monthlyValue - previousMonthlyFee) * months
-                : 0 // Novo campo para DRE
+            diferencaValoresContrato: (() => {
+                // Calcular diferença de valores contrato para clientes existentes
+                // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
+                const diferencaMensal = isExistingClient && previousMonthlyFee > 0 
+                    ? (monthlyValue - previousMonthlyFee) 
+                    : 0;
+                return diferencaMensal * months;
+            })() // Novo campo para DRE
         };
     }, [
         result,

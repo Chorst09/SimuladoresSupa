@@ -400,7 +400,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
 
     // Estados para configurações de preço
-    const [markup, setMarkup] = useState<number>(10.42);
+    const [despesasFixas, setDespesasFixas] = useState<number>(15.0); // DF em %
+    const [despesasVariaveis, setDespesasVariaveis] = useState<number>(20.0); // DV em %
+    const [margemLiquidaDesejada, setMargemLiquidaDesejada] = useState<number>(10.0); // ML desejada em %
+    const [markup, setMarkup] = useState<number>(10.42); // Será calculado automaticamente
     const [commissionPercentage, setCommissionPercentage] = useState<number>(3);
     const [setupFee, setSetupFee] = useState<number>(500);
     const [managementAndSupportCost, setManagementAndSupportCost] = useState<number>(49);
@@ -419,6 +422,26 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const contractDiscount = useMemo(() => {
         return contractDiscounts[vmContractPeriod] || 0;
     }, [vmContractPeriod, contractDiscounts]);
+
+    // Calcular Markup automaticamente baseado em DF, DV e ML
+    useEffect(() => {
+        // Fórmula: Markup = (DF + DV + ML) / (100 - DF - DV - ML) × 100
+        const totalDespesasEMargem = despesasFixas + despesasVariaveis + margemLiquidaDesejada;
+        const denominador = 100 - totalDespesasEMargem;
+        
+        if (denominador > 0 && totalDespesasEMargem >= 0) {
+            const markupCalculado = (totalDespesasEMargem / denominador) * 100;
+            setMarkup(markupCalculado);
+        } else {
+            // Se o denominador for <= 0, significa que as despesas + margem >= 100%
+            setMarkup(0);
+        }
+    }, [despesasFixas, despesasVariaveis, margemLiquidaDesejada]);
+
+    // Função para calcular valor de venda de um item baseado no custo + markup
+    const calculateSalePrice = (cost: number): number => {
+        return cost * (1 + markup / 100);
+    };
 
     // Detectar mudanças nos valores para mostrar botão de nova versão
     useEffect(() => {
@@ -2892,29 +2915,83 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <CardTitle className="text-cyan-400">Markup e Margem Líquida</CardTitle>
                                                         </CardHeader>
                                                         <CardContent>
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                                                 <div>
-                                                                    <Label htmlFor="markup-config">Markup (%)</Label>
+                                                                    <Label htmlFor="despesas-fixas">Despesas Fixas - DF (%)</Label>
                                                                     <Input
-                                                                        id="markup-config"
+                                                                        id="despesas-fixas"
                                                                         type="number"
                                                                         step="0.01"
-                                                                        value={markup}
-                                                                        onChange={(e) => setMarkup(parseFloat(e.target.value) || 0)}
+                                                                        value={despesasFixas}
+                                                                        onChange={(e) => setDespesasFixas(parseFloat(e.target.value) || 0)}
                                                                         className="bg-slate-800 border-slate-700"
-                                                                        placeholder="Ex: 10.42"
+                                                                        placeholder="Ex: 15.00"
                                                                     />
+                                                                    <p className="text-xs text-slate-400 mt-1">Aluguel, salários, contas fixas</p>
                                                                 </div>
                                                                 <div>
-                                                                    <Label htmlFor="estimated-net-margin">Margem Líquida (%)</Label>
+                                                                    <Label htmlFor="despesas-variaveis">Despesas Variáveis - DV (%)</Label>
+                                                                    <Input
+                                                                        id="despesas-variaveis"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={despesasVariaveis}
+                                                                        onChange={(e) => setDespesasVariaveis(parseFloat(e.target.value) || 0)}
+                                                                        className="bg-slate-800 border-slate-700"
+                                                                        placeholder="Ex: 20.00"
+                                                                    />
+                                                                    <p className="text-xs text-slate-400 mt-1">Impostos, comissões, taxas</p>
+                                                                </div>
+                                                                <div>
+                                                                    <Label htmlFor="margem-liquida-desejada">Margem Líquida Desejada - ML (%)</Label>
+                                                                    <Input
+                                                                        id="margem-liquida-desejada"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={margemLiquidaDesejada}
+                                                                        onChange={(e) => setMargemLiquidaDesejada(parseFloat(e.target.value) || 0)}
+                                                                        className="bg-slate-800 border-slate-700"
+                                                                        placeholder="Ex: 10.00"
+                                                                    />
+                                                                    <p className="text-xs text-slate-400 mt-1">Lucro desejado sobre vendas</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                                <div>
+                                                                    <Label htmlFor="markup-calculado">Markup Calculado (%)</Label>
+                                                                    <Input
+                                                                        id="markup-calculado"
+                                                                        type="text"
+                                                                        value={markup.toFixed(2) + '%'}
+                                                                        readOnly
+                                                                        className="bg-slate-800 border-slate-700 text-green-400 cursor-not-allowed font-semibold"
+                                                                    />
+                                                                    <p className="text-xs text-slate-400 mt-1">Calculado automaticamente</p>
+                                                                </div>
+                                                                <div>
+                                                                    <Label htmlFor="estimated-net-margin">Margem Líquida Atual (%)</Label>
                                                                     <Input
                                                                         id="estimated-net-margin"
                                                                         type="text"
                                                                         value={estimatedNetMargin.toFixed(2) + '%'}
                                                                         readOnly
-                                                                        className="bg-slate-800 border-slate-700 text-white cursor-not-allowed"
+                                                                        className="bg-slate-800 border-slate-700 text-cyan-400 cursor-not-allowed"
                                                                     />
+                                                                    <p className="text-xs text-slate-400 mt-1">Margem real calculada</p>
                                                                 </div>
+                                                            </div>
+                                                            <Separator className="my-4 bg-slate-700" />
+                                                            <div className="bg-slate-800/50 p-3 rounded-lg mb-4">
+                                                                <h4 className="text-sm font-semibold text-cyan-400 mb-2">Fórmula do Markup</h4>
+                                                                <p className="text-xs text-slate-300 mb-1">
+                                                                    <strong>Markup = (DF + DV + ML) ÷ (100 - DF - DV - ML) × 100</strong>
+                                                                </p>
+                                                                <p className="text-xs text-slate-400">
+                                                                    Onde: DF = Despesas Fixas, DV = Despesas Variáveis, ML = Margem Líquida
+                                                                </p>
+                                                                <p className="text-xs text-slate-400 mt-1">
+                                                                    Exemplo: DF=15%, DV=20%, ML=10% → Markup = 45÷55 × 100 = 81,82%
+                                                                </p>
                                                             </div>
                                                             <Separator className="my-4 bg-slate-700" />
                                                             <div className="space-y-2 text-sm">
@@ -2996,54 +3073,78 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">vCPU Windows (por core)</h4>
-                                                                <div>
-                                                                    <Label>Custo Mensal</Label>
-                                                                    {editingCards.recursosBase ? (
-                                                                        <Input
-                                                                            value={formatBrazilianNumber(vcpuWindowsCost)}
-                                                                            onChange={(e) => { setVcpuWindowsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                            className="bg-slate-800 border-slate-700"
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                            R$ {formatBrazilianNumber(vcpuWindowsCost)}
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        {editingCards.recursosBase ? (
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(vcpuWindowsCost)}
+                                                                                onChange={(e) => { setVcpuWindowsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(vcpuWindowsCost)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label className="text-green-400">Valor de Venda</Label>
+                                                                        <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                            R$ {formatBrazilianNumber(calculateSalePrice(vcpuWindowsCost))}
                                                                         </div>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">vCPU Linux (por core)</h4>
-                                                                <div>
-                                                                    <Label>Custo Mensal</Label>
-                                                                    {editingCards.recursosBase ? (
-                                                                        <Input
-                                                                            value={formatBrazilianNumber(vcpuLinuxCost)}
-                                                                            onChange={(e) => { setVcpuLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                            className="bg-slate-800 border-slate-700"
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                            R$ {formatBrazilianNumber(vcpuLinuxCost)}
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        {editingCards.recursosBase ? (
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(vcpuLinuxCost)}
+                                                                                onChange={(e) => { setVcpuLinuxCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(vcpuLinuxCost)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label className="text-green-400">Valor de Venda</Label>
+                                                                        <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                            R$ {formatBrazilianNumber(calculateSalePrice(vcpuLinuxCost))}
                                                                         </div>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <div className="mt-6">
                                                             <h4 className="text-cyan-400 mb-4">RAM (por GB)</h4>
-                                                            <div>
-                                                                <Label>Custo Mensal</Label>
-                                                                {editingCards.recursosBase ? (
-                                                                    <Input
-                                                                        value={formatBrazilianNumber(ramCost)}
-                                                                        onChange={(e) => { setRamCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                        className="bg-slate-800 border-slate-700"
-                                                                    />
-                                                                ) : (
-                                                                    <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                        R$ {formatBrazilianNumber(ramCost)}
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                <div>
+                                                                    <Label>Custo Mensal</Label>
+                                                                    {editingCards.recursosBase ? (
+                                                                        <Input
+                                                                            value={formatBrazilianNumber(ramCost)}
+                                                                            onChange={(e) => { setRamCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                            className="bg-slate-800 border-slate-700"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                            R$ {formatBrazilianNumber(ramCost)}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="text-green-400">Valor de Venda</Label>
+                                                                    <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                        R$ {formatBrazilianNumber(calculateSalePrice(ramCost))}
                                                                     </div>
-                                                                )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </CardContent>
@@ -3090,53 +3191,77 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-4">HDD SAS</h4>
-                                                                <div>
-                                                                    <Label>Custo Mensal</Label>
-                                                                    {editingCards.armazenamento ? (
-                                                                        <Input
-                                                                            value={formatBrazilianNumber(hddSasCost)}
-                                                                            onChange={(e) => { setHddSasCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                            className="bg-slate-800 border-slate-700"
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                            R$ {formatBrazilianNumber(hddSasCost)}
+                                                                <div className="space-y-3">
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        {editingCards.armazenamento ? (
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(hddSasCost)}
+                                                                                onChange={(e) => { setHddSasCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(hddSasCost)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label className="text-green-400">Valor de Venda</Label>
+                                                                        <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                            R$ {formatBrazilianNumber(calculateSalePrice(hddSasCost))}
                                                                         </div>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-4">SSD Performance</h4>
-                                                                <div>
-                                                                    <Label>Custo Mensal</Label>
-                                                                    {editingCards.armazenamento ? (
-                                                                        <Input
-                                                                            value={formatBrazilianNumber(ssdPerformanceCost)}
-                                                                            onChange={(e) => { setSsdPerformanceCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                            className="bg-slate-800 border-slate-700"
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                            R$ {formatBrazilianNumber(ssdPerformanceCost)}
+                                                                <div className="space-y-3">
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        {editingCards.armazenamento ? (
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(ssdPerformanceCost)}
+                                                                                onChange={(e) => { setSsdPerformanceCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(ssdPerformanceCost)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label className="text-green-400">Valor de Venda</Label>
+                                                                        <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                            R$ {formatBrazilianNumber(calculateSalePrice(ssdPerformanceCost))}
                                                                         </div>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-4">NVMe</h4>
-                                                                <div>
-                                                                    <Label>Custo Mensal</Label>
-                                                                    {editingCards.armazenamento ? (
-                                                                        <Input
-                                                                            value={formatBrazilianNumber(nvmeCost)}
-                                                                            onChange={(e) => { setNvmeCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                            className="bg-slate-800 border-slate-700"
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                            R$ {formatBrazilianNumber(nvmeCost)}
+                                                                <div className="space-y-3">
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        {editingCards.armazenamento ? (
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(nvmeCost)}
+                                                                                onChange={(e) => { setNvmeCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(nvmeCost)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label className="text-green-400">Valor de Venda</Label>
+                                                                        <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                            R$ {formatBrazilianNumber(calculateSalePrice(nvmeCost))}
                                                                         </div>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -3184,36 +3309,52 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                         <CardContent className="space-y-4">
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">1 Gbps</h4>
-                                                                <div>
-                                                                    <Label>Custo Mensal</Label>
-                                                                    {editingCards.placaRede ? (
-                                                                        <Input
-                                                                            value={formatBrazilianNumber(network1GbpsCost)}
-                                                                            onChange={(e) => { setNetwork1GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                            className="bg-slate-800 border-slate-700"
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                            R$ {formatBrazilianNumber(network1GbpsCost)}
+                                                                <div className="space-y-3">
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        {editingCards.placaRede ? (
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(network1GbpsCost)}
+                                                                                onChange={(e) => { setNetwork1GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(network1GbpsCost)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label className="text-green-400">Valor de Venda</Label>
+                                                                        <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                            R$ {formatBrazilianNumber(calculateSalePrice(network1GbpsCost))}
                                                                         </div>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                             <div>
                                                                 <h4 className="text-cyan-400 mb-2">10 Gbps</h4>
-                                                                <div>
-                                                                    <Label>Custo Mensal</Label>
-                                                                    {editingCards.placaRede ? (
-                                                                        <Input
-                                                                            value={formatBrazilianNumber(network10GbpsCost)}
-                                                                            onChange={(e) => { setNetwork10GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                            className="bg-slate-800 border-slate-700"
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                            R$ {formatBrazilianNumber(network10GbpsCost)}
+                                                                <div className="space-y-3">
+                                                                    <div>
+                                                                        <Label>Custo Mensal</Label>
+                                                                        {editingCards.placaRede ? (
+                                                                            <Input
+                                                                                value={formatBrazilianNumber(network10GbpsCost)}
+                                                                                onChange={(e) => { setNetwork10GbpsCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                className="bg-slate-800 border-slate-700"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                R$ {formatBrazilianNumber(network10GbpsCost)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <Label className="text-green-400">Valor de Venda</Label>
+                                                                        <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                            R$ {formatBrazilianNumber(calculateSalePrice(network10GbpsCost))}
                                                                         </div>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </CardContent>
@@ -3259,72 +3400,129 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div className="grid grid-cols-2 gap-4">
                                                                 <div>
                                                                     <h4 className="text-cyan-400 mb-2">Windows Server 2022 Standard</h4>
-                                                                    <div>
-                                                                        <Label>Custo Mensal</Label>
-                                                                        {editingCards.sistemaOperacional ? (
-                                                                            <Input
-                                                                                value={formatBrazilianNumber(windowsServerCost)}
-                                                                                onChange={(e) => { setWindowsServerCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                                className="bg-slate-800 border-slate-700"
-                                                                            />
-                                                                        ) : (
-                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                                R$ {formatBrazilianNumber(windowsServerCost)}
+                                                                    <div className="space-y-3">
+                                                                        <div>
+                                                                            <Label>Custo Mensal</Label>
+                                                                            {editingCards.sistemaOperacional ? (
+                                                                                <Input
+                                                                                    value={formatBrazilianNumber(windowsServerCost)}
+                                                                                    onChange={(e) => { setWindowsServerCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                    className="bg-slate-800 border-slate-700"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                    R$ {formatBrazilianNumber(windowsServerCost)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <div>
+                                                                            <Label className="text-green-400">Valor de Venda</Label>
+                                                                            <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                                R$ {formatBrazilianNumber(calculateSalePrice(windowsServerCost))}
                                                                             </div>
-                                                                        )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                                 <div>
                                                                     <h4 className="text-cyan-400 mb-2">Windows 10 Pro</h4>
-                                                                    <div>
-                                                                        <Label>Custo Mensal</Label>
-                                                                        {editingCards.sistemaOperacional ? (
-                                                                            <Input
-                                                                                value={formatBrazilianNumber(windows10ProCost)}
-                                                                                onChange={(e) => { setWindows10ProCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                                className="bg-slate-800 border-slate-700"
-                                                                            />
-                                                                        ) : (
-                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                                R$ {formatBrazilianNumber(windows10ProCost)}
+                                                                    <div className="space-y-3">
+                                                                        <div>
+                                                                            <Label>Custo Mensal</Label>
+                                                                            {editingCards.sistemaOperacional ? (
+                                                                                <Input
+                                                                                    value={formatBrazilianNumber(windows10ProCost)}
+                                                                                    onChange={(e) => { setWindows10ProCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                    className="bg-slate-800 border-slate-700"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                    R$ {formatBrazilianNumber(windows10ProCost)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <div>
+                                                                            <Label className="text-green-400">Valor de Venda</Label>
+                                                                            <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                                R$ {formatBrazilianNumber(calculateSalePrice(windows10ProCost))}
                                                                             </div>
-                                                                        )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="text-cyan-400 mb-2">Windows 11 Pro</h4>
+                                                                    <div className="space-y-3">
+                                                                        <div>
+                                                                            <Label>Custo Mensal</Label>
+                                                                            {editingCards.sistemaOperacional ? (
+                                                                                <Input
+                                                                                    value={formatBrazilianNumber(windows11ProCost)}
+                                                                                    onChange={(e) => { setWindows11ProCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                    className="bg-slate-800 border-slate-700"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                    R$ {formatBrazilianNumber(windows11ProCost)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <div>
+                                                                            <Label className="text-green-400">Valor de Venda</Label>
+                                                                            <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                                R$ {formatBrazilianNumber(calculateSalePrice(windows11ProCost))}
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <div className="grid grid-cols-2 gap-4">
                                                                 <div>
                                                                     <h4 className="text-cyan-400 mb-2">Ubuntu Server 22.04 LTS</h4>
-                                                                    <div>
-                                                                        <Label>Custo Mensal</Label>
-                                                                        {editingCards.sistemaOperacional ? (
-                                                                            <Input
-                                                                                value={formatBrazilianNumber(ubuntuCost)}
-                                                                                onChange={(e) => { setUbuntuCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                                className="bg-slate-800 border-slate-700"
-                                                                            />
-                                                                        ) : (
-                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                                R$ {formatBrazilianNumber(ubuntuCost)}
+                                                                    <div className="space-y-3">
+                                                                        <div>
+                                                                            <Label>Custo Mensal</Label>
+                                                                            {editingCards.sistemaOperacional ? (
+                                                                                <Input
+                                                                                    value={formatBrazilianNumber(ubuntuCost)}
+                                                                                    onChange={(e) => { setUbuntuCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                    className="bg-slate-800 border-slate-700"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                    R$ {formatBrazilianNumber(ubuntuCost)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <div>
+                                                                            <Label className="text-green-400">Valor de Venda</Label>
+                                                                            <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                                R$ {formatBrazilianNumber(calculateSalePrice(ubuntuCost))}
                                                                             </div>
-                                                                        )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                                 <div>
                                                                     <h4 className="text-cyan-400 mb-2">CentOS Stream 9</h4>
-                                                                    <div>
-                                                                        <Label>Custo Mensal</Label>
-                                                                        {editingCards.sistemaOperacional ? (
-                                                                            <Input
-                                                                                value={formatBrazilianNumber(centosCost)}
-                                                                                onChange={(e) => { setCentosCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
-                                                                                className="bg-slate-800 border-slate-700"
-                                                                            />
-                                                                        ) : (
-                                                                            <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
-                                                                                R$ {formatBrazilianNumber(centosCost)}
+                                                                    <div className="space-y-3">
+                                                                        <div>
+                                                                            <Label>Custo Mensal</Label>
+                                                                            {editingCards.sistemaOperacional ? (
+                                                                                <Input
+                                                                                    value={formatBrazilianNumber(centosCost)}
+                                                                                    onChange={(e) => { setCentosCost(parseFloat(e.target.value.replace(",", ".")) || 0); setHasChanged(true); }}
+                                                                                    className="bg-slate-800 border-slate-700"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="p-2 bg-slate-800 border border-slate-700 rounded text-white">
+                                                                                    R$ {formatBrazilianNumber(centosCost)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <div>
+                                                                            <Label className="text-green-400">Valor de Venda</Label>
+                                                                            <div className="p-2 bg-green-900/30 border border-green-500/50 rounded text-green-400 font-semibold">
+                                                                                R$ {formatBrazilianNumber(calculateSalePrice(centosCost))}
                                                                             </div>
-                                                                        )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
