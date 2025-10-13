@@ -89,6 +89,7 @@ interface DoubleFiberRadioPlan {
 // Interface para o resultado do DRE por período
 interface DRECalculationsResult {
     receitaMensal: number;
+    receitaTotalPeriodo: number;
     receitaInstalacao: number;
     receitaTotalPrimeiromes: number;
     custoDoubleFiberRadio: number;
@@ -164,7 +165,8 @@ const calculatePayback = (
     monthlyRevenue: number, 
     contractTerm: number,
     applySalespersonDiscount: boolean = false,
-    appliedDirectorDiscountPercentage: number = 0
+    appliedDirectorDiscountPercentage: number = 0,
+    commissionRate: number = 0.05 // 5% padrão baseado nas tabelas de comissões
 ): number => {
     if (monthlyRevenue <= 0) return contractTerm;
 
@@ -219,7 +221,8 @@ const calculatePayback = (
         // Custos mensais baseados na lógica do DRE:
         const monthlyBandCost = monthlyRevenueCalc * 0.0725; // 7.25% para double fibra rádio
         const monthlyTaxes = monthlyRevenueCalc * 0.15; // 15%
-        const monthlyCommissions = discountedMonthlyRevenue * 0.02; // 2% genérico
+        // Calcular comissões usando o percentual fornecido ou padrão
+        const monthlyCommissions = discountedMonthlyRevenue * commissionRate;
         const monthlyCustoDesp = monthlyRevenueCalc * 0.10; // 10%
 
         // Fluxo líquido do mês
@@ -253,7 +256,8 @@ const validatePayback = (
         monthlyRevenue, 
         contractTerm,
         applySalespersonDiscount,
-        appliedDirectorDiscountPercentage
+        appliedDirectorDiscountPercentage,
+        0.05 // Usar percentual padrão para validação
     );
     const maxPayback = getMaxPaybackMonths(contractTerm);
 
@@ -264,20 +268,7 @@ const validatePayback = (
     };
 };
 
-// Tabela de Comissão do Parceiro Indicador (Valores - Receita Mensal)
-// Usa ate24% até 24 meses e mais24% acima de 24 meses
-const PARTNER_INDICATOR_RANGES = [
-    { min: 0, max: 500, ate24: 1.5, mais24: 2.5 },
-    { min: 500.01, max: 1000, ate24: 2.5, mais24: 4.0 },
-    { min: 1000.01, max: 1500, ate24: 4.01, mais24: 5.5 },
-    { min: 1500.01, max: 3000, ate24: 5.51, mais24: 7.0 },
-    { min: 3000.01, max: 5000, ate24: 7.01, mais24: 8.5 },
-    { min: 5000.01, max: 6500, ate24: 8.51, mais24: 10.0 },
-    { min: 6500.01, max: 9000, ate24: 10.01, mais24: 11.5 },
-    { min: 9000.01, max: Infinity, ate24: 11.51, mais24: 13.0 },
-];
-
-// Função movida para dentro do componente para acessar o hook useCommissions
+// As tabelas de comissões agora são gerenciadas pelo hook useCommissions
 
 // Function to handle tax rate changes
 const handleTaxRateChange = (taxType: string, value: string) => {
@@ -327,7 +318,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     const [proposalChanges, setProposalChanges] = useState<string>('');
 
     // Estados da calculadora
-    const [selectedSpeed, setSelectedSpeed] = useState<number>(600); // Valor padrão: 600 Mbps
+    const [selectedSpeed, setSelectedSpeed] = useState<number>(25); // Valor padrão: 25 Mbps
     const [contractTerm, setContractTerm] = useState<number>(12);
     const [includeInstallation, setIncludeInstallation] = useState<boolean>(true);
     const [isExistingClient, setIsExistingClient] = useState<boolean>(false);
@@ -613,7 +604,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     // Função para calcular DRE por período de contrato
     const calculateDREForPeriod = useCallback((months: number): DRECalculationsResult => {
         // Dados do plano selecionado ou valores padrão
-        const plan = doubleFiberRadioPlans.find(p => p.speed === (currentProposal?.details?.selectedSpeed || 600));
+        const plan = doubleFiberRadioPlans.find(p => p.speed === (currentProposal?.details?.selectedSpeed || selectedSpeed));
         if (!plan) {
             throw new Error('Plano de velocidade não encontrado');
         }
@@ -725,13 +716,16 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         // Total de comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
         
-        // Custo/Despesa: 10% sobre receita total (incluindo instalação)
+        // Custo/Despesa: 10% sobre receita total (incluindo taxa de instalação)
         const custoDespesa = receitaTotalPrimeiromes * 0.10;
 
         // Balance (Lucro Líquido) conforme planilha
         // Balance = Receita Total - Custo do Projeto - Custo de banda - PIS - Comissões - Custo/Despesa
         const balance = receitaTotalPrimeiromes - custoDoubleFiberRadioCalculadora - custoBanda - simplesNacional - totalComissoes - custoDespesa;
 
+        // Calcular percentual médio de comissões para o payback
+        const percentualMedioComissoes = totalComissoes > 0 ? (totalComissoes / (baseParaComissao * contractTerm)) : 0.05;
+        
         // Payback Calculation usando a nova lógica
         const paybackMonths = calculatePayback(
             receitaInstalacao,
@@ -739,7 +733,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
             monthlyValue,
             months,
             applySalespersonDiscount,
-            appliedDirectorDiscountPercentage
+            appliedDirectorDiscountPercentage,
+            percentualMedioComissoes
         );
 
 
@@ -775,7 +770,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         const diferencaValoresContrato = diferencaMensal * months;
 
         return {
-            receitaMensal: totalRevenue, // Agora é receita total do período
+            receitaMensal: monthlyValue, // Valor mensal correto
+            receitaTotalPeriodo: totalRevenue, // Receita total do período
             receitaInstalacao,
             receitaTotalPrimeiromes,
             custoDoubleFiberRadio: custoDoubleFiberRadioCalculadora, // Custo Fibra/Radio da calculadora
@@ -848,7 +844,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 dre12.receitaMensal / 12, // Usar receita mensal real
                 12,
                 applySalespersonDiscount,
-                appliedDirectorDiscountPercentage
+                appliedDirectorDiscountPercentage,
+                dre12.totalComissoes > 0 ? (dre12.totalComissoes / (dre12.receitaMensal * 12)) : 0.05
             ),
         };
     }, [calculateDREForPeriod, result?.doubleFiberRadioCost, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
@@ -1059,7 +1056,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
         setAccountManagerData({ name: '', email: '', phone: '' });
         setAddedProducts([]);
-        setSelectedSpeed(600); // Resetar para valor padrão
+        setSelectedSpeed(25); // Resetar para valor padrão
         setContractTerm(12);
         setIncludeInstallation(true);
         setProjectValue(0);
@@ -1588,11 +1585,12 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                             totalMonthly,
                                             contractTerm,
                                             currentProposal?.details?.applySalespersonDiscount || false,
-                                            currentProposal?.details?.appliedDirectorDiscountPercentage || 0
+                                            currentProposal?.details?.appliedDirectorDiscountPercentage || 0,
+                                            0.05 // Usar percentual padrão
                                         );
                                     } else {
                                         // Usar a função calculatePayback correta
-                                        const plan = doubleFiberRadioPlans.find((p: DoubleFiberRadioPlan) => p.speed === (currentProposal?.details?.selectedSpeed || 600));
+                                        const plan = doubleFiberRadioPlans.find((p: DoubleFiberRadioPlan) => p.speed === (currentProposal?.details?.selectedSpeed || selectedSpeed));
                                         if (plan) {
                                             paybackMonths = calculatePayback(
                                                 (currentProposal?.details?.includeInstallation ? plan.installationCost : 0) || 0,
@@ -1600,7 +1598,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                 totalMonthly,
                                                 contractTerm,
                                                 currentProposal?.details?.applySalespersonDiscount || false,
-                                                currentProposal?.details?.appliedDirectorDiscountPercentage || 0
+                                                currentProposal?.details?.appliedDirectorDiscountPercentage || 0,
+                                                0.05 // Usar percentual padrão
                                             );
                                         }
                                     }
@@ -1679,7 +1678,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                         setSelectedSpeed(speed);
                                                         handleCurrentProposalChange('selectedSpeed', speed);
                                                     }}
-                                                    value={(currentProposal?.details?.selectedSpeed || selectedSpeed || 600).toString()}
+                                                    value={(currentProposal?.details?.selectedSpeed || selectedSpeed || 25).toString()}
                                                 >
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Selecione a velocidade" />
@@ -2086,7 +2085,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                 <TableRow className="border-slate-800 bg-green-900/30">
                                                     <TableCell className="text-white font-semibold">Receita Total do Período</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].receitaMensal)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].receitaTotalPeriodo)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
@@ -2243,7 +2242,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                                 .filter(key => !isNaN(Number(key)))
                                                                 .map(period => ({
                                                                     periodo: `${period} meses`,
-                                                                    receita: dreCalculations[period].receitaMensal,
+                                                                    receita: dreCalculations[period].receitaTotalPeriodo,
                                                                     balance: dreCalculations[period].balance,
                                                                     rentabilidade: dreCalculations[period].rentabilidade
                                                                 }));
@@ -2313,7 +2312,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                     <div className="text-xl font-bold text-blue-400">
                                                         {formatCurrency(
                                                             [12, 24, 36, 48, 60].reduce((sum, period) =>
-                                                                sum + dreCalculations[period].receitaMensal, 0
+                                                                sum + dreCalculations[period].receitaTotalPeriodo, 0
                                                             ) / 5
                                                         )}
                                                     </div>
@@ -2331,7 +2330,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                                     dreCalculations[period].receitaMensal,
                                                                     period,
                                                                     applySalespersonDiscount,
-                                                                    appliedDirectorDiscountPercentage
+                                                                    appliedDirectorDiscountPercentage,
+                                                                    dreCalculations[period].totalComissoes > 0 ? (dreCalculations[period].totalComissoes / dreCalculations[period].receitaTotalPeriodo) : 0.05
                                                                 );
                                                                 return sum + payback;
                                                             }, 0) / 5;
@@ -2665,7 +2665,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                         <TableHead className="text-right text-white">36 meses</TableHead>
                                                         <TableHead className="text-right text-white">48 meses</TableHead>
                                                         <TableHead className="text-right text-white">60 meses</TableHead>
-                                                        <TableHead className="text-right text-white">Custo de Instalação</TableHead>
+                                                        <TableHead className="text-right text-white">Taxa de Instalação</TableHead>
                                                         <TableHead className="text-right text-white">Custo Fibra/Radio</TableHead>
                                                     </TableRow>
                                                 </TableHeader>

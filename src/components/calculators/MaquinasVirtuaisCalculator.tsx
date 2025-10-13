@@ -293,7 +293,6 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 // Force correct values - ignore localStorage for now to fix the 1412 issue
                 // setMarkup will be calculated automatically based on DF, DV, ML
                 setCommissionPercentage(3);
-                setSetupFee(500);
                 setManagementAndSupportCost(49);
                 setVcpuWindowsCost(20);
                 setVcpuLinuxCost(20);
@@ -323,7 +322,6 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 setCentosCost(0);
                 setDebianCost(0);
                 setRockyLinuxCost(0);
-                setBackupCostPerGb(0.21);
                 setAdditionalIpCost(38.5);
                 setSnapshotCost(25);
                 setVpnSiteToSiteCost(50);
@@ -426,7 +424,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [margemLiquidaDesejada, setMargemLiquidaDesejada] = useState<number>(31); // ML desejada em %
     const [markup, setMarkup] = useState<number>(10.42); // Será calculado automaticamente
     const [commissionPercentage, setCommissionPercentage] = useState<number>(3);
-    const [setupFee, setSetupFee] = useState<number>(500);
+    const [setupFee, setSetupFee] = useState<number>(300);
     const [managementAndSupportCost, setManagementAndSupportCost] = useState<number>(49);
     const [contractDiscounts, setContractDiscounts] = useState<{ [key: number]: number }>({
         12: 0,
@@ -510,7 +508,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const [centosCost, setCentosCost] = useState<number>(0);
     const [debianCost, setDebianCost] = useState<number>(0);
     const [rockyLinuxCost, setRockyLinuxCost] = useState<number>(0);
-    const [backupCostPerGb, setBackupCostPerGb] = useState<number>(0.21);
+    const [backupCostPerGb, setBackupCostPerGb] = useState<number>(0.35);
     const [additionalIpCost, setAdditionalIpCost] = useState<number>(38.5);
     const [snapshotCost, setSnapshotCost] = useState<number>(25);
     const [vpnSiteToSiteCost, setVpnSiteToSiteCost] = useState<number>(50);

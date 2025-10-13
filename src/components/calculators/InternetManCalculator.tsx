@@ -266,20 +266,7 @@ const validatePayback = (
     };
 };
 
-// Tabela de Comissão do Parceiro Indicador (Valores - Receita Mensal)
-// Usa ate24% até 24 meses e mais24% acima de 24 meses
-const PARTNER_INDICATOR_RANGES = [
-    { min: 0, max: 500, ate24: 1.5, mais24: 2.5 },
-    { min: 500.01, max: 1000, ate24: 2.5, mais24: 4.0 },
-    { min: 1000.01, max: 1500, ate24: 4.01, mais24: 5.5 },
-    { min: 1500.01, max: 3000, ate24: 5.51, mais24: 7.0 },
-    { min: 3000.01, max: 5000, ate24: 7.01, mais24: 8.5 },
-    { min: 5000.01, max: 6500, ate24: 8.51, mais24: 10.0 },
-    { min: 6500.01, max: 9000, ate24: 10.01, mais24: 11.5 },
-    { min: 9000.01, max: Infinity, ate24: 11.51, mais24: 13.0 },
-];
-
-// Função movida para dentro do componente para acessar o hook useCommissions
+// As tabelas de comissões agora são gerenciadas pelo hook useCommissions
 
 // Function to handle tax rate changes
 const handleTaxRateChange = (taxType: string, value: string) => {
@@ -570,7 +557,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 profitTaxValue,
                 commissionValue: calculatedCommissionValue,
                 cost: C,
-                setupFee: result ? result.installationCost : 0, // Usar o custo de instalação do plano de MAN
+                setupFee: result ? result.installationCost : 0, // Usar a taxa de instalação do plano de MAN
                 priceWithMarkup: priceWithMarkup
             }
         };
@@ -859,7 +846,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         // Total de comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
 
-        // Custo/Despesa: 10% sobre receita total (incluindo instalação)
+        // Custo/Despesa: 10% sobre receita total (incluindo taxa de instalação)
         const custoDespesa = receitaTotalPrimeiromes * 0.10;
 
         // Balance (Lucro Líquido) conforme planilha
@@ -954,7 +941,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             48: dre48,
             60: dre60,
             // CORREÇÃO: Valores corretos para resumo executivo
-            receitaBruta: dre12.receitaMensal / 12, // Receita mensal real
+            receitaBruta: dre12.receitaMensal / 12, // Receita mensal real (dre12.receitaMensal é total do período)
             receitaLiquida: (dre12.receitaMensal - dre12.simplesNacional) / 12, // Receita líquida mensal
             custoServico: dre12.custoMan,
             custoBanda: dre12.custoBanda,
@@ -964,7 +951,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             comissaoParceiroInfluenciador: dre12.comissaoParceiroInfluenciador,
             totalComissoes: dre12.totalComissoes,
             totalImpostos: dre12.simplesNacional,
-            lucroOperacional: dre12.balance,
+            lucroOperacional: dre12.balance, // Lucro operacional total do período
             lucroLiquido: dre12.balance / 12, // Lucro líquido mensal
             rentabilidade: dre12.rentabilidade,
             lucratividade: dre12.lucratividade,
@@ -2784,8 +2771,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Anual:</span>
-                                                    <span className={`font-semibold ${dreCalculations.lucroLiquido >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                        {formatCurrency(dreCalculations.lucroLiquido * 12)}
+                                                    <span className={`font-semibold ${dreCalculations.lucroOperacional >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                                        {formatCurrency(dreCalculations.lucroOperacional ?? 0)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -2831,8 +2818,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 <div className="text-sm text-slate-400">Receita Total (12m)</div>
                                             </div>
                                             <div className="text-center">
-                                                <div className={`text-2xl font-bold ${dreCalculations.lucroLiquido >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {formatCurrency(dreCalculations.lucroLiquido * 12)}
+                                                <div className={`text-2xl font-bold ${dreCalculations.lucroOperacional >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {formatCurrency(dreCalculations.lucroOperacional ?? 0)}
                                                 </div>
                                                 <div className="text-sm text-slate-400">Lucro Total (12m)</div>
                                             </div>
@@ -2865,7 +2852,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         <TableHead className="text-right text-white">36 meses</TableHead>
                                                         <TableHead className="text-right text-white">48 meses</TableHead>
                                                         <TableHead className="text-right text-white">60 meses</TableHead>
-                                                        <TableHead className="text-right text-white">Custo de Instalação</TableHead>
+                                                        <TableHead className="text-right text-white">Taxa de Instalação</TableHead>
                                                         <TableHead className="text-right text-white">Custo Fibra</TableHead>
                                                     </TableRow>
                                                 </TableHeader>

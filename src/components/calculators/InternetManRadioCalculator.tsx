@@ -214,20 +214,7 @@ const validatePayback = (
     };
 };
 
-// Tabela de Comissão do Parceiro Indicador (Valores - Receita Mensal)
-// Usa ate24% até 24 meses e mais24% acima de 24 meses
-const PARTNER_INDICATOR_RANGES = [
-    { min: 0, max: 500, ate24: 1.5, mais24: 2.5 },
-    { min: 500.01, max: 1000, ate24: 2.5, mais24: 4.0 },
-    { min: 1000.01, max: 1500, ate24: 4.01, mais24: 5.5 },
-    { min: 1500.01, max: 3000, ate24: 5.51, mais24: 7.0 },
-    { min: 3000.01, max: 5000, ate24: 7.01, mais24: 8.5 },
-    { min: 5000.01, max: 6500, ate24: 8.51, mais24: 10.0 },
-    { min: 6500.01, max: 9000, ate24: 10.01, mais24: 11.5 },
-    { min: 9000.01, max: Infinity, ate24: 11.51, mais24: 13.0 },
-];
-
-// Função movida para dentro do componente para acessar o hook useCommissions
+// As tabelas de comissões agora são gerenciadas pelo hook useCommissions
 
 // Function to handle tax rate changes
 const handleTaxRateChange = (taxType: string, value: string) => {
@@ -629,7 +616,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
         // Total de comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
 
-        // Custo/Despesa: 10% sobre receita total (incluindo instalação)
+        // Custo/Despesa: 10% sobre receita total (incluindo taxa de instalação)
         const custoDespesa = receitaTotalPrimeiromes * 0.10;
 
         // Balance (Lucro Líquido) conforme planilha
@@ -2549,7 +2536,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                         <TableHead className="text-right text-white">36 meses</TableHead>
                                                         <TableHead className="text-right text-white">48 meses</TableHead>
                                                         <TableHead className="text-right text-white">60 meses</TableHead>
-                                                        <TableHead className="text-right text-white">Custo de Instalação</TableHead>
+                                                        <TableHead className="text-right text-white">Taxa de Instalação</TableHead>
                                                         <TableHead className="text-right text-white">Custo Rádio</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
