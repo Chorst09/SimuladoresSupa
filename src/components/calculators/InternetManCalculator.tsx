@@ -591,23 +591,23 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
     useEffect(() => {
         const initialManPlans: InternetManPlan[] = [
-            { speed: 25, price12: 864.00, price24: 632.40, price36: 568.80, price48: 540.36, price60: 511.92, installationCost: 998.00, description: "25 Mbps", cost: 1580.00 },
-            { speed: 30, price12: 888.10, price24: 694.80, price36: 632.40, price48: 600.78, price60: 569.16, installationCost: 998.00, description: "30 Mbps", cost: 1580.00 },
-            { speed: 40, price12: 1098.01, price24: 758.40, price36: 694.80, price48: 660.06, price60: 625.32, installationCost: 998.00, description: "40 Mbps", cost: 1580.00 },
-            { speed: 50, price12: 1324.07, price24: 822.00, price36: 758.40, price48: 720.48, price60: 682.56, installationCost: 998.00, description: "50 Mbps", cost: 1580.00 },
-            { speed: 60, price12: 1856.93, price24: 948.00, price36: 884.40, price48: 840.18, price60: 795.96, installationCost: 998.00, description: "60 Mbps", cost: 1580.00 },
-            { speed: 80, price12: 2191.18, price24: 1200.00, price36: 1137.60, price48: 1080.72, price60: 1023.84, installationCost: 998.00, description: "80 Mbps", cost: 5700.00 },
-            { speed: 100, price12: 2420.46, price24: 1893.60, price36: 1579.20, price48: 1500.24, price60: 1421.28, installationCost: 1996.00, description: "100 Mbps", cost: 5700.00 },
-            { speed: 150, price12: 3051.82, price24: 2146.80, price36: 1832.40, price48: 1740.78, price60: 1649.16, installationCost: 1996.00, description: "150 Mbps", cost: 5700.00 },
-            { speed: 200, price12: 3859.18, price24: 2463.60, price36: 2084.40, price48: 1980.18, price60: 1875.96, installationCost: 1996.00, description: "200 Mbps", cost: 5700.00 },
-            { speed: 300, price12: 9026.40, price24: 5179.20, price36: 4800.00, price48: 4560.00, price60: 4320.00, installationCost: 2500.00, description: "300 Mbps", cost: 23300.00 },
-            { speed: 400, price12: 11362.80, price24: 6253.20, price36: 5683.20, price48: 5399.04, price60: 5114.88, installationCost: 2500.00, description: "400 Mbps", cost: 23300.00 },
-            { speed: 500, price12: 13408.80, price24: 6946.80, price36: 6303.60, price48: 5988.42, price60: 5673.24, installationCost: 2500.00, description: "500 Mbps", cost: 23300.00 },
-            { speed: 600, price12: 15000.00, price24: 7578.00, price36: 6948.00, price48: 6600.60, price60: 6253.20, installationCost: 2500.00, description: "600 Mbps", cost: 23300.00 },
-            { speed: 700, price12: 16560.00, price24: 8280.00, price36: 7560.00, price48: 7182.00, price60: 6804.00, installationCost: 2500.00, description: "700 Mbps", cost: 23300.00 },
-            { speed: 800, price12: 18000.00, price24: 9000.00, price36: 8160.00, price48: 7752.00, price60: 7344.00, installationCost: 2500.00, description: "800 Mbps", cost: 23300.00 },
-            { speed: 900, price12: 19440.00, price24: 9720.00, price36: 8760.00, price48: 8322.00, price60: 7884.00, installationCost: 2500.00, description: "900 Mbps", cost: 23300.00 },
-            { speed: 1000, price12: 21000.00, price24: 10500.00, price36: 9480.00, price48: 9006.00, price60: 8532.00, installationCost: 2500.00, description: "1000 Mbps (1 Gbps)", cost: 23300.00 }
+            { speed: 25, description: "25 Mega", price12: 864.00, price24: 568.80, price36: 505.20, price48: 505.20, price60: 505.20, installationCost: 998.00, cost: 3500.00 },
+            { speed: 30, description: "30 Mega", price12: 888.10, price24: 632.40, price36: 568.80, price48: 568.80, price60: 568.80, installationCost: 998.00, cost: 3500.00 },
+            { speed: 40, description: "40 Mega", price12: 1098.01, price24: 694.80, price36: 632.40, price48: 632.40, price60: 632.40, installationCost: 998.00, cost: 3500.00 },
+            { speed: 50, description: "50 Mega", price12: 1324.07, price24: 758.40, price36: 694.80, price48: 694.80, price60: 694.80, installationCost: 998.00, cost: 3500.00 },
+            { speed: 60, description: "60 Mega", price12: 1856.93, price24: 884.40, price36: 758.40, price48: 758.40, price60: 758.40, installationCost: 998.00, cost: 3500.00 },
+            { speed: 80, description: "80 Mega", price12: 2191.18, price24: 1131.60, price36: 998.40, price48: 998.40, price60: 998.40, installationCost: 998.00, cost: 3500.00 },
+            { speed: 100, description: "100 Mega", price12: 2420.46, price24: 1389.60, price36: 1137.60, price48: 1137.60, price60: 1137.60, installationCost: 998.00, cost: 3500.00 },
+            { speed: 150, description: "150 Mega", price12: 3051.82, price24: 1768.80, price36: 1453.20, price48: 1453.20, price60: 1453.20, installationCost: 1996.00, cost: 7000.00 },
+            { speed: 200, description: "200 Mega", price12: 3859.18, price24: 2084.40, price36: 1641.60, price48: 1641.60, price60: 1641.60, installationCost: 1996.00, cost: 7000.00 },
+            { speed: 300, description: "300 Mega", price12: 9026.40, price24: 2779.20, price36: 2022.00, price48: 2022.00, price60: 2022.00, installationCost: 1996.00, cost: 7000.00 },
+            { speed: 400, description: "400 Mega", price12: 11362.80, price24: 3663.60, price36: 2905.20, price48: 2905.20, price60: 2905.20, installationCost: 1996.00, cost: 7000.00 },
+            { speed: 500, description: "500 Mega", price12: 13408.80, price24: 4294.80, price36: 3348.00, price48: 3348.00, price60: 3348.00, installationCost: 1996.00, cost: 7000.00 },
+            { speed: 600, description: "600 Mega", price12: 14749.68, price24: 4737.60, price36: 3979.20, price48: 3979.20, price60: 3979.20, installationCost: 1996.00, cost: 7000.00 },
+            { speed: 700, description: "700 Mega", price12: 16224.65, price24: 5241.60, price36: 4420.80, price48: 4420.80, price60: 4420.80, installationCost: 1996.00, cost: 7000.00 },
+            { speed: 800, description: "800 Mega", price12: 17847.11, price24: 5672.40, price36: 4914.00, price48: 4914.00, price60: 4914.00, installationCost: 1996.00, cost: 7000.00 },
+            { speed: 900, description: "900 Mega", price12: 19631.82, price24: 6000.00, price36: 5368.80, price48: 5368.80, price60: 5368.80, installationCost: 1996.00, cost: 7000.00 },
+            { speed: 1000, description: "1000 Mega (1 Gbps)", price12: 21304.80, price24: 6316.80, price36: 5684.40, price48: 5684.40, price60: 5684.40, installationCost: 1996.00, cost: 7000.00 }
         ];
         // Force update with new MAN cost values
         setManPlans(initialManPlans);
@@ -1853,6 +1853,19 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 />
                                             </div>
                                         )}
+
+                                        {/* Custo Fibra */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="custoFibra">Custo Fibra (R$)</Label>
+                                            <Input
+                                                id="custoFibra"
+                                                type="text"
+                                                value={(result?.cost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                onChange={(e) => handleCustoManChange(e.target.value)}
+                                                className="bg-slate-800 border-slate-700 text-white"
+                                            />
+                                        </div>
+
                                         <div className="space-y-2">
                                             <div className="flex items-center space-x-2">
                                                 <Checkbox
@@ -2871,7 +2884,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                                 <Input
                                                                     type="text"
                                                                     value={(plan.cost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    onChange={(e) => handlePriceChange(index, 'cost', e.target.value)}
+                                                                    onChange={(e) => handleCustoManChange(e.target.value)}
                                                                     className="text-right bg-slate-800 border-slate-700"
                                                                 />
                                                             </TableCell>
