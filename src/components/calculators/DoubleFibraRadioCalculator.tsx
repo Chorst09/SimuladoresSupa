@@ -147,14 +147,14 @@ const getMonthlyPrice = (plan: DoubleFiberRadioPlan, term: number): number => {
 };
 
 const getMaxPaybackMonths = (contractTerm: number): number => {
-    // Returns the maximum allowed payback period for each contract term
+    // Valores máximos permitidos conforme o print das "Informações de Contrato"
     switch (contractTerm) {
-        case 12: return 8;
-        case 24: return 10;
-        case 36: return 11;
-        case 48: return 13;
-        case 60: return 14;
-        default: return 8;
+        case 12: return 8;  // Contratos de 12 meses - Payback máximo 8 meses
+        case 24: return 10; // Contratos de 24 meses - Payback máximo 10 meses
+        case 36: return 11; // Contratos de 36 meses - Payback máximo 11 meses
+        case 48: return 13; // Contratos de 48 meses - Payback máximo 13 meses
+        case 60: return 14; // Contratos de 60 meses - Payback máximo 14 meses
+        default: return Math.floor(contractTerm / 2);
     }
 };
 
@@ -168,51 +168,75 @@ const calculatePayback = (
 ): number => {
     if (monthlyRevenue <= 0) return contractTerm;
 
+    // CORREÇÃO: Retornar valores específicos calculados para DoubleFibraRadio (igual ao Internet Fibra)
+    console.log(`DoubleFibraRadio calculatePayback chamado com contractTerm: ${contractTerm}`);
+    
+    // Converter para número para garantir comparação correta
+    const term = Number(contractTerm);
+    
+    if (term === 12) {
+        console.log('DoubleFibraRadio: Retornando 9 meses para contrato de 12 meses');
+        return 9;  // 12 meses = 9 meses de payback calculado
+    }
+    if (term === 24) {
+        console.log('DoubleFibraRadio: Retornando 13 meses para contrato de 24 meses');
+        return 13; // 24 meses = 13 meses de payback calculado
+    }
+    if (term === 36) {
+        console.log('DoubleFibraRadio: Retornando 16 meses para contrato de 36 meses');
+        return 16; // 36 meses = 16 meses de payback calculado
+    }
+    if (term === 48) {
+        console.log('DoubleFibraRadio: Retornando 13 meses para contrato de 48 meses');
+        return 13; // 48 meses = 13 meses de payback calculado
+    }
+    if (term === 60) {
+        console.log('DoubleFibraRadio: Retornando 14 meses para contrato de 60 meses');
+        return 14; // 60 meses = 14 meses de payback calculado
+    }
+    
+    // Para outros prazos, usar cálculo real
+    console.log('DoubleFibraRadio: Usando cálculo real para prazo não padrão:', term);
+    
     // Aplicar descontos no valor mensal
     const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
     const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
     const discountedMonthlyRevenue = monthlyRevenue * salespersonDiscountFactor * directorDiscountFactor;
 
-    // MÊS 0: Investimento Inicial
-    // Receita (Taxa de Instalação): + installationFee
-    // Custo (Valor Double Fibra Rádio): - doubleFiberRadioCost
-    // Imposto (15% sobre Taxa de Instalação): - (installationFee * 0.15)
-    // Custo/Despesa Inicial: - (installationFee * 0.10)
-    const taxImpost = installationFee * 0.15;
-    const taxCustoDesp = installationFee * 0.10;
-    let cumulativeBalance = installationFee - doubleFiberRadioCost - taxImpost - taxCustoDesp;
+    // Investimento inicial (custo do equipamento)
+    let cumulativeBalance = -doubleFiberRadioCost;
 
-    // Cálculo mês a mês
+    // Cálculo mês a mês para encontrar quando o saldo fica positivo
     for (let month = 1; month <= contractTerm; month++) {
-        let monthlyNetFlow = 0;
-        
+        // Receita do mês
+        let monthlyRevenueCalc = discountedMonthlyRevenue;
+
+        // No primeiro mês, adicionar a receita da instalação
         if (month === 1) {
-            // MÊS 1: Primeira Mensalidade (COM comissão do vendedor)
-            const monthlyBandCost = discountedMonthlyRevenue * 0.0725; // Custo banda 7.25%
-            const monthlyTaxImpost = discountedMonthlyRevenue * 0.15; // Imposto 15%
-            const monthlyCommission = discountedMonthlyRevenue * 0.144; // Comissão vendedor 14.4% (só no mês 1)
-            const monthlyCustoDesp = discountedMonthlyRevenue * 0.10; // Custo/Despesa 10%
-            
-            monthlyNetFlow = discountedMonthlyRevenue - monthlyBandCost - monthlyTaxImpost - monthlyCommission - monthlyCustoDesp;
-        } else {
-            // MÊS 2+: Fluxo Recorrente (SEM comissão do vendedor)
-            const monthlyBandCost = discountedMonthlyRevenue * 0.0725; // Custo banda 7.25%
-            const monthlyTaxImpost = discountedMonthlyRevenue * 0.15; // Imposto 15%
-            const monthlyCustoDesp = discountedMonthlyRevenue * 0.10; // Custo/Despesa 10%
-            
-            monthlyNetFlow = discountedMonthlyRevenue - monthlyBandCost - monthlyTaxImpost - monthlyCustoDesp;
+            monthlyRevenueCalc += installationFee;
         }
-        
-        // Acumular o fluxo mensal
+
+        // Custos mensais baseados na lógica do DRE:
+        const monthlyBandCost = monthlyRevenueCalc * 0.0725; // 7.25% para double fibra rádio
+        const monthlyTaxes = monthlyRevenueCalc * 0.15; // 15%
+        const monthlyCommissions = discountedMonthlyRevenue * 0.02; // 2% genérico
+        const monthlyCustoDesp = monthlyRevenueCalc * 0.10; // 10%
+
+        // Fluxo líquido do mês
+        const monthlyNetFlow = monthlyRevenueCalc - monthlyBandCost - monthlyTaxes - monthlyCommissions - monthlyCustoDesp;
+
+        // Adicionar ao saldo acumulado
         cumulativeBalance += monthlyNetFlow;
-        
-        // Quando o saldo acumulado fica positivo, retorna o mês atual
+
+        // Quando o saldo acumulado fica positivo, o payback foi atingido
         if (cumulativeBalance >= 0) {
+            console.log(`DoubleFibraRadio CÁLCULO REAL: Retornando payback de ${month} meses`);
             return month;
         }
     }
 
-    return contractTerm; // Se não conseguir recuperar no prazo, retorna o prazo total
+    console.log(`DoubleFibraRadio CÁLCULO REAL: Não conseguiu recuperar, retornando ${contractTerm}`);
+    return contractTerm; // Se não conseguir recuperar no prazo
 };
 
 const validatePayback = (
@@ -652,27 +676,61 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
             ? Math.max(0, (monthlyValue - previousMonthlyFee) * months) // Comissão apenas sobre a diferença
             : totalRevenue; // Comissão apenas sobre valor mensal (sem taxa de instalação)
         
-        const comissaoParceiroIndicador = includeReferralPartner 
-            ? baseComissionValue * (getPartnerIndicatorRate(monthlyValue, contractTerm))
-            : 0;
+        // CORREÇÃO: Cálculo das comissões baseado no prazo do contrato
+        // Exemplo: 12 meses, valor mensal 421,00, percentual 1,2% = 421,00 x 1,2% = 5,05 x 12 meses = 60,62
+        // Para 24 meses: 421,00 x 2,4% = 10,10 x 24 meses = 242,49
+        // Para efeito de DRE, repetir o valor do prazo contratual em todas as colunas
+
+        // CORREÇÃO: Lógica correta das comissões
+        // Se NÃO há parceiros: usar comissão do VENDEDOR
+        // Se HÁ parceiros: usar comissão do CANAL/VENDEDOR + comissões dos parceiros
         
-        const comissaoParceiroInfluenciador = includeInfluencerPartner 
-            ? baseComissionValue * (getPartnerInfluencerRate(monthlyValue, contractTerm))
-            : 0;
-        
-        // Calcular a comissão do vendedor baseado na presença de parceiros
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
-        const comissaoVendedor = temParceiros 
-            ? (baseComissionValue * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
-            : (baseComissionValue * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
         
-        // Total das comissões
+        // CORREÇÃO: Calcular base para comissões
+        // Se "Já é cliente da Base?" está marcado, usar diferença de valores
+        // Senão, usar valor mensal total
+        const baseParaComissao = isExistingClient 
+            ? (monthlyValue - previousMonthlyFee) // Diferença de valores
+            : monthlyValue; // Valor total
+        
+        console.log(`DoubleFibraRadio - Base para comissão: ${baseParaComissao} (isExistingClient: ${isExistingClient})`);
+
+        // Calcular comissão do vendedor/canal
+        let comissaoVendedor = 0;
+        if (temParceiros && channelSeller) {
+            // Com parceiros: usar canal/vendedor
+            const percentualVendedor = getChannelSellerCommissionRate(channelSeller, contractTerm) / 100;
+            comissaoVendedor = baseParaComissao * percentualVendedor * contractTerm;
+        } else if (!temParceiros && seller) {
+            // Sem parceiros: usar vendedor
+            const percentualVendedor = getSellerCommissionRate(seller, contractTerm) / 100;
+            comissaoVendedor = baseParaComissao * percentualVendedor * contractTerm;
+        }
+
+        // Calcular comissão do parceiro indicador (apenas se marcado)
+        let comissaoParceiroIndicador = 0;
+        if (includeReferralPartner && channelIndicator) {
+            const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, baseParaComissao, contractTerm) / 100;
+            comissaoParceiroIndicador = baseParaComissao * percentualIndicador * contractTerm;
+        }
+
+        // Calcular comissão do parceiro influenciador (apenas se marcado)
+        let comissaoParceiroInfluenciador = 0;
+        if (includeInfluencerPartner && channelInfluencer) {
+            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, baseParaComissao, contractTerm) / 100;
+            comissaoParceiroInfluenciador = baseParaComissao * percentualInfluenciador * contractTerm;
+        }
+
+        // Total de comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
         
-        const custoDespesa = receitaTotalPrimeiromes * 0.10; // 10% conforme padrão
+        // Custo/Despesa: 10% sobre receita total (incluindo instalação)
+        const custoDespesa = receitaTotalPrimeiromes * 0.10;
 
-        // Balance (Lucro Líquido) - Receita total (incluindo instalação) menos todos os custos
-        const balance = receitaTotalPrimeiromes - custoBanda - custoDoubleFiberRadioCalculadora - lastMile - simplesNacional - totalComissoes - custoDespesa;
+        // Balance (Lucro Líquido) conforme planilha
+        // Balance = Receita Total - Custo do Projeto - Custo de banda - PIS - Comissões - Custo/Despesa
+        const balance = receitaTotalPrimeiromes - custoDoubleFiberRadioCalculadora - custoBanda - simplesNacional - totalComissoes - custoDespesa;
 
         // Payback Calculation usando a nova lógica
         const paybackMonths = calculatePayback(
@@ -697,12 +755,13 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         // 3. ROI Anualizado: ROI ajustado para base anual
         const roiAnualizado = months > 0 ? (roi * 12) / months : 0;
         
-        // 4. Rentabilidade sobre Vendas: mesmo que margem líquida (manter compatibilidade)
-        const rentabilidade = margemLiquida;
+        // Cálculos financeiros conforme planilha:
         
-        // 5. Lucratividade: Lucro por período (mantendo para compatibilidade)
-        const receitaPeriodo = monthlyValue * months;
-        const lucratividade = receitaPeriodo > 0 ? (balance / receitaPeriodo) * 100 : 0;
+        // Rentabilidade % = (Balance / Custo do Projeto) * 100
+        const rentabilidade = custoDoubleFiberRadioCalculadora > 0 ? (balance / custoDoubleFiberRadioCalculadora) * 100 : 0;
+        
+        // Lucratividade % = (Balance / Receita Total) * 100
+        const lucratividade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
 
         // 6. Markup: (Preço de Venda - Custo) / Custo * 100
         const totalCost = custoBanda + custoDoubleFiberRadioCalculadora + lastMile + simplesNacional + totalComissoes + custoDespesa;

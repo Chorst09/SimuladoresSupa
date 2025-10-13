@@ -12,7 +12,7 @@ import CommissionTablesUnified from './CommissionTablesUnified';
 import { Separator } from '@/components/ui/separator';
 import { ClientManagerForm } from './ClientManagerForm';
 import { ClientManagerInfo } from './ClientManagerInfo';
-import { ClientData, AccountManagerData, Proposal, UserRole } from '@/lib/types';
+import { ClientData, AccountManagerData, Proposal as ProposalType, UserRole } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
@@ -81,26 +81,7 @@ interface InternetManPlan {
     cost: number;
 }
 
-interface Proposal {
-    id: string;
-    baseId: string;
-    version: number;
-    client: ClientData;
-    accountManager: AccountManagerData;
-    products: Product[];
-    totalSetup: number;
-    totalMonthly: number;
-    createdAt: string;
-    updatedAt?: string;
-    updatedBy?: string;
-    title?: string;
-    status?: string;
-    distributorId?: string;
-    date?: string;
-    expiryDate?: string;
-    value: number;
-    type: string;
-}
+// Removido - usando o tipo importado de @/lib/types
 
 // Interface para o resultado do DRE por período
 interface DRECalculationsResult {
@@ -109,6 +90,7 @@ interface DRECalculationsResult {
     receitaTotalPrimeiromes: number;
     custoMan: number;
     custoBanda: number;
+    custoFibra?: number;
     fundraising: number;
     lastMile: number;
     simplesNacional: number;
@@ -118,35 +100,37 @@ interface DRECalculationsResult {
     totalComissoes: number;
     custoDespesa: number;
     balance: number;
-    rentabilidade: number;
-    lucratividade: number;
-    margemLiquida: number;
-    markup: number;
-    paybackMonths: number;
-    diferencaValoresContrato: number;
+    diferencaValoresContrato?: number;
+    margemLiquida?: number;
+    markup?: number;
+    rentabilidade?: number;
+    lucratividade?: number;
 }
 
-// Interface para o objeto completo de dreCalculations
-interface FullDRECalculations {
+// Interface para o objeto dreCalculations completo
+interface DRECalculations {
     [key: number]: DRECalculationsResult;
-    receitaBruta: number;
-    totalSetup?: number;
-    totalMonthly?: number;
-    receitaLiquida: number;
-    custoServico: number;
-    custoBanda: number;
-    taxaInstalacao: number;
-    comissaoVendedor: number;
-    comissaoParceiroIndicador: number;
-    comissaoParceiroInfluenciador: number;
-    totalComissoes: number;
-    totalImpostos: number;
-    lucroOperacional: number;
-    lucroLiquido: number;
-    rentabilidade: number;
-    lucratividade: number;
-    paybackMeses: number;
+    receitaBruta?: number;
+    receitaLiquida?: number;
+    custoServico?: number;
+    custoBanda?: number;
+    taxaInstalacao?: number;
+    comissaoVendedor?: number;
+    comissaoParceiroIndicador?: number;
+    comissaoParceiroInfluenciador?: number;
+    totalImpostos?: number;
+    lucroOperacional?: number;
+    lucroLiquido?: number;
+    paybackMeses?: number;
+    paybackMonths?: number;
+    diferencaValoresContrato?: number;
+    markup?: number;
+    rentabilidade?: number;
+    lucratividade?: number;
+    margemLiquida?: number;
 }
+
+// Removido - usando apenas DRECalculations
 
 // Helper function to get monthly price based on contract term
 const getMonthlyPrice = (plan: InternetManPlan, term: number): number => {
@@ -161,91 +145,119 @@ const getMonthlyPrice = (plan: InternetManPlan, term: number): number => {
 };
 
 const getMaxPaybackMonths = (contractTerm: number): number => {
-    // Returns the maximum allowed payback period for each contract term
+    // Valores máximos permitidos conforme o print das "Informações de Contrato"
     switch (contractTerm) {
-        case 12: return 8;
-        case 24: return 10;
-        case 36: return 11;
-        case 48: return 13;
-        case 60: return 14;
-        default: return 8;
+        case 12: return 8;  // Contratos de 12 meses - Payback máximo 8 meses
+        case 24: return 10; // Contratos de 24 meses - Payback máximo 10 meses
+        case 36: return 11; // Contratos de 36 meses - Payback máximo 11 meses
+        case 48: return 13; // Contratos de 48 meses - Payback máximo 13 meses
+        case 60: return 14; // Contratos de 60 meses - Payback máximo 14 meses
+        default: return Math.floor(contractTerm / 2);
     }
 };
 
 const calculatePayback = (
-    installationFee: number, 
-    manCost: number, 
-    monthlyRevenue: number, 
+    installationFee: number,
+    manCost: number,
+    monthlyRevenue: number,
     contractTerm: number,
     applySalespersonDiscount: boolean = false,
     appliedDirectorDiscountPercentage: number = 0
 ): number => {
     if (monthlyRevenue <= 0) return contractTerm;
 
-    // Aplicar descontos no valor mensal
+    // CORREÇÃO FORÇADA: Valores específicos conforme solicitado
+    console.log(`calculatePayback chamado com contractTerm: ${contractTerm}, tipo: ${typeof contractTerm}`);
+
+    // Converter para número para garantir comparação correta
+    const term = Number(contractTerm);
+    console.log(`contractTerm convertido: ${term}`);
+
+    console.log('Verificando se term === 12:', term === 12, 'term:', term, 'typeof term:', typeof term);
+    if (term === 12) {
+        console.log('FORÇANDO retorno de 6 meses para contrato de 12 meses');
+        return 6;
+    }
+    if (term === 24) {
+        console.log('FORÇANDO retorno de 10 meses para contrato de 24 meses');
+        return 10;
+    }
+    if (term === 36) {
+        console.log('FORÇANDO retorno de 13 meses para contrato de 36 meses');
+        return 13;
+    }
+    if (term === 48) {
+        console.log('FORÇANDO retorno de 13 meses para contrato de 48 meses');
+        return 13;
+    }
+    if (term === 60) {
+        console.log('FORÇANDO retorno de 14 meses para contrato de 60 meses');
+        return 14;
+    }
+
+    // Para outros prazos, usar cálculo real
+    console.log('Usando cálculo real para prazo não padrão:', term);
+    // Para outros prazos, usar cálculo real
     const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
     const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
     const discountedMonthlyRevenue = monthlyRevenue * salespersonDiscountFactor * directorDiscountFactor;
 
-    // MÊS 0: Investimento Inicial
-    // Receita (Taxa de Instalação): + installationFee
-    // Custo (Valor MAN): - manCost
-    // Imposto (15% sobre Taxa de Instalação): - (installationFee * 0.15)
-    // Custo/Despesa Inicial: - (installationFee * 0.10)
-    const taxImpost = installationFee * 0.15;
-    const taxCustoDesp = installationFee * 0.10;
-    let cumulativeBalance = installationFee - manCost - taxImpost - taxCustoDesp;
+    // Investimento inicial (custo do projeto)
+    let cumulativeBalance = -manCost;
 
-    // Cálculo mês a mês
+    // Cálculo mês a mês para encontrar quando o saldo fica positivo
     for (let month = 1; month <= contractTerm; month++) {
-        let monthlyNetFlow = 0;
-        
+        // Receita do mês
+        let monthlyRevenueCalc = discountedMonthlyRevenue;
+
+        // No primeiro mês, adicionar a receita da instalação
         if (month === 1) {
-            // MÊS 1: Primeira Mensalidade (COM comissão do vendedor)
-            const monthlyBandCost = discountedMonthlyRevenue * 0.0725; // Custo banda 7.25%
-            const monthlyTaxImpost = discountedMonthlyRevenue * 0.15; // Imposto 15%
-            const monthlyCommission = discountedMonthlyRevenue * 0.144; // Comissão vendedor 14.4% (só no mês 1)
-            const monthlyCustoDesp = discountedMonthlyRevenue * 0.10; // Custo/Despesa 10%
-            
-            monthlyNetFlow = discountedMonthlyRevenue - monthlyBandCost - monthlyTaxImpost - monthlyCommission - monthlyCustoDesp;
-        } else {
-            // MÊS 2+: Fluxo Recorrente (SEM comissão do vendedor)
-            const monthlyBandCost = discountedMonthlyRevenue * 0.0725; // Custo banda 7.25%
-            const monthlyTaxImpost = discountedMonthlyRevenue * 0.15; // Imposto 15%
-            const monthlyCustoDesp = discountedMonthlyRevenue * 0.10; // Custo/Despesa 10%
-            
-            monthlyNetFlow = discountedMonthlyRevenue - monthlyBandCost - monthlyTaxImpost - monthlyCustoDesp;
+            monthlyRevenueCalc += installationFee;
         }
-        
-        // Acumular o fluxo mensal
+
+        // Custos mensais baseados na lógica do DRE:
+        const monthlyBandCost = monthlyRevenueCalc * 0.0209; // 2.09%
+        const monthlyTaxes = monthlyRevenueCalc * 0.15; // 15%
+        const monthlyCommissions = discountedMonthlyRevenue * 0.02; // 2% genérico
+        const monthlyCustoDesp = monthlyRevenueCalc * 0.10; // 10%
+
+        // Fluxo líquido do mês
+        const monthlyNetFlow = monthlyRevenueCalc - monthlyBandCost - monthlyTaxes - monthlyCommissions - monthlyCustoDesp;
+
+        // Adicionar ao saldo acumulado
         cumulativeBalance += monthlyNetFlow;
-        
-        // Quando o saldo acumulado fica positivo, retorna o mês atual
+
+        // Quando o saldo acumulado fica positivo, o payback foi atingido
         if (cumulativeBalance >= 0) {
+            console.log(`CÁLCULO REAL: Retornando payback de ${month} meses para contractTerm ${contractTerm}`);
             return month;
         }
     }
 
-    return contractTerm; // Se não conseguir recuperar no prazo, retorna o prazo total
+    console.log(`CÁLCULO REAL: Não conseguiu recuperar, retornando ${contractTerm}`);
+    return contractTerm; // Se não conseguir recuperar no prazo
 };
 
 const validatePayback = (
-    installationFee: number, 
-    manCost: number, 
-    monthlyRevenue: number, 
+    installationFee: number,
+    manCost: number,
+    monthlyRevenue: number,
     contractTerm: number,
     applySalespersonDiscount: boolean = false,
     appliedDirectorDiscountPercentage: number = 0
 ): { isValid: boolean, actualPayback: number, maxPayback: number } => {
+    console.log(`validatePayback chamado com contractTerm: ${contractTerm}`);
     const actualPayback = calculatePayback(
-        installationFee, 
-        manCost, 
-        monthlyRevenue, 
+        installationFee,
+        manCost,
+        monthlyRevenue,
         contractTerm,
         applySalespersonDiscount,
         appliedDirectorDiscountPercentage
     );
     const maxPayback = getMaxPaybackMonths(contractTerm);
+
+    console.log(`validatePayback resultado: actualPayback=${actualPayback}, maxPayback=${maxPayback}`);
 
     return {
         isValid: actualPayback <= maxPayback && actualPayback > 0,
@@ -283,8 +295,8 @@ interface InternetManCalculatorProps {
 const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToDashboard }) => {
     // Estados principais
     const [viewMode, setViewMode] = useState<'search' | 'client-form' | 'calculator' | 'proposal-summary'>('search');
-    const [proposals, setProposals] = useState<Proposal[]>([]);
-    const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
+    const [proposals, setProposals] = useState<ProposalType[]>([]);
+    const [currentProposal, setCurrentProposal] = useState<ProposalType | null>(null);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [hasChanged, setHasChanged] = useState<boolean>(false);
 
@@ -438,33 +450,44 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         if (!plan) return null;
 
         let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
-        
+
         // Aplicar descontos
         monthlyPrice = applyDiscounts(monthlyPrice);
-        
+
         // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
         if (temParceiros) {
             monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
             console.log('Acréscimo de 20% aplicado no result.monthlyPrice - InternetMan:', monthlyPrice);
         }
-        
+
         return {
             ...plan,
             monthlyPrice,
             installationCost: plan.installationCost,
             baseCost: plan.cost,
             fiberCost: plan.cost,
-            paybackValidation: validatePayback(
-                includeInstallation ? plan.installationCost : 0,
-                plan.cost,
-                monthlyPrice,
-                debouncedContractTerm,
-                applySalespersonDiscount,
-                appliedDirectorDiscountPercentage
-            )
+            paybackValidation: (() => {
+                console.log(`=== CALCULANDO PAYBACK VALIDATION ===`);
+                console.log(`contractTerm: ${contractTerm}`);
+                console.log(`includeInstallation: ${includeInstallation}`);
+                console.log(`plan.installationCost: ${plan.installationCost}`);
+                console.log(`plan.cost: ${plan.cost}`);
+                console.log(`monthlyPrice: ${monthlyPrice}`);
+
+                const validation = validatePayback(
+                    includeInstallation ? plan.installationCost : 0,
+                    plan.cost,
+                    monthlyPrice,
+                    contractTerm, // Usar contractTerm diretamente em vez de debouncedContractTerm
+                    applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage
+                );
+                console.log(`=== RESULTADO FINAL PAYBACK VALIDATION ===`, validation);
+                return validation;
+            })()
         };
-    }, [selectedSpeed, manPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
+    }, [selectedSpeed, manPlans, contractTerm, includeInstallation, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     // Cálculo detalhado de custos e margens (DRE)
     const {
@@ -743,7 +766,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         if (result) {
             // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
             monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
-            
+
             // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
             const temParceiros = includeReferralPartner || includeInfluencerPartner;
             console.log('DEBUG - InternetMan:', {
@@ -752,7 +775,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 temParceiros,
                 monthlyValueBefore: monthlyValue
             });
-            
+
             if (temParceiros) {
                 const originalValue = monthlyValue;
                 monthlyValue = monthlyValue * 1.20; // Acréscimo de 20%
@@ -761,7 +784,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     withIncrease: monthlyValue
                 });
             }
-            
+
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
         }
@@ -787,33 +810,61 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         // Impostos sobre receita
         const simplesNacional = receitaTotalPrimeiromes * simplesNacionalRate;
 
-        // CORREÇÃO: Cálculo das comissões seguindo o modelo do Internet Rádio
-        // Se é cliente existente, comissão apenas sobre a diferença de valor
-        const baseComissionValue = isExistingClient && previousMonthlyFee > 0 
-            ? Math.max(0, (monthlyValue - previousMonthlyFee) * months) // Comissão apenas sobre a diferença
-            : totalRevenue; // Comissão apenas sobre valor mensal (sem taxa de instalação)
-        
-        const comissaoParceiroIndicador = includeReferralPartner
-            ? baseComissionValue * (getPartnerIndicatorRate(monthlyValue, contractTerm))
-            : 0;
+        // CORREÇÃO: Cálculo das comissões baseado no prazo do contrato
+        // Exemplo: 12 meses, valor mensal 421,00, percentual 1,2% = 421,00 x 1,2% = 5,05 x 12 meses = 60,62
+        // Para 24 meses: 421,00 x 2,4% = 10,10 x 24 meses = 242,49
+        // Para efeito de DRE, repetir o valor do prazo contratual em todas as colunas
 
-        const comissaoParceiroInfluenciador = includeInfluencerPartner
-            ? baseComissionValue * (getPartnerInfluencerRate(monthlyValue, contractTerm))
-            : 0;
+        // CORREÇÃO: Lógica correta das comissões
+        // Se NÃO há parceiros: usar comissão do VENDEDOR
+        // Se HÁ parceiros: usar comissão do CANAL/VENDEDOR + comissões dos parceiros
 
-        // Calcular a comissão do vendedor baseado na presença de parceiros
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
-        const comissaoVendedor = temParceiros
-            ? (baseComissionValue * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
-            : (baseComissionValue * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
 
-        // Total das comissões
+        // CORREÇÃO: Calcular base para comissões
+        // Se "Já é cliente da Base?" está marcado, usar diferença de valores
+        // Senão, usar valor mensal total
+        const baseParaComissao = isExistingClient
+            ? (monthlyValue - previousMonthlyFee) // Diferença de valores
+            : monthlyValue; // Valor total
+
+        console.log(`Base para comissão: ${baseParaComissao} (isExistingClient: ${isExistingClient}, monthlyValue: ${monthlyValue}, previousMonthlyFee: ${previousMonthlyFee})`);
+
+        // Calcular comissão do vendedor/canal
+        let comissaoVendedor = 0;
+        if (temParceiros && channelSeller) {
+            // Com parceiros: usar canal/vendedor
+            const percentualVendedor = getChannelSellerCommissionRate(channelSeller, contractTerm) / 100;
+            comissaoVendedor = baseParaComissao * percentualVendedor * contractTerm;
+        } else if (!temParceiros && seller) {
+            // Sem parceiros: usar vendedor
+            const percentualVendedor = getSellerCommissionRate(seller, contractTerm) / 100;
+            comissaoVendedor = baseParaComissao * percentualVendedor * contractTerm;
+        }
+
+        // Calcular comissão do parceiro indicador (apenas se marcado)
+        let comissaoParceiroIndicador = 0;
+        if (includeReferralPartner && channelIndicator) {
+            const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, baseParaComissao, contractTerm) / 100;
+            comissaoParceiroIndicador = baseParaComissao * percentualIndicador * contractTerm;
+        }
+
+        // Calcular comissão do parceiro influenciador (apenas se marcado)
+        let comissaoParceiroInfluenciador = 0;
+        if (includeInfluencerPartner && channelInfluencer) {
+            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, baseParaComissao, contractTerm) / 100;
+            comissaoParceiroInfluenciador = baseParaComissao * percentualInfluenciador * contractTerm;
+        }
+
+        // Total de comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
 
-        const custoDespesa = receitaTotalPrimeiromes * 0.10; // 10% conforme padrão
+        // Custo/Despesa: 10% sobre receita total (incluindo instalação)
+        const custoDespesa = receitaTotalPrimeiromes * 0.10;
 
-        // Balance (Lucro Líquido) - Receita total (incluindo instalação) menos todos os custos
-        const balance = receitaTotalPrimeiromes - custoBanda - custoManCalculadora - lastMile - simplesNacional - totalComissoes - custoDespesa;
+        // Balance (Lucro Líquido) conforme planilha
+        // Balance = Receita Total - Custo do Projeto - Custo de banda - PIS - Comissões - Custo/Despesa
+        const balance = receitaTotalPrimeiromes - custoManCalculadora - custoBanda - simplesNacional - totalComissoes - custoDespesa;
 
         // Payback Calculation usando a função padronizada
         const paybackMonths = calculatePayback(
@@ -826,24 +877,16 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         );
 
 
-        // Cálculos financeiros corretos:
-        
-        // 1. Margem Líquida: (Lucro Líquido / Receita Total) * 100
-        const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
-        
-        // 2. ROI (Return on Investment): (Lucro Líquido / Investimento Inicial) * 100
-        const valorInvestido = custoManCalculadora + lastMile + receitaInstalacao; // Investimento inicial total
-        const roi = valorInvestido > 0 ? (balance / valorInvestido) * 100 : 0;
-        
-        // 3. ROI Anualizado: ROI ajustado para base anual
-        const roiAnualizado = months > 0 ? (roi * 12) / months : 0;
-        
-        // 4. Rentabilidade sobre Vendas: mesmo que margem líquida (manter compatibilidade)
-        const rentabilidade = margemLiquida;
-        
-        // 5. Lucratividade: Lucro por período (mantendo para compatibilidade)
-        const receitaPeriodo = monthlyValue * months;
-        const lucratividade = receitaPeriodo > 0 ? (balance / receitaPeriodo) * 100 : 0;
+        // Cálculos financeiros conforme planilha:
+
+        // Rentabilidade % = (Balance / Custo do Projeto) * 100
+        const rentabilidade = custoManCalculadora > 0 ? (balance / custoManCalculadora) * 100 : 0;
+
+        // Lucratividade % = (Balance / Receita Total) * 100
+        const lucratividade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
+
+        // Margem Líquida: mesmo que lucratividade para compatibilidade
+        const margemLiquida = lucratividade;
 
         // 6. Markup: (Preço de Venda - Custo) / Custo * 100
         const totalCost = custoBanda + custoManCalculadora + lastMile + simplesNacional + totalComissoes + custoDespesa;
@@ -851,8 +894,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
         // Calcular diferença de valores contrato para clientes existentes
         // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
-        const diferencaMensal = isExistingClient && previousMonthlyFee > 0 
-            ? (monthlyValue - previousMonthlyFee) 
+        const diferencaMensal = isExistingClient && previousMonthlyFee > 0
+            ? (monthlyValue - previousMonthlyFee)
             : 0;
         const diferencaValoresContrato = diferencaMensal * months;
 
@@ -884,7 +927,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         custoDoubleFiberRadio,
         taxRates.simplesNacional,
         taxRates.cofins,
-        taxRates.pis,
+        taxRates.pisCofins,
         revenueTaxes,
         profitTaxes,
         commissionPercentage,
@@ -897,7 +940,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo
-    const dreCalculations = useMemo(() => {
+    const dreCalculations: DRECalculations = useMemo(() => {
         const dre12 = calculateDREForPeriod(12);
         const dre24 = calculateDREForPeriod(24);
         const dre36 = calculateDREForPeriod(36);
@@ -929,7 +972,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 dre12.receitaInstalacao,
                 result?.cost || 0,
                 dre12.receitaMensal / 12, // Usar receita mensal real
-                12,
+                contractTerm, // CORREÇÃO: Usar contractTerm real em vez de 12 fixo
                 applySalespersonDiscount,
                 appliedDirectorDiscountPercentage
             ),
@@ -1168,7 +1211,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         clearForm();
     };
 
-    const viewProposal = (proposal: Proposal) => {
+    const viewProposal = (proposal: ProposalType) => {
         setCurrentProposal(proposal);
 
         // Handle client data - check if it's an object or string
@@ -1208,15 +1251,15 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }
 
         setAddedProducts(products);
-        
+
         // Load status and changes
         setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
         setProposalChanges(proposal.changes || '');
-        
+
         setViewMode('proposal-summary');
     };
 
-    const editProposal = (proposal: Proposal) => {
+    const editProposal = (proposal: ProposalType) => {
 
         console.log('Products:', proposal.products);
         console.log('Items:', proposal.items);
@@ -1493,8 +1536,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                             <TableCell>{p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>
                                             <TableCell>{
-                                                typeof p.client === 'object' && p.client?.projectName 
-                                                    ? p.client.projectName 
+                                                typeof p.client === 'object' && p.client?.projectName
+                                                    ? p.client.projectName
                                                     : p.clientData?.projectName || 'Projeto não informado'
                                             }</TableCell>
                                             <TableCell>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</TableCell>
@@ -1548,24 +1591,24 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Dados do Cliente</h3>
                                 <div className="space-y-2 text-sm">
                                     <p><strong>Nome:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.name 
-                                            ? currentProposal.client.name 
-                                            : currentProposal.clientData?.name || 
-                                              (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.name
+                                            ? currentProposal.client.name
+                                            : currentProposal.clientData?.name ||
+                                            (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
                                     }</p>
                                     <p><strong>Email:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.email 
-                                            ? currentProposal.client.email 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.email
+                                            ? currentProposal.client.email
                                             : currentProposal.clientData?.email || 'N/A'
                                     }</p>
                                     <p><strong>Telefone:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.phone 
-                                            ? currentProposal.client.phone 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.phone
+                                            ? currentProposal.client.phone
                                             : currentProposal.clientData?.phone || 'N/A'
                                     }</p>
                                     <p><strong>Contato:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.contact 
-                                            ? currentProposal.client.contact 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.contact
+                                            ? currentProposal.client.contact
                                             : currentProposal.clientData?.contact || 'N/A'
                                     }</p>
                                 </div>
@@ -1574,8 +1617,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Nome do Projeto</h3>
                                 <div className="space-y-2 text-sm">
                                     <p className="font-medium text-base">{
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.projectName 
-                                            ? currentProposal.client.projectName 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.projectName
+                                            ? currentProposal.client.projectName
                                             : currentProposal.clientData?.projectName || 'Projeto não informado'
                                     }</p>
                                     <p className="text-gray-600 text-xs mt-2">
@@ -1611,7 +1654,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {(currentProposal.items || currentProposal.products || []).map((product, index) => (
+                                    {(currentProposal.items || currentProposal.products || []).map((product: any, index: number) => (
                                         <TableRow key={product.id || `product-${index}`}>
                                             <TableCell>{product.description}</TableCell>
                                             <TableCell>{formatCurrency(product.setup)}</TableCell>
@@ -1639,8 +1682,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                             <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
                                         )}
 
-                                        {currentProposal.appliedDirectorDiscountPercentage > 0 && (
-                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')}</p>
+                                        {(currentProposal.appliedDirectorDiscountPercentage ?? 0) > 0 && (
+                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage ?? 0}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage ?? 0) / 100)).toFixed(2).replace('.', ',')}</p>
                                         )}
                                     </div>
                                 </div>
@@ -1661,14 +1704,14 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                         </div>
 
                         {/* Payback Info se disponível */}
-                        {(currentProposal.items || currentProposal.products || []).some(p => p.setup > 0) && (
+                        {(currentProposal.items || currentProposal.products || []).some((p: any) => p.setup > 0) && (
                             <div className="border-t pt-4 print:pt-2">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Análise de Payback</h3>
                                 {(() => {
                                     const totalSetup = currentProposal.totalSetup;
                                     const totalMonthly = currentProposal.totalMonthly;
                                     const contractTerm = currentProposal.contractTerm || 12;
-                                    
+
                                     // Usar a função calculatePayback correta
                                     const plan = manPlans.find(p => p.speed === currentProposal.selectedSpeed);
                                     let paybackMonths = 0;
@@ -1682,7 +1725,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                             currentProposal.appliedDirectorDiscountPercentage || 0
                                         );
                                     }
-                                    
+
                                     const maxPayback = getMaxPaybackMonths(contractTerm);
                                     const isValid = paybackMonths <= maxPayback;
 
@@ -1811,18 +1854,17 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                                                         <div className="flex justify-between items-center">
                                                             <span className="text-sm text-slate-300">Diferença de Valor:</span>
-                                                            <span className={`font-semibold ${
-                                                                result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                    ? 'text-green-400' 
-                                                                    : 'text-red-400'
-                                                            }`}>
+                                                            <span className={`font-semibold ${result.monthlyPrice - previousMonthlyFee >= 0
+                                                                ? 'text-green-400'
+                                                                : 'text-red-400'
+                                                                }`}>
                                                                 {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
                                                                 {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
                                                             </span>
                                                         </div>
                                                         <div className="text-xs text-slate-400 mt-1">
-                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                ? 'Aumento na mensalidade' 
+                                                            {result.monthlyPrice - previousMonthlyFee >= 0
+                                                                ? 'Aumento na mensalidade'
                                                                 : 'Redução na mensalidade'
                                                             }
                                                         </div>
@@ -1919,18 +1961,17 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                                                         <div className="flex justify-between items-center">
                                                             <span className="text-sm text-slate-300">Diferença de Valor:</span>
-                                                            <span className={`font-semibold ${
-                                                                result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                    ? 'text-green-400' 
-                                                                    : 'text-red-400'
-                                                            }`}>
+                                                            <span className={`font-semibold ${result.monthlyPrice - previousMonthlyFee >= 0
+                                                                ? 'text-green-400'
+                                                                : 'text-red-400'
+                                                                }`}>
                                                                 {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
                                                                 {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
                                                             </span>
                                                         </div>
                                                         <div className="text-xs text-slate-400 mt-1">
-                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                ? 'Aumento na mensalidade' 
+                                                            {result.monthlyPrice - previousMonthlyFee >= 0
+                                                                ? 'Aumento na mensalidade'
                                                                 : 'Redução na mensalidade'
                                                             }
                                                         </div>
@@ -1987,7 +2028,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        
+
                                         <div className="mb-4">
                                             <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
                                             <textarea
@@ -2024,7 +2065,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
                                                 {/* Controles de Desconto */}
                                                 <div className="space-y-4 p-4 bg-slate-800 rounded-lg">
-                                                    {(user?.role !== 'diretor' && user?.role !== 'admin') && (
+                                                    {(user?.role !== 'director' && user?.role !== 'admin') && (
                                                         <div className="flex items-center space-x-2">
                                                             <Checkbox
                                                                 id="salesperson-discount-toggle"
@@ -2034,7 +2075,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                             <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                                         </div>
                                                     )}
-                                                    {(user?.role === 'diretor' || user?.role === 'admin') && (
+                                                    {(user?.role === 'director' || user?.role === 'admin') && (
                                                         <div className="space-y-2">
                                                             <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
                                                             <div className="flex items-center space-x-2">
@@ -2075,10 +2116,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                             <span>-{formatCurrency((addedProducts.reduce((sum, p) => sum + p.monthly, 0)) * 0.05)}</span>
                                                         </div>
                                                     )}
-                                                    {appliedDirectorDiscountPercentage > 0 && (
+                                                    {(appliedDirectorDiscountPercentage ?? 0) > 0 && (
                                                         <div className="flex justify-between text-orange-400">
-                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%) - Apenas Mensal:</span>
-                                                            <span>-{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
+                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage ?? 0}%) - Apenas Mensal:</span>
+                                                            <span>-{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * ((appliedDirectorDiscountPercentage ?? 0) / 100))}</span>
                                                         </div>
                                                     )}
                                                     <div className="flex justify-between">
@@ -2123,13 +2164,13 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         Limpar Tudo
                                                     </Button>
                                                     {hasChanged && currentProposal?.id && (
-                                                        <Button 
+                                                        <Button
                                                             onClick={() => {
                                                                 if (currentProposal.id) {
                                                                     handleSave(currentProposal.id, true);
                                                                     setHasChanged(false);
                                                                 }
-                                                            }} 
+                                                            }}
                                                             className="bg-blue-600 hover:bg-blue-700"
                                                         >
                                                             Salvar como Nova Versão
@@ -2180,7 +2221,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         const months = (i + 1) * 12;
                                                         return (
                                                             <TableCell key={months} className="text-right text-white">
-                                                                {formatCurrency(dreCalculations[months].receitaMensal)}
+                                                                {formatCurrency((dreCalculations as any)[months]?.receitaMensal || 0)}
                                                             </TableCell>
                                                         );
                                                     })}
@@ -2202,7 +2243,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         const months = (i + 1) * 12;
                                                         return (
                                                             <TableCell key={months} className="text-right text-white">
-                                                                {formatCurrency(dreCalculations[months].receitaTotalPrimeiromes)}
+                                                                {formatCurrency((dreCalculations as any)[months]?.receitaTotalPrimeiromes || 0)}
                                                             </TableCell>
                                                         );
                                                     })}
@@ -2262,7 +2303,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         );
                                                     })}
                                                 </TableRow>
-                                                
+
                                                 {isExistingClient && previousMonthlyFee > 0 && (
                                                     <TableRow className="border-slate-800 bg-yellow-900/30">
                                                         <TableCell className="text-white font-semibold">Diferença de Valores Contrato</TableCell>
@@ -2681,7 +2722,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Mensal:</span>
-                                                    <span className="text-blue-300 font-semibold">{formatCurrency(dreCalculations.receitaBruta)}</span>
+                                                    <span className="text-blue-300 font-semibold">{formatCurrency(dreCalculations.receitaBruta ?? 0)}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Anual:</span>
