@@ -560,25 +560,39 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         // Impostos sobre receita
         const simplesNacional = receitaTotalPrimeiromes * simplesNacionalRate;
         
-        // CORREÇÃO: Cálculo das comissões seguindo o modelo do Internet Rádio
-        // Se é cliente existente, comissão apenas sobre a diferença de valor
-        const baseComissionValue = isExistingClient && previousMonthlyFee > 0 
-            ? Math.max(0, (monthlyValue - previousMonthlyFee) * months) // Comissão apenas sobre a diferença
-            : totalRevenue; // Comissão apenas sobre valor mensal (sem taxa de instalação)
-        
-        const comissaoParceiroIndicador = includeReferralPartner 
-            ? baseComissionValue * (getPartnerIndicatorRate(monthlyValue, contractTerm))
-            : 0;
-        
-        const comissaoParceiroInfluenciador = includeInfluencerPartner 
-            ? baseComissionValue * (getPartnerInfluencerRate(monthlyValue, contractTerm))
-            : 0;
-        
-        // Calcular a comissão do vendedor baseado na presença de parceiros
+        // CORREÇÃO: Calcular base para comissões
+        // Se "Já é cliente da Base?" está marcado, usar diferença de valores
+        // Senão, usar valor mensal total
+        const baseParaComissao = isExistingClient
+            ? (monthlyValue - previousMonthlyFee) // Diferença de valores
+            : monthlyValue; // Valor total
+
+        console.log(`InternetOKv2 - Base para comissão: ${baseParaComissao} (isExistingClient: ${isExistingClient})`);
+
+        // Calcular comissão do vendedor/canal
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
-        const comissaoVendedor = temParceiros 
-            ? (baseComissionValue * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
-            : (baseComissionValue * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
+        let comissaoVendedor = 0;
+        if (temParceiros && channelSeller) {
+            // Com parceiros: usar canal/vendedor
+            const percentualVendedor = getChannelSellerCommissionRate(channelSeller, contractTerm) / 100;
+            comissaoVendedor = baseParaComissao * percentualVendedor * contractTerm;
+        } else if (!temParceiros && seller) {
+            // Sem parceiros: usar vendedor
+            const percentualVendedor = getSellerCommissionRate(seller, contractTerm) / 100;
+            comissaoVendedor = baseParaComissao * percentualVendedor * contractTerm;
+        }
+
+        // Calcular comissão do parceiro indicador (apenas se marcado)
+        // CORREÇÃO: Usar monthlyValue para buscar na tabela, mas baseParaComissao para calcular
+        const comissaoParceiroIndicador = includeReferralPartner 
+            ? baseParaComissao * (getPartnerIndicatorRate(monthlyValue, contractTerm)) * contractTerm
+            : 0;
+        
+        // Calcular comissão do parceiro influenciador (apenas se marcado)
+        // CORREÇÃO: Usar monthlyValue para buscar na tabela, mas baseParaComissao para calcular
+        const comissaoParceiroInfluenciador = includeInfluencerPartner 
+            ? baseParaComissao * (getPartnerInfluencerRate(monthlyValue, contractTerm)) * contractTerm
+            : 0;
         
         // Total das comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;

@@ -102,6 +102,16 @@ interface Proposal {
     expiryDate?: string;
     value: number;
     type: string;
+    selectedSpeed?: number;
+    contractTerm?: number;
+    includeInstallation?: boolean;
+    proposalValue?: number;
+    directorDiscountPercentage?: number;
+    appliedDirectorDiscountPercentage?: number;
+    applySalespersonDiscount?: boolean;
+    includeReferralPartner?: boolean;
+    includeInfluencerPartner?: boolean;
+    changes?: string;
 }
 
 // Helper function to get monthly price based on contract term
@@ -595,32 +605,32 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         console.log(`InternetFibra - Base para comissão: ${baseParaComissao} (isExistingClient: ${isExistingClient})`);
 
         // Calcular comissão do vendedor/canal
-        // CORREÇÃO: Usar sempre o valor mensal total para comissões do vendedor/canal
+        // CORREÇÃO: Usar baseParaComissao (diferença para clientes existentes, valor total para novos)
         let comissaoVendedor = 0;
         if (temParceiros && channelSeller) {
-            // Com parceiros: usar canal/vendedor - calcular sobre valor mensal total
+            // Com parceiros: usar canal/vendedor
             const percentualVendedor = getChannelSellerCommissionRate(channelSeller, contractTerm) / 100;
-            comissaoVendedor = monthlyValue * percentualVendedor * contractTerm;
+            comissaoVendedor = baseParaComissao * percentualVendedor * contractTerm;
         } else if (!temParceiros && seller) {
-            // Sem parceiros: usar vendedor - calcular sobre valor mensal total
+            // Sem parceiros: usar vendedor
             const percentualVendedor = getSellerCommissionRate(seller, contractTerm) / 100;
-            comissaoVendedor = monthlyValue * percentualVendedor * contractTerm;
+            comissaoVendedor = baseParaComissao * percentualVendedor * contractTerm;
         }
 
         // Calcular comissão do parceiro indicador (apenas se marcado)
-        // CORREÇÃO: Usar valor mensal para buscar na tabela e calcular comissão
+        // CORREÇÃO: Usar baseParaComissao para cálculo, mas monthlyValue para buscar na tabela
         let comissaoParceiroIndicador = 0;
         if (includeReferralPartner && channelIndicator) {
             const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, monthlyValue, contractTerm) / 100;
-            comissaoParceiroIndicador = monthlyValue * percentualIndicador * contractTerm;
+            comissaoParceiroIndicador = baseParaComissao * percentualIndicador * contractTerm;
         }
 
         // Calcular comissão do parceiro influenciador (apenas se marcado)
-        // CORREÇÃO: Usar valor mensal para buscar na tabela e calcular comissão
+        // CORREÇÃO: Usar baseParaComissao para cálculo, mas monthlyValue para buscar na tabela
         let comissaoParceiroInfluenciador = 0;
         if (includeInfluencerPartner && channelInfluencer) {
             const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, monthlyValue, contractTerm) / 100;
-            comissaoParceiroInfluenciador = monthlyValue * percentualInfluenciador * contractTerm;
+            comissaoParceiroInfluenciador = baseParaComissao * percentualInfluenciador * contractTerm;
         }
 
         // Total de comissões
@@ -772,7 +782,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const newProduct: Product = {
             id: `prod-${Date.now()}`,
             type: 'FIBRA',
-            description: `Fibra ${result.speed} Mbps`,
+            description: `Internet Fibra ${result.speed} Mbps`,
             setup: includeInstallation ? result.installationCost : 0,
             monthly: result.monthlyPrice,
             details: {
@@ -878,6 +888,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     userId: user.id
                 };
 
+                console.log('DEBUG: Proposal to Update:', proposalToUpdate); // Adicionado para depuração
+
                 const response = await fetch(`/api/proposals?id=${currentProposal.id}`, {
                     method: 'PUT',
                     headers: {
@@ -916,6 +928,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     userId: user.id,
                     changes: proposalChanges
                 };
+
+                console.log('DEBUG: Proposal to Save:', proposalToSave); // Adicionado para depuração
 
                 const response = await fetch('/api/proposals', {
                     method: 'POST',
@@ -980,6 +994,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     };
 
     const viewProposal = (proposal: Proposal) => {
+        console.log('Viewing proposal:', proposal);
+        console.log('DEBUG: Proposal received in viewProposal:', proposal); // Adicionado para depuração
         setCurrentProposal(proposal);
 
         // Handle client data - check if it's an object or string
@@ -1001,31 +1017,25 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
         } else {
-            // Não resetar os dados do gerente se não houver na proposta
+            setAccountManagerData({ name: '', email: '', phone: '' }); // Reset if no account manager data
         }
 
-        // Handle products - check multiple possible locations and formats
-        let products = [];
-        if (proposal.products && Array.isArray(proposal.products)) {
-            products = proposal.products;
-        } else if (proposal.items && Array.isArray(proposal.items)) {
-            // Convert items to products format if needed
-            products = proposal.items.map((item: any) => ({
-                id: item.id || `item-${Date.now()}`,
-                type: 'FIBER',
-                description: item.description || 'Internet Fibra',
-                setup: item.setup || 0,
-                monthly: item.monthly || 0,
-                details: item.details || {}
-            }));
+        // Load added products
+        if (proposal.products && proposal.products.length > 0) {
+            setAddedProducts(proposal.products);
+        } else {
+            setAddedProducts([]);
         }
 
-        setAddedProducts(products);
-        
-        // Load status and changes
-        setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
-        setProposalChanges(proposal.changes || '');
-        
+        // Set other proposal details
+        setSelectedSpeed(proposal.selectedSpeed || 0);
+        setContractTerm(proposal.contractTerm || 12);
+        setIncludeInstallation(proposal.includeInstallation ?? true);
+        setProjectValue(proposal.proposalValue || 0); // Assuming proposalValue stores the project value
+        setDirectorDiscountPercentage(proposal.directorDiscountPercentage || 0);
+        setAppliedDirectorDiscountPercentage(proposal.appliedDirectorDiscountPercentage || 0);
+        setApplySalespersonDiscount(proposal.applySalespersonDiscount ?? false);
+
         setViewMode('proposal-summary');
     };
 
@@ -1242,6 +1252,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         }, 1000);
     };
 
+    const handleBack = () => {
+        setViewMode('form');
+    };
+
     if (viewMode === 'client-form') {
         return (
             <ClientManagerForm
@@ -1249,7 +1263,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 accountManagerData={accountManagerData}
                 onClientDataChange={setClientData}
                 onAccountManagerDataChange={setAccountManagerData}
-                onBack={cancelAction}
+                onBack={handleBack}
                 onContinue={() => setViewMode('calculator')}
                 title="Nova Proposta - Internet via Fibra"
                 subtitle="Preencha os dados do cliente e gerente de contas para continuar."
@@ -1343,7 +1357,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 <p className="text-gray-600">Internet via Fibra Óptica</p>
                             </div>
                             <div className="flex gap-2 no-print">
-                                <Button variant="outline" onClick={() => setViewMode('search')}>
+                                <Button variant="outline" onClick={handleBack}>
                                     <ArrowLeft className="h-4 w-4 mr-2" />Voltar
                                 </Button>
                                 <Button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700">
@@ -1535,7 +1549,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 <p className="text-slate-400 mt-2">Configure e calcule os custos para links de fibra</p>
                             </div>
                             <div className="flex gap-2">
-                                <Button variant="outline" onClick={cancelAction} className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                                <Button variant="outline" onClick={handleBack} className="border-slate-600 text-slate-300 hover:bg-slate-700">
                                     ← Voltar para Busca
                                 </Button>
                                 {onBackToDashboard && (

@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS proposals (
     value DECIMAL(12,2) DEFAULT 0,
     status VARCHAR(50) DEFAULT 'Rascunho' CHECK (status IN ('Rascunho', 'Enviada', 'Em Análise', 'Aprovada', 'Rejeitada', 'Aguardando aprovação desconto Diretoria', 'Aguardando Aprovação do Cliente', 'Fechado Ganho', 'Perdido')),
     created_by VARCHAR(255) NOT NULL,
-    account_manager TEXT, -- Can be string or JSON object
+    account_manager JSONB, -- Can be string or JSON object
     distributor_id VARCHAR(100),
     date DATE DEFAULT CURRENT_DATE,
     expiry_date DATE DEFAULT (CURRENT_DATE + INTERVAL '30 days'),

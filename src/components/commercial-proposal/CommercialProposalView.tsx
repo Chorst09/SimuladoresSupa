@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,26 +17,41 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
   console.log('\n\n=========== DEBUG PROPOSAL OBJECT ===========');
   console.log(JSON.stringify(proposal, null, 2));
   console.log('===========================================\n\n');
-  const [proposalData, setProposalData] = useState({
-    // Suporte para múltiplas estruturas de dados:
-    // 1. Calculadoras salvam: clientData (objeto) e accountManagerData (objeto)
-    // 2. Mock API usa: client (objeto) e accountManager (objeto)  
-    // 3. Supabase armazena: client_data e account_manager (com underscore)
-    clientName: proposal?.clientData?.name || proposal?.clientData?.companyName || 
-                proposal?.client_data?.name || proposal?.client_data?.companyName || '',
-    clientProject: proposal?.clientData?.projectName || proposal?.client_data?.projectName || '',
-    clientEmail: proposal?.clientData?.email || proposal?.client_data?.email || '',
-    clientPhone: proposal?.clientData?.phone || proposal?.client_data?.phone || '',
-    clientContact: proposal?.clientData?.contact || proposal?.client_data?.contact || '',
-    accountManagerName: proposal?.accountManager?.name || proposal?.accountManagerData?.name || 
-                        (typeof proposal?.accountManager === 'string' ? proposal?.accountManager : '') || '',
-    accountManagerEmail: proposal?.accountManager?.email || proposal?.accountManagerData?.email || '',
-    accountManagerPhone: proposal?.accountManager?.phone || proposal?.accountManagerData?.phone || '',
-    date: proposal?.date || new Date().toLocaleDateString('pt-BR'),
-    productType: proposal?.type || 'Máquinas Virtuais',
+  const [formData, setFormData] = useState({
+    clientName: '',
+    clientProject: '',
+    clientEmail: '',
+    clientPhone: '',
+    clientContact: '',
+    accountManagerName: '',
+    accountManagerEmail: '',
+    accountManagerPhone: '',
+    date: new Date().toLocaleDateString('pt-BR'),
+    productType: 'Máquinas Virtuais',
     serviceImage: null as string | null,
     logoImage: null as string | null
   });
+
+  useEffect(() => {
+    if (proposal) {
+      setFormData({
+        clientName: proposal?.clientData?.name || proposal?.clientData?.companyName || 
+                    proposal?.client_data?.name || proposal?.client_data?.companyName || '',
+        clientProject: proposal?.clientData?.projectName || proposal?.client_data?.projectName || '',
+        clientEmail: proposal?.clientData?.email || proposal?.client_data?.email || '',
+        clientPhone: proposal?.clientData?.phone || proposal?.client_data?.phone || '',
+        clientContact: proposal?.clientData?.contact || proposal?.client_data?.contact || '',
+        accountManagerName: proposal?.accountManager?.name || proposal?.accountManagerData?.name || 
+                            (typeof proposal?.accountManager === 'string' ? proposal?.accountManager : '') || '',
+        accountManagerEmail: proposal?.accountManager?.email || proposal?.accountManagerData?.email || '',
+        accountManagerPhone: proposal?.accountManager?.phone || proposal?.accountManagerData?.phone || '',
+        date: proposal?.date ? new Date(proposal.date).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR'),
+        productType: proposal?.type || 'Máquinas Virtuais',
+        serviceImage: formData.serviceImage, // Keep user-uploaded image
+        logoImage: formData.logoImage // Keep user-uploaded logo
+      });
+    }
+  }, [proposal]);
 
   const [showForm, setShowForm] = useState(false);
 
@@ -56,7 +71,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setProposalData(prev => ({ ...prev, serviceImage: e.target?.result as string }));
+        setFormData(prev => ({ ...prev, serviceImage: e.target?.result as string }));
       };
       reader.readAsDataURL(file);
     }
@@ -67,7 +82,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setProposalData(prev => ({ ...prev, logoImage: e.target?.result as string }));
+        setFormData(prev => ({ ...prev, logoImage: e.target?.result as string }));
       };
       reader.readAsDataURL(file);
     }
@@ -105,8 +120,8 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 <Label htmlFor="clientName">Nome do Cliente</Label>
                 <Input
                   id="clientName"
-                  value={proposalData.clientName}
-                  onChange={(e) => setProposalData(prev => ({ ...prev, clientName: e.target.value }))}
+                  value={formData.clientName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, clientName: e.target.value }))}
                   placeholder="Digite o nome do cliente"
                 />
               </div>
@@ -114,8 +129,8 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 <Label htmlFor="clientProject">Projeto</Label>
                 <Input
                   id="clientProject"
-                  value={proposalData.clientProject}
-                  onChange={(e) => setProposalData(prev => ({ ...prev, clientProject: e.target.value }))}
+                  value={formData.clientProject}
+                  onChange={(e) => setFormData(prev => ({ ...prev, clientProject: e.target.value }))}
                   placeholder="Nome do projeto"
                 />
               </div>
@@ -123,8 +138,8 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 <Label htmlFor="clientEmail">Email do Cliente</Label>
                 <Input
                   id="clientEmail"
-                  value={proposalData.clientEmail}
-                  onChange={(e) => setProposalData(prev => ({ ...prev, clientEmail: e.target.value }))}
+                  value={formData.clientEmail}
+                  onChange={(e) => setFormData(prev => ({ ...prev, clientEmail: e.target.value }))}
                   placeholder="email@cliente.com"
                 />
               </div>
@@ -132,8 +147,8 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 <Label htmlFor="clientPhone">Telefone do Cliente</Label>
                 <Input
                   id="clientPhone"
-                  value={proposalData.clientPhone}
-                  onChange={(e) => setProposalData(prev => ({ ...prev, clientPhone: e.target.value }))}
+                  value={formData.clientPhone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))}
                   placeholder="(11) 99999-9999"
                 />
               </div>
@@ -141,8 +156,8 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 <Label htmlFor="clientContact">Contato</Label>
                 <Input
                   id="clientContact"
-                  value={proposalData.clientContact}
-                  onChange={(e) => setProposalData(prev => ({ ...prev, clientContact: e.target.value }))}
+                  value={formData.clientContact}
+                  onChange={(e) => setFormData(prev => ({ ...prev, clientContact: e.target.value }))}
                   placeholder="Nome do contato"
                 />
               </div>
@@ -150,8 +165,8 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 <Label htmlFor="accountManagerName">Gerente de Contas</Label>
                 <Input
                   id="accountManagerName"
-                  value={proposalData.accountManagerName}
-                  onChange={(e) => setProposalData(prev => ({ ...prev, accountManagerName: e.target.value }))}
+                  value={formData.accountManagerName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, accountManagerName: e.target.value }))}
                   placeholder="Nome do gerente"
                 />
               </div>
@@ -159,8 +174,8 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 <Label htmlFor="accountManagerEmail">Email do Gerente</Label>
                 <Input
                   id="accountManagerEmail"
-                  value={proposalData.accountManagerEmail}
-                  onChange={(e) => setProposalData(prev => ({ ...prev, accountManagerEmail: e.target.value }))}
+                  value={formData.accountManagerEmail}
+                  onChange={(e) => setFormData(prev => ({ ...prev, accountManagerEmail: e.target.value }))}
                   placeholder="gerente@empresa.com"
                 />
               </div>
@@ -168,8 +183,8 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 <Label htmlFor="accountManagerPhone">Telefone do Gerente</Label>
                 <Input
                   id="accountManagerPhone"
-                  value={proposalData.accountManagerPhone}
-                  onChange={(e) => setProposalData(prev => ({ ...prev, accountManagerPhone: e.target.value }))}
+                  value={formData.accountManagerPhone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, accountManagerPhone: e.target.value }))}
                   placeholder="(11) 99999-9999"
                 />
               </div>
@@ -178,15 +193,15 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 <Input
                   id="date"
                   type="date"
-                  value={proposalData.date}
-                  onChange={(e) => setProposalData(prev => ({ ...prev, date: e.target.value }))}
+                  value={formData.date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
                 />
               </div>
               <div>
                 <Label htmlFor="productType">Tipo de Produto</Label>
                 <Select 
-                  value={proposalData.productType} 
-                  onValueChange={(value) => setProposalData(prev => ({ ...prev, productType: value }))}
+                  value={formData.productType} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, productType: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo de produto" />
@@ -271,11 +286,11 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
           {/* Logo no canto superior direito */}
           <div className="absolute top-8 right-8">
             <div className="bg-blue-900 border-2 border-white rounded-lg p-4 w-40 h-40 flex flex-col items-center justify-center overflow-hidden">
-              {proposalData.logoImage ? (
+              {formData.logoImage ? (
                 // Logo carregado pelo usuário
                 <div className="w-full h-full flex items-center justify-center">
                   <img 
-                    src={proposalData.logoImage} 
+                    src={formData.logoImage} 
                     alt="Logo da Empresa"
                     className="max-w-full max-h-full object-contain"
                   />
@@ -306,10 +321,10 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
 
             {/* Informações do Cliente */}
             <div className="mb-8">
-              <div className="text-xl mb-2">{proposalData.clientName || 'Nome do Cliente'}</div>
-              <div className="text-lg opacity-90">{proposalData.date}</div>
-              {proposalData.clientProject && (
-                <div className="text-md opacity-80 mt-1">Projeto: {proposalData.clientProject}</div>
+              <div className="text-xl mb-2">{proposal?.clientData?.name || proposal?.clientData?.companyName || 'Nome do Cliente'}</div>
+              <div className="text-lg opacity-90">{proposal?.date ? new Date(proposal.date).toLocaleDateString('pt-BR') : ''}</div>
+              {proposal?.clientData?.projectName && (
+                <div className="text-md opacity-80 mt-1">Projeto: {proposal?.clientData?.projectName}</div>
               )}
             </div>
 
@@ -323,7 +338,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center">
                   <Check className="w-4 h-4 text-blue-900" />
                 </div>
-                <span className="text-lg font-semibold">{proposalData.productType}</span>
+                <span className="text-lg font-semibold">{proposal?.type}</span>
               </div>
             </div>
 
@@ -334,18 +349,18 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
           {/* Imagem do Serviço */}
           <div className="absolute bottom-40 left-1/2 transform -translate-x-1/2">
             <div className="w-[500px] h-[375px] bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg border-2 border-white overflow-hidden">
-              {proposalData.serviceImage ? (
+              {formData.serviceImage ? (
                 // Imagem carregada pelo usuário
                 <div className="h-full w-full relative">
                   <img 
-                    src={proposalData.serviceImage} 
+                    src={formData.serviceImage} 
                     alt="Imagem do Serviço"
                     className="h-full w-full object-cover"
                   />
                   {/* Overlay com texto sobre a imagem */}
                   <div className="absolute inset-0 bg-gradient-to-t from-blue-900/80 to-transparent flex items-end">
                     <div className="text-center text-white p-4 w-full">
-                      <div className="text-2xl font-bold mb-2">{proposalData.productType}</div>
+                      <div className="text-2xl font-bold mb-2">{proposal?.type}</div>
                       <div className="text-sm opacity-90">Infraestrutura de Alta Tecnologia</div>
                     </div>
                   </div>
@@ -381,7 +396,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                     <div className="absolute right-9 top-20 w-1 h-1 bg-blue-200 rounded-full animate-pulse"></div>
                   </div>
                   <div className="text-center text-white relative z-10">
-                    <div className="text-2xl font-bold mb-2">{proposalData.productType}</div>
+                    <div className="text-2xl font-bold mb-2">{proposal?.type}</div>
                     <div className="text-sm opacity-80">Infraestrutura de Alta Tecnologia</div>
                   </div>
                 </div>
@@ -410,15 +425,6 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                   <div className="bg-gray-800"></div>
                   <div className="bg-gray-800"></div>
                   <div className="bg-gray-800"></div>
-                  <div className="bg-gray-800"></div>
-                  <div className="bg-white"></div>
-                  <div className="bg-white"></div>
-                  
-                  <div className="bg-white"></div>
-                  <div className="bg-gray-800"></div>
-                  <div className="bg-white"></div>
-                  <div className="bg-gray-800"></div>
-                  <div className="bg-white"></div>
                   <div className="bg-gray-800"></div>
                   <div className="bg-white"></div>
                   <div className="bg-white"></div>
@@ -482,10 +488,10 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
           <div className="flex justify-between items-start mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Proposta Comercial</h1>
-              <p className="text-gray-600">{proposalData.productType}</p>
+              <p className="text-gray-600">{proposal?.type}</p>
             </div>
             <div className="text-right">
-              <div className="text-sm text-gray-600">Data: {proposalData.date}</div>
+              <div className="text-sm text-gray-600">Data: {proposal?.date ? new Date(proposal.date).toLocaleDateString('pt-BR') : ''}</div>
             </div>
           </div>
 
@@ -493,11 +499,11 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Dados do Cliente</h3>
             <div className="space-y-2 text-sm">
-              <p><strong>Nome:</strong> {proposalData.clientName || 'N/A'}</p>
-              <p><strong>Projeto:</strong> {proposalData.clientProject || 'N/A'}</p>
-              <p><strong>Email:</strong> {proposalData.clientEmail || 'N/A'}</p>
-              <p><strong>Telefone:</strong> {proposalData.clientPhone || 'N/A'}</p>
-              <p><strong>Contato:</strong> {proposalData.clientContact || 'N/A'}</p>
+              <p><strong>Nome:</strong> {proposal?.clientData?.name || proposal?.clientData?.companyName || 'N/A'}</p>
+              <p><strong>Projeto:</strong> {proposal?.clientData?.projectName || 'N/A'}</p>
+              <p><strong>Email:</strong> {proposal?.clientData?.email || 'N/A'}</p>
+              <p><strong>Telefone:</strong> {proposal?.clientData?.phone || 'N/A'}</p>
+              <p><strong>Contato:</strong> {proposal?.clientData?.contact || 'N/A'}</p>
             </div>
           </div>
 
@@ -505,9 +511,9 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Gerente de Contas</h3>
             <div className="space-y-2 text-sm">
-              <p><strong>Nome:</strong> {proposalData.accountManagerName || 'N/A'}</p>
-              <p><strong>Email:</strong> {proposalData.accountManagerEmail || 'N/A'}</p>
-              <p><strong>Telefone:</strong> {proposalData.accountManagerPhone || 'N/A'}</p>
+              <p><strong>Nome:</strong> {proposal?.accountManager?.name || proposal?.accountManagerData?.name || 'N/A'}</p>
+              <p><strong>Email:</strong> {proposal?.accountManager?.email || proposal?.accountManagerData?.email || 'N/A'}</p>
+              <p><strong>Telefone:</strong> {proposal?.accountManager?.phone || proposal?.accountManagerData?.phone || 'N/A'}</p>
             </div>
           </div>
 
@@ -518,18 +524,33 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
               <thead>
                 <tr className="bg-gray-50">
                   <th className="border border-gray-300 px-4 py-2 text-left">Descrição</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Setup</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Mensal</th>
+                  <th className="border border-gray-300 px-4 py-2 text-right">Setup</th>
+                  <th className="border border-gray-300 px-4 py-2 text-right">Mensal</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td className="border border-gray-300 px-4 py-2">{proposalData.productType}</td>
-                  <td className="border border-gray-300 px-4 py-2">-</td>
-                  <td className="border border-gray-300 px-4 py-2">-</td>
-                </tr>
+                {proposal?.products?.map((product: any, index: number) => (
+                  <tr key={index}>
+                    <td className="border border-gray-300 px-4 py-2">{product.description}</td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">
+                      {product.setup.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2 text-right">
+                      {product.monthly.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Resumo Financeiro */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
+            <div className="space-y-2 text-sm">
+              <p><strong>Total Setup:</strong> {proposal?.totalSetup?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'N/A'}</p>
+              <p><strong>Total Mensal:</strong> {proposal?.totalMonthly?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'N/A'}</p>
+            </div>
           </div>
 
           {/* Rodapé */}

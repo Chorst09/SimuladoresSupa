@@ -605,8 +605,16 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     const calculateDREForPeriod = useCallback((months: number): DRECalculationsResult => {
         // Dados do plano selecionado ou valores padrão
         const plan = doubleFiberRadioPlans.find(p => p.speed === (currentProposal?.details?.selectedSpeed || selectedSpeed));
+
         if (!plan) {
-            throw new Error('Plano de velocidade não encontrado');
+            // Retorna um objeto DRE vazio se o plano não for encontrado
+            return {
+                receitaMensal: 0, receitaTotalPeriodo: 0, receitaInstalacao: 0, receitaTotalPrimeiromes: 0,
+                custoDoubleFiberRadio: 0, custoBanda: 0, fundraising: 0, lastMile: 0, simplesNacional: 0,
+                comissaoVendedor: 0, comissaoParceiroIndicador: 0, comissaoParceiroInfluenciador: 0, totalComissoes: 0,
+                custoDespesa: 0, balance: 0, rentabilidade: 0, lucratividade: 0, margemLiquida: 0, markup: 0,
+                roi: 0, roiAnualizado: 0, paybackMonths: 0, diferencaValoresContrato: 0
+            };
         }
 
         // CORREÇÃO: Receita mensal = valor mensal × número de meses do período
@@ -700,16 +708,18 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         }
 
         // Calcular comissão do parceiro indicador (apenas se marcado)
+        // CORREÇÃO: Usar monthlyValue para buscar na tabela, mas baseParaComissao para calcular
         let comissaoParceiroIndicador = 0;
         if (includeReferralPartner && channelIndicator) {
-            const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, baseParaComissao, contractTerm) / 100;
+            const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, monthlyValue, contractTerm) / 100;
             comissaoParceiroIndicador = baseParaComissao * percentualIndicador * contractTerm;
         }
 
         // Calcular comissão do parceiro influenciador (apenas se marcado)
+        // CORREÇÃO: Usar monthlyValue para buscar na tabela, mas baseParaComissao para calcular
         let comissaoParceiroInfluenciador = 0;
         if (includeInfluencerPartner && channelInfluencer) {
-            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, baseParaComissao, contractTerm) / 100;
+            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, monthlyValue, contractTerm) / 100;
             comissaoParceiroInfluenciador = baseParaComissao * percentualInfluenciador * contractTerm;
         }
 
@@ -806,11 +816,30 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         createLastMile,
         lastMileCost,
         isExistingClient,
-        previousMonthlyFee
+        previousMonthlyFee,
+        doubleFiberRadioPlans,
+        selectedSpeed,
+        currentProposal,
+        contractTerm,
+        applySalespersonDiscount,
+        appliedDirectorDiscountPercentage
     ]);
 
     // Calculate DRE for all periods using useMemo
     const dreCalculations: FullDRECalculations = useMemo(() => {
+        const plan = doubleFiberRadioPlans.find(p => p.speed === (currentProposal?.details?.selectedSpeed || selectedSpeed));
+
+        if (!result || !plan) {
+            const emptyDRE: DRECalculationsResult = {
+                receitaMensal: 0, receitaTotalPeriodo: 0, receitaInstalacao: 0, receitaTotalPrimeiromes: 0,
+                custoDoubleFiberRadio: 0, custoBanda: 0, fundraising: 0, lastMile: 0, simplesNacional: 0,
+                comissaoVendedor: 0, comissaoParceiroIndicador: 0, comissaoParceiroInfluenciador: 0, totalComissoes: 0,
+                custoDespesa: 0, balance: 0, rentabilidade: 0, lucratividade: 0, margemLiquida: 0, markup: 0,
+                roi: 0, roiAnualizado: 0, paybackMonths: 0, diferencaValoresContrato: 0
+            };
+            return { 12: emptyDRE, 24: emptyDRE, 36: emptyDRE, 48: emptyDRE, 60: emptyDRE };
+        }
+
         const dre12 = calculateDREForPeriod(12);
         const dre24 = calculateDREForPeriod(24);
         const dre36 = calculateDREForPeriod(36);
@@ -864,7 +893,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         const newProduct: Product = {
             id: `prod-${Date.now()}`,
             type: 'DOUBLEFIBRA_RADIO',
-            description: `Fibra ${result.speed} Mbps`,
+            description: `Double-Fibra/Radio ${result.speed} Mbps`,
             setup: includeInstallation ? result.installationCost : 0,
             monthly: result.monthlyPrice,
             details: {
@@ -1094,31 +1123,25 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
         } else {
-            // Não resetar os dados do gerente se não houver na proposta
+            setAccountManagerData({ name: '', email: '', phone: '' }); // Reset if no account manager data
         }
 
-        // Handle products - check multiple possible locations and formats
-        let products = [];
-        if (proposal.products && Array.isArray(proposal.products)) {
-            products = proposal.products;
-        } else if (proposal.items && Array.isArray(proposal.items)) {
-            // Convert items to products format if needed
-            products = proposal.items.map((item: any) => ({
-                id: item.id || `item-${Date.now()}`,
-                type: 'FIBER',
-                description: item.description || 'Internet Fibra',
-                setup: item.setup || 0,
-                monthly: item.monthly || 0,
-                details: item.details || {}
-            }));
+        // Load added products
+        if (proposal.products && proposal.products.length > 0) {
+            setAddedProducts(proposal.products);
+        } else {
+            setAddedProducts([]);
         }
 
-        setAddedProducts(products);
-        
-        // Load status and changes
-        setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
-        setProposalChanges(proposal.changes || '');
-        
+        // Set other proposal details
+        setSelectedSpeed(proposal.selectedSpeed || 0);
+        setContractTerm(proposal.contractTerm || 12);
+        setIncludeInstallation(proposal.includeInstallation ?? true);
+        setProjectValue(proposal.proposalValue || 0); // Assuming proposalValue stores the project value
+        setDirectorDiscountPercentage(proposal.directorDiscountPercentage || 0);
+        setAppliedDirectorDiscountPercentage(proposal.appliedDirectorDiscountPercentage || 0);
+        setApplySalespersonDiscount(proposal.applySalespersonDiscount ?? false);
+
         setViewMode('proposal-summary');
     };
 
@@ -1151,50 +1174,24 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
         } else {
-            // Não resetar os dados do gerente se não houver na proposta
+            setAccountManagerData({ name: '', email: '', phone: '' }); // Reset if no account manager data
         }
 
-        // Handle products - check multiple possible locations and formats
-        let products = [];
-        if (proposal.products && Array.isArray(proposal.products)) {
-            products = proposal.products;
-        } else if (proposal.items && Array.isArray(proposal.items)) {
-            // Convert items to products format if needed
-            products = proposal.items.map((item: any) => ({
-                id: item.id || `item-${Date.now()}`,
-                type: 'FIBER',
-                description: item.description || 'Internet Fibra',
-                setup: item.setup || 0,
-                monthly: item.monthly || 0,
-                details: item.details || {}
-            }));
+        // Load added products
+        if (proposal.products && proposal.products.length > 0) {
+            setAddedProducts(proposal.products);
+        } else {
+            setAddedProducts([]);
         }
 
-        console.log('Processed products:', products);
-        setAddedProducts(products);
-
-        // Load all calculation parameters from the first product if available
-        if (products && products.length > 0) {
-            const firstProduct = products[0];
-            console.log('First product:', firstProduct);
-            console.log('First product details:', firstProduct.details);
-
-            if (firstProduct.details) {
-                // Set calculator parameters based on saved product details
-                if (firstProduct.details.speed) {
-                    console.log('Setting speed:', firstProduct.details.speed);
-                    setSelectedSpeed(firstProduct.details.speed);
-                }
-                if (firstProduct.details.contractTerm) setContractTerm(firstProduct.details.contractTerm);
-                if (firstProduct.details.includeInstallation !== undefined) setIncludeInstallation(firstProduct.details.includeInstallation);
-                if (firstProduct.details.applySalespersonDiscount !== undefined) setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
-                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
-                    setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
-                    setDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
-                }
-                if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
-            }
-        }
+        // Set other proposal details
+        setSelectedSpeed(proposal.selectedSpeed || 0);
+        setContractTerm(proposal.contractTerm || 12);
+        setIncludeInstallation(proposal.includeInstallation ?? true);
+        setProjectValue(proposal.proposalValue || 0); // Assuming proposalValue stores the project value
+        setDirectorDiscountPercentage(proposal.directorDiscountPercentage || 0);
+        setAppliedDirectorDiscountPercentage(proposal.appliedDirectorDiscountPercentage || 0);
+        setApplySalespersonDiscount(proposal.applySalespersonDiscount ?? false);
 
         setViewMode('calculator');
     };
@@ -1342,6 +1339,15 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 proposalElement.classList.remove('print-area');
             }
         }, 1000);
+    };
+
+    const handleBack = () => {
+        setViewMode('form');
+    };
+
+    const handleProductSelection = (productId: string, isChecked: boolean) => {
+        const productToAdd = productsOptions.find(p => p.id === productId);
+        // ... existing code ...
     };
 
     if (viewMode === 'client-form') {
@@ -2194,47 +2200,35 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Margem Líquida %</TableCell>
-                                                    {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
-                                                        const months = (i + 1) * 12;
-                                                        return (
-                                                            <TableCell key={months} className={`text-right ${dreCalculations[months].margemLiquida >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {`${dreCalculations[months].margemLiquida.toFixed(2)}%`}
-                                                            </TableCell>
-                                                        );
-                                                    })}
+                                                    {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
+                                                        <TableCell key={period} className={`text-right ${dreCalculations[period].margemLiquida >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {`${dreCalculations[period].margemLiquida.toFixed(2)}%`}
+                                                        </TableCell>
+                                                    ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Markup %</TableCell>
-                                                    {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
-                                                        const months = (i + 1) * 12;
-                                                        return (
-                                                            <TableCell key={months} className={`text-right ${dreCalculations[months].markup >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {`${dreCalculations[months].markup.toFixed(2)}%`}
-                                                            </TableCell>
-                                                        );
-                                                    })}
+                                                    {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
+                                                        <TableCell key={period} className={`text-right ${dreCalculations[period].markup >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {`${dreCalculations[period].markup.toFixed(2)}%`}
+                                                        </TableCell>
+                                                    ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Rentabilidade %</TableCell>
-                                                    {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
-                                                        const months = (i + 1) * 12;
-                                                        return (
-                                                            <TableCell key={months} className={`text-right font-semibold ${dreCalculations[months].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {dreCalculations[months].rentabilidade.toFixed(2)}%
-                                                            </TableCell>
-                                                        );
-                                                    })}
+                                                    {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
+                                                        <TableCell key={period} className={`text-right font-semibold ${dreCalculations[period].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {dreCalculations[period].rentabilidade.toFixed(2)}%
+                                                        </TableCell>
+                                                    ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Lucratividade</TableCell>
-                                                    {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
-                                                        const months = (i + 1) * 12;
-                                                        return (
-                                                            <TableCell key={months} className={`text-right font-semibold ${dreCalculations[months].lucratividade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {dreCalculations[months].lucratividade.toFixed(2)}%
-                                                            </TableCell>
-                                                        );
-                                                    })}
+                                                    {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
+                                                        <TableCell key={period} className={`text-right font-semibold ${dreCalculations[period].lucratividade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {dreCalculations[period].lucratividade.toFixed(2)}%
+                                                        </TableCell>
+                                                    ))}
                                                 </TableRow>
                                             </TableBody>
                                         </Table>
@@ -2533,15 +2527,15 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Mensal:</span>
-                                                    <span className="text-blue-300 font-semibold">{formatCurrency(dreCalculations.receitaBruta)}</span>
+                                                    <span className="text-blue-300 font-semibold">{formatCurrency(dreCalculations[contractTerm]?.receitaMensal || 0)}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Anual:</span>
-                                                    <span className="text-blue-300 font-semibold">{formatCurrency(dreCalculations.receitaBruta * 12)}</span>
+                                                    <span className="text-blue-300 font-semibold">{formatCurrency((dreCalculations[contractTerm]?.receitaMensal || 0) * 12)}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Setup:</span>
-                                                    <span className="text-blue-300 font-semibold">{formatCurrency(dreCalculations.taxaInstalacao)}</span>
+                                                    <span className="text-blue-300 font-semibold">{formatCurrency(dreCalculations[contractTerm]?.receitaInstalacao || 0)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -2552,27 +2546,27 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Banda:</span>
-                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.custoBanda)}</span>
+                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations[contractTerm]?.custoBanda || 0)}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Comissão Vendedor:</span>
-                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoVendedor)}</span>
+                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations[contractTerm]?.comissaoVendedor || 0)}</span>
                                                 </div>
                                                 {includeReferralPartner && (
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-300">Comissão P. Indicador:</span>
-                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</span>
+                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations[contractTerm]?.comissaoParceiroIndicador || 0)}</span>
                                                     </div>
                                                 )}
                                                 {includeInfluencerPartner && (
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-300">Comissão P. Influenciador:</span>
-                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroInfluenciador)}</span>
+                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations[contractTerm]?.comissaoParceiroInfluenciador || 0)}</span>
                                                     </div>
                                                 )}
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Impostos:</span>
-                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.totalImpostos)}</span>
+                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations[contractTerm]?.simplesNacional || 0)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -2583,20 +2577,20 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Operacional:</span>
-                                                    <span className={`font-semibold ${dreCalculations.lucroOperacional >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                        {formatCurrency(dreCalculations.lucroOperacional)}
+                                                    <span className={`font-semibold ${(dreCalculations[contractTerm]?.balance || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                                        {formatCurrency(dreCalculations[contractTerm]?.balance || 0)}
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Líquido:</span>
-                                                    <span className={`font-semibold ${dreCalculations.lucroLiquido >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                        {formatCurrency(dreCalculations.lucroLiquido)}
+                                                    <span className={`font-semibold ${(dreCalculations[contractTerm]?.balance || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                                        {formatCurrency(dreCalculations[contractTerm]?.balance || 0)}
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Anual:</span>
-                                                    <span className={`font-semibold ${dreCalculations.lucroLiquido >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                        {formatCurrency(dreCalculations.lucroLiquido * 12)}
+                                                    <span className={`font-semibold ${(dreCalculations[contractTerm]?.balance || 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                                        {formatCurrency((dreCalculations[contractTerm]?.balance || 0) * 12)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -2608,20 +2602,20 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Margem:</span>
-                                                    <span className={`font-semibold ${dreCalculations.rentabilidade >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
-                                                        {dreCalculations.rentabilidade.toFixed(1)}%
+                                                    <span className={`font-semibold ${(dreCalculations[contractTerm]?.rentabilidade || 0) >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
+                                                        {(dreCalculations[contractTerm]?.rentabilidade || 0).toFixed(1)}%
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Payback:</span>
                                                     <span className="text-purple-300 font-semibold">
-                                                        {dreCalculations.paybackMeses}m
+                                                        {dreCalculations[contractTerm]?.paybackMonths || 0}m
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">ROI Anual:</span>
-                                                    <span className={`font-semibold ${dreCalculations.rentabilidade >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
-                                                        {(dreCalculations.rentabilidade * 12).toFixed(1)}%
+                                                    <span className={`font-semibold ${(dreCalculations[contractTerm]?.rentabilidade || 0) >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
+                                                        {((dreCalculations[contractTerm]?.rentabilidade || 0) * 12).toFixed(1)}%
                                                     </span>
                                                 </div>
                                             </div>
@@ -2637,19 +2631,19 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="text-center">
                                                 <div className="text-2xl font-bold text-green-400">
-                                                    {formatCurrency(dreCalculations.receitaBruta * 12)}
+                                                    {formatCurrency((dreCalculations[contractTerm]?.receitaMensal || 0) * 12)}
                                                 </div>
                                                 <div className="text-sm text-slate-400">Receita Total (12m)</div>
                                             </div>
                                             <div className="text-center">
-                                                <div className={`text-2xl font-bold ${dreCalculations.lucroLiquido >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {formatCurrency(dreCalculations.lucroLiquido * 12)}
+                                                <div className={`text-2xl font-bold ${(dreCalculations[contractTerm]?.balance || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {formatCurrency((dreCalculations[contractTerm]?.balance || 0) * 12)}
                                                 </div>
                                                 <div className="text-sm text-slate-400">Lucro Total (12m)</div>
                                             </div>
                                             <div className="text-center">
-                                                <div className={`text-2xl font-bold ${dreCalculations.rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {dreCalculations.rentabilidade.toFixed(1)}%
+                                                <div className={`text-2xl font-bold ${(dreCalculations[contractTerm]?.rentabilidade || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {(dreCalculations[contractTerm]?.rentabilidade || 0).toFixed(1)}%
                                                 </div>
                                                 <div className="text-sm text-slate-400">Margem Líquida</div>
                                             </div>

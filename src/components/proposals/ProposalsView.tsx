@@ -45,9 +45,13 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
     if (!proposal) return false; // Defensively handle null/undefined proposals in the array
     const term = searchTerm.toLowerCase();
 
-    const titleMatch = typeof proposal.title === 'string' && proposal.title.toLowerCase().includes(term);
-    const clientMatch = typeof proposal.client === 'string' && proposal.client.toLowerCase().includes(term);
-    const accountManagerMatch = typeof proposal.accountManager === 'string' && proposal.accountManager.toLowerCase().includes(term);
+    const titleMatch = (proposal.title || '').toLowerCase().includes(term);
+    
+    const clientName = typeof proposal.client === 'string' ? proposal.client : proposal.client?.name;
+    const clientMatch = (clientName || '').toLowerCase().includes(term);
+
+    const accountManagerName = typeof proposal.accountManager === 'string' ? proposal.accountManager : proposal.accountManager?.name;
+    const accountManagerMatch = (accountManagerName || '').toLowerCase().includes(term);
 
     const isMatch = titleMatch || clientMatch || accountManagerMatch;
     return isMatch;
@@ -93,6 +97,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
   };
 
   const handleViewCommercialProposal = (proposal: Proposal) => {
+    console.log('Viewing Commercial Proposal:', proposal);
     setSelectedProposal(proposal);
     setShowCommercialProposal(true);
   };

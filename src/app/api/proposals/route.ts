@@ -278,3 +278,53 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Failed to update proposal' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing proposal ID' }, { status: 400 });
+    }
+
+    console.log('🗑️ DELETE proposal request:', { id, timestamp: new Date().toISOString() });
+
+    // Try Supabase first
+    if (supabase) {
+      try {
+        console.log('🗑️ Deleting from Supabase...');
+        
+        const { error: deleteError } = await supabase
+          .from('proposals')
+          .delete()
+          .eq('id', id);
+
+        if (deleteError) {
+          console.error('❌ Supabase delete error:', deleteError);
+          console.log('📦 Falling back to mock storage');
+        } else {
+          console.log('✅ Deleted from Supabase:', id);
+          return NextResponse.json({ message: 'Proposal deleted successfully' }, { status: 200 });
+        }
+      } catch (err) {
+        console.error('❌ Supabase delete error:', err);
+        console.log('📦 Falling back to mock storage');
+      }
+    }
+
+    // Fallback to mock storage
+    console.log('📦 Deleting from mock storage');
+    const initialLength = mockProposals.length;
+    mockProposals = mockProposals.filter(p => p.id !== id);
+    if (mockProposals.length < initialLength) {
+      return NextResponse.json({ message: 'Proposal deleted successfully from mock' }, { status: 200 });
+    } else {
+      return NextResponse.json({ error: 'Proposal not found in mock' }, { status: 404 });
+    }
+
+  } catch (err) {
+    console.error('❌ DELETE error:', err);
+    return NextResponse.json({ error: 'Failed to delete proposal' }, { status: 500 });
+  }
+}

@@ -836,16 +836,18 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }
 
         // Calcular comissão do parceiro indicador (apenas se marcado)
+        // CORREÇÃO: Usar monthlyValue para buscar na tabela, mas baseParaComissao para calcular
         let comissaoParceiroIndicador = 0;
         if (includeReferralPartner && channelIndicator) {
-            const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, baseParaComissao, contractTerm) / 100;
+            const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, monthlyValue, contractTerm) / 100;
             comissaoParceiroIndicador = baseParaComissao * percentualIndicador * contractTerm;
         }
 
         // Calcular comissão do parceiro influenciador (apenas se marcado)
+        // CORREÇÃO: Usar monthlyValue para buscar na tabela, mas baseParaComissao para calcular
         let comissaoParceiroInfluenciador = 0;
         if (includeInfluencerPartner && channelInfluencer) {
-            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, baseParaComissao, contractTerm) / 100;
+            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, monthlyValue, contractTerm) / 100;
             comissaoParceiroInfluenciador = baseParaComissao * percentualInfluenciador * contractTerm;
         }
 
