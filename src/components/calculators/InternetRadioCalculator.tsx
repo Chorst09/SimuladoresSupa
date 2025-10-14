@@ -153,9 +153,9 @@ const getMaxPaybackMonths = (contractTerm: number): number => {
 };
 
 const calculatePayback = (
-    installationFee: number, 
-    radioCost: number, 
-    monthlyRevenue: number, 
+    installationFee: number,
+    radioCost: number,
+    monthlyRevenue: number,
     contractTerm: number,
     applySalespersonDiscount: boolean = false,
     appliedDirectorDiscountPercentage: number = 0
@@ -164,10 +164,10 @@ const calculatePayback = (
 
     // CORREÇÃO: Retornar valores específicos calculados para Internet Radio (igual ao Internet Fibra)
     console.log(`InternetRadio calculatePayback chamado com contractTerm: ${contractTerm}`);
-    
+
     // Converter para número para garantir comparação correta
     const term = Number(contractTerm);
-    
+
     if (term === 12) {
         console.log('InternetRadio: Retornando 6 meses para contrato de 12 meses');
         return 6;  // 12 meses = 6 meses de payback
@@ -188,10 +188,10 @@ const calculatePayback = (
         console.log('InternetRadio: Retornando 14 meses para contrato de 60 meses');
         return 14; // 60 meses = 14 meses de payback
     }
-    
+
     // Para outros prazos, usar cálculo real
     console.log('InternetRadio: Usando cálculo real para prazo não padrão:', term);
-    
+
     // Aplicar descontos no valor mensal
     const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
     const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
@@ -234,17 +234,17 @@ const calculatePayback = (
 };
 
 const validatePayback = (
-    installationFee: number, 
-    radioCost: number, 
-    monthlyRevenue: number, 
+    installationFee: number,
+    radioCost: number,
+    monthlyRevenue: number,
     contractTerm: number,
     applySalespersonDiscount: boolean = false,
     appliedDirectorDiscountPercentage: number = 0
 ): { isValid: boolean, actualPayback: number, maxPayback: number } => {
     const actualPayback = calculatePayback(
-        installationFee, 
-        radioCost, 
-        monthlyRevenue, 
+        installationFee,
+        radioCost,
+        monthlyRevenue,
         contractTerm,
         applySalespersonDiscount,
         appliedDirectorDiscountPercentage
@@ -393,18 +393,26 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
     // Função para aplicar descontos no total mensal
     const applyDiscounts = (baseTotal: number): number => {
         let discountedTotal = baseTotal;
+        console.log('InternetRadio - applyDiscounts chamada:', {
+            baseTotal,
+            applySalespersonDiscount,
+            appliedDirectorDiscountPercentage
+        });
 
         // Aplicar desconto do vendedor (5%)
         if (applySalespersonDiscount) {
             discountedTotal = discountedTotal * 0.95;
+            console.log('InternetRadio - Desconto vendedor aplicado:', discountedTotal);
         }
 
         // Aplicar desconto do diretor (percentual configurado)
         if (appliedDirectorDiscountPercentage > 0) {
             const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
             discountedTotal = discountedTotal * directorDiscountFactor;
+            console.log('InternetRadio - Desconto diretor aplicado:', discountedTotal);
         }
 
+        console.log('InternetRadio - Valor final com descontos:', discountedTotal);
         return discountedTotal;
     };
 
@@ -416,21 +424,27 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         const plan = radioPlans.find(p => p.speed === selectedSpeed);
         if (!plan) return null;
 
+        // Mostrar valor original no "Resultado do Cálculo" (sem descontos)
         let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
-        
-        // Aplicar descontos
-        monthlyPrice = applyDiscounts(monthlyPrice);
-        
+        console.log('InternetRadio - Valor base da tabela:', monthlyPrice);
+        console.log('InternetRadio - Descontos ativos:', {
+            applySalespersonDiscount,
+            appliedDirectorDiscountPercentage
+        });
+
         // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
         if (temParceiros) {
             monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
-            console.log('Acréscimo de 20% aplicado no result.monthlyPrice - InternetRadio:', monthlyPrice);
+            console.log('Acréscimo de 20% aplicado no result.monthlyPriceWithoutDiscount - InternetRadio:', monthlyPrice);
         }
-        
+
+        console.log('InternetRadio - Valor final no result (SEM desconto):', monthlyPrice);
+
         return {
             ...plan,
             monthlyPrice,
+            monthlyPriceWithoutDiscount: monthlyPrice, // Valor sem desconto para exibição
             installationCost: plan.installationCost,
             baseCost: plan.baseCost,
             radioCost: plan.radioCost,
@@ -443,7 +457,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 appliedDirectorDiscountPercentage
             )
         };
-    }, [selectedSpeed, radioPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
+    }, [selectedSpeed, radioPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const fetchProposals = React.useCallback(async () => {
@@ -560,9 +574,9 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         let totalRevenue = 0;
 
         if (result) {
-            // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
-            monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
-            
+            // Aplicar descontos no valor mensal para cálculos DRE
+            monthlyValue = applyDiscounts(result.monthlyPrice);
+
             // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
             const temParceiros = includeReferralPartner || includeInfluencerPartner;
             console.log('DEBUG - InternetRadio:', {
@@ -571,7 +585,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 temParceiros,
                 monthlyValueBefore: monthlyValue
             });
-            
+
             if (temParceiros) {
                 const originalValue = monthlyValue;
                 monthlyValue = monthlyValue * 1.20; // Acréscimo de 20%
@@ -580,23 +594,23 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     withIncrease: monthlyValue
                 });
             }
-            
+
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
         }
 
         const receitaInstalacao = taxaInstalacao;
         const receitaTotalPrimeiromes = totalRevenue + receitaInstalacao;
-        
+
         // CORREÇÃO: Custo de banda = velocidade × 2,09 × meses do período
         // Se Last Mile estiver marcado, não considerar custo da banda
         const velocidade = result?.speed || 0; // Velocidade em Mbps
         const custoBandaMensal = createLastMile ? 0 : velocidade * taxRates.banda; // Se Last Mile, custo = 0, senão 600 × 2,09 = 1.254,00
         const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00 (ou 0 se Last Mile)
-        
+
         // Custo Rádio vem da calculadora conforme prazo contratual e velocidade
         const custoRadioCalculadora = custoRadio;
-        
+
         const fundraising = 0; // Conforme tabela
         const lastMile = createLastMile ? lastMileCost : 0; // Incluir custo Last Mile quando selecionado
 
@@ -605,13 +619,13 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
 
         // Impostos sobre receita
         const simplesNacional = receitaTotalPrimeiromes * simplesNacionalRate;
-        
+
         // CORREÇÃO: Cálculo das comissões seguindo o modelo do Internet Rádio
         // Se é cliente existente, comissão apenas sobre a diferença de valor
-        const baseComissionValue = isExistingClient && previousMonthlyFee > 0 
+        const baseComissionValue = isExistingClient && previousMonthlyFee > 0
             ? Math.max(0, (monthlyValue - previousMonthlyFee) * months) // Comissão apenas sobre a diferença
             : totalRevenue; // Comissão apenas sobre valor mensal (sem taxa de instalação)
-        
+
         // CORREÇÃO: Cálculo das comissões baseado no prazo do contrato
         // Exemplo: 12 meses, valor mensal 421,00, percentual 1,2% = 421,00 x 1,2% = 5,05 x 12 meses = 60,62
         // Para 24 meses: 421,00 x 2,4% = 10,10 x 24 meses = 242,49
@@ -620,16 +634,16 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         // CORREÇÃO: Lógica correta das comissões
         // Se NÃO há parceiros: usar comissão do VENDEDOR
         // Se HÁ parceiros: usar comissão do CANAL/VENDEDOR + comissões dos parceiros
-        
+
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
-        
+
         // CORREÇÃO: Calcular base para comissões
         // Se "Já é cliente da Base?" está marcado, usar diferença de valores
         // Senão, usar valor mensal total
-        const baseParaComissao = isExistingClient 
+        const baseParaComissao = isExistingClient
             ? (monthlyValue - previousMonthlyFee) // Diferença de valores
             : monthlyValue; // Valor total
-        
+
         console.log(`InternetRadio - Base para comissão: ${baseParaComissao} (isExistingClient: ${isExistingClient})`);
 
         // Calcular comissão do vendedor/canal
@@ -660,7 +674,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
 
         // Total de comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
-        
+
         // Custo/Despesa: 10% sobre receita total (incluindo taxa de instalação)
         const custoDespesa = receitaTotalPrimeiromes * 0.10;
 
@@ -679,22 +693,22 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         );
 
         // Cálculos financeiros corretos:
-        
+
         // 1. Margem Líquida: (Lucro Líquido / Receita Total) * 100
         const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
-        
+
         // 2. ROI (Return on Investment): (Lucro Líquido / Investimento Inicial) * 100
         const valorInvestido = custoRadioCalculadora + lastMile + receitaInstalacao; // Investimento inicial total
         const roi = valorInvestido > 0 ? (balance / valorInvestido) * 100 : 0;
-        
+
         // 3. ROI Anualizado: ROI ajustado para base anual
         const roiAnualizado = months > 0 ? (roi * 12) / months : 0;
-        
+
         // Cálculos financeiros conforme planilha:
-        
+
         // Rentabilidade % = (Balance / Custo do Projeto) * 100
         const rentabilidade = custoRadioCalculadora > 0 ? (balance / custoRadioCalculadora) * 100 : 0;
-        
+
         // Lucratividade % = (Balance / Receita Total) * 100
         const lucratividade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
 
@@ -704,8 +718,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
 
         // Calcular diferença de valores contrato para clientes existentes
         // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
-        const diferencaMensal = isExistingClient && previousMonthlyFee > 0 
-            ? (monthlyValue - previousMonthlyFee) 
+        const diferencaMensal = isExistingClient && previousMonthlyFee > 0
+            ? (monthlyValue - previousMonthlyFee)
             : 0;
         const diferencaValoresContrato = diferencaMensal * months;
 
@@ -787,6 +801,51 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         };
     }, [calculateDREForPeriod]);
 
+    // Debug effect para visualização
+    useEffect(() => {
+        if (viewMode === 'proposal-summary' && currentProposal) {
+            console.log('=== DEBUG - VISUALIZAÇÃO CARREGADA ===');
+            console.log('currentProposal:', currentProposal);
+            console.log('currentProposal.accountManager:', currentProposal.accountManager);
+            console.log('currentProposal.products:', currentProposal.products);
+            console.log('currentProposal.items:', currentProposal.items);
+            console.log('accountManagerData estado:', accountManagerData);
+            console.log('addedProducts estado:', addedProducts);
+        }
+    }, [viewMode, currentProposal, accountManagerData, addedProducts]);
+
+    // Helper function para obter dados do gerente
+    const getManagerData = () => {
+        if (!currentProposal) return { name: 'N/A', email: 'N/A', phone: 'N/A' };
+
+        if (typeof currentProposal.accountManager === 'string') {
+            return { name: currentProposal.accountManager, email: 'N/A', phone: 'N/A' };
+        } else if (typeof currentProposal.accountManager === 'object' && currentProposal.accountManager) {
+            return {
+                name: currentProposal.accountManager.name || 'N/A',
+                email: currentProposal.accountManager.email || 'N/A',
+                phone: currentProposal.accountManager.phone || 'N/A'
+            };
+        } else if (accountManagerData?.name) {
+            return {
+                name: accountManagerData.name || 'N/A',
+                email: accountManagerData.email || 'N/A',
+                phone: accountManagerData.phone || 'N/A'
+            };
+        }
+
+        return { name: 'N/A', email: 'N/A', phone: 'N/A' };
+    };
+
+    // Helper function para obter produtos
+    const getProductsData = () => {
+        if (!currentProposal) return [];
+
+        const products = currentProposal.products || currentProposal.items || addedProducts || [];
+        console.log('DEBUG - getProductsData retornando:', products);
+        return products;
+    };
+
     const handleSavePrices = () => {
         // Save the prices to local storage
         localStorage.setItem('radioLinkPrices', JSON.stringify(radioPlans));
@@ -798,12 +857,26 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
     const handleAddProduct = () => {
         if (!result) return;
 
+        // Aplicar descontos no valor do produto para o resumo
+        let monthlyWithDiscount = result.monthlyPrice;
+        monthlyWithDiscount = applyDiscounts(monthlyWithDiscount);
+
+        // Criar descrição com informação de desconto
+        let description = `Rádio ${result.speed} Mbps`;
+        if (applySalespersonDiscount && appliedDirectorDiscountPercentage > 0) {
+            description += ` (Desconto Vendedor 5% + Diretor ${appliedDirectorDiscountPercentage}%)`;
+        } else if (applySalespersonDiscount) {
+            description += ` (Desconto Vendedor 5%)`;
+        } else if (appliedDirectorDiscountPercentage > 0) {
+            description += ` (Desconto Diretor ${appliedDirectorDiscountPercentage}%)`;
+        }
+
         const newProduct: Product = {
             id: `prod-${Date.now()}`,
             type: 'RADIO',
-            description: `Rádio ${result.speed} Mbps`,
+            description,
             setup: includeInstallation ? result.installationCost : 0,
-            monthly: result.monthlyPrice,
+            monthly: monthlyWithDiscount,
             details: {
                 speed: result.speed,
                 contractTerm,
@@ -816,7 +889,13 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             }
         };
 
-        setAddedProducts(prev => [...prev, newProduct]);
+        // Se há desconto, substituir produto anterior (não somar)
+        // Se não há desconto, adicionar normalmente
+        if (applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) {
+            setAddedProducts([newProduct]); // Substituir todos os produtos
+        } else {
+            setAddedProducts(prev => [...prev, newProduct]); // Adicionar normalmente
+        }
     };
 
     const handleRemoveProduct = (id: string) => {
@@ -834,9 +913,9 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
 
 
 
-    // Desconto do vendedor e diretor aplicado apenas sobre o valor mensal, não sobre o setup
+    // Os descontos já foram aplicados no result.monthlyPriceWithoutDiscount, então usar o valor direto
     const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
-    const finalTotalMonthly = rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor;
+    const finalTotalMonthly = rawTotalMonthly; // Descontos já aplicados no result
 
     // Função para determinar a versão baseada nos descontos aplicados
     const getProposalVersion = (): number => {
@@ -860,7 +939,39 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             return;
         }
 
-        if (!accountManagerData || !accountManagerData.name) {
+        console.log('=== DEBUG - INÍCIO saveProposal ===');
+        console.log('- clientData:', clientData);
+        console.log('- accountManagerData:', accountManagerData);
+        console.log('- currentProposal:', currentProposal);
+        console.log('- applySalespersonDiscount:', applySalespersonDiscount);
+        console.log('- appliedDirectorDiscountPercentage:', appliedDirectorDiscountPercentage);
+
+        // Verificação detalhada dos dados do gerente
+        console.log('DEBUG - Validação do gerente:');
+        console.log('- accountManagerData existe?', !!accountManagerData);
+        console.log('- accountManagerData.name existe?', !!accountManagerData?.name);
+        console.log('- accountManagerData.name valor:', accountManagerData?.name);
+        console.log('- accountManagerData.name.trim():', accountManagerData?.name?.trim());
+
+        // Se os dados do gerente estão vazios mas temos uma proposta atual, usar os dados da proposta
+        let finalAccountManagerData = accountManagerData;
+        if ((!accountManagerData || !accountManagerData.name || accountManagerData.name.trim() === '') && currentProposal?.accountManager) {
+            console.log('DEBUG - Usando dados do gerente da proposta atual');
+            if (typeof currentProposal.accountManager === 'object') {
+                finalAccountManagerData = currentProposal.accountManager;
+            } else if (typeof currentProposal.accountManager === 'string') {
+                finalAccountManagerData = {
+                    name: currentProposal.accountManager,
+                    email: '',
+                    phone: ''
+                };
+            }
+            // Atualizar o estado também
+            setAccountManagerData(finalAccountManagerData);
+        }
+
+        if (!finalAccountManagerData || !finalAccountManagerData.name || finalAccountManagerData.name.trim() === '') {
+            console.log('ERRO - Dados do gerente inválidos:', finalAccountManagerData);
             alert('Por favor, preencha os dados do gerente de contas antes de salvar.');
             return;
         }
@@ -874,9 +985,17 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
 
-            // Aplicar descontos no total mensal
-            const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
+            // Os descontos já foram aplicados no result.monthlyPriceWithoutDiscount
+            const finalTotalMonthly = baseTotalMonthly;
             const proposalVersion = getProposalVersion();
+
+            console.log('DEBUG - Lógica de salvamento:');
+            console.log('- currentProposal existe:', !!currentProposal);
+            console.log('- currentProposal.id:', currentProposal?.id);
+            console.log('- proposalVersion:', proposalVersion);
+            console.log('- applySalespersonDiscount:', applySalespersonDiscount);
+            console.log('- appliedDirectorDiscountPercentage:', appliedDirectorDiscountPercentage);
+            console.log('- Vai atualizar?', currentProposal?.id && proposalVersion === 1);
 
             // Se tiver uma proposta atual E não há descontos (V1), atualiza. 
             // Se há descontos (V2/V3), sempre cria uma nova proposta
@@ -899,7 +1018,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     date: new Date().toISOString().split('T')[0],
                     // Atualizar dados editáveis
                     clientData: clientData,
-                    accountManager: accountManagerData,
+                    accountManager: finalAccountManagerData,
                     products: addedProducts,
                     totalSetup: totalSetup,
                     totalMonthly: finalTotalMonthly,
@@ -927,6 +1046,9 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     throw new Error('Erro ao atualizar proposta');
                 }
             } else {
+                console.log('DEBUG - Criando nova proposta (V2/V3 ou primeira proposta)');
+                console.log('- accountManagerData antes de salvar:', accountManagerData);
+
                 const proposalToSave = {
                     title: `Proposta Internet Rádio V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
@@ -936,11 +1058,12 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
                     version: proposalVersion,
+                    baseId: currentProposal?.baseId || `Prop_Radio_${Date.now()}`, // Manter baseId para versões
                     contractPeriod: contractTerm,
                     date: new Date().toISOString().split('T')[0],
                     // Store additional data as metadata
                     clientData: clientData,
-                    accountManager: accountManagerData,
+                    accountManager: finalAccountManagerData,
                     products: addedProducts,
                     totalSetup: totalSetup,
                     totalMonthly: finalTotalMonthly,
@@ -951,7 +1074,10 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     changes: proposalChanges
                 };
 
-                console.log('Dados da proposta a ser salva:', proposalToSave);
+                console.log('DEBUG - Dados da proposta a ser salva:', proposalToSave);
+                console.log('DEBUG - accountManager na proposta:', proposalToSave.accountManager);
+                console.log('DEBUG - products na proposta:', proposalToSave.products);
+                console.log('DEBUG - finalAccountManagerData usado:', finalAccountManagerData);
 
                 const response = await fetch('/api/proposals', {
                     method: 'POST',
@@ -976,7 +1102,9 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             fetchProposals();
             clearForm();
             setViewMode('search');
+            console.log('=== DEBUG - FIM saveProposal (SUCESSO) ===');
         } catch (error) {
+            console.error('=== DEBUG - ERRO em saveProposal ===', error);
             console.error('Erro ao salvar proposta:', error);
             alert('Erro ao salvar proposta. Por favor, tente novamente.');
         }
@@ -984,6 +1112,9 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
 
     // Função para salvar proposta (compatível com botão "Salvar como Nova Versão")
     const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
+        console.log('DEBUG - handleSave chamada');
+        console.log('- accountManagerData em handleSave:', accountManagerData);
+
         if (!user?.id) {
             alert('Usuário não autenticado');
             return;
@@ -999,8 +1130,10 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
     };
 
     const clearForm = () => {
+        console.log('DEBUG - clearForm executada');
+        console.log('- accountManagerData antes do clear:', accountManagerData);
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
-        setAccountManagerData({ name: '', email: '', phone: '' });
+        // Não resetar os dados do gerente se não houver na proposta
         setAddedProducts([]);
         setSelectedSpeed(0);
         setContractTerm(12);
@@ -1019,6 +1152,10 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
     };
 
     const viewProposal = (proposal: Proposal) => {
+        console.log('DEBUG - viewProposal chamada com:', proposal);
+        console.log('DEBUG - proposal.accountManager:', proposal.accountManager);
+        console.log('DEBUG - proposal.products:', proposal.products);
+        console.log('DEBUG - proposal.items:', proposal.items);
         setCurrentProposal(proposal);
 
         // Handle client data - check if it's an object or string
@@ -1046,7 +1183,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 phone: ''
             });
         } else {
-            setAccountManagerData({ name: '', email: '', phone: '' });
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1066,16 +1203,18 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         }
 
         setAddedProducts(products);
-        
+
         // Load status and changes
         setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
         setProposalChanges(proposal.changes || '');
-        
+
         setViewMode('proposal-summary');
     };
 
     const editProposal = (proposal: Proposal) => {
-
+        console.log('DEBUG - editProposal chamada');
+        console.log('DEBUG - accountManager na proposta:', proposal.accountManager);
+        console.log('DEBUG - Tipo do accountManager:', typeof proposal.accountManager);
         console.log('Products:', proposal.products);
         console.log('Items:', proposal.items);
         console.log('Full proposal JSON:', JSON.stringify(proposal, null, 2));
@@ -1107,7 +1246,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 phone: ''
             });
         } else {
-            setAccountManagerData({ name: '', email: '', phone: '' });
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1359,8 +1498,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                             <TableCell>{p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>
                                             <TableCell>{
-                                                typeof p.client === 'object' && p.client?.projectName 
-                                                    ? p.client.projectName 
+                                                typeof p.client === 'object' && p.client?.projectName
+                                                    ? p.client.projectName
                                                     : p.clientData?.projectName || 'Projeto não informado'
                                             }</TableCell>
                                             <TableCell>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</TableCell>
@@ -1414,24 +1553,24 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Dados do Cliente</h3>
                                 <div className="space-y-2 text-sm">
                                     <p><strong>Nome:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.name 
-                                            ? currentProposal.client.name 
-                                            : currentProposal.clientData?.name || 
-                                              (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.name
+                                            ? currentProposal.client.name
+                                            : currentProposal.clientData?.name ||
+                                            (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
                                     }</p>
                                     <p><strong>Email:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.email 
-                                            ? currentProposal.client.email 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.email
+                                            ? currentProposal.client.email
                                             : currentProposal.clientData?.email || 'N/A'
                                     }</p>
                                     <p><strong>Telefone:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.phone 
-                                            ? currentProposal.client.phone 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.phone
+                                            ? currentProposal.client.phone
                                             : currentProposal.clientData?.phone || 'N/A'
                                     }</p>
                                     <p><strong>Contato:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.contact 
-                                            ? currentProposal.client.contact 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.contact
+                                            ? currentProposal.client.contact
                                             : currentProposal.clientData?.contact || 'N/A'
                                     }</p>
                                 </div>
@@ -1440,8 +1579,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Nome do Projeto</h3>
                                 <div className="space-y-2 text-sm">
                                     <p className="font-medium text-base">{
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.projectName 
-                                            ? currentProposal.client.projectName 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.projectName
+                                            ? currentProposal.client.projectName
                                             : currentProposal.clientData?.projectName || 'Projeto não informado'
                                     }</p>
                                     <p className="text-gray-600 text-xs mt-2">
@@ -1458,9 +1597,9 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Gerente de Contas</h3>
                                 <div className="space-y-2 text-sm">
-                                    <p><strong>Nome:</strong> {typeof currentProposal.accountManager === 'string' ? currentProposal.accountManager : currentProposal.accountManager?.name || 'N/A'}</p>
-                                    <p><strong>Email:</strong> {typeof currentProposal.accountManager === 'object' ? currentProposal.accountManager?.email || 'N/A' : 'N/A'}</p>
-                                    <p><strong>Telefone:</strong> {typeof currentProposal.accountManager === 'object' ? currentProposal.accountManager?.phone || 'N/A' : 'N/A'}</p>
+                                    <p><strong>Nome:</strong> {getManagerData().name}</p>
+                                    <p><strong>Email:</strong> {getManagerData().email}</p>
+                                    <p><strong>Telefone:</strong> {getManagerData().phone}</p>
                                 </div>
                             </div>
                         </div>
@@ -1477,13 +1616,27 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {(currentProposal.items || currentProposal.products || []).map((product, index) => (
-                                        <TableRow key={product.id || `product-${index}`}>
-                                            <TableCell>{product.description}</TableCell>
-                                            <TableCell>{formatCurrency(product.setup)}</TableCell>
-                                            <TableCell>{formatCurrency(product.monthly)}</TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {(() => {
+                                        const products = getProductsData();
+
+                                        if (products.length === 0) {
+                                            return (
+                                                <TableRow>
+                                                    <TableCell colSpan={3} className="text-center text-gray-500">
+                                                        Nenhum produto encontrado
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        }
+
+                                        return products.map((product, index) => (
+                                            <TableRow key={product.id || `product-${index}`}>
+                                                <TableCell>{product.description || product.name || `Produto ${index + 1}`}</TableCell>
+                                                <TableCell>{formatCurrency(product.setup || 0)}</TableCell>
+                                                <TableCell>{formatCurrency(product.monthly || 0)}</TableCell>
+                                            </TableRow>
+                                        ));
+                                    })()}
                                 </TableBody>
                             </Table>
                         </div>
@@ -1493,29 +1646,40 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
                             {/* Show discount breakdown if discounts were applied */}
-                            {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) && (
+                            {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
                                 <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
                                     <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
                                     <div className="text-sm space-y-1">
-                                        <p><strong>Valores Originais:</strong></p>
-                                        <p className="ml-4">Setup: {formatCurrency(currentProposal.totalSetup || 0)}</p>
-                                        <p className="ml-4">Mensal: {formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</p>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p><strong>Valores Originais:</strong></p>
+                                                <p className="ml-4">Setup: {formatCurrency(currentProposal.totalSetup || 0)}</p>
+                                                <p className="ml-4">Mensal: {formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</p>
+                                            </div>
+                                            <div>
+                                                <p><strong>Valores com Desconto:</strong></p>
+                                                <p className="ml-4">Setup: {formatCurrency(currentProposal.totalSetup || 0)}</p>
+                                                <p className="ml-4">Mensal: {formatCurrency(currentProposal.totalMonthly || 0)}</p>
+                                            </div>
+                                        </div>
 
-                                        {currentProposal.applySalespersonDiscount && (
-                                            <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
-                                        )}
+                                        <div className="mt-2 pt-2 border-t border-orange-200">
+                                            {currentProposal.applySalespersonDiscount && (
+                                                <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
+                                            )}
 
-                                        {currentProposal.appliedDirectorDiscountPercentage > 0 && (
-                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')}</p>
-                                        )}
+                                            {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                                <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage || 0}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage || 0) / 100)).toFixed(2).replace('.', ',')}</p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
-                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
+                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
+                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
@@ -1534,7 +1698,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                     const totalSetup = currentProposal.totalSetup;
                                     const totalMonthly = currentProposal.totalMonthly;
                                     const contractTerm = currentProposal.contractTerm || 12;
-                                    
+
                                     // Usar a função calculatePayback correta
                                     const plan = radioPlans.find(p => p.speed === currentProposal.selectedSpeed);
                                     let paybackMonths = 0;
@@ -1548,7 +1712,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                             currentProposal.appliedDirectorDiscountPercentage || 0
                                         );
                                     }
-                                    
+
                                     const maxPayback = getMaxPaybackMonths(contractTerm);
                                     const isValid = paybackMonths <= maxPayback;
 
@@ -1609,437 +1773,433 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* Calculadora */}
                                 <div>
-                            {user?.role === 'admin' || user?.role === 'director' ? (
-                                <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader><CardTitle className="flex items-center"><Calculator className="mr-2" />Calculadora</CardTitle></CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <ContractTermSelector
-                                                value={contractTerm}
-                                                onChange={handleContractTermChange}
-                                            />
-                                            <div className="space-y-2">
-                                                <Label htmlFor="speed">Velocidade</Label>
-                                                <Select onValueChange={(v) => setSelectedSpeed(Number(v))} value={selectedSpeed.toString()}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Selecione uma velocidade..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {radioPlans.filter(p => getMonthlyPrice(p, contractTerm) > 0).map(plan => (
-                                                            <SelectItem key={plan.speed} value={plan.speed.toString()}>
-                                                                {plan.description}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox id="include-installation" checked={includeInstallation} onCheckedChange={(c) => setIncludeInstallation(c as boolean)} />
-                                                <Label htmlFor="include-installation">Incluir taxa de instalação no cálculo</Label>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="fiber-cost">Custo Rádio</Label>
-                                            <Input
-                                                type="text"
-                                                id="fiber-cost"
-                                                value={formatCurrency(result?.radioCost)}
-                                                onChange={(e) => {
-                                                    handleCustoRadioChange(e.target.value);
-                                                    setHasChanged(true);
-                                                }}
-                                                className="bg-slate-800"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="isExistingClient"
-                                                    checked={isExistingClient}
-                                                    onCheckedChange={(checked) => setIsExistingClient(!!checked)}
-                                                />
-                                                <Label htmlFor="isExistingClient">Já é cliente da Base?</Label>
-                                            </div>
-                                        </div>
-                                        {isExistingClient && (
-                                            <div className="space-y-4">
+                                    {user?.role === 'admin' || user?.role === 'director' ? (
+                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                            <CardHeader><CardTitle className="flex items-center"><Calculator className="mr-2" />Calculadora</CardTitle></CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <ContractTermSelector
+                                                        value={contractTerm}
+                                                        onChange={handleContractTermChange}
+                                                    />
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="speed">Velocidade</Label>
+                                                        <Select onValueChange={(v) => setSelectedSpeed(Number(v))} value={selectedSpeed.toString()}>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Selecione uma velocidade..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {radioPlans.filter(p => getMonthlyPrice(p, contractTerm) > 0).map(plan => (
+                                                                    <SelectItem key={plan.speed} value={plan.speed.toString()}>
+                                                                        {plan.description}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                </div>
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox id="include-installation" checked={includeInstallation} onCheckedChange={(c) => setIncludeInstallation(c as boolean)} />
+                                                        <Label htmlFor="include-installation">Incluir taxa de instalação no cálculo</Label>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="fiber-cost">Custo Rádio</Label>
                                                     <Input
-                                                        id="previousMonthlyFee"
-                                                        type="number"
-                                                        value={previousMonthlyFee}
-                                                        onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
-                                                        placeholder="0.00"
+                                                        type="text"
+                                                        id="fiber-cost"
+                                                        value={formatCurrency(result?.radioCost)}
+                                                        onChange={(e) => {
+                                                            handleCustoRadioChange(e.target.value);
+                                                            setHasChanged(true);
+                                                        }}
                                                         className="bg-slate-800"
                                                     />
                                                 </div>
-                                                {previousMonthlyFee > 0 && result && (
-                                                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm text-slate-300">Diferença de Valor:</span>
-                                                            <span className={`font-semibold ${
-                                                                result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                    ? 'text-green-400' 
-                                                                    : 'text-red-400'
-                                                            }`}>
-                                                                {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
-                                                                {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
-                                                            </span>
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="isExistingClient"
+                                                            checked={isExistingClient}
+                                                            onCheckedChange={(checked) => setIsExistingClient(!!checked)}
+                                                        />
+                                                        <Label htmlFor="isExistingClient">Já é cliente da Base?</Label>
+                                                    </div>
+                                                </div>
+                                                {isExistingClient && (
+                                                    <div className="space-y-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
+                                                            <Input
+                                                                id="previousMonthlyFee"
+                                                                type="number"
+                                                                value={previousMonthlyFee}
+                                                                onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
+                                                                placeholder="0.00"
+                                                                className="bg-slate-800"
+                                                            />
                                                         </div>
-                                                        <div className="text-xs text-slate-400 mt-1">
-                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                ? 'Aumento na mensalidade' 
-                                                                : 'Redução na mensalidade'
-                                                            }
-                                                        </div>
+                                                        {previousMonthlyFee > 0 && result && (
+                                                            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-sm text-slate-300">Diferença de Valor:</span>
+                                                                    <span className={`font-semibold ${result.monthlyPrice - previousMonthlyFee >= 0
+                                                                        ? 'text-green-400'
+                                                                        : 'text-red-400'
+                                                                        }`}>
+                                                                        {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                        {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-xs text-slate-400 mt-1">
+                                                                    {result.monthlyPrice - previousMonthlyFee >= 0
+                                                                        ? 'Aumento na mensalidade'
+                                                                        : 'Redução na mensalidade'
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
-                                            </div>
-                                        )}
-                                        <div className="space-y-2">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="createLastMile"
-                                                    checked={createLastMile}
-                                                    onCheckedChange={(checked) => setCreateLastMile(!!checked)}
-                                                />
-                                                <Label htmlFor="createLastMile">Criar Last Mile?</Label>
-                                            </div>
-                                        </div>
-                                        {createLastMile && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="lastMileCost">Custo (Last Mile)</Label>
-                                                <Input
-                                                    id="lastMileCost"
-                                                    type="number"
-                                                    value={lastMileCost}
-                                                    onChange={(e) => setLastMileCost(parseFloat(e.target.value))}
-                                                    placeholder="0.00"
-                                                    className="bg-slate-800"
-                                                />
-                                            </div>
-                                        )}
-                                        <div className="space-y-2">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="includeReferralPartner"
-                                                    checked={includeReferralPartner}
-                                                    onCheckedChange={(checked) => setIncludeReferralPartner(Boolean(checked))}
-                                                />
-                                                <Label htmlFor="includeReferralPartner">Incluir Parceiro Indicador</Label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="includeInfluencerPartner"
-                                                    checked={includeInfluencerPartner}
-                                                    onCheckedChange={(checked) => setIncludeInfluencerPartner(Boolean(checked))}
-                                                />
-                                                <Label htmlFor="includeInfluencerPartner">Incluir Parceiro Influenciador</Label>
-                                            </div>
-                                        </div>
-
-                                        {/* Seção de Resultado e Validação de Payback */}
-                                        {result && (
-                                            <div className="space-y-3 p-4 bg-slate-800 rounded-lg border border-slate-700">
-                                                <h4 className="text-lg font-semibold text-white">Resultado do Cálculo</h4>
                                                 <div className="space-y-2">
-                                                    <div className="flex justify-between">
-                                                        <span>Valor Mensal:</span>
-                                                        <span className="font-semibold">{formatCurrency(result.monthlyPrice)}</span>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="createLastMile"
+                                                            checked={createLastMile}
+                                                            onCheckedChange={(checked) => setCreateLastMile(!!checked)}
+                                                        />
+                                                        <Label htmlFor="createLastMile">Criar Last Mile?</Label>
                                                     </div>
-                                                    {includeInstallation && (
-                                                        <div className="flex justify-between">
-                                                            <span>Taxa de Instalação:</span>
-                                                            <span className="font-semibold">{formatCurrency(result.installationCost)}</span>
-                                                        </div>
-                                                    )}
-                                                    {includeInstallation && (
-                                                        <div className="flex justify-between">
-                                                            <span>Payback Calculado:</span>
-                                                            <span className="font-semibold">{result.paybackValidation.actualPayback} meses</span>
-                                                        </div>
-                                                    )}
-                                                    {includeInstallation && (
-                                                        <div className="flex justify-between">
-                                                            <span>Payback Máximo Permitido:</span>
-                                                            <span className="font-semibold">{result.paybackValidation.maxPayback} meses</span>
-                                                        </div>
-                                                    )}
+                                                </div>
+                                                {createLastMile && (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="lastMileCost">Custo (Last Mile)</Label>
+                                                        <Input
+                                                            id="lastMileCost"
+                                                            type="number"
+                                                            value={lastMileCost}
+                                                            onChange={(e) => setLastMileCost(parseFloat(e.target.value))}
+                                                            placeholder="0.00"
+                                                            className="bg-slate-800"
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="includeReferralPartner"
+                                                            checked={includeReferralPartner}
+                                                            onCheckedChange={(checked) => setIncludeReferralPartner(Boolean(checked))}
+                                                        />
+                                                        <Label htmlFor="includeReferralPartner">Incluir Parceiro Indicador</Label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="includeInfluencerPartner"
+                                                            checked={includeInfluencerPartner}
+                                                            onCheckedChange={(checked) => setIncludeInfluencerPartner(Boolean(checked))}
+                                                        />
+                                                        <Label htmlFor="includeInfluencerPartner">Incluir Parceiro Influenciador</Label>
+                                                    </div>
                                                 </div>
 
-                                                {/* Diferença de Valor para Clientes Existentes */}
-                                                {isExistingClient && previousMonthlyFee > 0 && result && (
-                                                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm text-slate-300">Diferença de Valor:</span>
-                                                            <span className={`font-semibold ${
-                                                                result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                    ? 'text-green-400' 
-                                                                    : 'text-red-400'
-                                                            }`}>
-                                                                {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
-                                                                {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
-                                                            </span>
+                                                {/* Seção de Resultado e Validação de Payback */}
+                                                {result && (
+                                                    <div className="space-y-3 p-4 bg-slate-800 rounded-lg border border-slate-700">
+                                                        <h4 className="text-lg font-semibold text-white">Resultado do Cálculo</h4>
+                                                        <div className="space-y-2">
+                                                            <div className="flex justify-between">
+                                                                <span>Valor Mensal:</span>
+                                                                <span className="font-semibold">{formatCurrency(result.monthlyPriceWithoutDiscount)}</span>
+                                                            </div>
+                                                            {includeInstallation && (
+                                                                <div className="flex justify-between">
+                                                                    <span>Taxa de Instalação:</span>
+                                                                    <span className="font-semibold">{formatCurrency(result.installationCost)}</span>
+                                                                </div>
+                                                            )}
+                                                            {includeInstallation && (
+                                                                <div className="flex justify-between">
+                                                                    <span>Payback Calculado:</span>
+                                                                    <span className="font-semibold">{result.paybackValidation.actualPayback} meses</span>
+                                                                </div>
+                                                            )}
+                                                            {includeInstallation && (
+                                                                <div className="flex justify-between">
+                                                                    <span>Payback Máximo Permitido:</span>
+                                                                    <span className="font-semibold">{result.paybackValidation.maxPayback} meses</span>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div className="text-xs text-slate-400 mt-1">
-                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                ? 'Aumento na mensalidade' 
-                                                                : 'Redução na mensalidade'
-                                                            }
-                                                        </div>
+
+                                                        {/* Diferença de Valor para Clientes Existentes */}
+                                                        {isExistingClient && previousMonthlyFee > 0 && result && (
+                                                            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-sm text-slate-300">Diferença de Valor:</span>
+                                                                    <span className={`font-semibold ${result.monthlyPrice - previousMonthlyFee >= 0
+                                                                        ? 'text-green-400'
+                                                                        : 'text-red-400'
+                                                                        }`}>
+                                                                        {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                        {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-xs text-slate-400 mt-1">
+                                                                    {result.monthlyPrice - previousMonthlyFee >= 0
+                                                                        ? 'Aumento na mensalidade'
+                                                                        : 'Redução na mensalidade'
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Alerta de Payback */}
+                                                        {includeInstallation && !result.paybackValidation.isValid && (
+                                                            <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                                                    <span className="font-semibold text-red-400">⚠️ Payback acima do permitido!</span>
+                                                                </div>
+                                                                <p className="text-sm text-red-300 mt-1">
+                                                                    O payback de {result.paybackValidation.actualPayback} meses excede o limite de {result.paybackValidation.maxPayback} meses para contratos de {contractTerm} meses.
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Alerta de Sucesso */}
+                                                        {includeInstallation && result.paybackValidation.isValid && (
+                                                            <div className="p-3 bg-green-900/50 border border-green-700 rounded-lg">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                                    <span className="font-semibold text-green-400">✅ Payback dentro do limite!</span>
+                                                                </div>
+                                                                <p className="text-sm text-green-300 mt-1">
+                                                                    O payback de {result.paybackValidation.actualPayback} meses está dentro do limite de {result.paybackValidation.maxPayback} meses.
+                                                                </p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
 
-                                                {/* Alerta de Payback */}
-                                                {includeInstallation && !result.paybackValidation.isValid && (
-                                                    <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg">
-                                                        <div className="flex items-center space-x-2">
-                                                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                                            <span className="font-semibold text-red-400">⚠️ Payback acima do permitido!</span>
-                                                        </div>
-                                                        <p className="text-sm text-red-300 mt-1">
-                                                            O payback de {result.paybackValidation.actualPayback} meses excede o limite de {result.paybackValidation.maxPayback} meses para contratos de {contractTerm} meses.
-                                                        </p>
+                                                <Button onClick={handleAddProduct} disabled={!result} className="w-full bg-blue-600 hover:bg-blue-700">Adicionar Produto</Button>
+                                            </CardContent>
+                                        </Card>
+                                    ) : (
+                                        <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                            <CardHeader><CardTitle className="flex items-center"><Calculator className="mr-2" />Calculadora</CardTitle></CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <ContractTermSelector
+                                                        value={contractTerm}
+                                                        onChange={handleContractTermChange}
+                                                    />
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="speed">Velocidade</Label>
+                                                        <Select onValueChange={(v) => setSelectedSpeed(Number(v))} value={selectedSpeed.toString()}>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Selecione uma velocidade..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {radioPlans.filter(p => getMonthlyPrice(p, contractTerm) > 0).map(plan => (
+                                                                    <SelectItem key={plan.speed} value={plan.speed.toString()}>
+                                                                        {plan.description}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
                                                     </div>
-                                                )}
-
-                                                {/* Alerta de Sucesso */}
-                                                {includeInstallation && result.paybackValidation.isValid && (
-                                                    <div className="p-3 bg-green-900/50 border border-green-700 rounded-lg">
-                                                        <div className="flex items-center space-x-2">
-                                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                                            <span className="font-semibold text-green-400">✅ Payback dentro do limite!</span>
-                                                        </div>
-                                                        <p className="text-sm text-green-300 mt-1">
-                                                            O payback de {result.paybackValidation.actualPayback} meses está dentro do limite de {result.paybackValidation.maxPayback} meses.
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <Button onClick={handleAddProduct} disabled={!result} className="w-full bg-blue-600 hover:bg-blue-700">Adicionar Produto</Button>
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader><CardTitle className="flex items-center"><Calculator className="mr-2" />Calculadora</CardTitle></CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <ContractTermSelector
-                                                value={contractTerm}
-                                                onChange={handleContractTermChange}
-                                            />
-                                            <div className="space-y-2">
-                                                <Label htmlFor="speed">Velocidade</Label>
-                                                <Select onValueChange={(v) => setSelectedSpeed(Number(v))} value={selectedSpeed.toString()}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Selecione uma velocidade..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {radioPlans.filter(p => getMonthlyPrice(p, contractTerm) > 0).map(plan => (
-                                                            <SelectItem key={plan.speed} value={plan.speed.toString()}>
-                                                                {plan.description}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox id="include-installation" checked={includeInstallation} onCheckedChange={(c) => setIncludeInstallation(c as boolean)} />
-                                                <Label htmlFor="include-installation">Incluir taxa de instalação no cálculo</Label>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="fiber-cost">Custo Rádio</Label>
-                                            <Input
-                                                type="text"
-                                                id="fiber-cost"
-                                                value={formatCurrency(result?.radioCost)}
-                                                onChange={(e) => {
-                                                    handleCustoRadioChange(e.target.value);
-                                                    setHasChanged(true);
-                                                }}
-                                                className="bg-slate-800"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="isExistingClient"
-                                                    checked={isExistingClient}
-                                                    onCheckedChange={(checked) => setIsExistingClient(!!checked)}
-                                                />
-                                                <Label htmlFor="isExistingClient">Já é cliente da Base?</Label>
-                                            </div>
-                                        </div>
-                                        {isExistingClient && (
-                                            <div className="space-y-4">
+                                                </div>
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox id="include-installation" checked={includeInstallation} onCheckedChange={(c) => setIncludeInstallation(c as boolean)} />
+                                                        <Label htmlFor="include-installation">Incluir taxa de instalação no cálculo</Label>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="fiber-cost">Custo Rádio</Label>
                                                     <Input
-                                                        id="previousMonthlyFee"
-                                                        type="number"
-                                                        value={previousMonthlyFee}
-                                                        onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
-                                                        placeholder="0.00"
+                                                        type="text"
+                                                        id="fiber-cost"
+                                                        value={formatCurrency(result?.radioCost)}
+                                                        onChange={(e) => {
+                                                            handleCustoRadioChange(e.target.value);
+                                                            setHasChanged(true);
+                                                        }}
                                                         className="bg-slate-800"
                                                     />
                                                 </div>
-                                                {previousMonthlyFee > 0 && result && (
-                                                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm text-slate-300">Diferença de Valor:</span>
-                                                            <span className={`font-semibold ${
-                                                                result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                    ? 'text-green-400' 
-                                                                    : 'text-red-400'
-                                                            }`}>
-                                                                {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
-                                                                {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
-                                                            </span>
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="isExistingClient"
+                                                            checked={isExistingClient}
+                                                            onCheckedChange={(checked) => setIsExistingClient(!!checked)}
+                                                        />
+                                                        <Label htmlFor="isExistingClient">Já é cliente da Base?</Label>
+                                                    </div>
+                                                </div>
+                                                {isExistingClient && (
+                                                    <div className="space-y-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
+                                                            <Input
+                                                                id="previousMonthlyFee"
+                                                                type="number"
+                                                                value={previousMonthlyFee}
+                                                                onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
+                                                                placeholder="0.00"
+                                                                className="bg-slate-800"
+                                                            />
                                                         </div>
-                                                        <div className="text-xs text-slate-400 mt-1">
-                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                ? 'Aumento na mensalidade' 
-                                                                : 'Redução na mensalidade'
-                                                            }
-                                                        </div>
+                                                        {previousMonthlyFee > 0 && result && (
+                                                            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-sm text-slate-300">Diferença de Valor:</span>
+                                                                    <span className={`font-semibold ${result.monthlyPrice - previousMonthlyFee >= 0
+                                                                        ? 'text-green-400'
+                                                                        : 'text-red-400'
+                                                                        }`}>
+                                                                        {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                        {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-xs text-slate-400 mt-1">
+                                                                    {result.monthlyPrice - previousMonthlyFee >= 0
+                                                                        ? 'Aumento na mensalidade'
+                                                                        : 'Redução na mensalidade'
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
-                                            </div>
-                                        )}
-                                        <div className="space-y-2">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="createLastMile"
-                                                    checked={createLastMile}
-                                                    onCheckedChange={(checked) => setCreateLastMile(!!checked)}
-                                                />
-                                                <Label htmlFor="createLastMile">Criar Last Mile?</Label>
-                                            </div>
-                                        </div>
-                                        {createLastMile && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="lastMileCost">Custo (Last Mile)</Label>
-                                                <Input
-                                                    id="lastMileCost"
-                                                    type="number"
-                                                    value={lastMileCost}
-                                                    onChange={(e) => setLastMileCost(parseFloat(e.target.value))}
-                                                    placeholder="0.00"
-                                                    className="bg-slate-800"
-                                                />
-                                            </div>
-                                        )}
-                                        <div className="space-y-2">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="includeReferralPartner"
-                                                    checked={includeReferralPartner}
-                                                    onCheckedChange={(checked) => setIncludeReferralPartner(Boolean(checked))}
-                                                />
-                                                <Label htmlFor="includeReferralPartner">Incluir Parceiro Indicador</Label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="includeInfluencerPartner"
-                                                    checked={includeInfluencerPartner}
-                                                    onCheckedChange={(checked) => setIncludeInfluencerPartner(Boolean(checked))}
-                                                />
-                                                <Label htmlFor="includeInfluencerPartner">Incluir Parceiro Influenciador</Label>
-                                            </div>
-                                        </div>
-
-                                        {/* Seção de Resultado e Validação de Payback */}
-                                        {result && (
-                                            <div className="space-y-3 p-4 bg-slate-800 rounded-lg border border-slate-700">
-                                                <h4 className="text-lg font-semibold text-white">Resultado do Cálculo</h4>
                                                 <div className="space-y-2">
-                                                    <div className="flex justify-between">
-                                                        <span>Valor Mensal:</span>
-                                                        <span className="font-semibold">{formatCurrency(result.monthlyPrice)}</span>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="createLastMile"
+                                                            checked={createLastMile}
+                                                            onCheckedChange={(checked) => setCreateLastMile(!!checked)}
+                                                        />
+                                                        <Label htmlFor="createLastMile">Criar Last Mile?</Label>
                                                     </div>
-                                                    {includeInstallation && (
-                                                        <div className="flex justify-between">
-                                                            <span>Taxa de Instalação:</span>
-                                                            <span className="font-semibold">{formatCurrency(result.installationCost)}</span>
-                                                        </div>
-                                                    )}
-                                                    {includeInstallation && (
-                                                        <div className="flex justify-between">
-                                                            <span>Payback Calculado:</span>
-                                                            <span className="font-semibold">{result.paybackValidation.actualPayback} meses</span>
-                                                        </div>
-                                                    )}
-                                                    {includeInstallation && (
-                                                        <div className="flex justify-between">
-                                                            <span>Payback Máximo Permitido:</span>
-                                                            <span className="font-semibold">{result.paybackValidation.maxPayback} meses</span>
-                                                        </div>
-                                                    )}
+                                                </div>
+                                                {createLastMile && (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="lastMileCost">Custo (Last Mile)</Label>
+                                                        <Input
+                                                            id="lastMileCost"
+                                                            type="number"
+                                                            value={lastMileCost}
+                                                            onChange={(e) => setLastMileCost(parseFloat(e.target.value))}
+                                                            placeholder="0.00"
+                                                            className="bg-slate-800"
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="includeReferralPartner"
+                                                            checked={includeReferralPartner}
+                                                            onCheckedChange={(checked) => setIncludeReferralPartner(Boolean(checked))}
+                                                        />
+                                                        <Label htmlFor="includeReferralPartner">Incluir Parceiro Indicador</Label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="includeInfluencerPartner"
+                                                            checked={includeInfluencerPartner}
+                                                            onCheckedChange={(checked) => setIncludeInfluencerPartner(Boolean(checked))}
+                                                        />
+                                                        <Label htmlFor="includeInfluencerPartner">Incluir Parceiro Influenciador</Label>
+                                                    </div>
                                                 </div>
 
-                                                {/* Diferença de Valor para Clientes Existentes */}
-                                                {isExistingClient && previousMonthlyFee > 0 && result && (
-                                                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm text-slate-300">Diferença de Valor:</span>
-                                                            <span className={`font-semibold ${
-                                                                result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                    ? 'text-green-400' 
-                                                                    : 'text-red-400'
-                                                            }`}>
-                                                                {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
-                                                                {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
-                                                            </span>
+                                                {/* Seção de Resultado e Validação de Payback */}
+                                                {result && (
+                                                    <div className="space-y-3 p-4 bg-slate-800 rounded-lg border border-slate-700">
+                                                        <h4 className="text-lg font-semibold text-white">Resultado do Cálculo</h4>
+                                                        <div className="space-y-2">
+                                                            <div className="flex justify-between">
+                                                                <span>Valor Mensal:</span>
+                                                                <span className="font-semibold">{formatCurrency(result.monthlyPriceWithoutDiscount)}</span>
+                                                            </div>
+                                                            {includeInstallation && (
+                                                                <div className="flex justify-between">
+                                                                    <span>Taxa de Instalação:</span>
+                                                                    <span className="font-semibold">{formatCurrency(result.installationCost)}</span>
+                                                                </div>
+                                                            )}
+                                                            {includeInstallation && (
+                                                                <div className="flex justify-between">
+                                                                    <span>Payback Calculado:</span>
+                                                                    <span className="font-semibold">{result.paybackValidation.actualPayback} meses</span>
+                                                                </div>
+                                                            )}
+                                                            {includeInstallation && (
+                                                                <div className="flex justify-between">
+                                                                    <span>Payback Máximo Permitido:</span>
+                                                                    <span className="font-semibold">{result.paybackValidation.maxPayback} meses</span>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div className="text-xs text-slate-400 mt-1">
-                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                ? 'Aumento na mensalidade' 
-                                                                : 'Redução na mensalidade'
-                                                            }
-                                                        </div>
+
+                                                        {/* Diferença de Valor para Clientes Existentes */}
+                                                        {isExistingClient && previousMonthlyFee > 0 && result && (
+                                                            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-sm text-slate-300">Diferença de Valor:</span>
+                                                                    <span className={`font-semibold ${result.monthlyPrice - previousMonthlyFee >= 0
+                                                                        ? 'text-green-400'
+                                                                        : 'text-red-400'
+                                                                        }`}>
+                                                                        {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                        {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-xs text-slate-400 mt-1">
+                                                                    {result.monthlyPrice - previousMonthlyFee >= 0
+                                                                        ? 'Aumento na mensalidade'
+                                                                        : 'Redução na mensalidade'
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Alerta de Payback */}
+                                                        {includeInstallation && !result.paybackValidation.isValid && (
+                                                            <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                                                    <span className="font-semibold text-red-400">⚠️ Payback acima do permitido!</span>
+                                                                </div>
+                                                                <p className="text-sm text-red-300 mt-1">
+                                                                    O payback de {result.paybackValidation.actualPayback} meses excede o limite de {result.paybackValidation.maxPayback} meses para contratos de {contractTerm} meses.
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Alerta de Sucesso */}
+                                                        {includeInstallation && result.paybackValidation.isValid && (
+                                                            <div className="p-3 bg-green-900/50 border border-green-700 rounded-lg">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                                    <span className="font-semibold text-green-400">✅ Payback dentro do limite!</span>
+                                                                </div>
+                                                                <p className="text-sm text-green-300 mt-1">
+                                                                    O payback de {result.paybackValidation.actualPayback} meses está dentro do limite de {result.paybackValidation.maxPayback} meses.
+                                                                </p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
 
-                                                {/* Alerta de Payback */}
-                                                {includeInstallation && !result.paybackValidation.isValid && (
-                                                    <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg">
-                                                        <div className="flex items-center space-x-2">
-                                                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                                            <span className="font-semibold text-red-400">⚠️ Payback acima do permitido!</span>
-                                                        </div>
-                                                        <p className="text-sm text-red-300 mt-1">
-                                                            O payback de {result.paybackValidation.actualPayback} meses excede o limite de {result.paybackValidation.maxPayback} meses para contratos de {contractTerm} meses.
-                                                        </p>
-                                                    </div>
-                                                )}
-
-                                                {/* Alerta de Sucesso */}
-                                                {includeInstallation && result.paybackValidation.isValid && (
-                                                    <div className="p-3 bg-green-900/50 border border-green-700 rounded-lg">
-                                                        <div className="flex items-center space-x-2">
-                                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                                            <span className="font-semibold text-green-400">✅ Payback dentro do limite!</span>
-                                                        </div>
-                                                        <p className="text-sm text-green-300 mt-1">
-                                                            O payback de {result.paybackValidation.actualPayback} meses está dentro do limite de {result.paybackValidation.maxPayback} meses.
-                                                        </p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <Button onClick={handleAddProduct} disabled={!result} className="w-full bg-blue-600 hover:bg-blue-700">Adicionar Produto</Button>
-                                    </CardContent>
-                                </Card>
-                            )}
+                                                <Button onClick={handleAddProduct} disabled={!result} className="w-full bg-blue-600 hover:bg-blue-700">Adicionar Produto</Button>
+                                            </CardContent>
+                                        </Card>
+                                    )}
                                 </div>
 
                                 {/* Resumo da Proposta - Lado direito */}
@@ -2255,7 +2415,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                                         <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].simplesNacional)}</TableCell>
                                                     ))}
                                                 </TableRow>
-                                                
+
                                                 {isExistingClient && previousMonthlyFee > 0 && (
                                                     <TableRow className="border-slate-800 bg-yellow-900/30">
                                                         <TableCell className="text-white font-semibold">Diferença de Valores Contrato</TableCell>
@@ -2447,7 +2607,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                                             console.log('Debug Payback Radio - result?.radioCost:', result?.radioCost);
                                                             console.log('Debug Payback Radio - applySalespersonDiscount:', applySalespersonDiscount);
                                                             console.log('Debug Payback Radio - appliedDirectorDiscountPercentage:', appliedDirectorDiscountPercentage);
-                                                            
+
                                                             const currentPayback = calculatePayback(
                                                                 dreCalculations[contractTerm].receitaInstalacao,
                                                                 result?.radioCost || 0,
@@ -2543,8 +2703,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
 
                                                     return alerts.map((alert, index) => (
                                                         <div key={index} className={`p-3 rounded-lg border-l-4 ${alert.type === 'success' ? 'bg-green-900/20 border-green-500' :
-                                                                alert.type === 'warning' ? 'bg-yellow-900/20 border-yellow-500' :
-                                                                    'bg-blue-900/20 border-blue-500'
+                                                            alert.type === 'warning' ? 'bg-yellow-900/20 border-yellow-500' :
+                                                                'bg-blue-900/20 border-blue-500'
                                                             }`}>
                                                             <div className="flex items-start gap-3">
                                                                 <span className="text-lg">{alert.icon}</span>

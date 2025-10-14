@@ -436,10 +436,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         const plan = manPlans.find((p: InternetManPlan) => p.speed === selectedSpeed);
         if (!plan) return null;
 
+        // Mostrar valor original no "Resultado do Cálculo" (sem descontos)
         let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
-
-        // Aplicar descontos
-        monthlyPrice = applyDiscounts(monthlyPrice);
 
         // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
@@ -451,6 +449,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         return {
             ...plan,
             monthlyPrice,
+            monthlyPriceWithoutDiscount: monthlyPrice, // Valor sem desconto para exibição
             installationCost: plan.installationCost,
             baseCost: plan.cost,
             fiberCost: plan.cost,
@@ -751,8 +750,15 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         let totalRevenue = 0;
 
         if (result) {
-            // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
-            monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
+            // Aplicar descontos no valor mensal para cálculos DRE
+            monthlyValue = result.monthlyPrice;
+            if (applySalespersonDiscount) {
+                monthlyValue = monthlyValue * 0.95;
+            }
+            if (appliedDirectorDiscountPercentage > 0) {
+                const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+                monthlyValue = monthlyValue * directorDiscountFactor;
+            }
 
             // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
             const temParceiros = includeReferralPartner || includeInfluencerPartner;
@@ -987,12 +993,32 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     const handleAddProduct = () => {
         if (!result) return;
 
+        // Aplicar descontos no valor do produto para o resumo
+        let monthlyWithDiscount = result.monthlyPrice;
+        if (applySalespersonDiscount) {
+            monthlyWithDiscount = monthlyWithDiscount * 0.95;
+        }
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            monthlyWithDiscount = monthlyWithDiscount * directorDiscountFactor;
+        }
+
+        // Criar descrição com informação de desconto
+        let description = `INTERNET MAN FIBRA ${result.speed} Mbps`;
+        if (applySalespersonDiscount && appliedDirectorDiscountPercentage > 0) {
+            description += ` (Desconto Vendedor 5% + Diretor ${appliedDirectorDiscountPercentage}%)`;
+        } else if (applySalespersonDiscount) {
+            description += ` (Desconto Vendedor 5%)`;
+        } else if (appliedDirectorDiscountPercentage > 0) {
+            description += ` (Desconto Diretor ${appliedDirectorDiscountPercentage}%)`;
+        }
+
         const newProduct: Product = {
             id: `prod-${Date.now()}`,
             type: 'INTERNET_MAN_FIBRA',
-            description: `INTERNET MAN FIBRA ${result.speed} Mbps`,
+            description,
             setup: includeInstallation ? result.installationCost : 0,
-            monthly: result.monthlyPrice,
+            monthly: monthlyWithDiscount,
             details: {
                 speed: result.speed,
                 contractTerm,
@@ -1005,7 +1031,13 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             }
         };
 
-        setAddedProducts(prev => [...prev, newProduct]);
+        // Se há desconto, substituir produto anterior (não somar)
+        // Se não há desconto, adicionar normalmente
+        if (applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) {
+            setAddedProducts([newProduct]); // Substituir todos os produtos
+        } else {
+            setAddedProducts(prev => [...prev, newProduct]); // Adicionar normalmente
+        }
     };
 
     const handleRemoveProduct = (id: string) => {
@@ -1023,9 +1055,9 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
 
 
-    // Desconto do vendedor e diretor aplicado apenas sobre o valor mensal, não sobre o setup
+    // Os descontos já foram aplicados no result.monthlyPrice, então usar o valor direto
     const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
-    const finalTotalMonthly = rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor;
+    const finalTotalMonthly = rawTotalMonthly; // Descontos já aplicados no result
 
     // Função para determinar a versão baseada nos descontos aplicados
     const getProposalVersion = (): number => {
@@ -1049,7 +1081,22 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             return;
         }
 
-        if (!accountManagerData || !accountManagerData.name) {
+        // Se os dados do gerente estão vazios mas temos uma proposta atual, usar os dados da proposta
+        let finalAccountManagerData = accountManagerData;
+        if ((!accountManagerData || !accountManagerData.name || accountManagerData.name.trim() === '') && currentProposal?.accountManager) {
+            if (typeof currentProposal.accountManager === 'object') {
+                finalAccountManagerData = currentProposal.accountManager;
+            } else if (typeof currentProposal.accountManager === 'string') {
+                finalAccountManagerData = {
+                    name: currentProposal.accountManager,
+                    email: '',
+                    phone: ''
+                };
+            }
+            setAccountManagerData(finalAccountManagerData);
+        }
+
+        if (!finalAccountManagerData || !finalAccountManagerData.name || finalAccountManagerData.name.trim() === '') {
             alert('Por favor, preencha os dados do gerente de contas antes de salvar.');
             return;
         }
@@ -1063,8 +1110,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
 
-            // Aplicar descontos no total mensal
-            const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
+            // Os descontos já foram aplicados no result.monthlyPrice
+            const finalTotalMonthly = baseTotalMonthly;
             const proposalVersion = getProposalVersion();
 
             // Se tiver uma proposta atual E não há descontos (V1), atualiza. 
@@ -1086,7 +1133,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     version: proposalVersion,
                     // Atualizar dados editáveis
                     clientData: clientData,
-                    accountManager: accountManagerData,
+                    accountManager: finalAccountManagerData,
                     products: addedProducts,
                     totalSetup: totalSetup,
                     totalMonthly: finalTotalMonthly,
@@ -1122,9 +1169,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
                     version: proposalVersion,
+                    baseId: currentProposal?.baseId || `Prop_ManFibra_${Date.now()}`, // Manter baseId para versões
                     // Store additional data as metadata
                     clientData: clientData,
-                    accountManager: accountManagerData,
+                    accountManager: finalAccountManagerData,
                     products: addedProducts,
                     totalSetup: totalSetup,
                     totalMonthly: finalTotalMonthly,
@@ -1180,7 +1228,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
     const clearForm = () => {
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
-        setAccountManagerData({ name: '', email: '', phone: '' });
+        // Não resetar os dados do gerente se não houver na proposta
         setAddedProducts([]);
         setSelectedSpeed(0);
         setContractTerm(12);
@@ -1219,6 +1267,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1272,6 +1322,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1308,7 +1360,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 if (firstProduct.details.contractTerm) setContractTerm(firstProduct.details.contractTerm);
                 if (firstProduct.details.includeInstallation !== undefined) setIncludeInstallation(firstProduct.details.includeInstallation);
                 if (firstProduct.details.applySalespersonDiscount !== undefined) setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
-                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
+                    setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                    setDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                }
                 if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
             }
         }
@@ -1622,9 +1677,38 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                             <div>
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Gerente de Contas</h3>
                                 <div className="space-y-2 text-sm">
-                                    <p><strong>Nome:</strong> {typeof currentProposal.accountManager === 'string' ? currentProposal.accountManager : currentProposal.accountManager?.name || 'N/A'}</p>
-                                    <p><strong>Email:</strong> {typeof currentProposal.accountManager === 'object' ? currentProposal.accountManager?.email || 'N/A' : 'N/A'}</p>
-                                    <p><strong>Telefone:</strong> {typeof currentProposal.accountManager === 'object' ? currentProposal.accountManager?.phone || 'N/A' : 'N/A'}</p>
+                                    <p><strong>Nome:</strong> {
+                                        (() => {
+                                            if (typeof currentProposal.accountManager === 'string') {
+                                                return currentProposal.accountManager;
+                                            } else if (typeof currentProposal.accountManager === 'object' && currentProposal.accountManager?.name) {
+                                                return currentProposal.accountManager.name;
+                                            } else if (accountManagerData?.name) {
+                                                return accountManagerData.name;
+                                            }
+                                            return 'N/A';
+                                        })()
+                                    }</p>
+                                    <p><strong>Email:</strong> {
+                                        (() => {
+                                            if (typeof currentProposal.accountManager === 'object' && currentProposal.accountManager?.email) {
+                                                return currentProposal.accountManager.email;
+                                            } else if (accountManagerData?.email) {
+                                                return accountManagerData.email;
+                                            }
+                                            return 'N/A';
+                                        })()
+                                    }</p>
+                                    <p><strong>Telefone:</strong> {
+                                        (() => {
+                                            if (typeof currentProposal.accountManager === 'object' && currentProposal.accountManager?.phone) {
+                                                return currentProposal.accountManager.phone;
+                                            } else if (accountManagerData?.phone) {
+                                                return accountManagerData.phone;
+                                            }
+                                            return 'N/A';
+                                        })()
+                                    }</p>
                                 </div>
                             </div>
                         </div>
@@ -1641,13 +1725,16 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {(currentProposal.items || currentProposal.products || []).map((product: any, index: number) => (
-                                        <TableRow key={product.id || `product-${index}`}>
-                                            <TableCell>{product.description}</TableCell>
-                                            <TableCell>{formatCurrency(product.setup)}</TableCell>
-                                            <TableCell>{formatCurrency(product.monthly)}</TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {(() => {
+                                        const products = currentProposal.products || currentProposal.items || addedProducts || [];
+                                        return products.map((product: any, index: number) => (
+                                            <TableRow key={product.id || `product-${index}`}>
+                                                <TableCell>{product.description || product.name || `Produto ${index + 1}`}</TableCell>
+                                                <TableCell>{formatCurrency(product.setup || 0)}</TableCell>
+                                                <TableCell>{formatCurrency(product.monthly || 0)}</TableCell>
+                                            </TableRow>
+                                        ));
+                                    })()}
                                 </TableBody>
                             </Table>
                         </div>
@@ -1657,29 +1744,40 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
                             {/* Show discount breakdown if discounts were applied */}
-                            {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) && (
+                            {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
                                 <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
                                     <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
                                     <div className="text-sm space-y-1">
-                                        <p><strong>Valores Originais:</strong></p>
-                                        <p className="ml-4">Setup: {formatCurrency(currentProposal.totalSetup || 0)}</p>
-                                        <p className="ml-4">Mensal: {formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</p>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p><strong>Valores Originais:</strong></p>
+                                                <p className="ml-4">Setup: {formatCurrency(currentProposal.totalSetup || 0)}</p>
+                                                <p className="ml-4">Mensal: {formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</p>
+                                            </div>
+                                            <div>
+                                                <p><strong>Valores com Desconto:</strong></p>
+                                                <p className="ml-4">Setup: {formatCurrency(currentProposal.totalSetup || 0)}</p>
+                                                <p className="ml-4">Mensal: {formatCurrency(currentProposal.totalMonthly || 0)}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="mt-2 pt-2 border-t border-orange-200">
+                                            {currentProposal.applySalespersonDiscount && (
+                                                <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
+                                            )}
 
-                                        {currentProposal.applySalespersonDiscount && (
-                                            <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
-                                        )}
-
-                                        {(currentProposal.appliedDirectorDiscountPercentage ?? 0) > 0 && (
-                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage ?? 0}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage ?? 0) / 100)).toFixed(2).replace('.', ',')}</p>
-                                        )}
+                                            {(currentProposal.appliedDirectorDiscountPercentage ?? 0) > 0 && (
+                                                <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage ?? 0}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage ?? 0) / 100)).toFixed(2).replace('.', ',')}</p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
-                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
+                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
+                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
@@ -1921,7 +2019,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 <div className="space-y-2">
                                                     <div className="flex justify-between">
                                                         <span>Valor Mensal:</span>
-                                                        <span className="font-semibold">{formatCurrency(result.monthlyPrice)}</span>
+                                                        <span className="font-semibold">{formatCurrency(result.monthlyPriceWithoutDiscount)}</span>
                                                     </div>
                                                     {includeInstallation && (
                                                         <div className="flex justify-between">

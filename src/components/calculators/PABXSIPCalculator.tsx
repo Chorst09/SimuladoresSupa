@@ -1013,7 +1013,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
     const clearForm = () => {
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
-        setAccountManagerData({ name: '', email: '', phone: '' });
+        // Não resetar os dados do gerente se não houver na proposta
         setProposalItems([]);
         setCurrentProposal(null);
         // Resetar outros estados da calculadora se necessário
@@ -1045,6 +1045,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle items/products - check multiple possible locations
@@ -1092,6 +1094,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         console.log("Proposal items from Firebase in editProposal:", proposal.items);

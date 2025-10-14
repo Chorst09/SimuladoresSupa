@@ -946,10 +946,10 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
             if (currentProposal?.id && proposalVersion === 1) {
                 const proposalToUpdate = {
                     id: currentProposal.id,
-                    title: `Proposta Internet Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta Double Fibra/Radio V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
-                    type: 'FIBER',
+                    type: 'DOUBLE',
                     status: currentProposal.status || 'Rascunho',
                     updatedBy: user.email || user.id,
                     updatedAt: new Date().toISOString(),
@@ -988,10 +988,10 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 }
             } else {
                 const proposalToSave = {
-                    title: `Proposta Internet Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    title: `Proposta Double Fibra/Radio V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
-                    type: 'FIBER',
+                    type: 'DOUBLE',
                     status: selectedStatus,
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
@@ -1054,7 +1054,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
     const clearForm = () => {
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
-        setAccountManagerData({ name: '', email: '', phone: '' });
+        // Não resetar os dados do gerente se não houver na proposta
         setAddedProducts([]);
         setSelectedSpeed(25); // Resetar para valor padrão
         setContractTerm(12);
@@ -1093,6 +1093,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1148,6 +1150,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1184,7 +1188,10 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 if (firstProduct.details.contractTerm) setContractTerm(firstProduct.details.contractTerm);
                 if (firstProduct.details.includeInstallation !== undefined) setIncludeInstallation(firstProduct.details.includeInstallation);
                 if (firstProduct.details.applySalespersonDiscount !== undefined) setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
-                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
+                    setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                    setDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                }
                 if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
             }
         }
@@ -1950,7 +1957,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                             <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                                         </div>
                                                     )}
-                                                    {user?.role === 'director' && (
+                                                    {(user?.role === 'director' || user?.role === 'admin') && (
                                                         <div className="space-y-2">
                                                             <Label htmlFor="director-discount-percentage">Desconto de Diretoria (%)</Label>
                                                             <div className="flex items-center space-x-2">
@@ -1959,7 +1966,11 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                                     type="number"
                                                                     placeholder="0-100"
                                                                     value={directorDiscountPercentage}
-                                                                    onChange={(e) => setDirectorDiscountPercentage(Number(e.target.value))}
+                                                                    onChange={(e) => {
+                                                                        const value = Number(e.target.value);
+                                                                        setDirectorDiscountPercentage(value);
+                                                                        setAppliedDirectorDiscountPercentage(value);
+                                                                    }}
                                                                     className="flex-1 bg-slate-800"
                                                                     min="0"
                                                                     max="100"

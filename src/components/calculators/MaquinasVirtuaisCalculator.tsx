@@ -1199,7 +1199,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const createNewProposal = () => {
         setCurrentProposal(null);
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
-        setAccountManagerData({ name: '', email: '', phone: '' });
+        // Não resetar os dados do gerente se não houver na proposta
         setAddedProducts([]);
         setViewMode('client-form');
     };
@@ -1234,6 +1234,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             } else {
                 setAccountManagerData(proposal.accountManager);
             }
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1322,6 +1324,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             } else {
                 setAccountManagerData(proposal.accountManager);
             }
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats

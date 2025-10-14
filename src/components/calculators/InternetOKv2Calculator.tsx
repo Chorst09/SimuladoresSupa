@@ -916,7 +916,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
 
     const clearForm = () => {
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
-        setAccountManagerData({ name: '', email: '', phone: '' });
+        // Não resetar os dados do gerente se não houver na proposta
         setAddedProducts([]);
         setSelectedSpeed(0);
         setContractTerm(12);
@@ -955,6 +955,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1008,6 +1010,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats

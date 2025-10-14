@@ -371,6 +371,24 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
     // Partner indicator ranges handled by getPartnerIndicatorRate
 
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = (baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+
+        // Aplicar desconto do diretor (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+
+        return discountedTotal;
+    };
+
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const result = useMemo(() => {
         if (!selectedSpeed) return null;
@@ -379,14 +397,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
         let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
         
-        // Aplicar descontos
-        if (applySalespersonDiscount) {
-            monthlyPrice = monthlyPrice * 0.95;
-        }
-        if (appliedDirectorDiscountPercentage > 0) {
-            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
-            monthlyPrice = monthlyPrice * directorDiscountFactor;
-        }
+        // Aplicar descontos usando a função padronizada
+        monthlyPrice = applyDiscounts(monthlyPrice);
         
         // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
@@ -514,24 +526,6 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     const velocidade = result?.speed || 600;
     const taxaInstalacao = includeInstallation ? (result?.installationCost || 2500) : 0;
     const custoFibra = result?.fiberCost || 7000;
-
-    // Função para aplicar descontos no total mensal
-    const applyDiscounts = (baseTotal: number): number => {
-        let discountedTotal = baseTotal;
-
-        // Aplicar desconto do vendedor (5%)
-        if (applySalespersonDiscount) {
-            discountedTotal = discountedTotal * 0.95;
-        }
-
-        // Aplicar desconto do diretor (percentual configurado)
-        if (appliedDirectorDiscountPercentage > 0) {
-            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
-            discountedTotal = discountedTotal * directorDiscountFactor;
-        }
-
-        return discountedTotal;
-    };
 
     // Função para calcular DRE por período de contrato
     const calculateDREForPeriod = useCallback((months: number) => {
@@ -967,7 +961,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     };
     const clearForm = () => {
         setClientData({ name: '', contact: '', projectName: '', email: '', phone: '' });
-        setAccountManagerData({ name: '', email: '', phone: '' });
+        // Não resetar os dados do gerente se não houver na proposta
         setAddedProducts([]);
         setSelectedSpeed(0);
         setContractTerm(12);
@@ -1006,6 +1000,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1056,6 +1052,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         // Handle account manager data
         if (proposal.accountManager) {
             setAccountManagerData(proposal.accountManager);
+        } else {
+            // Não resetar os dados do gerente se não houver na proposta
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1088,7 +1086,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 if (firstProduct.details.contractTerm) setContractTerm(firstProduct.details.contractTerm);
                 if (firstProduct.details.includeInstallation !== undefined) setIncludeInstallation(firstProduct.details.includeInstallation);
                 if (firstProduct.details.applySalespersonDiscount !== undefined) setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
-                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
+                    setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                    setDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                }
                 if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
             }
         }
