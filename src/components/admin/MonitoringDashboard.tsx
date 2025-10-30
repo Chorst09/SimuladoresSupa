@@ -320,9 +320,9 @@ export function MonitoringDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {data.logs && data.logs.logs ? (
+              {data.logs && Array.isArray(data.logs) ? (
                 <div className="space-y-2">
-                  {data.logs.logs.slice(0, 20).map((log: DatabaseLog, index: number) => (
+                  {data.logs.slice(0, 20).map((log: DatabaseLog, index: number) => (
                     <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <Badge variant={log.success ? "default" : "destructive"}>
@@ -369,9 +369,9 @@ export function MonitoringDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {data.alerts && data.alerts.alerts && data.alerts.alerts.length > 0 ? (
+              {data.alerts && Array.isArray(data.alerts) && data.alerts.length > 0 ? (
                 <div className="space-y-4">
-                  {data.alerts.alerts.map((alert: ErrorAlert, index: number) => (
+                  {data.alerts.map((alert: ErrorAlert, index: number) => (
                     <Alert key={index}>
                       <AlertTriangle className="h-4 w-4" />
                       <AlertTitle className="flex items-center gap-2">

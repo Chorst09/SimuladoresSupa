@@ -13,17 +13,43 @@ export interface AccountManagerData {
   phone?: string;
 }
 
+// Adicionando tipos que estavam faltando
+export interface BidDocs {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  uploadDate: string;
+  [key: string]: any;
+}
+
+export interface DatabaseLog {
+  id: string;
+  timestamp: string;
+  level: 'info' | 'warn' | 'error';
+  message: string;
+  metadata?: any;
+}
+
+export interface ErrorAlert {
+  id: string;
+  type: 'error' | 'warning' | 'info';
+  message: string;
+  timestamp: string;
+  resolved?: boolean;
+}
+
 export interface Proposal {
   id: string; // Unique ID for each version, e.g., Prop_MV_0001/2025_v1
   baseId: string; // Base ID, e.g., Prop_MV_0001/2025
   version: number;
   title: string;
-  client: ClientData;
+  client: ClientData | string; // Pode ser string ou objeto
   type: string; // Proposal type: RADIO, FIBER, VM, etc.
   value: number;
   status: 'Rascunho' | 'Enviada' | 'Em Análise' | 'Aprovada' | 'Rejeitada' | 'Aguardando aprovação desconto Diretoria' | 'Aguardando Aprovação do Cliente' | 'Fechado Ganho' | 'Perdido';
   createdBy?: string; // User ID
-  accountManager: AccountManagerData; // User name or object
+  accountManager: AccountManagerData | string; // User name or object
   createdAt: any; // Firestore Timestamp
   distributorId: string;
   date: string;
@@ -35,7 +61,7 @@ export interface Proposal {
   selectedSpeed?: number; // Adicionado
   includeInstallation?: boolean; // Adicionado
   contractTerm?: number; // Adicionado
-  clientData?: ClientData; // Alterado para opcional
+  clientData?: ClientData; // Alterado para opcional - usado pelos calculadores
   products?: any[];
   items?: any[]; // Adicionado
   userId?: string;
@@ -67,7 +93,7 @@ export interface Proposal {
   };
 }
 
-export type UserRole = 'admin' | 'director' | 'user';
+export type UserRole = 'admin' | 'director' | 'user' | 'diretor' | 'pending';
 
 export interface UserProfile {
   id: string;
@@ -82,7 +108,7 @@ export interface UserProfile {
 export interface Partner {
   id: number;
   name: string;
-  type: 'Cliente';
+  type: 'Cliente' | 'Distribuidor' | 'Fornecedor';
   // Adicionado o campo mainContact aqui
   mainContact?: string;
   contact: string;
@@ -103,6 +129,7 @@ export interface Partner {
 export interface RO {
     id: number;
     partnerId: number | string; // Can be string from form
+    supplierId?: number | string; // Adicionado campo supplierId
     roNumber: string;
     openDate: string;
     expiryDate: string;
@@ -114,6 +141,7 @@ export interface RO {
 export interface Training {
     id: number;
     partnerId: number | string; // Can be string from form
+    supplierId?: number | string; // Adicionado campo supplierId
     trainingName: string;
     type: 'Comercial' | 'Técnico';
     participantName: string;
@@ -122,7 +150,114 @@ export interface Training {
 
 // Removed RFP, PriceRecord, PriceRecordItem, BidFile, and BidDocs interfaces as these features have been removed
 
-// Removed all Edital-related interfaces (EditalFile, EditalAIAnalysis, Edital, EditalDocument, EditalProduct, EditalAnalysis) as these features have been removed
+// Interfaces para Edital
+export interface EditalFile {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  uploadDate: string;
+  aiAnalysis?: EditalAIAnalysis;
+}
+
+export interface EditalAIAnalysis {
+  keyPoints: string[];
+  requirements: string[];
+  deadlines: string[];
+  values: string[];
+  risks: string[];
+  opportunities: string[];
+  recommendations: string[];
+  confidence?: number;
+  processingTime?: number;
+  summary?: string;
+}
+
+export interface EditalDocument {
+  id: string;
+  name: string;
+  type: string;
+  status: 'Pronto' | 'Enviado' | 'Pendente' | 'Em Preparação';
+  deadline?: string;
+  description?: string;
+  notes?: string;
+}
+
+export interface EditalProduct {
+  id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  totalEstimatedPrice: number;
+  status: 'Disponível' | 'Indisponível';
+  estimatedUnitPrice?: number;
+  specifications?: string;
+  brand?: string;
+  model?: string;
+  supplier?: string;
+}
+
+export interface EditalAnalysis {
+  overallAssessment: {
+    strengths: string[];
+    weaknesses: string[];
+    opportunities: string[];
+    threats: string[];
+    score?: number;
+    recommendation?: string;
+    finalNotes?: string;
+  };
+  documentAnalysis?: {
+    totalDocuments: number;
+    readyDocuments: number;
+    pendingDocuments: number;
+    notes: string;
+  };
+  productAnalysis?: {
+    totalProducts: number;
+    availableProducts: number;
+    unavailableProducts: number;
+    competitiveAdvantage: string;
+    notes: string;
+  };
+  timelineAnalysis?: {
+    timelineRisk: string;
+    notes: string;
+  };
+  publishingBodyAnalysis?: {
+    bodyType: string;
+    paymentHistory: string;
+    previousExperience: string;
+    notes: string;
+  };
+}
+
+export interface Edital {
+  id: string;
+  title: string;
+  client: string;
+  description: string;
+  status: 'Aberto' | 'Em Análise' | 'Fechado' | 'Respondido';
+  publishDate: string;
+  deadline: string;
+  createdAt: any;
+  distributorId: string;
+  documents: EditalDocument[];
+  products: EditalProduct[];
+  files: EditalFile[];
+  attachments: any[];
+  analysis: EditalAnalysis;
+  // Campos adicionais para compatibilidade
+  publicationNumber?: string;
+  publishingBody?: string;
+  openingDate?: string;
+  submissionDeadline?: string;
+  estimatedValue?: number;
+  category?: string;
+  requirements?: string;
+  notes?: string;
+}
 
 export interface NavItem {
     id: string;
@@ -253,4 +388,78 @@ export interface CommissionData {
   vendedor: Array<{ meses: string; comissao: string }>;
   diretor: Array<{ meses: string; comissao: string }>;
   parceiro: Array<{ range: string; ate24: string; mais24: string }>;
+}
+
+// Tipos para Quote
+export interface Quote {
+  id: string;
+  title: string;
+  client: string;
+  value: number;
+  status: 'Rascunho' | 'Enviada' | 'Em Análise' | 'Aprovada' | 'Rejeitada' | 'Pendente' | 'Enviado' | 'Aprovado' | 'Rejeitado';
+  createdAt: any;
+  distributorId: string;
+  accountManager: string;
+  date: string;
+  expiryDate: string;
+  description?: string;
+  partnerId?: number | string;
+  projectName?: string;
+  total?: number;
+  quotationFile?: string;
+  pricingFile?: string;
+}
+
+// Tipos para RFP
+export interface RFP {
+  id: string;
+  title: string;
+  client: string;
+  description: string;
+  status: 'Aberto' | 'Em Análise' | 'Fechado' | 'Respondido';
+  deadline: string;
+  createdAt: any;
+  distributorId: string;
+  attachments?: any[];
+  type?: string;
+  publishDate?: string;
+  deadlineDate?: string;
+  submissionDate?: string;
+  value?: number;
+  accountManager?: string;
+  category?: string;
+  requirements?: string;
+  notes?: string;
+}
+
+// Tipos para PriceRecord
+export interface PriceRecord {
+  id: string;
+  title: string;
+  client: string;
+  status: 'Ativo' | 'Inativo' | 'Vencido' | 'Cancelado' | 'Suspenso' | 'Renovado';
+  createdAt: any;
+  distributorId: string;
+  items: PriceRecordItem[];
+  participants: any[];
+  attachments: any[];
+  type?: string;
+  publishDate?: string;
+  validityDate?: string;
+  renewalDate?: string;
+  totalValue?: number;
+  accountManager?: string;
+  category?: string;
+  description?: string;
+  notes?: string;
+}
+
+export interface PriceRecordItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  unit?: string;
+  supplier?: string;
 }

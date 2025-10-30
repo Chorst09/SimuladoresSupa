@@ -51,6 +51,7 @@ const EditalForm: React.FC<EditalFormProps> = ({ edital, onSubmit, onCancel }) =
   });
 
   const [newProduct, setNewProduct] = useState<Omit<EditalProduct, 'id' | 'totalEstimatedPrice'>>({
+    name: '',
     description: '',
     quantity: 0,
     unit: '',
@@ -184,21 +185,34 @@ const EditalForm: React.FC<EditalFormProps> = ({ edital, onSubmit, onCancel }) =
     e.preventDefault();
     onSubmit({
       title: formData.title,
+      client: formData.title, // Using title as client for now
+      description: formData.description,
+      status: formData.status as 'Aberto' | 'Em Análise' | 'Fechado' | 'Respondido',
+      publishDate: formData.publishDate,
+      deadline: formData.submissionDeadline || formData.openingDate || '',
+      createdAt: new Date(),
+      distributorId: 'default',
+      documents: formData.documents,
+      products: formData.products,
+      files: formData.files.length > 0 ? formData.files : [],
+      attachments: formData.attachments.length > 0 ? formData.attachments : [],
+      analysis: {
+        overallAssessment: {
+          strengths: [],
+          weaknesses: [],
+          opportunities: [],
+          threats: []
+        }
+      },
+      // Optional fields
       publicationNumber: formData.publicationNumber,
       publishingBody: formData.publishingBody,
-      publishDate: formData.publishDate,
       openingDate: formData.openingDate,
       submissionDeadline: formData.submissionDeadline,
       estimatedValue: formData.estimatedValue,
       category: formData.category,
-      status: formData.status as 'Aberto' | 'Em Análise' | 'Fechado' | 'Vencido' | 'Cancelado',
-      description: formData.description,
       requirements: formData.requirements,
-      documents: formData.documents,
-      products: formData.products,
-      files: formData.files.length > 0 ? formData.files : undefined,
-      notes: formData.notes || undefined,
-      attachments: formData.attachments.length > 0 ? formData.attachments : undefined
+      notes: formData.notes || undefined
     });
   };
 
@@ -250,8 +264,8 @@ const EditalForm: React.FC<EditalFormProps> = ({ edital, onSubmit, onCancel }) =
   };
 
   const addProduct = () => {
-    if (newProduct.description && newProduct.quantity > 0 && newProduct.unit && newProduct.estimatedUnitPrice > 0) {
-      const totalEstimatedPrice = newProduct.quantity * newProduct.estimatedUnitPrice;
+    if (newProduct.description && newProduct.quantity > 0 && newProduct.unit && (newProduct.estimatedUnitPrice || 0) > 0) {
+      const totalEstimatedPrice = newProduct.quantity * (newProduct.estimatedUnitPrice || 0);
       const product: EditalProduct = {
         id: Date.now().toString(),
         ...newProduct,
@@ -265,6 +279,7 @@ const EditalForm: React.FC<EditalFormProps> = ({ edital, onSubmit, onCancel }) =
       }));
 
       setNewProduct({
+        name: '',
         description: '',
         quantity: 0,
         unit: '',
@@ -367,7 +382,7 @@ const EditalForm: React.FC<EditalFormProps> = ({ edital, onSubmit, onCancel }) =
                   <Label htmlFor="status">Status *</Label>
                   <Select 
                     value={formData.status} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as 'Aberto' | 'Em Análise' | 'Fechado' | 'Vencido' | 'Cancelado' }))}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as 'Aberto' | 'Em Análise' | 'Fechado' | 'Respondido' }))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o status" />
@@ -662,7 +677,7 @@ const EditalForm: React.FC<EditalFormProps> = ({ edital, onSubmit, onCancel }) =
                             </div>
                           </TableCell>
                           <TableCell>{product.quantity} {product.unit}</TableCell>
-                          <TableCell>{formatCurrency(product.estimatedUnitPrice)}</TableCell>
+                          <TableCell>{formatCurrency(product.estimatedUnitPrice || 0)}</TableCell>
                           <TableCell>{formatCurrency(product.totalEstimatedPrice)}</TableCell>
                           <TableCell>{product.status}</TableCell>
                           <TableCell>{product.supplier || '-'}</TableCell>

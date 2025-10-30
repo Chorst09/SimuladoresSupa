@@ -21,13 +21,15 @@ export function createWiFiTopology(
       id: 'main-switch',
       type: 'switch',
       label: switchModel,
-      icon: '🔌'
+      icon: '🔌',
+      quantityKey: 'switches'
     },
     {
       id: 'wifi-controller',
       type: 'controller',
       label: controllerModel,
-      icon: '🎛️'
+      icon: '🎛️',
+      quantityKey: 'controllers'
     }
   ];
 
@@ -51,7 +53,8 @@ export function createWiFiTopology(
       id: apId,
       type: 'ap',
       label: `AP ${i}`,
-      icon: '📶'
+      icon: '📶',
+      quantityKey: 'aps'
     });
 
     connections.push({

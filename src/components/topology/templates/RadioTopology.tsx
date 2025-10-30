@@ -1,4 +1,4 @@
-import { TopologyTemplate } from '../types/topology';
+import { TopologyTemplate, NetworkDevice } from '../types/topology';
 
 export function createRadioTopology(
   customerName: string,
@@ -15,48 +15,54 @@ export function createRadioTopology(
   const routerModel = customizations['q-roteador-modelo'] || 'Router';
   const linkDistance = customizations['q-distancia-enlace'] || 'N/A';
 
-  const devices = [
+  const devices: NetworkDevice[] = [
     {
       id: 'provider-tower',
-      type: 'tower',
+      type: 'tower' as const,
       label: 'Torre Provedor',
       position: { x: 150, y: 150 },
-      icon: '🗼'
+      icon: '🗼',
+      quantityKey: 'towers'
     },
     {
       id: 'provider-antenna',
-      type: 'antenna',
+      type: 'antenna' as const,
       label: antennaTxModel,
       position: { x: 150, y: 100 },
-      icon: '📡'
+      icon: '📡',
+      quantityKey: 'antennas'
     },
     {
       id: 'customer-tower',
-      type: 'tower',
+      type: 'tower' as const,
       label: 'Torre Cliente',
       position: { x: 650, y: 150 },
-      icon: '🗼'
+      icon: '🗼',
+      quantityKey: 'towers'
     },
     {
       id: 'customer-antenna',
-      type: 'antenna',
+      type: 'antenna' as const,
       label: antennaRxModel,
       position: { x: 650, y: 100 },
-      icon: '📡'
+      icon: '📡',
+      quantityKey: 'antennas'
     },
     {
       id: 'customer-router',
-      type: 'router',
+      type: 'router' as const,
       label: routerModel,
       position: { x: 650, y: 220 },
-      icon: '🔀'
+      icon: '🔀',
+      quantityKey: 'routers'
     },
     {
       id: 'client-devices',
-      type: 'client',
+      type: 'client' as const,
       label: 'Dispositivos',
       position: { x: 650, y: 280 },
-      icon: '💻'
+      icon: '💻',
+      quantityKey: 'clients'
     }
   ];
 

@@ -1493,7 +1493,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
                             {/* Show discount breakdown if discounts were applied */}
-                            {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) && (
+                            {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
                                 <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
                                     <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
                                     <div className="text-sm space-y-1">
@@ -1505,8 +1505,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                             <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
                                         )}
 
-                                        {currentProposal.appliedDirectorDiscountPercentage > 0 && (
-                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')}</p>
+                                        {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage || 0}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage || 0) / 100)).toFixed(2).replace('.', ',')}</p>
                                         )}
                                     </div>
                                 </div>
@@ -1514,8 +1514,8 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
-                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
+                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
+                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
@@ -1542,7 +1542,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                         paybackMonths = calculatePayback(
                                             currentProposal.includeInstallation ? plan.installationCost : 0,
                                             plan.radioCost,
-                                            totalMonthly,
+                                            totalMonthly || 0,
                                             contractTerm,
                                             currentProposal.applySalespersonDiscount || false,
                                             currentProposal.appliedDirectorDiscountPercentage || 0
@@ -2301,7 +2301,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Total de Custos</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].totalCost)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period]?.custoDespesa || 0)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800 bg-green-900/50">
@@ -2359,12 +2359,15 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                                             // Função para exportar DRE
                                                             const dreData = Object.keys(dreCalculations)
                                                                 .filter(key => !isNaN(Number(key)))
-                                                                .map(period => ({
-                                                                    periodo: `${period} meses`,
-                                                                    receita: dreCalculations[period].receitaMensal,
-                                                                    balance: dreCalculations[period].balance,
-                                                                    rentabilidade: dreCalculations[period].rentabilidade
-                                                                }));
+                                                                .map(period => {
+                                                                    const periodNum = Number(period);
+                                                                    return {
+                                                                        periodo: `${period} meses`,
+                                                                        receita: dreCalculations[periodNum].receitaMensal,
+                                                                        balance: dreCalculations[periodNum].balance,
+                                                                        rentabilidade: dreCalculations[periodNum].rentabilidade
+                                                                    };
+                                                                });
 
                                                             const csvContent = "data:text/csv;charset=utf-8,"
                                                                 + "Período,Receita Mensal,Balance,Rentabilidade\n"

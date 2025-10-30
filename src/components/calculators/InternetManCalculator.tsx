@@ -1218,7 +1218,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            setAccountManagerData(proposal.accountManager as AccountManagerData);
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1271,7 +1271,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            setAccountManagerData(proposal.accountManager as AccountManagerData);
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1352,7 +1352,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     };
 
     const filteredProposals = proposals.filter(p =>
-        p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (typeof p.client === 'object' ? p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) : p.client?.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -1657,7 +1657,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
                             {/* Show discount breakdown if discounts were applied */}
-                            {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) && (
+                            {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage ?? 0) > 0) && (
                                 <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
                                     <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
                                     <div className="text-sm space-y-1">
@@ -1678,8 +1678,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
-                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
+                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage ?? 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
+                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage ?? 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
@@ -1706,10 +1706,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                         paybackMonths = calculatePayback(
                                             currentProposal.includeInstallation ? plan.installationCost : 0,
                                             plan.cost,
-                                            totalMonthly,
+                                            totalMonthly ?? 0,
                                             contractTerm,
                                             currentProposal.applySalespersonDiscount || false,
-                                            currentProposal.appliedDirectorDiscountPercentage || 0
+                                            currentProposal.appliedDirectorDiscountPercentage ?? 0
                                         );
                                     }
 
@@ -2298,8 +2298,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                             const months = (i + 1) * 12;
                                                             return (
                                                                 <TableCell key={months} className="text-right text-white font-semibold">
-                                                                    {dreCalculations[months].diferencaValoresContrato >= 0 ? '+' : ''}
-                                                                    {formatCurrency(dreCalculations[months].diferencaValoresContrato)}
+                                                                    {(dreCalculations[months]?.diferencaValoresContrato ?? 0) >= 0 ? '+' : ''}
+                                                                    {formatCurrency(dreCalculations[months]?.diferencaValoresContrato ?? 0)}
                                                                 </TableCell>
                                                             );
                                                         })}
@@ -2372,8 +2372,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
                                                         const months = (i + 1) * 12;
                                                         return (
-                                                            <TableCell key={months} className={`text-right font-semibold ${dreCalculations[months].margemLiquida >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {dreCalculations[months].margemLiquida.toFixed(2)}%
+                                                            <TableCell key={months} className={`text-right font-semibold ${(dreCalculations[months]?.margemLiquida ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                {(dreCalculations[months]?.margemLiquida ?? 0).toFixed(2)}%
                                                             </TableCell>
                                                         );
                                                     })}
@@ -2383,8 +2383,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
                                                         const months = (i + 1) * 12;
                                                         return (
-                                                            <TableCell key={months} className={`text-right font-semibold ${dreCalculations[months].markup >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {dreCalculations[months].markup.toFixed(2)}%
+                                                            <TableCell key={months} className={`text-right font-semibold ${(dreCalculations[months]?.markup ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                {(dreCalculations[months]?.markup ?? 0).toFixed(2)}%
                                                             </TableCell>
                                                         );
                                                     })}
@@ -2394,8 +2394,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
                                                         const months = (i + 1) * 12;
                                                         return (
-                                                            <TableCell key={months} className={`text-right font-semibold ${dreCalculations[months].rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {dreCalculations[months].rentabilidade.toFixed(2)}%
+                                                            <TableCell key={months} className={`text-right font-semibold ${(dreCalculations[months]?.rentabilidade ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                {(dreCalculations[months]?.rentabilidade ?? 0).toFixed(2)}%
                                                             </TableCell>
                                                         );
                                                     })}
@@ -2403,8 +2403,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white font-semibold">Lucratividade</TableCell>
                                                     {[12, 24, 36, 48, 60].slice(0, Math.ceil(contractTerm / 12)).map((period) => (
-                                                        <TableCell key={period} className={`text-right font-semibold ${dreCalculations[period].lucratividade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                            {dreCalculations[period].lucratividade.toFixed(2)}%
+                                                        <TableCell key={period} className={`text-right font-semibold ${(dreCalculations[period]?.lucratividade ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {(dreCalculations[period]?.lucratividade ?? 0).toFixed(2)}%
                                                         </TableCell>
                                                     ))}
                                                 </TableRow>
@@ -2425,9 +2425,9 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                                 .filter(key => !isNaN(Number(key)))
                                                                 .map(period => ({
                                                                     periodo: `${period} meses`,
-                                                                    receita: dreCalculations[period].receitaMensal,
-                                                                    balance: dreCalculations[period].balance,
-                                                                    rentabilidade: dreCalculations[period].rentabilidade
+                                                                    receita: dreCalculations[Number(period)]?.receitaMensal ?? 0,
+                                                                    balance: dreCalculations[Number(period)]?.balance ?? 0,
+                                                                    rentabilidade: dreCalculations[Number(period)]?.rentabilidade ?? 0
                                                                 }));
 
                                                             const csvContent = "data:text/csv;charset=utf-8,"
@@ -2474,7 +2474,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         {(() => {
                                                             const periods = [12, 24, 36, 48, 60];
                                                             const bestPeriod = periods.reduce((best, current) =>
-                                                                dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
+                                                                (dreCalculations[current]?.rentabilidade ?? 0) > (dreCalculations[best]?.rentabilidade ?? 0) ? current : best
                                                             );
                                                             return `${bestPeriod} meses`;
                                                         })()}
@@ -2483,9 +2483,9 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         {(() => {
                                                             const periods = [12, 24, 36, 48, 60];
                                                             const bestPeriod = periods.reduce((best, current) =>
-                                                                dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
+                                                                (dreCalculations[current]?.rentabilidade ?? 0) > (dreCalculations[best]?.rentabilidade ?? 0) ? current : best
                                                             );
-                                                            return `${dreCalculations[bestPeriod].rentabilidade.toFixed(2)}% rentabilidade`;
+                                                            return `${(dreCalculations[bestPeriod]?.rentabilidade ?? 0).toFixed(2)}% rentabilidade`;
                                                         })()}
                                                     </div>
                                                 </div>
@@ -2529,8 +2529,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 <h4 className="text-sm font-medium text-slate-300 mb-3">Rentabilidade por Período</h4>
                                                 <div className="flex items-end justify-between h-20 gap-2">
                                                     {[12, 24, 36, 48, 60].map(period => {
-                                                        const rentabilidade = dreCalculations[period].rentabilidade;
-                                                        const maxRent = Math.max(...[12, 24, 36, 48, 60].map(p => dreCalculations[p].rentabilidade));
+                                                        const rentabilidade = dreCalculations[period]?.rentabilidade ?? 0;
+                                                        const maxRent = Math.max(...[12, 24, 36, 48, 60].map(p => dreCalculations[p]?.rentabilidade ?? 0));
                                                         const height = maxRent > 0 ? (rentabilidade / maxRent) * 100 : 0;
 
                                                         return (
@@ -2542,7 +2542,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                                 ></div>
                                                                 <div className="text-xs text-slate-400 mt-1">{period}m</div>
                                                                 <div className="text-xs font-medium text-white">
-                                                                    {rentabilidade.toFixed(1)}%
+                                                                    {rentabilidade?.toFixed(1) ?? '0.0'}%
                                                                 </div>
                                                             </div>
                                                         );
@@ -2557,7 +2557,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     const periods = [12, 24, 36, 48, 60];
 
                                                     // Verificar rentabilidade negativa
-                                                    const negativePeriods = periods.filter(p => dreCalculations[p].rentabilidade < 0);
+                                                    const negativePeriods = periods.filter(p => (dreCalculations[p]?.rentabilidade ?? 0) < 0);
                                                     if (negativePeriods.length > 0) {
                                                         alerts.push({
                                                             type: 'warning',
@@ -2569,13 +2569,13 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
                                                     // Verificar melhor período
                                                     const bestPeriod = periods.reduce((best, current) =>
-                                                        dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
+                                                        (dreCalculations[current]?.rentabilidade ?? 0) > (dreCalculations[best]?.rentabilidade ?? 0) ? current : best
                                                     );
-                                                    if (dreCalculations[bestPeriod].rentabilidade > 20) {
+                                                    if ((dreCalculations[bestPeriod]?.rentabilidade ?? 0) > 20) {
                                                         alerts.push({
                                                             type: 'success',
                                                             title: 'Excelente Rentabilidade',
-                                                            message: `O período de ${bestPeriod} meses oferece ${dreCalculations[bestPeriod].rentabilidade.toFixed(1)}% de rentabilidade. Recomendado!`,
+                                                            message: `O período de ${bestPeriod} meses oferece ${(dreCalculations[bestPeriod]?.rentabilidade ?? 0).toFixed(1)}% de rentabilidade. Recomendado!`,
                                                             icon: '🎯'
                                                         });
                                                     }
@@ -2713,7 +2713,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Anual:</span>
-                                                    <span className="text-blue-300 font-semibold">{formatCurrency(dreCalculations.receitaBruta * 12)}</span>
+                                                    <span className="text-blue-300 font-semibold">{formatCurrency((dreCalculations.receitaBruta ?? 0) * 12)}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Setup:</span>
@@ -2759,20 +2759,20 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Operacional:</span>
-                                                    <span className={`font-semibold ${dreCalculations.lucroOperacional >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                        {formatCurrency(dreCalculations.lucroOperacional)}
+                                                    <span className={`font-semibold ${(dreCalculations.lucroOperacional ?? 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                                        {formatCurrency(dreCalculations.lucroOperacional ?? 0)}
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Líquido:</span>
-                                                    <span className={`font-semibold ${dreCalculations.lucroLiquido >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                        {formatCurrency(dreCalculations.lucroLiquido)}
+                                                    <span className={`font-semibold ${(dreCalculations.lucroLiquido ?? 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                                        {formatCurrency(dreCalculations.lucroLiquido ?? 0)}
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Anual:</span>
-                                                    <span className={`font-semibold ${dreCalculations.lucroOperacional >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                                        {formatCurrency(dreCalculations.lucroOperacional ?? 0)}
+                                                    <span className={`font-semibold ${(dreCalculations.lucroOperacional ?? 0) >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                                        {formatCurrency((dreCalculations.lucroOperacional ?? 0) * 12)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -2784,8 +2784,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">Margem:</span>
-                                                    <span className={`font-semibold ${dreCalculations.rentabilidade >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
-                                                        {dreCalculations.rentabilidade.toFixed(1)}%
+                                                    <span className={`font-semibold ${(dreCalculations.rentabilidade ?? 0) >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
+                                                        {(dreCalculations.rentabilidade ?? 0).toFixed(1)}%
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
@@ -2796,8 +2796,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 </div>
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-300">ROI Anual:</span>
-                                                    <span className={`font-semibold ${dreCalculations.rentabilidade >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
-                                                        {(dreCalculations.rentabilidade * 12).toFixed(1)}%
+                                                    <span className={`font-semibold ${(dreCalculations.rentabilidade ?? 0) >= 0 ? 'text-purple-300' : 'text-red-300'}`}>
+                                                        {((dreCalculations.rentabilidade ?? 0) * 12).toFixed(1)}%
                                                     </span>
                                                 </div>
                                             </div>
@@ -2813,19 +2813,19 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="text-center">
                                                 <div className="text-2xl font-bold text-green-400">
-                                                    {formatCurrency(dreCalculations.receitaBruta * 12)}
+                                                    {formatCurrency((dreCalculations.receitaBruta ?? 0) * 12)}
                                                 </div>
                                                 <div className="text-sm text-slate-400">Receita Total (12m)</div>
                                             </div>
                                             <div className="text-center">
-                                                <div className={`text-2xl font-bold ${dreCalculations.lucroOperacional >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {formatCurrency(dreCalculations.lucroOperacional ?? 0)}
+                                                <div className={`text-2xl font-bold ${(dreCalculations.lucroOperacional ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {formatCurrency((dreCalculations.lucroOperacional ?? 0) * 12)}
                                                 </div>
                                                 <div className="text-sm text-slate-400">Lucro Total (12m)</div>
                                             </div>
                                             <div className="text-center">
-                                                <div className={`text-2xl font-bold ${dreCalculations.rentabilidade >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                    {dreCalculations.rentabilidade.toFixed(1)}%
+                                                <div className={`text-2xl font-bold ${(dreCalculations.rentabilidade ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {(dreCalculations.rentabilidade ?? 0).toFixed(1)}%
                                                 </div>
                                                 <div className="text-sm text-slate-400">Margem Líquida</div>
                                             </div>

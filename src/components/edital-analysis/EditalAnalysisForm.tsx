@@ -467,13 +467,13 @@ const EditalAnalysisForm: React.FC<EditalAnalysisFormProps> = ({ edital, onSubmi
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
                       <div className="text-2xl font-bold text-blue-600">
-                        {getDaysUntil(edital.openingDate)}
+                        {getDaysUntil(edital.openingDate || '')}
                       </div>
                       <div className="text-sm text-gray-600">Dias até a Abertura</div>
                     </div>
                     <div className="text-center p-4 bg-yellow-50 rounded-lg">
                       <div className="text-2xl font-bold text-yellow-600">
-                        {getDaysUntil(edital.submissionDeadline)}
+                        {getDaysUntil(edital.submissionDeadline || '')}
                       </div>
                       <div className="text-sm text-gray-600">Dias até o Prazo</div>
                     </div>
@@ -489,7 +489,7 @@ const EditalAnalysisForm: React.FC<EditalAnalysisFormProps> = ({ edital, onSubmi
                           timelineAnalysis: { 
                             ...prev.timelineAnalysis, 
                             timelineRisk: value as 'Baixo' | 'Médio' | 'Alto',
-                            isUrgent: getDaysUntil(edital.openingDate) <= 7
+                            isUrgent: getDaysUntil(edital.openingDate || '') <= 7
                           }
                         }))}
                       >

@@ -1,17 +1,25 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
   images: {
     domains: ['localhost'],
   },
-  // Configuração para resolver problemas de build no Vercel
-  typescript: {
-    // Ignorar erros de TypeScript durante o build para permitir que o deploy continue
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    // Ignorar erros de ESLint durante o build para permitir que o deploy continue
-    ignoreDuringBuilds: true,
+  // Configuração para PostgreSQL - não incluir no bundle do cliente
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Não incluir módulos Node.js no bundle do cliente
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        dns: false,
+        tls: false,
+        pg: false,
+        'pg-native': false,
+      };
+    }
+    return config;
   },
 }
 

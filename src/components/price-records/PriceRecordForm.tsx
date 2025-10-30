@@ -44,9 +44,7 @@ const PriceRecordForm: React.FC<PriceRecordFormProps> = ({ priceRecord, onSubmit
     unit: '',
     quantity: 0,
     unitPrice: 0,
-    supplier: '',
-    brand: '',
-    model: ''
+    supplier: ''
   });
 
   const categories = [
@@ -81,7 +79,9 @@ const PriceRecordForm: React.FC<PriceRecordFormProps> = ({ priceRecord, onSubmit
       items: formData.items,
       participants: formData.participants,
       notes: formData.notes || undefined,
-      attachments: formData.attachments.length > 0 ? formData.attachments : undefined
+      attachments: formData.attachments.length > 0 ? formData.attachments : [],
+      distributorId: 'default',
+      createdAt: new Date()
     });
   };
 
@@ -139,9 +139,7 @@ const PriceRecordForm: React.FC<PriceRecordFormProps> = ({ priceRecord, onSubmit
         unit: '',
         quantity: 0,
         unitPrice: 0,
-        supplier: '',
-        brand: '',
-        model: ''
+        supplier: ''
       });
     }
   };

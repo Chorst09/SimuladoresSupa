@@ -1,0 +1,708 @@
+// Schema Prisma Completo - Sistema de Simuladores
+// Configurado para criar banco do zero com prisma db push
+// Versão: Deploy Ready - Dezembro 2024
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["auth", "public"]
+}
+
+// =====================================================
+// AUTENTICAÇÃO E USUÁRIOS
+// =====================================================
+
+model User {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String    @unique @db.VarChar(255)
+  encrypted_password String?   @db.VarChar(255)
+  email_confirmed_at DateTime? @db.Timestamptz(6)
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+  raw_app_meta_data  Json      @default("{}")
+  raw_user_meta_data Json      @default("{}")
+  is_super_admin     Boolean   @default(false)
+  role               String    @default("authenticated") @db.VarChar(255)
+  password_changed   DateTime? @db.Timestamptz(6)
+
+  // Relacionamentos
+  profile                   Profile?
+  user_compat               UserCompat?
+  managed_teams             Team[]                  @relation("TeamManager")
+  created_clientes          Cliente[]               @relation("ClienteCreatedBy")
+  created_fornecedores      Fornecedor[]            @relation("FornecedorCreatedBy")
+  created_oportunidades     Oportunidade[]          @relation("OportunidadeCreatedBy")
+  responsible_oportunidades Oportunidade[]          @relation("OportunidadeResponsavel")
+  created_proposals         Proposal[]              @relation("ProposalCreatedBy")
+  atividades                Atividade[]
+  notificacoes              Notificacao[]
+  audit_logs                AuditLog[]
+  created_templates         DocumentTemplate[]
+  uploaded_files            Attachment[]
+  calculations              Calculation[]
+  product_configs           ProductConfig[]
+  user_sessions             UserSession[]
+  workflow_requests         ApprovalWorkflow[]      @relation("WorkflowRequester")
+  workflow_approvals        ApprovalWorkflow[]      @relation("WorkflowApprover")
+  approval_steps            ApprovalStep[]          @relation("StepApprover")
+  integrations              Integration[]           @relation("IntegrationCreator")
+  oportunidade_historico    OportunidadeHistorico[]
+
+  @@map("users")
+  @@schema("auth")
+}
+
+model Profile {
+  id         String   @id @db.Uuid
+  full_name  String
+  email      String
+  role       String   @db.VarChar(50)
+  team_id    String?  @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  user User  @relation(fields: [id], references: [id], onDelete: Cascade)
+  team Team? @relation(fields: [team_id], references: [id])
+
+  @@map("profiles")
+  @@schema("public")
+}
+
+model UserCompat {
+  id         String   @id @db.Uuid
+  email      String   @db.VarChar(255)
+  role       String   @default("user") @db.VarChar(50)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamento
+  user User @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  @@map("users")
+  @@schema("public")
+}
+
+// =====================================================
+// TEAMS E HIERARQUIA
+// =====================================================
+
+model Team {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(100)
+  description String?
+  manager_id  String?  @db.Uuid
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  manager  User?     @relation("TeamManager", fields: [manager_id], references: [id])
+  profiles Profile[]
+
+  @@map("teams")
+  @@schema("public")
+}
+
+// =====================================================
+// CLIENTES E FORNECEDORES
+// =====================================================
+
+model Cliente {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome_razao_social String
+  cnpj_cpf          String?  @unique
+  nome_contato      String
+  email_contato     String
+  telefone          String?
+  endereco_completo String?
+  status            String   @default("prospect") @db.VarChar(20)
+  created_by        String?  @db.Uuid
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  creator       User?          @relation("ClienteCreatedBy", fields: [created_by], references: [id])
+  oportunidades Oportunidade[]
+
+  @@map("clientes")
+  @@schema("public")
+}
+
+model Fornecedor {
+  id                         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome_razao_social          String
+  cnpj                       String   @unique
+  contato_principal_nome     String
+  contato_principal_email    String
+  contato_principal_telefone String?
+  area_atuacao               String?
+  observacoes                String?
+  status                     String   @default("ativo") @db.VarChar(20)
+  created_by                 String?  @db.Uuid
+  created_at                 DateTime @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  creator                   User?                    @relation("FornecedorCreatedBy", fields: [created_by], references: [id])
+  oportunidade_fornecedores OportunidadeFornecedor[]
+
+  @@map("fornecedores")
+  @@schema("public")
+}
+
+// =====================================================
+// OPORTUNIDADES E ATIVIDADES
+// =====================================================
+
+model Oportunidade {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  numero_oportunidade      String   @unique
+  titulo                   String
+  cliente_id               String   @db.Uuid
+  valor_estimado           Decimal  @db.Decimal(15, 2)
+  fase                     String   @default("prospeccao") @db.VarChar(50)
+  data_fechamento_prevista DateTime @db.Date
+  data_vencimento          DateTime @db.Date
+  responsavel_id           String   @db.Uuid
+  probabilidade_fechamento Int?     @default(50) @db.Integer
+  descricao                String?
+  origem                   String?  @db.VarChar(50) // 'website', 'indicacao', 'cold_call', etc
+  prioridade               String   @default("media") @db.VarChar(20) // 'baixa', 'media', 'alta'
+  created_by               String?  @db.Uuid
+  created_at               DateTime @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  cliente      Cliente                  @relation(fields: [cliente_id], references: [id])
+  responsavel  User                     @relation("OportunidadeResponsavel", fields: [responsavel_id], references: [id])
+  creator      User?                    @relation("OportunidadeCreatedBy", fields: [created_by], references: [id])
+  fornecedores OportunidadeFornecedor[]
+  atividades   Atividade[]
+  notificacoes Notificacao[]
+  historico    OportunidadeHistorico[]
+
+  @@map("oportunidades")
+  @@schema("public")
+}
+
+model OportunidadeFornecedor {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  oportunidade_id String   @db.Uuid
+  fornecedor_id   String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relacionamentos
+  oportunidade Oportunidade @relation(fields: [oportunidade_id], references: [id], onDelete: Cascade)
+  fornecedor   Fornecedor   @relation(fields: [fornecedor_id], references: [id])
+
+  @@unique([oportunidade_id, fornecedor_id])
+  @@map("oportunidade_fornecedores")
+  @@schema("public")
+}
+
+model Atividade {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  oportunidade_id String   @db.Uuid
+  tipo            String   @db.VarChar(50)
+  titulo          String
+  descricao       String?
+  usuario_id      String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relacionamentos
+  oportunidade Oportunidade @relation(fields: [oportunidade_id], references: [id], onDelete: Cascade)
+  usuario      User         @relation(fields: [usuario_id], references: [id])
+
+  @@map("atividades")
+  @@schema("public")
+}
+
+model Notificacao {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id      String   @db.Uuid
+  oportunidade_id String?  @db.Uuid
+  tipo            String   @db.VarChar(50)
+  titulo          String
+  mensagem        String
+  lida            Boolean  @default(false)
+  enviada_email   Boolean  @default(false)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relacionamentos
+  usuario      User          @relation(fields: [usuario_id], references: [id])
+  oportunidade Oportunidade? @relation(fields: [oportunidade_id], references: [id])
+
+  @@map("notificacoes")
+  @@schema("public")
+}
+
+model OportunidadeHistorico {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  oportunidade_id String   @db.Uuid
+  fase_anterior   String?  @db.VarChar(50)
+  fase_nova       String   @db.VarChar(50)
+  observacoes     String?
+  usuario_id      String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relacionamentos
+  oportunidade Oportunidade @relation(fields: [oportunidade_id], references: [id], onDelete: Cascade)
+  usuario      User         @relation(fields: [usuario_id], references: [id])
+
+  @@map("oportunidade_historico")
+  @@schema("public")
+}
+
+// =====================================================
+// PROPOSTAS
+// =====================================================
+
+model Proposal {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  base_id         String    @unique
+  title           String
+  client          Json
+  account_manager Json?
+  type            String    @db.VarChar(50)
+  status          String    @default("Rascunho") @db.VarChar(100)
+  value           Decimal   @default(0) @db.Decimal(15, 2)
+  total_setup     Decimal   @default(0) @db.Decimal(15, 2)
+  total_monthly   Decimal   @default(0) @db.Decimal(15, 2)
+  contract_period Int       @default(12)
+  date            DateTime  @default(now()) @db.Date
+  expiry_date     DateTime? @db.Date
+  created_by      String?   @db.Uuid
+  distributor_id  String?   @db.Uuid
+  version         Int       @default(1)
+  products        Json      @default("[]")
+  items_data      Json      @default("[]")
+  client_data     Json?
+  metadata        Json      @default("{}")
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  creator     User?          @relation("ProposalCreatedBy", fields: [created_by], references: [id])
+  distributor Partner?       @relation(fields: [distributor_id], references: [id])
+  items       ProposalItem[]
+
+  @@map("proposals")
+  @@schema("public")
+}
+
+// =====================================================
+// TABELAS DE COMISSÕES
+// =====================================================
+
+model CommissionChannelSeller {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  months_12  Decimal  @default(0.60) @db.Decimal(5, 2)
+  months_24  Decimal  @default(1.20) @db.Decimal(5, 2)
+  months_36  Decimal  @default(2.00) @db.Decimal(5, 2)
+  months_48  Decimal  @default(2.00) @db.Decimal(5, 2)
+  months_60  Decimal  @default(2.00) @db.Decimal(5, 2)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("commission_channel_seller")
+  @@schema("public")
+}
+
+model CommissionChannelDirector {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  months_12  Decimal  @default(0) @db.Decimal(5, 2)
+  months_24  Decimal  @default(0) @db.Decimal(5, 2)
+  months_36  Decimal  @default(0) @db.Decimal(5, 2)
+  months_48  Decimal  @default(0) @db.Decimal(5, 2)
+  months_60  Decimal  @default(0) @db.Decimal(5, 2)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("commission_channel_director")
+  @@schema("public")
+}
+
+model CommissionSeller {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  months_12  Decimal  @default(1.2) @db.Decimal(5, 2)
+  months_24  Decimal  @default(2.4) @db.Decimal(5, 2)
+  months_36  Decimal  @default(3.6) @db.Decimal(5, 2)
+  months_48  Decimal  @default(3.6) @db.Decimal(5, 2)
+  months_60  Decimal  @default(3.6) @db.Decimal(5, 2)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("commission_seller")
+  @@schema("public")
+}
+
+model CommissionChannelInfluencer {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  revenue_range String   @db.VarChar(50)
+  revenue_min   Decimal  @db.Decimal(10, 2)
+  revenue_max   Decimal  @db.Decimal(10, 2)
+  months_12     Decimal  @db.Decimal(5, 2)
+  months_24     Decimal  @db.Decimal(5, 2)
+  months_36     Decimal  @db.Decimal(5, 2)
+  months_48     Decimal  @db.Decimal(5, 2)
+  months_60     Decimal  @db.Decimal(5, 2)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("commission_channel_influencer")
+  @@schema("public")
+}
+
+model CommissionChannelIndicator {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  revenue_range String   @db.VarChar(50)
+  revenue_min   Decimal  @db.Decimal(10, 2)
+  revenue_max   Decimal  @db.Decimal(10, 2)
+  months_12     Decimal  @db.Decimal(5, 2)
+  months_24     Decimal  @db.Decimal(5, 2)
+  months_36     Decimal  @db.Decimal(5, 2)
+  months_48     Decimal  @db.Decimal(5, 2)
+  months_60     Decimal  @db.Decimal(5, 2)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("commission_channel_indicator")
+  @@schema("public")
+}
+
+// =====================================================
+// TABELA DE CONTATOS
+// =====================================================
+
+model Contact {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String   @db.VarChar(255)
+  email      String   @db.VarChar(255)
+  message    String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("contacts")
+  @@schema("public")
+}
+
+// =====================================================
+// TABELA DE PARCEIROS (PARTNERS)
+// =====================================================
+
+model Partner {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  email           String   @unique
+  phone           String?
+  company         String?
+  partner_type    String   @db.VarChar(50) // 'channel', 'reseller', 'distributor'
+  status          String   @default("active") @db.VarChar(20)
+  commission_rate Decimal? @db.Decimal(5, 2)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  proposals Proposal[]
+
+  @@map("partners")
+  @@schema("public")
+}
+
+// =====================================================
+// TABELAS PARA FUNCIONALIDADES ADICIONAIS
+// =====================================================
+
+// Tabela para armazenar configurações do sistema
+model SystemConfig {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  config_key   String   @unique @db.VarChar(100)
+  config_value Json
+  description  String?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@map("system_configs")
+  @@schema("public")
+}
+
+// Tabela para logs de auditoria
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?  @db.Uuid
+  action     String   @db.VarChar(100)
+  table_name String   @db.VarChar(100)
+  record_id  String?  @db.Uuid
+  old_values Json?
+  new_values Json?
+  ip_address String?  @db.VarChar(45)
+  user_agent String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relacionamento
+  user User? @relation(fields: [user_id], references: [id])
+
+  @@map("audit_logs")
+  @@schema("public")
+}
+
+// Tabela para templates de documentos/propostas
+model DocumentTemplate {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String   @db.VarChar(255)
+  type       String   @db.VarChar(50) // 'proposal', 'contract', 'quote'
+  template   Json // Estrutura do template
+  is_active  Boolean  @default(true)
+  created_by String?  @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamento
+  creator User? @relation(fields: [created_by], references: [id])
+
+  @@map("document_templates")
+  @@schema("public")
+}
+
+// Tabela para arquivos/anexos
+model Attachment {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  filename      String   @db.VarChar(255)
+  original_name String   @db.VarChar(255)
+  mime_type     String   @db.VarChar(100)
+  file_size     Int
+  file_path     String
+  entity_type   String   @db.VarChar(50) // 'oportunidade', 'cliente', 'proposal'
+  entity_id     String   @db.Uuid
+  uploaded_by   String?  @db.Uuid
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relacionamento
+  uploader User? @relation(fields: [uploaded_by], references: [id])
+
+  @@map("attachments")
+  @@schema("public")
+}
+
+// =====================================================
+// TABELAS PARA CALCULADORAS E SIMULADORES
+// =====================================================
+
+// Tabela para salvar cálculos/simulações
+model Calculation {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String?  @db.Uuid
+  calculator_type String   @db.VarChar(50) // 'pabx', 'fibra', 'radio', 'vm', etc
+  input_data      Json // Dados de entrada do cálculo
+  result_data     Json // Resultado do cálculo
+  client_data     Json? // Dados do cliente
+  saved_name      String?  @db.VarChar(255) // Nome para salvar o cálculo
+  is_proposal     Boolean  @default(false) // Se foi convertido em proposta
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamento
+  user User? @relation(fields: [user_id], references: [id])
+
+  @@map("calculations")
+  @@schema("public")
+}
+
+// Tabela para configurações de produtos/preços das calculadoras
+model ProductConfig {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_type String   @db.VarChar(50) // 'pabx', 'fibra', 'radio', 'vm'
+  config_name  String   @db.VarChar(100)
+  config_data  Json // Configurações específicas do produto
+  is_active    Boolean  @default(true)
+  created_by   String?  @db.Uuid
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamento
+  creator User? @relation(fields: [created_by], references: [id])
+
+  @@unique([product_type, config_name])
+  @@map("product_configs")
+  @@schema("public")
+}
+
+// =====================================================
+// TABELAS PARA RELATÓRIOS E ANALYTICS
+// =====================================================
+
+// Tabela para métricas de uso do sistema
+model SystemMetric {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  metric_type  String   @db.VarChar(50) // 'login', 'calculation', 'proposal', etc
+  metric_name  String   @db.VarChar(100)
+  metric_value Decimal  @db.Decimal(15, 4)
+  dimensions   Json? // Dimensões adicionais (user_id, calculator_type, etc)
+  recorded_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([metric_type, recorded_at])
+  @@map("system_metrics")
+  @@schema("public")
+}
+
+// Tabela para sessões de usuário (analytics)
+model UserSession {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String?   @db.Uuid
+  session_id    String    @unique @db.VarChar(255)
+  ip_address    String?   @db.VarChar(45)
+  user_agent    String?
+  started_at    DateTime  @default(now()) @db.Timestamptz(6)
+  ended_at      DateTime? @db.Timestamptz(6)
+  duration      Int? // Duração em segundos
+  pages_visited Json? // Páginas visitadas na sessão
+
+  // Relacionamento
+  user User? @relation(fields: [user_id], references: [id])
+
+  @@map("user_sessions")
+  @@schema("public")
+}
+
+// =====================================================
+// TABELAS PARA PRODUTOS E PREÇOS
+// =====================================================
+
+// Tabela para catálogo de produtos
+model Product {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(255)
+  category    String   @db.VarChar(100) // 'pabx', 'fibra', 'radio', 'vm', 'servicos'
+  subcategory String?  @db.VarChar(100)
+  description String?
+  unit_price  Decimal  @db.Decimal(10, 2)
+  setup_price Decimal  @default(0) @db.Decimal(10, 2)
+  is_active   Boolean  @default(true)
+  metadata    Json     @default("{}")
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  proposal_items ProposalItem[]
+
+  @@index([category, is_active])
+  @@map("products")
+  @@schema("public")
+}
+
+// Tabela para itens de proposta (relaciona propostas com produtos)
+model ProposalItem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  proposal_id String   @db.Uuid
+  product_id  String   @db.Uuid
+  quantity    Int      @default(1)
+  unit_price  Decimal  @db.Decimal(10, 2)
+  setup_price Decimal  @default(0) @db.Decimal(10, 2)
+  discount    Decimal  @default(0) @db.Decimal(5, 2) // Percentual
+  total_price Decimal  @db.Decimal(15, 2)
+  notes       String?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relacionamentos
+  proposal Proposal @relation(fields: [proposal_id], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [product_id], references: [id])
+
+  @@map("proposal_items")
+  @@schema("public")
+}
+
+// =====================================================
+// TABELAS PARA WORKFLOW E APROVAÇÕES
+// =====================================================
+
+// Tabela para workflow de aprovações
+model ApprovalWorkflow {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entity_type      String   @db.VarChar(50) // 'proposal', 'oportunidade', 'cliente'
+  entity_id        String   @db.Uuid
+  workflow_type    String   @db.VarChar(50) // 'approval', 'review', 'validation'
+  current_step     Int      @default(1)
+  total_steps      Int      @default(1)
+  status           String   @default("pending") @db.VarChar(20) // 'pending', 'approved', 'rejected', 'cancelled'
+  requested_by     String   @db.Uuid
+  current_approver String?  @db.Uuid
+  metadata         Json     @default("{}")
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  requester      User           @relation("WorkflowRequester", fields: [requested_by], references: [id])
+  approver       User?          @relation("WorkflowApprover", fields: [current_approver], references: [id])
+  approval_steps ApprovalStep[]
+
+  @@map("approval_workflows")
+  @@schema("public")
+}
+
+// Tabela para passos de aprovação
+model ApprovalStep {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workflow_id String    @db.Uuid
+  step_number Int
+  approver_id String    @db.Uuid
+  status      String    @default("pending") @db.VarChar(20) // 'pending', 'approved', 'rejected'
+  comments    String?
+  approved_at DateTime? @db.Timestamptz(6)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+
+  // Relacionamentos
+  workflow ApprovalWorkflow @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+  approver User             @relation("StepApprover", fields: [approver_id], references: [id])
+
+  @@unique([workflow_id, step_number])
+  @@map("approval_steps")
+  @@schema("public")
+}
+
+// =====================================================
+// TABELAS PARA INTEGRAÇÃO E WEBHOOKS
+// =====================================================
+
+// Tabela para configurações de integração
+model Integration {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String   @db.VarChar(100)
+  type       String   @db.VarChar(50) // 'webhook', 'api', 'email', 'sms'
+  config     Json // Configurações específicas da integração
+  is_active  Boolean  @default(true)
+  created_by String?  @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  creator      User?        @relation("IntegrationCreator", fields: [created_by], references: [id])
+  webhook_logs WebhookLog[]
+
+  @@map("integrations")
+  @@schema("public")
+}
+
+// Tabela para logs de webhooks
+model WebhookLog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  integration_id String   @db.Uuid
+  event_type     String   @db.VarChar(100)
+  payload        Json
+  response       Json?
+  status_code    Int?
+  success        Boolean  @default(false)
+  error_message  String?
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relacionamento
+  integration Integration @relation(fields: [integration_id], references: [id])
+
+  @@index([integration_id, created_at])
+  @@map("webhook_logs")
+  @@schema("public")
+}

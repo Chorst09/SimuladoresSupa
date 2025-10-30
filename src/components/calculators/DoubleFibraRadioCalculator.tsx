@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { Proposal, UserProfile } from '@/lib/types';
-import { supabase } from '@/lib/supabaseClient';
+// PostgreSQL via Prisma - APIs REST
 
 // Componente isolado para seletor de prazo contratual
 const ContractTermSelector = memo(({ value, onChange }: { value: number; onChange: (value: string) => void }) => {
@@ -1092,7 +1092,11 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            if (typeof proposal.accountManager === 'string') {
+                setAccountManagerData({ name: proposal.accountManager });
+            } else {
+                setAccountManagerData(proposal.accountManager);
+            }
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1147,7 +1151,11 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            if (typeof proposal.accountManager === 'string') {
+                setAccountManagerData({ name: proposal.accountManager });
+            } else {
+                setAccountManagerData(proposal.accountManager);
+            }
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1227,10 +1235,11 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         }
     };
 
-    const filteredProposals = proposals.filter(p =>
-        p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredProposals = proposals.filter(p => {
+        const clientName = typeof p.client === 'string' ? p.client : p.client?.name || '';
+        return clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     const handlePrint = () => {
         // Add print-specific styles
@@ -2242,9 +2251,9 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                                 .filter(key => !isNaN(Number(key)))
                                                                 .map(period => ({
                                                                     periodo: `${period} meses`,
-                                                                    receita: dreCalculations[period].receitaTotalPeriodo,
-                                                                    balance: dreCalculations[period].balance,
-                                                                    rentabilidade: dreCalculations[period].rentabilidade
+                                                                    receita: dreCalculations[Number(period)]?.receitaTotalPeriodo ?? 0,
+                                                                    balance: dreCalculations[Number(period)]?.balance ?? 0,
+                                                                    rentabilidade: dreCalculations[Number(period)]?.rentabilidade ?? 0
                                                                 }));
 
                                                             const csvContent = "data:text/csv;charset=utf-8,"

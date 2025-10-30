@@ -16,7 +16,7 @@ interface VMProposal {
 }
 
 const VMProposals: React.FC = () => {
-    const [viewMode, setViewMode] = useState<'search' | 'create' | 'edit' | 'view'>('search');
+    const [viewMode, setViewMode] = useState<'search' | 'create' | 'edit' | 'view' | 'list'>('search');
     const [proposals, setProposals] = useState<VMProposal[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [editingProposal, setEditingProposal] = useState<VMProposal | null>(null);
@@ -75,9 +75,8 @@ const VMProposals: React.FC = () => {
     if (viewMode === 'create' || viewMode === 'edit') {
         return (
             <VMCalculator 
-                // Passar props para a calculadora, se necessário, para salvar ou cancelar
-                // Por enquanto, a calculadora será independente.
-                // Para integrar, a calculadora precisaria de callbacks como onSave e onCancel.
+                onSave={() => setViewMode('list')}
+                onCancel={() => setViewMode('list')}
             />
         );
     }

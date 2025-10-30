@@ -40,7 +40,12 @@ const TrainingForm: React.FC<TrainingFormProps> = ({ training, suppliers, onSave
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    onSave({ ...values, id: training ? training.id : Date.now(), supplierId: Number(values.supplierId) });
+    onSave({ 
+      ...values, 
+      id: training ? training.id : Date.now(), 
+      partnerId: 0, // Valor padrão para partnerId
+      supplierId: Number(values.supplierId) 
+    });
   };
 
   return (

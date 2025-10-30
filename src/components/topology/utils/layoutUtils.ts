@@ -62,7 +62,7 @@ export const calculateHubSpokeLayout = (
   const spokeRadius = Math.min(width, height) / 3;
 
   return devices.map((device, index) => {
-    if (device.type === 'hub' || device.type === 'controller') {
+    if (device.type === 'controller') {
       return {
         ...device,
         position: { x: centerX, y: centerY }

@@ -20,8 +20,7 @@ import { TopologyConfig } from '@/components/topology/types/topology';
 import { SurveyDetailsView } from '@/components/survey/SurveyDetailsView';
 import { Plus, ArrowLeft, Trash2, Eye } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+// Firebase removido - usando PostgreSQL via API routes
 
 interface CustomerData {
   customerName: string;
@@ -49,16 +48,12 @@ export default function SiteSurveyPage() {
 
     useEffect(() => {
     const fetchSurveys = async () => {
-      if (!db) {
-        toast({ title: "Erro de Conexão", description: "Não foi possível conectar ao banco de dados.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-      }
       try {
-        const surveysCollection = collection(db, 'site_surveys');
-        const q = query(surveysCollection, orderBy("createdAt", "desc"));
-        const surveySnapshot = await getDocs(q);
-        const surveyList = surveySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as SiteSurvey[];
+        const response = await fetch('/api/site-surveys');
+        if (!response.ok) {
+          throw new Error('Failed to fetch surveys');
+        }
+        const surveyList = await response.json();
         setSurveys(surveyList);
       } catch (error) {
         console.error("Error fetching surveys: ", error);
@@ -79,31 +74,34 @@ export default function SiteSurveyPage() {
     setViewMode('survey');
   };
 
-    const handleSurveySubmit = async (details: Record<string, string>) => {
+  const handleSurveySubmit = async (details: Record<string, string>) => {
     if (!currentCustomerData) return;
 
-        const newSurvey = {
+    const newSurvey = {
       ...currentCustomerData,
       details,
       createdAt: new Date().toISOString(),
     };
-
-        if (!db) {
-      toast({ 
-        title: "Erro de Conexão", 
-        description: "Não foi possível conectar ao banco de dados. Verifique sua conexão.", 
-        variant: "destructive" 
-      });
-      return;
-    }
     
     try {
-            const docRef = await addDoc(collection(db, 'site_surveys'), newSurvey as Omit<SiteSurvey, 'id'>);
-            setSurveys(prev => [{ ...newSurvey, id: docRef.id } as SiteSurvey, ...prev]);
+      const response = await fetch('/api/site-surveys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newSurvey),
+      });
 
-    toast({
-      title: "Site Survey Salvo!",
-              description: `O survey para o cliente ${newSurvey.customerName} foi criado com sucesso.`,
+      if (!response.ok) {
+        throw new Error('Failed to save survey');
+      }
+
+      const savedSurvey = await response.json();
+      setSurveys(prev => [savedSurvey, ...prev]);
+
+      toast({
+        title: "Site Survey Salvo!",
+        description: `O survey para o cliente ${newSurvey.customerName} foi criado com sucesso.`,
       });
       
       setViewMode('list');
@@ -111,30 +109,30 @@ export default function SiteSurveyPage() {
     } catch (error: any) {
       console.error("Error adding document: ", error);
       
-      let errorMessage = "Não foi possível salvar o survey.";
-      if (error?.code === 'permission-denied') {
-        errorMessage = "Erro de permissão. Verifique as regras do Firestore no console do Firebase.";
-      } else if (error?.code === 'unavailable') {
-        errorMessage = "Serviço temporariamente indisponível. Tente novamente.";
-      }
-      
       toast({ 
         title: "Erro ao Salvar", 
-        description: errorMessage, 
+        description: "Não foi possível salvar o survey.", 
         variant: "destructive" 
       });
     }
   };
 
-    const handleDelete = async (surveyId: string) => {
-        if (!db) return;
+  const handleDelete = async (surveyId: string) => {
     try {
-      await deleteDoc(doc(db, 'site_surveys', surveyId));
+      const response = await fetch(`/api/site-surveys/${surveyId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete survey');
+      }
+
       const updatedSurveys = surveys.filter(s => s.id !== surveyId);
       setSurveys(updatedSurveys);
-    toast({
-      title: "Site Survey Excluído",
-              description: "O levantamento foi removido com sucesso.",
+      
+      toast({
+        title: "Site Survey Excluído",
+        description: "O levantamento foi removido com sucesso.",
         variant: "destructive",
       });
     } catch (error) {

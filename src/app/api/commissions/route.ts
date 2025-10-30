@@ -1,29 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { commissionService } from '@/lib/database';
 
 export async function GET() {
   try {
-    // Buscar todas as tabelas de comissão
+    // Buscar todas as tabelas de comissão usando Prisma
     const [
-      channelSellerResult,
-      channelDirectorResult,
-      sellerResult,
-      channelInfluencerResult,
-      channelIndicatorResult
+      channelSeller,
+      channelDirector,
+      seller,
+      channelInfluencer,
+      channelIndicator
     ] = await Promise.all([
-      supabase.from('commission_channel_seller').select('*').single(),
-      supabase.from('commission_channel_director').select('*').single(),
-      supabase.from('commission_seller').select('*').single(),
-      supabase.from('commission_channel_influencer').select('*').order('revenue_min', { ascending: true }),
-      supabase.from('commission_channel_indicator').select('*').order('revenue_min', { ascending: true })
+      commissionService.getChannelSeller(),
+      commissionService.getChannelDirector(),
+      commissionService.getSeller(),
+      commissionService.getChannelInfluencer(),
+      commissionService.getChannelIndicator()
     ]);
 
     return NextResponse.json({
-      channelSeller: channelSellerResult.data,
-      channelDirector: channelDirectorResult.data,
-      seller: sellerResult.data,
-      channelInfluencer: channelInfluencerResult.data,
-      channelIndicator: channelIndicatorResult.data
+      channelSeller,
+      channelDirector,
+      seller,
+      channelInfluencer,
+      channelIndicator
     });
   } catch (error) {
     console.error('Erro ao buscar comissões:', error);
@@ -46,69 +46,17 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    let result;
+    // Atualizar usando Prisma
+    const result = await commissionService.updateCommissionTable(table, data.id, data);
 
-    switch (table) {
-      case 'channel_seller':
-        result = await supabase
-          .from('commission_channel_seller')
-          .update(data)
-          .eq('id', data.id)
-          .select();
-        break;
-      
-      case 'channel_director':
-        result = await supabase
-          .from('commission_channel_director')
-          .update(data)
-          .eq('id', data.id)
-          .select();
-        break;
-      
-      case 'seller':
-        result = await supabase
-          .from('commission_seller')
-          .update(data)
-          .eq('id', data.id)
-          .select();
-        break;
-      
-      case 'channel_influencer':
-        result = await supabase
-          .from('commission_channel_influencer')
-          .update(data)
-          .eq('id', data.id)
-          .select();
-        break;
-      
-      case 'channel_indicator':
-        result = await supabase
-          .from('commission_channel_indicator')
-          .update(data)
-          .eq('id', data.id)
-          .select();
-        break;
-      
-      default:
-        return NextResponse.json(
-          { error: 'Tabela inválida' },
-          { status: 400 }
-        );
-    }
-
-    if (result.error) {
-      console.error('Erro ao atualizar comissão:', result.error);
-      return NextResponse.json(
-        { error: 'Erro ao atualizar dados' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true,
+      data: result
+    });
   } catch (error) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { error: error instanceof Error ? error.message : 'Erro interno do servidor' },
       { status: 500 }
     );
   }

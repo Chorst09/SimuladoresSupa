@@ -187,9 +187,10 @@ export const showLoadingNotification = async <T>(
     error: string;
   }
 ): Promise<T> => {
-  return toast.promise(promise, {
+  const result = await toast.promise(promise, {
     loading: messages.loading,
     success: messages.success,
     error: messages.error
   });
+  return result as T;
 };

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { oportunidadeSchema, type OportunidadeFormData } from '@/lib/validations/gestao-oportunidades';
-import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/use-auth';
 
 interface Cliente {
@@ -63,35 +62,22 @@ export default function OportunidadeModal({ isOpen, onClose, onSuccess }: Oportu
   const loadData = async () => {
     setIsLoadingData(true);
     try {
-      // Carregar clientes ativos
-      const { data: clientesData, error: clientesError } = await supabase
-        .from('clientes')
-        .select('id, nome_razao_social, status')
-        .eq('status', 'ativo')
-        .order('nome_razao_social');
+      // Carregar dados via APIs
+      const [clientesResponse, fornecedoresResponse, profilesResponse] = await Promise.all([
+        fetch('/api/clientes?status=ativo', { credentials: 'include' }),
+        fetch('/api/fornecedores?status=ativo', { credentials: 'include' }),
+        fetch('/api/profiles', { credentials: 'include' })
+      ]);
 
-      if (clientesError) throw clientesError;
+      const [clientesData, fornecedoresData, profilesData] = await Promise.all([
+        clientesResponse.json(),
+        fornecedoresResponse.json(),
+        profilesResponse.json()
+      ]);
 
-      // Carregar fornecedores ativos
-      const { data: fornecedoresData, error: fornecedoresError } = await supabase
-        .from('fornecedores')
-        .select('id, nome_razao_social, status')
-        .eq('status', 'ativo')
-        .order('nome_razao_social');
-
-      if (fornecedoresError) throw fornecedoresError;
-
-      // Carregar profiles (vendedores, gerentes, diretores)
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, role')
-        .order('full_name');
-
-      if (profilesError) throw profilesError;
-
-      setClientes(clientesData || []);
-      setFornecedores(fornecedoresData || []);
-      setProfiles(profilesData || []);
+      setClientes(clientesData?.data || []);
+      setFornecedores(fornecedoresData?.data || []);
+      setProfiles(profilesData?.data || []);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -166,27 +152,23 @@ export default function OportunidadeModal({ isOpen, onClose, onSuccess }: Oportu
         descricao: validatedData.descricao || null
       };
 
-      // Inserir oportunidade
-      const { data: oportunidade, error: oportunidadeError } = await supabase
-        .from('oportunidades')
-        .insert([oportunidadeData])
-        .select()
-        .single();
+      // Inserir oportunidade via API
+      const response = await fetch('/api/oportunidades', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          ...validatedData,
+          created_by: user?.id
+        })
+      });
 
-      if (oportunidadeError) throw oportunidadeError;
+      const result = await response.json();
 
-      // Inserir associações com fornecedores se houver
-      if (validatedData.fornecedores.length > 0) {
-        const associacoes = validatedData.fornecedores.map(fornecedorId => ({
-          oportunidade_id: oportunidade.id,
-          fornecedor_id: fornecedorId
-        }));
-
-        const { error: associacoesError } = await supabase
-          .from('oportunidade_fornecedores')
-          .insert(associacoes);
-
-        if (associacoesError) throw associacoesError;
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Erro ao criar oportunidade');
       }
 
       // Sucesso
@@ -217,7 +199,7 @@ export default function OportunidadeModal({ isOpen, onClose, onSuccess }: Oportu
         });
         setErrors(fieldErrors);
       } else {
-        // Erro do Supabase
+        // Erro da API
         setErrors({ submit: error.message || 'Erro ao cadastrar oportunidade' });
       }
     } finally {

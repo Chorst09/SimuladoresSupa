@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ Erro na notificação:', error);
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
     });
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { contactService } from '@/lib/database';
 
 interface ContactFormData {
   name: string;
@@ -63,49 +63,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       );
     }
 
-    // Inserir dados no Supabase
-    const { data, error } = await supabase
-      .from('contacts')
-      .insert([
-        {
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          message: message.trim(),
-          created_at: new Date().toISOString(),
-          status: 'pending' // Status inicial para controle
-        }
-      ])
-      .select();
-
-    if (error) {
-      console.error('Erro ao inserir no Supabase:', error);
-      
-      // Verificar se é erro de tabela não encontrada
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Tabela de contatos não encontrada. Verifique a configuração do banco de dados.'
-          },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Erro interno do servidor. Tente novamente mais tarde.'
-        },
-        { status: 500 }
-      );
-    }
+    // Inserir dados usando Prisma
+    const contact = await contactService.createContact({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      message: message.trim()
+    });
 
     // Sucesso
     return NextResponse.json(
       {
         success: true,
         message: 'Mensagem enviada com sucesso! Entraremos em contato em breve.',
-        data: data?.[0]
+        data: contact
       },
       { status: 201 }
     );

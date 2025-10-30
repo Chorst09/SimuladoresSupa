@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Proposal, ProposalApiError } from '@/lib/types';
 import { useAuth } from './use-auth';
-import { getAuth } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+// Firebase imports removidos - não utilizados
+// import { getAuth } from 'firebase/auth';
+// import { app } from '@/lib/firebase';
 import { withRetry, executeWithRecovery, RETRY_CONFIGS } from '@/lib/retry-utils';
 import { detectFirestoreError } from '@/lib/error-utils';
 
@@ -40,35 +41,38 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     'Content-Type': 'application/json',
   };
 
-  if (!app) {
-    throw new Error('Firebase app not initialized');
-  }
+  // Firebase authentication temporarily disabled
+  // if (!app) {
+  //   throw new Error('Firebase app not initialized');
+  // }
 
-  const auth = getAuth(app);
-  const user = auth.currentUser;
+  // const auth = getAuth(app);
+  // const user = auth.currentUser;
 
-  if (!user) {
-    throw new Error('User not authenticated');
-  }
+  // Firebase authentication temporarily disabled
+  // if (!user) {
+  //   throw new Error('User not authenticated');
+  // }
 
-  // Use retry logic for token retrieval
-  const tokenResult = await withRetry(
-    async () => {
-      const token = await user.getIdToken(true); // Force refresh token
-      return token;
-    },
-    RETRY_CONFIGS.read,
-    'get authentication token'
-  );
+  // // Use retry logic for token retrieval
+  // const tokenResult = await withRetry(
+  //   async () => {
+  //     const token = await user.getIdToken(true); // Force refresh token
+  //     return token;
+  //   },
+  //   RETRY_CONFIGS.READ,
+  //   'get authentication token'
+  // );
 
-  if (!tokenResult.success) {
-    console.error('Failed to get authentication token after retries:', tokenResult.error);
-    throw new Error('Authentication failed - unable to retrieve token');
-  }
+  // if (!tokenResult.success) {
+  //   console.error('Failed to get authentication token after retries:', tokenResult.error);
+  //   throw new Error('Authentication failed - unable to retrieve token');
+  // }
 
-  headers['Authorization'] = `Bearer ${tokenResult.result}`;
-  headers['X-User-ID'] = user.uid; // Add user ID for server-side filtering
-  headers['X-User-Email'] = user.email || ''; // Add user email for context
+  // Firebase authentication temporarily disabled
+  // headers['Authorization'] = `Bearer ${tokenResult.result}`;
+  // headers['X-User-ID'] = user.uid; // Add user ID for server-side filtering
+  // headers['X-User-Email'] = user.email || ''; // Add user email for context
 
   return headers;
 }
@@ -83,51 +87,58 @@ interface AuthContext {
 
 // Helper function to get comprehensive user context
 async function getUserContext(): Promise<AuthContext | null> {
-  if (!app) {
-    console.warn('Firebase app not initialized');
-    return null;
-  }
+  // Firebase authentication temporarily disabled
+  // if (!app) {
+  //   console.warn('Firebase app not initialized');
+  //   return null;
+  // }
 
-  const auth = getAuth(app);
-  const user = auth.currentUser;
+  // const auth = getAuth(app);
+  // const user = auth.currentUser;
 
-  if (!user) {
-    return null;
-  }
+  // Firebase authentication temporarily disabled
+  // if (!user) {
+  //   return null;
+  // }
 
-  try {
-    const tokenResult = await withRetry(
-      async () => {
-        const token = await user.getIdToken(false); // Use cached token first
-        return token;
-      },
-      RETRY_CONFIGS.read,
-      'get user context token'
-    );
+  // try {
+  //   const tokenResult = await withRetry(
+  //     async () => {
+  //       const token = await user.getIdToken(false); // Use cached token first
+  //       return token;
+  //     },
+  //     RETRY_CONFIGS.READ,
+  //     'get user context token'
+  //   );
 
-    if (!tokenResult.success) {
-      console.error('Failed to get user context token:', tokenResult.error);
-      return null;
-    }
+  //   if (!tokenResult.success) {
+  //     console.error('Failed to get user context token:', tokenResult.error);
+  //     return null;
+  //   }
 
-    return {
-      userId: user.uid,
-      email: user.email || undefined,
-      isAuthenticated: true,
-      token: tokenResult.result
-    };
-  } catch (error) {
-    console.error('Error getting user context:', error);
-    return null;
-  }
+  // Firebase authentication temporarily disabled
+  //   return {
+  //     userId: user.uid,
+  //     email: user.email || undefined,
+  //     isAuthenticated: true,
+  //     token: tokenResult.result
+  //   };
+  // } catch (error) {
+  //   console.error('Error getting user context:', error);
+  //   return null;
+  // }
+  
+  return null;
 }
 
 // Helper function to get current user ID
 function getCurrentUserId(): string | null {
-  if (!app) return null;
+  // Firebase authentication temporarily disabled
+  // if (!app) return null;
   
-  const auth = getAuth(app);
-  return auth.currentUser?.uid || null;
+  // const auth = getAuth(app);
+  // return auth.currentUser?.uid || null;
+  return null;
 }
 
 // Hook for managing proposal types with enhanced error handling
@@ -180,7 +191,7 @@ export function useProposalTypes() {
           const data = await response.json();
           return data.types;
         },
-        'read',
+        'READ',
         'fetch proposal types'
       );
 

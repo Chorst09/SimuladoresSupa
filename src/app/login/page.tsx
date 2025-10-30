@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from '@/lib/supabaseClient';
+// Migrado para usar APIs do Prisma
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import LoadingSpinner from '@/components/ui/loading-spinner';
@@ -29,33 +29,37 @@ const LoginPage = () => {
     setError(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
       });
 
-      if (error) {
-        throw error;
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Erro no login');
       }
 
-      if (data.user) {
-        toast({ title: 'Login bem-sucedido!', description: 'Redirecionando...' });
-        
-        // Fazer redirecionamento direto após login bem-sucedido
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1000);
-      }
+      toast({ title: 'Login bem-sucedido!', description: 'Redirecionando...' });
+      
+      // Fazer redirecionamento direto após login bem-sucedido
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 1000);
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message);
       
       // Provide more user-friendly error messages
       let errorMessage = 'Verifique suas credenciais.';
-      if (err.message.includes('Invalid login credentials')) {
-        errorMessage = 'Email ou senha incorretos.';
-      } else if (err.message.includes('Email not confirmed')) {
-        errorMessage = 'Por favor, confirme seu email antes de fazer login.';
+      if (err.message.includes('Usuário não encontrado')) {
+        errorMessage = 'Email não cadastrado.';
+      } else if (err.message.includes('Senha incorreta')) {
+        errorMessage = 'Senha incorreta.';
       } else if (err.message.includes('Too many requests')) {
         errorMessage = 'Muitas tentativas. Tente novamente em alguns minutos.';
       }

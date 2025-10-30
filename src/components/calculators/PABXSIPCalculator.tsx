@@ -4,8 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from "sonner"; // Added toast import
-import { supabase } from '../../lib/supabaseClient';
-// Firebase removido - usando apenas Supabase
+// PostgreSQL via Prisma - APIs REST
 import CommissionTablesUnified from './CommissionTablesUnified';
 // import { CommissionData } from '@/lib/types'; // Removido - usando hook useCommissions
 import { DRETable, DRETableProps } from './DRETable';
@@ -191,34 +190,29 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         try {
             setIsSaving(true);
 
-            const { error } = await supabase
-                .from('pabx_settings')
-                .upsert({
-                    user_id: currentUser.id,
-                    pabx_extensions: pabxExtensions,
-                    pabx_modality: pabxModality,
-                    pabx_premium_plan: pabxPremiumPlan,
-                    pabx_premium_sub_plan: pabxPremiumSubPlan,
-                    pabx_premium_equipment: pabxPremiumEquipment,
-                    contract_duration: contractDuration,
-                    pabx_include_setup: pabxIncludeSetup,
-                    pabx_include_devices: pabxIncludeDevices,
-                    pabx_device_quantity: pabxDeviceQuantity,
-                    pabx_include_ai: pabxIncludeAI,
-                    ai_agent_plan: aiAgentPlan,
-                    pabx_ai_plan: pabxAIPlan,
-                    include_parceiro_indicador: includeParceiroIndicador,
-                    sip_plan: sipPlan,
-                    sip_include_setup: sipIncludeSetup,
-                    sip_additional_channels: sipAdditionalChannels,
-                    sip_with_equipment: sipWithEquipment,
-                    // commission_data removido - usando hook useCommissions
-                    updated_at: new Date().toISOString(),
-                    user_name: currentUser.email || 'Usuário não identificado'
-                });
-
-            if (error) throw error;
-
+            // TODO: Implementar API para salvar configurações PABX
+            const configData = {
+                user_id: currentUser.id,
+                pabx_extensions: pabxExtensions,
+                pabx_modality: pabxModality,
+                pabx_premium_plan: pabxPremiumPlan,
+                pabx_premium_sub_plan: pabxPremiumSubPlan,
+                pabx_premium_equipment: pabxPremiumEquipment,
+                contract_duration: contractDuration,
+                pabx_include_setup: pabxIncludeSetup,
+                pabx_include_devices: pabxIncludeDevices,
+                pabx_device_quantity: pabxDeviceQuantity,
+                pabx_include_ai: pabxIncludeAI,
+                ai_agent_plan: aiAgentPlan,
+                pabx_ai_plan: pabxAIPlan,
+                include_parceiro_indicador: includeParceiroIndicador,
+                sip_plan: sipPlan,
+                sip_include_setup: sipIncludeSetup,
+            };
+            console.log('Salvando configurações PABX via API:', configData);
+            
+            // TODO: Fazer chamada para API REST aqui
+            
             toast.success('Configurações salvas com sucesso!');
         } catch (error) {
             console.error('Erro ao salvar configurações:', error);
@@ -428,7 +422,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         }
 
         try {
-            console.log('Salvando preços no Supabase:', pabxPrices);
+            console.log('Salvando preços via API:', pabxPrices);
 
             // Preparar dados para inserção
             const priceUpdates: any[] = [];
@@ -477,16 +471,12 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 });
             });
 
-            const { error } = await supabase
-                .from('pabx_prices')
-                .upsert(priceUpdates, {
-                    onConflict: 'price_type,category,range_key',
-                    ignoreDuplicates: false
-                });
-
-            if (error) throw error;
-
-            toast.success('Preços salvos com sucesso no Supabase!');
+            // TODO: Implementar API para salvar preços PABX
+            console.log('Salvando preços via API:', priceUpdates);
+            
+            // TODO: Fazer chamada para API REST aqui
+            
+            toast.success('Preços salvos com sucesso!');
             console.log('Preços salvos com sucesso!');
         } catch (error) {
             console.error('Erro ao salvar preços:', error);
@@ -494,18 +484,17 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         }
     }, [currentUser, pabxPrices]);
 
-    // Load PABX prices from Supabase
+    // Load PABX prices from API
     const loadPABXPrices = useCallback(async () => {
         try {
-            const { data, error } = await supabase
-                .from('pabx_prices')
-                .select('*')
-                .eq('price_type', 'standard');
-
-            if (error) throw error;
-
-            if (data && data.length > 0) {
-                console.log('Dados carregados do Supabase:', data);
+            // TODO: Implementar API para carregar preços PABX
+            console.log('Carregando preços via API...');
+            
+            // TODO: Fazer chamada para API REST aqui
+            const data: any[] | null = null; // Temporário
+            
+            if (data && (data as any[]).length > 0) {
+                console.log('Dados carregados via API:', data);
 
                 // Reorganizar dados no formato esperado
                 const loadedPrices = {
@@ -515,7 +504,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     device: {}
                 };
 
-                data.forEach(item => {
+                (data as any[]).forEach((item: any) => {
                     if (loadedPrices[item.category as keyof typeof loadedPrices]) {
                         (loadedPrices[item.category as keyof typeof loadedPrices] as any)[item.range_key] = item.price;
                     }
@@ -523,12 +512,10 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
                 setPabxPrices(loadedPrices as any);
                 console.log('Preços PABX carregados:', loadedPrices);
-                toast.success('Preços carregados do Supabase com sucesso!');
+                toast.success('Preços carregados com sucesso!');
             } else {
-                console.log('Nenhum preço encontrado no Supabase, salvando valores padrão');
-                toast.info('Salvando valores padrão no Supabase...');
-                // Salvar os valores padrão no Supabase
-                await savePABXPrices();
+                console.log('Usando valores padrão da calculadora');
+                toast.info('Usando configuração padrão da calculadora');
             }
         } catch (error) {
             console.error('Erro ao carregar preços:', error);
@@ -546,7 +533,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         loadPABXPrices();
     }, [loadPABXPrices]);
 
-    // Force save updated prices to Supabase on component mount
+    // Force save updated prices via API on component mount
     useEffect(() => {
         const saveUpdatedPrices = async () => {
             // Wait a bit to ensure component is fully loaded

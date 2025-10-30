@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/use-auth';
 
 interface CommissionChannelSeller {
@@ -147,8 +146,6 @@ export function useCommissions(): UseCommissionsResult {
 
   const fetchData = async (attempt = 0): Promise<void> => {
     try {
-      // Como já temos dados de fallback, não precisamos mostrar loading
-      // Apenas limpar erro se houver
       setError(null);
 
       console.log(`🔄 useCommissions: Tentativa ${attempt + 1}/${maxRetries + 1} de carregamento das comissões`);
@@ -160,163 +157,69 @@ export function useCommissions(): UseCommissionsResult {
         return;
       }
 
-      // Verificar conectividade do Supabase com timeout reduzido
-      try {
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout na verificação de sessão')), 3000)
-        );
+      // Buscar dados via API (que agora usa Prisma)
+      const response = await fetch('/api/commissions', {
+        method: 'GET',
+        credentials: 'include',
+        signal: AbortSignal.timeout(5000) // Timeout de 5 segundos
+      });
 
-        const { data: { session: sessionData }, error: sessionError } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]) as any;
-
-        if (sessionError) {
-          console.warn('⚠️ useCommissions: Erro na sessão:', sessionError.message);
-          if (attempt < maxRetries) {
-            console.log(`🔄 useCommissions: Tentando novamente em 1 segundo...`);
-            setTimeout(() => fetchData(attempt + 1), 1000);
-            return;
-          }
-          // Se falhou todas as tentativas, manter fallback
-          setIsLoading(false);
-          return;
-        }
-      } catch (sessionErr) {
-        console.warn('❌ useCommissions: Erro ao verificar sessão:', sessionErr);
-        if (attempt < maxRetries) {
-          console.log(`🔄 useCommissions: Tentando novamente em 1 segundo...`);
-          setTimeout(() => fetchData(attempt + 1), 1000);
-          return;
-        }
-        // Se falhou todas as tentativas, manter fallback
-        setIsLoading(false);
-        return;
+      if (!response.ok) {
+        throw new Error(`Erro HTTP: ${response.status}`);
       }
 
-      // Tentar buscar dados do Supabase com timeout reduzido
-      const fetchWithRetry = async (tableName: string, query: any) => {
-        try {
-          const promise = query;
-          const timeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error(`Timeout ao buscar ${tableName}`)), 4000)
-          );
+      const data = await response.json();
 
-          return await Promise.race([promise, timeout]);
-        } catch (error) {
-          console.warn(`⚠️ useCommissions: Erro ao buscar ${tableName}:`, error);
-          throw error;
-        }
-      };
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
-      const results = await Promise.allSettled([
-        // Canal/Vendedor
-        fetchWithRetry('commission_channel_seller',
-          supabase.from('commission_channel_seller').select('*').single()
-        ),
-        // Canal/Diretor
-        fetchWithRetry('commission_channel_director',
-          supabase.from('commission_channel_director').select('*').single()
-        ),
-        // Vendedor
-        fetchWithRetry('commission_seller',
-          supabase.from('commission_seller').select('*').single()
-        ),
-        // Canal Influenciador
-        fetchWithRetry('commission_channel_influencer',
-          supabase.from('commission_channel_influencer').select('*').order('revenue_min', { ascending: true })
-        ),
-        // Canal Indicador
-        fetchWithRetry('commission_channel_indicator',
-          supabase.from('commission_channel_indicator').select('*').order('revenue_min', { ascending: true })
-        )
-      ]);
-
-      // Processar resultados com fallback inteligente
-      const [
-        channelSellerResult,
-        channelDirectorResult,
-        sellerResult,
-        channelInfluencerResult,
-        channelIndicatorResult
-      ] = results;
-
-      // Só atualizar os dados se conseguiu carregar do Supabase
-      // Caso contrário, manter os dados de fallback já inicializados
-
-      // Canal/Vendedor
-      if (channelSellerResult.status === 'fulfilled' &&
-        channelSellerResult.value?.data &&
-        validateCommissionData(channelSellerResult.value.data, 'single')) {
-        setChannelSeller(channelSellerResult.value.data);
-        console.log('✅ useCommissions: Canal/Vendedor carregado do Supabase');
+      // Validar e atualizar dados se válidos
+      if (data.channelSeller && validateCommissionData(data.channelSeller, 'single')) {
+        setChannelSeller(data.channelSeller);
+        console.log('✅ useCommissions: Canal/Vendedor carregado da API');
       } else {
         console.log('📋 useCommissions: Canal/Vendedor mantendo fallback');
       }
 
-      // Canal/Diretor
-      if (channelDirectorResult.status === 'fulfilled' &&
-        channelDirectorResult.value?.data &&
-        validateCommissionData(channelDirectorResult.value.data, 'single')) {
-        setChannelDirector(channelDirectorResult.value.data);
-        console.log('✅ useCommissions: Canal/Diretor carregado do Supabase');
+      if (data.channelDirector && validateCommissionData(data.channelDirector, 'single')) {
+        setChannelDirector(data.channelDirector);
+        console.log('✅ useCommissions: Canal/Diretor carregado da API');
       } else {
         console.log('📋 useCommissions: Canal/Diretor mantendo fallback');
       }
 
-      // Vendedor
-      if (sellerResult.status === 'fulfilled' &&
-        sellerResult.value?.data &&
-        validateCommissionData(sellerResult.value.data, 'single')) {
-        setSeller(sellerResult.value.data);
-        console.log('✅ useCommissions: Vendedor carregado do Supabase');
+      if (data.seller && validateCommissionData(data.seller, 'single')) {
+        setSeller(data.seller);
+        console.log('✅ useCommissions: Vendedor carregado da API');
       } else {
         console.log('📋 useCommissions: Vendedor mantendo fallback');
       }
 
-      // Canal Influenciador
-      if (channelInfluencerResult.status === 'fulfilled' &&
-        channelInfluencerResult.value?.data &&
-        validateCommissionData(channelInfluencerResult.value.data, 'array')) {
-        setChannelInfluencer(channelInfluencerResult.value.data);
-        console.log('✅ useCommissions: Canal Influenciador carregado do Supabase');
+      if (data.channelInfluencer && validateCommissionData(data.channelInfluencer, 'array')) {
+        setChannelInfluencer(data.channelInfluencer);
+        console.log('✅ useCommissions: Canal Influenciador carregado da API');
       } else {
         console.log('📋 useCommissions: Canal Influenciador mantendo fallback');
       }
 
-      // Canal Indicador
-      if (channelIndicatorResult.status === 'fulfilled' &&
-        channelIndicatorResult.value?.data &&
-        validateCommissionData(channelIndicatorResult.value.data, 'array')) {
-        setChannelIndicator(channelIndicatorResult.value.data);
-        console.log('✅ useCommissions: Canal Indicador carregado do Supabase');
+      if (data.channelIndicator && validateCommissionData(data.channelIndicator, 'array')) {
+        setChannelIndicator(data.channelIndicator);
+        console.log('✅ useCommissions: Canal Indicador carregado da API');
       } else {
         console.log('📋 useCommissions: Canal Indicador mantendo fallback');
       }
 
-      // Verificar se pelo menos uma tabela foi carregada com sucesso
-      const successCount = results.filter(r => r.status === 'fulfilled').length;
-      console.log(`📊 useCommissions: ${successCount}/${results.length} tabelas carregadas com sucesso`);
-
-      // Se nenhuma tabela foi carregada e ainda temos tentativas, retry
-      if (successCount === 0 && attempt < maxRetries) {
-        console.log(`🔄 useCommissions: Nenhuma tabela carregada, tentando novamente em 1 segundo...`);
-        setRetryCount(attempt + 1);
-        setTimeout(() => fetchData(attempt + 1), 1000);
-        return;
-      }
-
       // Reset retry count on success
       setRetryCount(0);
-      console.log(`🎉 useCommissions: Carregamento concluído (${successCount}/${results.length} tabelas do Supabase)`);
+      console.log('🎉 useCommissions: Carregamento concluído via API');
 
-    } catch (err) {
-      console.error('❌ useCommissions: Erro crítico:', err);
+    } catch (err: any) {
+      console.error('❌ useCommissions: Erro ao carregar:', err);
 
       // Se ainda temos tentativas, retry
       if (attempt < maxRetries) {
-        console.log(`🔄 useCommissions: Erro crítico, tentando novamente em 1 segundo...`);
+        console.log(`🔄 useCommissions: Erro, tentando novamente em 1 segundo...`);
         setRetryCount(attempt + 1);
         setTimeout(() => fetchData(attempt + 1), 1000);
         return;
@@ -331,12 +234,11 @@ export function useCommissions(): UseCommissionsResult {
   };
 
   useEffect(() => {
-    // Só tentar carregar dados do Supabase quando a autenticação terminar de carregar
+    // Só tentar carregar dados quando a autenticação terminar de carregar
     if (!authLoading) {
       console.log('🚀 useCommissions: Iniciando carregamento das tabelas de comissão');
       fetchData(0).catch((err) => {
         console.error('💥 useCommissions: Erro crítico no useEffect:', err);
-        // Em caso de erro crítico, manter dados de fallback e parar loading
         setIsLoading(false);
         setError('Erro crítico ao inicializar comissões. Usando dados padrão.');
       });

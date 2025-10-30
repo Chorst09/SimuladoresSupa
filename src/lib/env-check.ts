@@ -1,28 +1,28 @@
 // src/lib/env-check.ts
 export function checkEnvironmentVariables() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const databaseUrl = process.env.DATABASE_URL;
+  const nextAuthSecret = process.env.NEXTAUTH_SECRET;
 
   const issues: string[] = [];
 
-  if (!supabaseUrl) {
-    issues.push('NEXT_PUBLIC_SUPABASE_URL não está definida');
-  } else if (!supabaseUrl.startsWith('https://')) {
-    issues.push('NEXT_PUBLIC_SUPABASE_URL deve começar com https://');
+  if (!databaseUrl) {
+    issues.push('DATABASE_URL não está definida');
+  } else if (!databaseUrl.startsWith('postgresql://')) {
+    issues.push('DATABASE_URL deve começar com postgresql://');
   }
 
-  if (!supabaseAnonKey) {
-    issues.push('NEXT_PUBLIC_SUPABASE_ANON_KEY não está definida');
-  } else if (supabaseAnonKey.length < 100) {
-    issues.push('NEXT_PUBLIC_SUPABASE_ANON_KEY parece estar incompleta');
+  if (!nextAuthSecret) {
+    issues.push('NEXTAUTH_SECRET não está definida');
+  } else if (nextAuthSecret.length < 32) {
+    issues.push('NEXTAUTH_SECRET parece estar muito curta (mínimo 32 caracteres)');
   }
 
   return {
     isValid: issues.length === 0,
     issues,
     config: {
-      supabaseUrl,
-      supabaseAnonKey: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'não definida'
+      databaseUrl: databaseUrl ? `${databaseUrl.substring(0, 30)}...` : 'não definida',
+      nextAuthSecret: nextAuthSecret ? `${nextAuthSecret.substring(0, 10)}...` : 'não definida'
     }
   };
 }
@@ -31,9 +31,9 @@ export function logEnvironmentStatus() {
   const check = checkEnvironmentVariables();
   
   if (check.isValid) {
-    console.log('✅ Variáveis de ambiente do Supabase configuradas corretamente');
-    console.log('📍 URL:', check.config.supabaseUrl);
-    console.log('🔑 Anon Key:', check.config.supabaseAnonKey);
+    console.log('✅ Variáveis de ambiente do PostgreSQL configuradas corretamente');
+    console.log('📍 Database URL:', check.config.databaseUrl);
+    console.log('🔑 Auth Secret:', check.config.nextAuthSecret);
   } else {
     console.error('❌ Problemas com as variáveis de ambiente:');
     check.issues.forEach(issue => console.error(`  - ${issue}`));

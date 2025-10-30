@@ -1,0 +1,14 @@
+# Dockerfile para PostgreSQL customizado
+FROM postgres:16-alpine
+
+# Instalar extensões necessárias
+RUN apk add --no-cache postgresql-contrib
+
+# Copiar scripts de inicialização se existirem
+COPY init-scripts/ /docker-entrypoint-initdb.d/ 2>/dev/null || true
+
+# Configurações de performance para desenvolvimento
+RUN echo "shared_preload_libraries = 'pg_stat_statements'" >> /usr/local/share/postgresql/postgresql.conf.sample
+RUN echo "pg_stat_statements.track = all" >> /usr/local/share/postgresql/postgresql.conf.sample
+
+EXPOSE 5432

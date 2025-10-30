@@ -985,7 +985,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            setAccountManagerData(proposal.accountManager as AccountManagerData);
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1038,7 +1038,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            setAccountManagerData(proposal.accountManager as AccountManagerData);
         }
 
         // Handle products - check multiple possible locations and formats
@@ -1119,7 +1119,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
     };
 
     const filteredProposals = proposals.filter(p =>
-        p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (typeof p.client === 'object' ? p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) : p.client?.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase())
     );
 

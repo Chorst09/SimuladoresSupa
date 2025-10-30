@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { ClientData, AccountManagerData } from './ClientManagerForm';
+import { ClientData, AccountManagerData } from '@/lib/types';
 
 interface ClientManagerInfoProps {
     clientData: ClientData;

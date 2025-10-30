@@ -42,7 +42,8 @@ export function TopologyViewer({
           id: `router-${i}`,
           label: `Router ${i + 1}`,
           type: 'router',
-          position: { x: 100 + i * 150, y: 100 }
+          position: { x: 100 + i * 150, y: 100 },
+          quantityKey: 'routerQuantity'
         });
       }
     } else if (config.type === 'radio') {
@@ -51,7 +52,8 @@ export function TopologyViewer({
           id: `tower-${i}`,
           label: `Torre ${i + 1}`,
           type: 'tower',
-          position: { x: 100 + i * 150, y: 100 }
+          position: { x: 100 + i * 150, y: 100 },
+          quantityKey: 'towers'
         });
       }
     } else if (config.type === 'wifi') {
@@ -60,7 +62,8 @@ export function TopologyViewer({
           id: `ap-${i}`,
           label: `Access Point ${i + 1}`,
           type: 'ap',
-          position: { x: 100 + i * 150, y: 100 }
+          position: { x: 100 + i * 150, y: 100 },
+          quantityKey: 'aps'
         });
       }
     }

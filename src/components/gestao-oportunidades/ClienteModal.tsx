@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { clienteSchema, type ClienteFormData } from '@/lib/validations/gestao-oportunidades';
-import { supabase } from '@/lib/supabaseClient';
 
 interface ClienteModalProps {
   isOpen: boolean;
@@ -65,15 +64,20 @@ export default function ClienteModal({ isOpen, onClose, onSuccess }: ClienteModa
       // Validar dados
       const validatedData = clienteSchema.parse(formData);
       
-      // Inserir no Supabase
-      const { data, error } = await supabase
-        .from('clientes')
-        .insert([validatedData])
-        .select()
-        .single();
+      // Inserir via API
+      const response = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(validatedData)
+      });
 
-      if (error) {
-        throw error;
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Erro ao criar cliente');
       }
 
       // Sucesso
@@ -100,7 +104,7 @@ export default function ClienteModal({ isOpen, onClose, onSuccess }: ClienteModa
         });
         setErrors(fieldErrors);
       } else {
-        // Erro do Supabase
+        // Erro da API
         setErrors({ submit: error.message || 'Erro ao cadastrar cliente' });
       }
     } finally {

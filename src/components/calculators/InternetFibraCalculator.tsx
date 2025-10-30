@@ -87,8 +87,8 @@ interface Proposal {
     id: string;
     baseId: string;
     version: number;
-    client: ClientData;
-    accountManager: AccountManagerData;
+    client: ClientData | string;
+    accountManager: AccountManagerData | string;
     products: Product[];
     totalSetup: number;
     totalMonthly: number;
@@ -102,6 +102,17 @@ interface Proposal {
     expiryDate?: string;
     value: number;
     type: string;
+    // Propriedades adicionais que podem existir
+    createdBy?: string;
+    clientData?: ClientData;
+    items?: Product[];
+    contractPeriod?: number;
+    applySalespersonDiscount?: boolean;
+    appliedDirectorDiscountPercentage?: number;
+    baseTotalMonthly?: number;
+    selectedSpeed?: number;
+    includeInstallation?: boolean;
+    changes?: string;
 }
 
 // Helper function to get monthly price based on contract term
@@ -129,9 +140,9 @@ const getMaxPaybackMonths = (contractTerm: number): number => {
 };
 
 const calculatePayback = (
-    installationFee: number, 
-    fiberCost: number, 
-    monthlyRevenue: number, 
+    installationFee: number,
+    fiberCost: number,
+    monthlyRevenue: number,
     contractTerm: number,
     applySalespersonDiscount: boolean = false,
     appliedDirectorDiscountPercentage: number = 0
@@ -140,10 +151,10 @@ const calculatePayback = (
 
     // CORREÇÃO: Retornar valores específicos calculados para Internet Fibra
     console.log(`InternetFibra calculatePayback chamado com contractTerm: ${contractTerm}`);
-    
+
     // Converter para número para garantir comparação correta
     const term = Number(contractTerm);
-    
+
     if (term === 12) {
         console.log('InternetFibra: Retornando 6 meses para contrato de 12 meses');
         return 6;  // 12 meses = 6 meses de payback
@@ -164,10 +175,10 @@ const calculatePayback = (
         console.log('InternetFibra: Retornando 14 meses para contrato de 60 meses');
         return 14; // 60 meses = 14 meses de payback
     }
-    
+
     // Para outros prazos, usar cálculo real
     console.log('InternetFibra: Usando cálculo real para prazo não padrão:', term);
-    
+
     // Aplicar descontos no valor mensal
     const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
     const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
@@ -210,17 +221,17 @@ const calculatePayback = (
 };
 
 const validatePayback = (
-    installationFee: number, 
-    fiberCost: number, 
-    monthlyRevenue: number, 
+    installationFee: number,
+    fiberCost: number,
+    monthlyRevenue: number,
     contractTerm: number,
     applySalespersonDiscount: boolean = false,
     appliedDirectorDiscountPercentage: number = 0
 ): { isValid: boolean, actualPayback: number, maxPayback: number } => {
     const actualPayback = calculatePayback(
-        installationFee, 
-        fiberCost, 
-        monthlyRevenue, 
+        installationFee,
+        fiberCost,
+        monthlyRevenue,
         contractTerm,
         applySalespersonDiscount,
         appliedDirectorDiscountPercentage
@@ -378,7 +389,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         if (!plan) return null;
 
         let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
-        
+
         // Aplicar descontos
         if (applySalespersonDiscount) {
             monthlyPrice = monthlyPrice * 0.95;
@@ -387,14 +398,14 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
             monthlyPrice = monthlyPrice * directorDiscountFactor;
         }
-        
+
         // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
         if (temParceiros) {
             monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
             console.log('Acréscimo de 20% aplicado no result.monthlyPrice - InternetFibra:', monthlyPrice);
         }
-        
+
         return {
             ...plan,
             monthlyPrice,
@@ -545,7 +556,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
-            
+
             // NOVA LÓGICA: Aplicar 20% a mais quando há Parceiro Indicador ou Influenciador
             if (includeReferralPartner || includeInfluencerPartner) {
                 totalRevenue = totalRevenue * 1.20; // Adicionar 20%
@@ -555,16 +566,16 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
         const receitaInstalacao = taxaInstalacao;
         const receitaTotalPrimeiromes = totalRevenue + receitaInstalacao;
-        
+
         // CORREÇÃO: Custo de banda = velocidade × 2,09 × meses do período
         // Se Last Mile estiver marcado, não considerar custo da banda
         const velocidade = result?.speed || 0; // Velocidade em Mbps
         const custoBandaMensal = createLastMile ? 0 : velocidade * taxRates.banda; // Se Last Mile, custo = 0, senão 600 × 2,09 = 1.254,00
         const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00 (ou 0 se Last Mile)
-        
+
         // Custo Fibra vem da calculadora conforme prazo contratual e velocidade
         const custoFibraCalculadora = custoFibra;
-        
+
         const fundraising = 0; // Conforme tabela
         const lastMile = createLastMile ? lastMileCost : 0; // Incluir custo Last Mile quando selecionado
 
@@ -573,13 +584,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
         // Impostos sobre receita
         const simplesNacional = receitaTotalPrimeiromes * simplesNacionalRate;
-        
+
         // CORREÇÃO: Cálculo das comissões seguindo o modelo do Internet Rádio
         // Se é cliente existente, comissão apenas sobre a diferença de valor
-        const baseComissionValue = isExistingClient && previousMonthlyFee > 0 
+        const baseComissionValue = isExistingClient && previousMonthlyFee > 0
             ? Math.max(0, (monthlyValue - previousMonthlyFee) * months) // Comissão apenas sobre a diferença
             : totalRevenue; // Comissão apenas sobre valor mensal (sem taxa de instalação)
-        
+
         // CORREÇÃO: Cálculo das comissões baseado no prazo do contrato
         // Exemplo: 12 meses, valor mensal 421,00, percentual 1,2% = 421,00 x 1,2% = 5,05 x 12 meses = 60,62
         // Para 24 meses: 421,00 x 2,4% = 10,10 x 24 meses = 242,49
@@ -588,16 +599,16 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         // CORREÇÃO: Lógica correta das comissões
         // Se NÃO há parceiros: usar comissão do VENDEDOR
         // Se HÁ parceiros: usar comissão do CANAL/VENDEDOR + comissões dos parceiros
-        
+
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
-        
+
         // CORREÇÃO: Calcular base para comissões
         // Se "Já é cliente da Base?" está marcado, usar diferença de valores
         // Senão, usar valor mensal total
-        const baseParaComissao = isExistingClient 
+        const baseParaComissao = isExistingClient
             ? (monthlyValue - previousMonthlyFee) // Diferença de valores
             : monthlyValue; // Valor total
-        
+
         console.log(`InternetFibra - Base para comissão: ${baseParaComissao} (isExistingClient: ${isExistingClient})`);
 
         // Calcular comissão do vendedor/canal
@@ -631,7 +642,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
         // Total de comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
-        
+
         // Custo/Despesa: 10% sobre receita total (incluindo taxa de instalação)
         const custoDespesa = receitaTotalPrimeiromes * 0.10;
 
@@ -650,22 +661,22 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         );
 
         // Cálculos financeiros corretos:
-        
+
         // 1. Margem Líquida: (Lucro Líquido / Receita Total) * 100
         const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
-        
+
         // 2. ROI (Return on Investment): (Lucro Líquido / Investimento Inicial) * 100
         const valorInvestido = custoFibraCalculadora + lastMile + receitaInstalacao; // Investimento inicial total
         const roi = valorInvestido > 0 ? (balance / valorInvestido) * 100 : 0;
-        
+
         // 3. ROI Anualizado: ROI ajustado para base anual
         const roiAnualizado = months > 0 ? (roi * 12) / months : 0;
-        
+
         // Cálculos financeiros conforme planilha:
-        
+
         // Rentabilidade % = (Balance / Custo do Projeto) * 100
         const rentabilidade = custoFibraCalculadora > 0 ? (balance / custoFibraCalculadora) * 100 : 0;
-        
+
         // Lucratividade % = (Balance / Receita Total) * 100
         const lucratividade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
 
@@ -675,8 +686,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
         // Calcular diferença de valores contrato para clientes existentes
         // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
-        const diferencaMensal = isExistingClient && previousMonthlyFee > 0 
-            ? (monthlyValue - previousMonthlyFee) 
+        const diferencaMensal = isExistingClient && previousMonthlyFee > 0
+            ? (monthlyValue - previousMonthlyFee)
             : 0;
         const diferencaValoresContrato = diferencaMensal * months;
 
@@ -761,6 +772,23 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 applySalespersonDiscount,
                 appliedDirectorDiscountPercentage
             ),
+        } as {
+            [key: number]: any;
+            receitaBruta: number;
+            receitaLiquida: number;
+            custoServico: number;
+            custoBanda: number;
+            taxaInstalacao: number;
+            comissaoVendedor: number;
+            comissaoParceiroIndicador: number;
+            comissaoParceiroInfluenciador: number;
+            totalComissoes: number;
+            totalImpostos: number;
+            lucroOperacional: number;
+            lucroLiquido: number;
+            rentabilidade: number;
+            lucratividade: number;
+            paybackMeses: number;
         };
     }, [calculateDREForPeriod]);
 
@@ -999,22 +1027,26 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 email: '',
                 phone: ''
             });
-        } else if (proposal.clientData) {
-            setClientData(proposal.clientData);
+        } else if ((proposal as any).clientData) {
+            setClientData((proposal as any).clientData);
         }
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            if (typeof proposal.accountManager === 'object') {
+                setAccountManagerData(proposal.accountManager);
+            } else {
+                setAccountManagerData({ name: proposal.accountManager, email: '', phone: '' });
+            }
         }
 
         // Handle products - check multiple possible locations and formats
         let products = [];
         if (proposal.products && Array.isArray(proposal.products)) {
             products = proposal.products;
-        } else if (proposal.items && Array.isArray(proposal.items)) {
+        } else if ((proposal as any).items && Array.isArray((proposal as any).items)) {
             // Convert items to products format if needed
-            products = proposal.items.map((item: any) => ({
+            products = (proposal as any).items.map((item: any) => ({
                 id: item.id || `item-${Date.now()}`,
                 type: 'FIBER',
                 description: item.description || 'Internet Fibra',
@@ -1025,11 +1057,11 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         }
 
         setAddedProducts(products);
-        
+
         // Load status and changes
         setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
-        setProposalChanges(proposal.changes || '');
-        
+        setProposalChanges((proposal as any).changes || '');
+
         setViewMode('proposal-summary');
     };
 
@@ -1049,22 +1081,26 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 email: '',
                 phone: ''
             });
-        } else if (proposal.clientData) {
-            setClientData(proposal.clientData);
+        } else if ((proposal as any).clientData) {
+            setClientData((proposal as any).clientData);
         }
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            if (typeof proposal.accountManager === 'object') {
+                setAccountManagerData(proposal.accountManager);
+            } else {
+                setAccountManagerData({ name: proposal.accountManager, email: '', phone: '' });
+            }
         }
 
         // Handle products - check multiple possible locations and formats
         let products = [];
         if (proposal.products && Array.isArray(proposal.products)) {
             products = proposal.products;
-        } else if (proposal.items && Array.isArray(proposal.items)) {
+        } else if ((proposal as any).items && Array.isArray((proposal as any).items)) {
             // Convert items to products format if needed
-            products = proposal.items.map((item: any) => ({
+            products = (proposal as any).items.map((item: any) => ({
                 id: item.id || `item-${Date.now()}`,
                 type: 'FIBER',
                 description: item.description || 'Internet Fibra',
@@ -1131,10 +1167,11 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         }
     };
 
-    const filteredProposals = proposals.filter(p =>
-        p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredProposals = proposals.filter(p => {
+        const clientName = typeof p.client === 'string' ? p.client : p.client?.name || '';
+        return clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     const handlePrint = () => {
         // Add print-specific styles
@@ -1298,13 +1335,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredProposals.map(p => (
+                                    {filteredProposals.map((p: Proposal) => (
                                         <TableRow key={p.id} className="border-slate-800">
                                             <TableCell>{p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>
                                             <TableCell>{
-                                                typeof p.client === 'object' && p.client?.projectName 
-                                                    ? p.client.projectName 
+                                                typeof p.client === 'object' && p.client?.projectName
+                                                    ? p.client.projectName
                                                     : p.clientData?.projectName || 'Projeto não informado'
                                             }</TableCell>
                                             <TableCell>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</TableCell>
@@ -1358,24 +1395,24 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Dados do Cliente</h3>
                                 <div className="space-y-2 text-sm">
                                     <p><strong>Nome:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.name 
-                                            ? currentProposal.client.name 
-                                            : currentProposal.clientData?.name || 
-                                              (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.name
+                                            ? currentProposal.client.name
+                                            : currentProposal.clientData?.name ||
+                                            (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
                                     }</p>
                                     <p><strong>Email:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.email 
-                                            ? currentProposal.client.email 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.email
+                                            ? currentProposal.client.email
                                             : currentProposal.clientData?.email || 'N/A'
                                     }</p>
                                     <p><strong>Telefone:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.phone 
-                                            ? currentProposal.client.phone 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.phone
+                                            ? currentProposal.client.phone
                                             : currentProposal.clientData?.phone || 'N/A'
                                     }</p>
                                     <p><strong>Contato:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.contact 
-                                            ? currentProposal.client.contact 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.contact
+                                            ? currentProposal.client.contact
                                             : currentProposal.clientData?.contact || 'N/A'
                                     }</p>
                                 </div>
@@ -1384,8 +1421,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Nome do Projeto</h3>
                                 <div className="space-y-2 text-sm">
                                     <p className="font-medium text-base">{
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.projectName 
-                                            ? currentProposal.client.projectName 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.projectName
+                                            ? currentProposal.client.projectName
                                             : currentProposal.clientData?.projectName || 'Projeto não informado'
                                     }</p>
                                     <p className="text-gray-600 text-xs mt-2">
@@ -1421,7 +1458,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {(currentProposal.items || currentProposal.products || []).map((product, index) => (
+                                    {(currentProposal.items || currentProposal.products || []).map((product: any, index: number) => (
                                         <TableRow key={product.id || `product-${index}`}>
                                             <TableCell>{product.description}</TableCell>
                                             <TableCell>{formatCurrency(product.setup)}</TableCell>
@@ -1437,7 +1474,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
                             {/* Show discount breakdown if discounts were applied */}
-                            {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) && (
+                            {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
                                 <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
                                     <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
                                     <div className="text-sm space-y-1">
@@ -1449,8 +1486,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                             <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
                                         )}
 
-                                        {currentProposal.appliedDirectorDiscountPercentage > 0 && (
-                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')}</p>
+                                        {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage || 0}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage || 0) / 100)).toFixed(2).replace('.', ',')}</p>
                                         )}
                                     </div>
                                 </div>
@@ -1458,8 +1495,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
-                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
+                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
+                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
@@ -1477,11 +1514,11 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 {(() => {
                                     const totalSetup = currentProposal.totalSetup;
                                     const totalMonthly = currentProposal.totalMonthly;
-                                    
+
                                     // Usar a nova lógica de payback se houver produtos
-                                    const firstProduct = (currentProposal.items || currentProposal.products || [])[0];
+                                    const firstProduct = (currentProposal.items || currentProposal.products || [])[0] as any;
                                     let paybackMonths = 0;
-                                    
+
                                     if (firstProduct && totalSetup > 0) {
                                         paybackMonths = calculatePayback(
                                             totalSetup,
@@ -1507,7 +1544,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                             paybackMonths = 0;
                                         }
                                     }
-                                    
+
                                     const maxPayback = getMaxPaybackMonths(contractTerm);
                                     const isValid = paybackMonths <= maxPayback && paybackMonths > 0;
 
@@ -1637,18 +1674,17 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                                                         <div className="flex justify-between items-center">
                                                             <span className="text-sm text-slate-300">Diferença de Valor:</span>
-                                                            <span className={`font-semibold ${
-                                                                result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                    ? 'text-green-400' 
+                                                            <span className={`font-semibold ${result.monthlyPrice - previousMonthlyFee >= 0
+                                                                    ? 'text-green-400'
                                                                     : 'text-red-400'
-                                                            }`}>
+                                                                }`}>
                                                                 {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
                                                                 {formatCurrency(result.monthlyPrice - previousMonthlyFee)}
                                                             </span>
                                                         </div>
                                                         <div className="text-xs text-slate-400 mt-1">
-                                                            {result.monthlyPrice - previousMonthlyFee >= 0 
-                                                                ? 'Aumento na mensalidade' 
+                                                            {result.monthlyPrice - previousMonthlyFee >= 0
+                                                                ? 'Aumento na mensalidade'
                                                                 : 'Redução na mensalidade'
                                                             }
                                                         </div>
@@ -1777,7 +1813,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        
+
                                         <div className="mb-4">
                                             <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
                                             <textarea
@@ -1789,7 +1825,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                 rows={3}
                                             />
                                         </div>
-                                        {console.log('=== RESUMO DEBUG ===', 'addedProducts.length:', addedProducts.length, 'addedProducts:', addedProducts)}
+                                        {/* Debug: addedProducts.length: {addedProducts.length} */}
                                         {addedProducts.length === 0 ? (
                                             <p className="text-slate-400">Nenhum produto adicionado.</p>
                                         ) : (
@@ -1913,13 +1949,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         Limpar Tudo
                                                     </Button>
                                                     {hasChanged && currentProposal?.id && (
-                                                        <Button 
+                                                        <Button
                                                             onClick={() => {
                                                                 if (currentProposal.id) {
                                                                     handleSave(currentProposal.id, true);
                                                                     setHasChanged(false);
                                                                 }
-                                                            }} 
+                                                            }}
                                                             className="bg-blue-600 hover:bg-blue-700"
                                                         >
                                                             Salvar como Nova Versão
@@ -2007,7 +2043,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].simplesNacional)}</TableCell>
                                                     ))}
                                                 </TableRow>
-                                                
+
                                                 {isExistingClient && previousMonthlyFee > 0 && (
                                                     <TableRow className="border-slate-800 bg-yellow-900/30">
                                                         <TableCell className="text-white font-semibold">Diferença de Valores Contrato</TableCell>
@@ -2117,9 +2153,9 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                                 .filter(key => !isNaN(Number(key)))
                                                                 .map(period => ({
                                                                     periodo: `${period} meses`,
-                                                                    receita: dreCalculations[period].receitaMensal,
-                                                                    balance: dreCalculations[period].balance,
-                                                                    rentabilidade: dreCalculations[period].rentabilidade
+                                                                    receita: (dreCalculations as any)[period].receitaMensal,
+                                                                    balance: (dreCalculations as any)[period].balance,
+                                                                    rentabilidade: (dreCalculations as any)[period].rentabilidade
                                                                 }));
 
                                                             const csvContent = "data:text/csv;charset=utf-8,"
@@ -2166,7 +2202,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         {(() => {
                                                             const periods = [12, 24, 36, 48, 60];
                                                             const bestPeriod = periods.reduce((best, current) =>
-                                                                dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
+                                                                (dreCalculations as any)[current].rentabilidade > (dreCalculations as any)[best].rentabilidade ? current : best
                                                             );
                                                             return `${bestPeriod} meses`;
                                                         })()}
@@ -2175,9 +2211,9 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         {(() => {
                                                             const periods = [12, 24, 36, 48, 60];
                                                             const bestPeriod = periods.reduce((best, current) =>
-                                                                dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
+                                                                (dreCalculations as any)[current].rentabilidade > (dreCalculations as any)[best].rentabilidade ? current : best
                                                             );
-                                                            return `${dreCalculations[bestPeriod].rentabilidade.toFixed(2)}% rentabilidade`;
+                                                            return `${(dreCalculations as any)[bestPeriod].rentabilidade.toFixed(2)}% rentabilidade`;
                                                         })()}
                                                     </div>
                                                 </div>
@@ -2203,7 +2239,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                             console.log('Debug Payback - result?.fiberCost:', result?.fiberCost);
                                                             console.log('Debug Payback - applySalespersonDiscount:', applySalespersonDiscount);
                                                             console.log('Debug Payback - appliedDirectorDiscountPercentage:', appliedDirectorDiscountPercentage);
-                                                            
+
                                                             const currentPayback = calculatePayback(
                                                                 dreCalculations[contractTerm].receitaInstalacao,
                                                                 result?.fiberCost || 0,
@@ -2265,7 +2301,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
                                                     // Verificar melhor período
                                                     const bestPeriod = periods.reduce((best, current) =>
-                                                        dreCalculations[current].rentabilidade > dreCalculations[best].rentabilidade ? current : best
+                                                        (dreCalculations as any)[current].rentabilidade > (dreCalculations as any)[best].rentabilidade ? current : best
                                                     );
                                                     if (dreCalculations[bestPeriod].rentabilidade > 20) {
                                                         alerts.push({
@@ -2299,8 +2335,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
                                                     return alerts.map((alert, index) => (
                                                         <div key={index} className={`p-3 rounded-lg border-l-4 ${alert.type === 'success' ? 'bg-green-900/20 border-green-500' :
-                                                                alert.type === 'warning' ? 'bg-yellow-900/20 border-yellow-500' :
-                                                                    'bg-blue-900/20 border-blue-500'
+                                                            alert.type === 'warning' ? 'bg-yellow-900/20 border-yellow-500' :
+                                                                'bg-blue-900/20 border-blue-500'
                                                             }`}>
                                                             <div className="flex items-start gap-3">
                                                                 <span className="text-lg">{alert.icon}</span>

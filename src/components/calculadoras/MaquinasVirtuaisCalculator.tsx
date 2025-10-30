@@ -40,7 +40,8 @@ import {
 } from 'lucide-react';
 
 // Import shared components
-import { ClientManagerForm, ClientData, AccountManagerData } from '../calculators/ClientManagerForm';
+import { ClientManagerForm } from '../calculators/ClientManagerForm';
+import { ClientData, AccountManagerData } from '@/lib/types';
 import { ClientManagerInfo } from '../calculators/ClientManagerInfo';
 
 // Brazilian currency formatter
@@ -82,7 +83,7 @@ interface SIPResult {
 // Interface para um produto adicionado à proposta
 type ProductType = 'VM' | 'PABX' | 'SIP';
 
-interface Product {
+interface VMProduct {
     id: string;
     type: ProductType;
     description: string;
@@ -98,7 +99,7 @@ interface Proposal {
     userId: string; // ID do usuário que criou a proposta
     client: ClientData;
     accountManager: AccountManagerData;
-    products: Product[];
+    products: VMProduct[];
     totalSetup: number;
     totalMonthly: number;
     createdAt: string;
@@ -145,7 +146,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         email: '',
         phone: ''
     });
-    const [addedProducts, setAddedProducts] = useState<Product[]>([]);
+    const [addedProducts, setAddedProducts] = useState<VMProduct[]>([]);
     const [selectedStatus, setSelectedStatus] = useState<string>('Aguardando Aprovação do Cliente');
 
     // Estados PABX
@@ -941,7 +942,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
     // Funções de manipulação
     const handleAddVMProduct = () => {
-        const newProduct = {
+        const newProduct: VMProduct = {
             id: Date.now().toString(),
             type: 'VM',
             description: `${vmName} - ${vmCpuCores} vCPU, ${vmRamGb}GB RAM, ${vmStorageSize}GB ${vmStorageType}, ${vmOperatingSystem}`,
@@ -1014,8 +1015,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 email: '',
                 phone: ''
             });
-        } else if (proposal.clientData) {
-            setClientData(proposal.clientData);
+        } else if ((proposal as any).clientData) {
+            setClientData((proposal as any).clientData);
         }
 
         // Handle account manager data
@@ -1027,9 +1028,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         let products = [];
         if (proposal.products && Array.isArray(proposal.products)) {
             products = proposal.products;
-        } else if (proposal.items && Array.isArray(proposal.items)) {
+        } else if ((proposal as any).items && Array.isArray((proposal as any).items)) {
             // Convert items to products format if needed
-            products = proposal.items.map((item: any) => ({
+            products = (proposal as any).items.map((item: any) => ({
                 id: item.id || `item-${Date.now()}`,
                 type: 'VM',
                 description: item.description || 'Máquina Virtual',
@@ -1058,8 +1059,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 email: '',
                 phone: ''
             });
-        } else if (proposal.clientData) {
-            setClientData(proposal.clientData);
+        } else if ((proposal as any).clientData) {
+            setClientData((proposal as any).clientData);
         }
 
         // Handle account manager data
@@ -1071,9 +1072,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         let products = [];
         if (proposal.products && Array.isArray(proposal.products)) {
             products = proposal.products;
-        } else if (proposal.items && Array.isArray(proposal.items)) {
+        } else if ((proposal as any).items && Array.isArray((proposal as any).items)) {
             // Convert items to products format if needed
-            products = proposal.items.map((item: any) => ({
+            products = (proposal as any).items.map((item: any) => ({
                 id: item.id || `item-${Date.now()}`,
                 type: 'VM',
                 description: item.description || 'Máquina Virtual',
@@ -1523,8 +1524,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {currentProposal.createdAt ? (
-                                        (typeof currentProposal.createdAt === 'object' && 'toDate' in currentProposal.createdAt)
-                                            ? new Date(currentProposal.createdAt.toDate()).toLocaleDateString('pt-BR')
+                                        (typeof currentProposal.createdAt === 'object' && currentProposal.createdAt && 'toDate' in currentProposal.createdAt)
+                                            ? new Date((currentProposal.createdAt as any).toDate()).toLocaleDateString('pt-BR')
                                             : (isNaN(new Date(currentProposal.createdAt).getTime()) ? 'N/A' : new Date(currentProposal.createdAt).toLocaleDateString('pt-BR'))
                                     ) : 'N/A'}</p>
                                     <p><strong>ID da Proposta:</strong> {currentProposal.id}</p>
@@ -1593,8 +1594,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                     <TableCell>{p.baseId || p.id}</TableCell>
                                                     <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Sem nome'} (v{p.version})</TableCell>
                                                     <TableCell>{p.createdAt ? (
-                                                        (typeof p.createdAt === 'object' && 'toDate' in p.createdAt)
-                                                            ? new Date(p.createdAt.toDate()).toLocaleDateString('pt-BR')
+                                                        (typeof p.createdAt === 'object' && p.createdAt && 'toDate' in p.createdAt)
+                                                            ? new Date((p.createdAt as any).toDate()).toLocaleDateString('pt-BR')
                                                             : (isNaN(new Date(p.createdAt).getTime()) ? 'N/A' : new Date(p.createdAt).toLocaleDateString('pt-BR'))
                                                     ) : 'N/A'}</TableCell>
                                                     <TableCell>{formatCurrency(p.totalMonthly)}</TableCell>
@@ -2015,7 +2016,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            {currentUser?.role === 'diretor' && (
+                                                            {currentUser?.role === 'director' && (
                                                                 <div className="space-y-2 mt-4">
                                                                     <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
                                                                     <div className="flex items-center space-x-2">
@@ -3006,7 +3007,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                                                 {/* Controles de Desconto */}
                                                                 <div className="space-y-4 p-4 bg-slate-800 rounded-lg mt-4">
-                                                                    {(currentUser?.role !== 'diretor' && currentUser?.role !== 'admin') && (
+                                                                    {(currentUser?.role !== 'director' && currentUser?.role !== 'admin') && (
                                                                         <div className="flex items-center space-x-2">
                                                                             <Checkbox
                                                                                 id="salesperson-discount-toggle"
@@ -3016,7 +3017,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                             <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                                                         </div>
                                                                     )}
-                                                                    {(currentUser?.role === 'diretor' || currentUser?.role === 'admin') && (
+                                                                    {(currentUser?.role === 'director' || currentUser?.role === 'admin') && (
                                                                         <div className="space-y-2">
                                                                             <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
                                                                             <div className="flex items-center space-x-2">

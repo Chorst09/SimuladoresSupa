@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/use-auth';
 
-export type UserRole = 'admin' | 'director' | 'user';
+import { UserRole } from '@/lib/types';
+
+export type { UserRole };
 
 export interface UserProfile {
   id: string;
@@ -45,48 +46,28 @@ export function useUserProfile(): UseUserProfileResult {
       setIsLoading(true);
       setError(null);
 
-      // Buscar na tabela 'profiles' (que é a tabela correta)
+      // Buscar perfil via API
+      console.log('🔍 Buscando perfil para usuário:', user.id, user.email);
+      
+      const response = await fetch(`/api/profiles/${user.id}`, {
+        credentials: 'include'
+      });
+      
       let data = null;
       let profileError = null;
       
-      try {
-        console.log('🔍 Buscando perfil para usuário:', user.id, user.email);
-        
-        const result = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        data = result.data;
-        profileError = result.error;
-        
-        console.log('📊 Resultado da busca:', { data, error: profileError });
-      } catch (err) {
-        console.warn('❌ Erro ao buscar profiles:', err);
-        profileError = err as any;
-      }
-
-      // Se não encontrou por ID, tentar por email
-      if (profileError || !data) {
-        try {
-          console.log('🔍 Tentando buscar por email:', user.email);
-          
-          const result = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('email', user.email)
-            .single();
-          
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
           data = result.data;
+        } else {
           profileError = result.error;
-          
-          console.log('📊 Resultado da busca por email:', { data, error: profileError });
-        } catch (err) {
-          console.warn('❌ Erro ao buscar por email:', err);
-          profileError = err as any;
         }
+      } else {
+        profileError = `HTTP ${response.status}`;
       }
+      
+      console.log('📊 Resultado da busca:', { data, error: profileError });
 
       if (profileError || !data) {
         console.log('⚠️ Perfil não encontrado, criando perfil básico');
@@ -96,22 +77,30 @@ export function useUserProfile(): UseUserProfileResult {
           id: user.id,
           email: user.email || '',
           role: 'director', // Usar 'director' que provavelmente é válido
-          full_name: user.user_metadata?.full_name || user.email,
+          full_name: user.name || user.email || '',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
 
         setProfile(profileData);
         
-        // Tentar criar na tabela profiles (sem bloquear se falhar)
+        // Tentar criar perfil via API (sem bloquear se falhar)
         try {
-          console.log('💾 Tentando criar perfil na tabela profiles');
-          await supabase
-            .from('profiles')
-            .upsert(profileData, { onConflict: 'id' });
-          console.log('✅ Perfil criado com sucesso');
+          console.log('💾 Tentando criar perfil via API');
+          const createResponse = await fetch('/api/profiles', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(profileData)
+          });
+          
+          if (createResponse.ok) {
+            console.log('✅ Perfil criado com sucesso');
+          }
         } catch (insertErr) {
-          console.warn('⚠️ Não foi possível inserir em profiles:', insertErr);
+          console.warn('⚠️ Não foi possível criar perfil:', insertErr);
         }
       } else {
         console.log('✅ Perfil encontrado:', data);
@@ -128,7 +117,7 @@ export function useUserProfile(): UseUserProfileResult {
           id: user.id,
           email: user.email || '',
           role: 'director', // Usar 'director' que provavelmente é válido
-          full_name: user.user_metadata?.full_name || user.email,
+          full_name: user.name || user.email || '',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
@@ -145,15 +134,22 @@ export function useUserProfile(): UseUserProfileResult {
         throw new Error('Apenas administradores podem alterar roles');
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
+      const response = await fetch(`/api/profiles/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
           role: newRole,
           updated_at: new Date().toISOString()
         })
-        .eq('id', userId);
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Erro ao atualizar role');
+      }
 
       // Se está atualizando o próprio perfil, recarregar
       if (userId === user?.id) {

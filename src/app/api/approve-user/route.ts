@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import { query } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,22 +34,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Role inválido' }, { status: 400 });
     }
 
-    console.log('🔧 Configuração Supabase:', {
-      url: supabaseUrl,
-      hasAnonKey: !!supabaseAnonKey,
-      anonKeyLength: supabaseAnonKey?.length
-    });
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log('🔧 Aprovando usuário via PostgreSQL local');
 
     console.log('🔍 Buscando usuário:', userEmail);
 
-    // Buscar o usuário pelo email
-    const { data: user, error: userError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', userEmail)
-      .single();
+    // Buscar o usuário pelo email usando Prisma
+    const user = await prisma.profile.findFirst({
+      where: { email: userEmail }
+    });
+    
+    const userError = !user ? new Error('Usuário não encontrado') : null;
 
     console.log('📊 Resultado da busca:', { user, userError });
 
@@ -65,19 +57,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Usuário já foi processado' }, { status: 400 });
     }
 
-    // Atualizar o role do usuário
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ 
+    // Atualizar o role do usuário usando Prisma
+    const updatedUser = await prisma.profile.update({
+      where: { id: user.id },
+      data: { 
         role: role,
-        updated_at: new Date().toISOString()
-      })
-      .eq('email', userEmail);
+        updated_at: new Date()
+      }
+    });
 
-    if (updateError) {
-      console.error('Erro ao atualizar usuário:', updateError);
-      return NextResponse.json({ error: 'Erro ao aprovar usuário' }, { status: 500 });
-    }
+    console.log('✅ Usuário aprovado:', updatedUser.email);
 
     // Enviar email de confirmação para o usuário
     try {

@@ -65,7 +65,7 @@ export function createProposalApiError(
   return NextResponse.json(error, { 
     status,
     headers: {
-      'X-Request-ID': error.requestId,
+      'X-Request-ID': error.requestId || '',
       'X-Error-Code': code
     }
   });

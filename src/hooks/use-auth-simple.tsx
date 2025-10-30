@@ -2,7 +2,6 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 
 // Define o tipo para o objeto de usuário, incluindo a role
 interface User {
@@ -32,10 +31,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         console.log('🔍 Verificando usuário atual...');
         
-        const { data: { user: supabaseUser }, error } = await supabase.auth.getUser();
-        
-        if (error) {
-          console.error('❌ Erro ao obter usuário:', error);
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          console.log('❌ Nenhum usuário autenticado');
           if (isMounted) {
             setUser(null);
             setLoading(false);
@@ -43,32 +44,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
-        if (supabaseUser && isMounted) {
-          console.log('👤 Usuário encontrado:', supabaseUser.email);
+        const result = await response.json();
+        
+        if (result.success && result.data.user && isMounted) {
+          console.log('👤 Usuário encontrado:', result.data.user.email);
           
-          // Buscar role do usuário
-          let role: 'admin' | 'diretor' | 'user' = 'user';
-          
-          try {
-            const { data: userData } = await supabase
-              .from('users')
-              .select('role')
-              .eq('id', supabaseUser.id)
-              .single();
-
-            if (userData?.role) {
-              role = userData.role;
-            } else if (supabaseUser.email === 'carlos.horst@doubletelecom.com.br') {
-              role = 'admin';
-            }
-          } catch (roleError) {
-            console.log('⚠️ Erro ao buscar role, usando padrão:', roleError);
-          }
-
           setUser({
-            id: supabaseUser.id,
-            email: supabaseUser.email || null,
-            role: role
+            id: result.data.user.id,
+            email: result.data.user.email || null,
+            role: result.data.user.role || 'user'
           });
         } else if (isMounted) {
           console.log('❌ Nenhum usuário encontrado');
@@ -90,22 +74,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Verificação inicial
     checkUser();
 
-    // Listener para mudanças de autenticação - SIMPLIFICADO
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔔 Auth change:', event);
-      
-      if (!isMounted) return;
-
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        setUser(null);
-        setLoading(false);
-      } else if (event === 'SIGNED_IN' && session?.user) {
-        // Re-verificar usuário após login
+    // Verificação periódica simples via API
+    const interval = setInterval(() => {
+      if (isMounted) {
         checkUser();
       }
-    });
+    }, 30000); // Verificar a cada 30 segundos
 
-    subscription = data.subscription;
+    subscription = { unsubscribe: () => clearInterval(interval) };
 
     return () => {
       isMounted = false;
@@ -117,7 +93,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
       setUser(null);
     } catch (error) {
       console.error('Error signing out:', error);

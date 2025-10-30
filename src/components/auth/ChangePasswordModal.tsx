@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { supabase } from '@/lib/supabaseClient';
 import { Eye, EyeOff, Lock, AlertTriangle } from 'lucide-react';
 
 interface ChangePasswordModalProps {
@@ -72,39 +71,22 @@ export default function ChangePasswordModal({
       }
 
       if (isFirstLogin) {
-        // Para primeiro login, usar signInWithPassword primeiro para validar a senha atual
-        if (userEmail && currentPassword) {
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: userEmail,
-            password: currentPassword,
-          });
-
-          if (signInError) {
-            throw new Error('Senha atual incorreta');
-          }
-        }
-      }
-
-      // Alterar a senha
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      // Se for primeiro login, marcar como senha alterada
-      if (isFirstLogin) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
-            .from('profiles')
-            .update({ 
-              password_changed: true,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
+        // Validar senha atual e alterar via API
+        const response = await fetch('/api/auth/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            currentPassword: userEmail && currentPassword ? currentPassword : undefined,
+            newPassword,
+            isFirstLogin
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Erro ao alterar senha');
         }
       }
 

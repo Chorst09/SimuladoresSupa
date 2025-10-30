@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './use-auth';
-import { supabase } from '@/lib/supabaseClient';
 
 interface PasswordCheckResult {
   needsPasswordChange: boolean;
@@ -29,11 +28,23 @@ export function usePasswordCheck(): PasswordCheckResult {
         setError(null);
 
         // Check if user needs to change password
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('password_changed')
-          .eq('id', user.id)
-          .single();
+        const response = await fetch(`/api/profiles/${user.id}`, {
+          credentials: 'include'
+        });
+        
+        let profile = null;
+        let profileError = null;
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            profile = result.data;
+          } else {
+            profileError = result.error;
+          }
+        } else {
+          profileError = `HTTP ${response.status}`;
+        }
 
         if (profileError) {
           console.error('Erro ao verificar status da senha:', profileError?.message || profileError);
@@ -82,18 +93,24 @@ export function useMarkPasswordChanged() {
     }
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
+      const response = await fetch(`/api/profiles/${user.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
           password_changed: true,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id);
+      });
 
-      if (error) {
-        console.error('Erro ao marcar senha como alterada:', error);
-        return false;
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Erro ao atualizar perfil');
       }
+
+
 
       return true;
     } catch (err) {

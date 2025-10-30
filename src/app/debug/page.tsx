@@ -74,7 +74,7 @@ export default function DebugPage() {
 
       <div style={{ marginTop: '20px', fontSize: '12px', color: '#6c757d' }}>
         <p>Se você está vendo esta página, o Next.js está funcionando corretamente.</p>
-        <p>Próximo passo: Testar autenticação Supabase.</p>
+        <p>Próximo passo: Testar autenticação com Prisma.</p>
       </div>
     </div>
   );

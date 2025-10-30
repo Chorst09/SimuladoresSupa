@@ -44,34 +44,38 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ proposal, partners, onSave,
     technicalSpecs?: string;
     commercialTerms?: string;
   }>({
-    proposalFile: proposal?.proposalFile,
-    technicalSpecs: proposal?.technicalSpecs,
-    commercialTerms: proposal?.commercialTerms,
+    proposalFile: '',
+    technicalSpecs: '',
+    commercialTerms: '',
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  type FormData = z.infer<typeof formSchema>;
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: proposal?.title || '',
-      client: proposal?.client || '',
+      client: typeof proposal?.client === 'string' ? proposal.client : proposal?.client?.name || '',
       clientProject: proposal?.clientData?.projectName || '',
       clientEmail: proposal?.clientData?.email || '',
       clientPhone: proposal?.clientData?.phone || '',
       clientContact: proposal?.clientData?.contact || '',
-      description: proposal?.description || '',
+      description: '',
       value: proposal?.value || 0,
       date: proposal?.date || new Date().toISOString().split('T')[0],
       expiryDate: proposal?.expiryDate || '',
-      status: proposal?.status || 'Rascunho',
+      status: (proposal?.status === 'Aguardando aprovação desconto Diretoria' || 
+               proposal?.status === 'Aguardando Aprovação do Cliente' || 
+               proposal?.status === 'Fechado Ganho' || 
+               proposal?.status === 'Perdido') ? 'Rascunho' : (proposal?.status || 'Rascunho'),
       accountManager: typeof proposal?.accountManager === 'string' 
                           ? proposal.accountManager 
                           : proposal?.accountManager?.name || '',
       distributorId: proposal?.distributorId?.toString() || '',
-      proposalFile: proposal?.proposalFile || '',
-      technicalSpecs: proposal?.technicalSpecs || '',
-      commercialTerms: proposal?.commercialTerms || '',
+      proposalFile: '',
+      technicalSpecs: '',
+      commercialTerms: '',
     },
   });
 
@@ -95,7 +99,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ proposal, partners, onSave,
     form.setValue(field as any, '');
   };
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = (values: FormData) => {
     const clientData: ClientData = {
       name: values.client,
       projectName: values.clientProject || undefined,
@@ -113,13 +117,18 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ proposal, partners, onSave,
 
     const proposalData: Proposal = {
       id: proposal?.id || Date.now().toString(),
-      ...values,
-      clientData: clientData,
+      baseId: proposal?.baseId || `Prop_${Date.now()}`,
+      version: proposal?.version || 1,
+      title: values.title,
+      client: clientData,
+      type: 'GENERAL',
+      value: values.value,
+      status: values.status,
       accountManager: accountManagerData,
       distributorId: values.distributorId,
-      proposalFile: uploadedFiles.proposalFile,
-      technicalSpecs: uploadedFiles.technicalSpecs,
-      commercialTerms: uploadedFiles.commercialTerms,
+      date: values.date,
+      expiryDate: values.expiryDate,
+      createdAt: proposal?.createdAt || new Date(),
     };
     onSave(proposalData);
   };

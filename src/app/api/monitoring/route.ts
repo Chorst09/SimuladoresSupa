@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
 
 /**
  * Monitoring API endpoint for database operations and performance metrics
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           },
           database: {
             status: 'connected',
-            url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'configured' : 'not configured'
+            url: process.env.DATABASE_URL ? 'configured' : 'not configured'
           }
         });
       

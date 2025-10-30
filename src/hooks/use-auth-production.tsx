@@ -2,8 +2,6 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface User {
   id: string;
@@ -44,10 +42,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (!mounted) return;
 
-        const { data: { user: currentUser }, error } = await supabase.auth.getUser();
-        
-        if (error) {
-          console.error('❌ [PROD] Erro ao obter usuário:', error);
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          console.log('ℹ️ [PROD] Nenhum usuário logado');
           if (mounted) {
             setUser(null);
             setLoading(false);
@@ -55,30 +55,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
-        if (currentUser && mounted) {
-          console.log('👤 [PROD] Usuário encontrado:', currentUser.email);
-          await processUser(currentUser);
+        const result = await response.json();
+        
+        if (result.success && result.data.user && mounted) {
+          console.log('👤 [PROD] Usuário encontrado:', result.data.user.email);
+          await processUser(result.data.user);
         } else if (mounted) {
           console.log('ℹ️ [PROD] Nenhum usuário logado');
           setUser(null);
           setLoading(false);
         }
 
-        // Setup auth listener
-        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('🔔 [PROD] Auth change:', event);
-          
+        // Setup periodic check via API
+        const interval = setInterval(async () => {
           if (!mounted) return;
-
-          if (event === 'SIGNED_OUT' || !session?.user) {
-            setUser(null);
-            setLoading(false);
-          } else if (event === 'SIGNED_IN' && session?.user) {
-            await processUser(session.user);
+          
+          try {
+            const checkResponse = await fetch('/api/auth/me', {
+              credentials: 'include'
+            });
+            
+            if (checkResponse.ok) {
+              const checkResult = await checkResponse.json();
+              if (checkResult.success && checkResult.data.user) {
+                await processUser(checkResult.data.user);
+              } else {
+                setUser(null);
+              }
+            } else {
+              setUser(null);
+            }
+          } catch (error) {
+            console.error('❌ [PROD] Erro na verificação periódica:', error);
           }
-        });
+        }, 30000); // Verificar a cada 30 segundos
 
-        authSubscription = data.subscription;
+        authSubscription = { unsubscribe: () => clearInterval(interval) };
 
       } catch (error) {
         console.error('❌ [PROD] Erro na inicialização:', error);
@@ -89,45 +101,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    const processUser = async (supabaseUser: SupabaseUser) => {
+    const processUser = async (userData: any) => {
       if (!mounted) return;
 
       try {
-        let role: 'admin' | 'diretor' | 'user' = 'user';
-
-        // Try to get role from database
-        try {
-          const { data: userData, error } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', supabaseUser.id)
-            .single();
-
-          if (!error && userData?.role) {
-            role = userData.role;
-          } else if (supabaseUser.email === 'carlos.horst@doubletelecom.com.br') {
-            role = 'admin';
-          }
-        } catch (roleError) {
-          console.log('⚠️ [PROD] Erro ao buscar role:', roleError);
-          // Use default role
-        }
-
         if (mounted) {
           setUser({
-            id: supabaseUser.id,
-            email: supabaseUser.email || null,
-            role: role
+            id: userData.id,
+            email: userData.email || null,
+            role: userData.role || 'user'
           });
           setLoading(false);
-          console.log('✅ [PROD] Usuário processado:', { email: supabaseUser.email, role });
+          console.log('✅ [PROD] Usuário processado:', { email: userData.email, role: userData.role });
         }
       } catch (error) {
         console.error('❌ [PROD] Erro ao processar usuário:', error);
         if (mounted) {
           setUser({
-            id: supabaseUser.id,
-            email: supabaseUser.email || null,
+            id: userData.id,
+            email: userData.email || null,
             role: 'user'
           });
           setLoading(false);
@@ -148,7 +140,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       console.log('🚪 [PROD] Fazendo logout...');
-      await supabase.auth.signOut();
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
       setUser(null);
     } catch (error) {
       console.error('❌ [PROD] Erro no logout:', error);

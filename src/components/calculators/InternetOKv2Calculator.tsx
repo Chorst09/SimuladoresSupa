@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CommissionTablesUnified from './CommissionTablesUnified';
 import { Separator } from '@/components/ui/separator';
-import { ClientManagerForm, ClientData, AccountManagerData } from './ClientManagerForm';
+import { ClientManagerForm } from './ClientManagerForm';
+import { ClientData, AccountManagerData } from '@/lib/types';
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
@@ -506,6 +507,11 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         return discountedTotal;
     };
 
+    // Helper para acessar dreCalculations de forma segura
+    const getDreValue = (calculations: any, period: number | string, field: string) => {
+        return calculations?.[period]?.[field] || 0;
+    };
+
     // Função para calcular DRE por período de contrato
     const calculateDREForPeriod = useCallback((months: number) => {
         // CORREÇÃO: Receita mensal = valor mensal × número de meses do período
@@ -670,7 +676,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo
-    const dreCalculations = useMemo(() => {
+    const dreCalculations: any = useMemo(() => {
         const dre12 = calculateDREForPeriod(12);
         const dre24 = calculateDREForPeriod(24);
         const dre36 = calculateDREForPeriod(36);
@@ -809,7 +815,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
                     type: 'FIBER',
-                    status: currentProposal.status || 'Rascunho',
+                    status: selectedStatus,
                     updatedBy: user.email || user.id,
                     updatedAt: new Date().toISOString(),
                     // Manter dados originais importantes
@@ -827,7 +833,6 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
                     userId: user.id,
-                    status: selectedStatus,
                     changes: proposalChanges
                 };
 
@@ -867,7 +872,6 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
                     userId: user.id,
-                    status: selectedStatus,
                     changes: proposalChanges
                 };
 
@@ -1397,7 +1401,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
                             {/* Show discount breakdown if discounts were applied */}
-                            {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) && (
+                            {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
                                 <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
                                     <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
                                     <div className="text-sm space-y-1">
@@ -1409,8 +1413,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                             <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
                                         )}
 
-                                        {currentProposal.appliedDirectorDiscountPercentage > 0 && (
-                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')}</p>
+                                        {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage || 0}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage || 0) / 100)).toFixed(2).replace('.', ',')}</p>
                                         )}
                                     </div>
                                 </div>
@@ -1418,8 +1422,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
-                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || currentProposal.appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
+                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
+                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
@@ -1453,10 +1457,10 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                         );
                                     } else {
                                         // Usar a função calculatePayback correta
-                                        const plan = okPlans.find(p => p.speed === currentProposal.selectedSpeed);
+                                        const plan = (window as any).okPlans?.find((p: any) => p.speed === (currentProposal as any).selectedSpeed);
                                         if (plan) {
                                             paybackMonths = calculatePayback(
-                                                currentProposal.includeInstallation ? plan.installationCost : 0,
+                                                (currentProposal as any).includeInstallation ? plan?.installationCost || 0 : 0,
                                                 plan.okCost,
                                                 totalMonthly,
                                                 contractTerm,
@@ -1889,13 +1893,13 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                                 <TableRow className="border-slate-800 bg-green-900/30">
                                                     <TableCell className="text-white font-semibold">Receita Total do Período</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].receitaMensal)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period]?.receitaMensal || 0)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Receita - Taxa Instalação</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].receitaInstalacao)}</TableCell>
+                                                        <TableCell key={period} className="text-right text-white">{formatCurrency((dreCalculations as any)[period]?.receitaInstalacao || 0)}</TableCell>
                                                     ))}
                                                 </TableRow>
                                                 <TableRow className="border-slate-800 bg-blue-900/30">
@@ -1963,8 +1967,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                                     <TableRow className="border-slate-800 bg-yellow-900/30">
                                                         <TableCell className="text-white font-semibold">Diferença de Valores Contrato</TableCell>
                                                         {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                            <TableCell key={period} className={`text-right font-semibold ${dreCalculations[period].diferencaValoresContrato >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                {dreCalculations[period].diferencaValoresContrato >= 0 ? '+' : ''}{formatCurrency(dreCalculations[period].diferencaValoresContrato)}
+                                                            <TableCell key={period} className={`text-right font-semibold ${getDreValue(dreCalculations, period, 'diferencaValoresContrato') >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                                {getDreValue(dreCalculations, period, 'diferencaValoresContrato') >= 0 ? '+' : ''}{formatCurrency(getDreValue(dreCalculations, period, 'diferencaValoresContrato'))}
                                                             </TableCell>
                                                         ))}
                                                     </TableRow>

@@ -7,11 +7,12 @@ export interface TopologyConfig {
 
 export interface NetworkDevice {
   id: string;
-  type: 'olt' | 'ont' | 'router' | 'switch' | 'ap' | 'controller' | 'tower' | 'antenna' | 'appliance' | 'cloud' | 'splitter' | 'client' | 'wan';
+  type: 'olt' | 'ont' | 'router' | 'switch' | 'ap' | 'controller' | 'tower' | 'antenna' | 'appliance' | 'cloud' | 'splitter' | 'client' | 'wan' | 'onu' | 'radio' | 'server' | 'hub';
   label: string;
   icon?: string; 
   position: { x: number; y: number };
   properties?: Record<string, any>;
+  quantityKey: string; // Obrigatório para compatibilidade com TemplateDevice
 }
 
 export interface Connection {

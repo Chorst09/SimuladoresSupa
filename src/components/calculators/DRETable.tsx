@@ -145,8 +145,8 @@ export const DRETable: React.FC<DRETableProps> = ({
   const lucroAntesImpostosPercentual = monthlyRevenue > 0 ? (lucroAntesImpostos / monthlyRevenue) * 100 : 0;
 
   // Calculate taxes on profit (only if there's profit)
-  const totalImpostosLucro = Object.values(impostosLucro).reduce((sum, rate) => sum + rate, 0);
-  const valorImpostosLucro = lucroAntesImpostos > 0 ? (lucroAntesImpostos * totalImpostosLucro) / 100 : 0;
+  const totalImpostosLucro = Object.values(impostosLucro).reduce((sum: number, rate: any) => sum + (rate as number), 0);
+  const valorImpostosLucro = lucroAntesImpostos > 0 ? (lucroAntesImpostos * (totalImpostosLucro as number)) / 100 : 0;
 
   // Calculate net profit
   const lucroLiquido = lucroAntesImpostos - valorImpostosLucro;
@@ -321,7 +321,7 @@ export const DRETable: React.FC<DRETableProps> = ({
                       {formatCurrency(valorImpostosLucro)}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatPercent(totalImpostosLucro)}
+                      {formatPercent(Number(totalImpostosLucro))}
                     </TableCell>
                   </TableRow>
 

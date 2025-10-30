@@ -21,7 +21,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
     // Suporte para múltiplas estruturas de dados:
     // 1. Calculadoras salvam: clientData (objeto) e accountManagerData (objeto)
     // 2. Mock API usa: client (objeto) e accountManager (objeto)  
-    // 3. Supabase armazena: client_data e account_manager (com underscore)
+    // 3. Prisma armazena: client_data e account_manager (com underscore)
     clientName: proposal?.clientData?.name || proposal?.clientData?.companyName || 
                 proposal?.client_data?.name || proposal?.client_data?.companyName || '',
     clientProject: proposal?.clientData?.projectName || proposal?.client_data?.projectName || '',

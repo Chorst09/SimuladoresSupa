@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
     const { userEmail, userName } = await request.json();
 
     // Buscar todos os administradores para enviar email
-    const { data: admins, error: adminError } = await supabase
-      .from('profiles')
-      .select('email, full_name')
-      .eq('role', 'admin');
-
-    if (adminError) {
-      console.error('Erro ao buscar administradores:', adminError);
-      return NextResponse.json(
-        { error: 'Erro ao buscar administradores' },
-        { status: 500 }
-      );
-    }
+    const admins = await prisma.profile.findMany({
+      where: { role: 'admin' },
+      select: {
+        email: true,
+        full_name: true
+      }
+    });
 
     if (!admins || admins.length === 0) {
       console.log('Nenhum administrador encontrado');

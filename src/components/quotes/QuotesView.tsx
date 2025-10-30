@@ -126,7 +126,7 @@ const QuotesView: React.FC<QuotesViewProps> = ({ quotes, partners, onSave, onDel
                                         </TableCell>
                                         <TableCell className="hidden sm:table-cell">{distributor?.name || 'N/A'}</TableCell>
                                         <TableCell className="font-medium">
-                                            {quote.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            {(quote.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                         </TableCell>
                                         <TableCell>{getStatusBadge(quote.status)}</TableCell>
                                         <TableCell className="text-center">

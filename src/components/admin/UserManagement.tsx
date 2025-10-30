@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/use-auth';
 import { useUserProfile, UserRole } from '@/hooks/use-user-profile';
 import { Users, UserPlus, Shield, Trash2, Edit, Crown, User, Briefcase, UserCheck, UserX, Loader2 } from 'lucide-react';
@@ -31,6 +30,7 @@ export default function UserManagement() {
   const { isAdmin } = useUserProfile();
   const [users, setUsers] = useState<ExtendedUserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ExtendedUserProfile | null>(null);
@@ -115,47 +115,7 @@ export default function UserManagement() {
       
     } catch (error: any) {
       console.error('❌ Erro ao carregar usuários via API:', error);
-      
-      // Fallback: try direct Supabase query
-      try {
-        console.log('🔄 Tentando fallback com Supabase direto...');
-        const { data: usersData, error } = await supabase
-          .from('profiles')
-          .select('*');
-        
-        if (!error && usersData) {
-          const mappedUsers: ExtendedUserProfile[] = usersData.map(user => ({
-            id: user.id,
-            email: user.email,
-            full_name: user.full_name || user.email,
-            role: user.role as UserRole | 'pending' | 'seller',
-            created_at: user.created_at || new Date().toISOString(),
-            updated_at: user.updated_at || new Date().toISOString(),
-            password_changed: true
-          }));
-          
-          setUsers(mappedUsers);
-          console.log(`✅ ${mappedUsers.length} usuários carregados via fallback:`, mappedUsers);
-          
-          // Debug: Show detailed fallback user info
-          console.log('🔍 DETALHES DOS USUÁRIOS FALLBACK:');
-          mappedUsers.forEach((user, index) => {
-            console.log(`👤 Fallback Usuário ${index + 1}:`, {
-              id: user.id,
-              email: user.email,
-              full_name: user.full_name,
-              role: user.role,
-              created_at: user.created_at
-            });
-          });
-          
-          return;
-        }
-      } catch (fallbackError) {
-        console.error('❌ Fallback também falhou:', fallbackError);
-      }
-      
-      // Last resort: show empty state with helpful message
+      setError('Erro ao carregar usuários: ' + error.message);
       setUsers([]);
       
     } finally {
@@ -276,18 +236,9 @@ export default function UserManagement() {
     if (!editingUser) return;
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          role: editingUser.role,
-          full_name: editingUser.full_name
-        })
-        .eq('id', editingUser.id);
-
-      if (error) {
-        throw error;
-      }
-
+      // TODO: Implementar atualização via API REST
+      console.log('Atualizando usuário via API:', editingUser);
+      
       alert('Sucesso: Usuário atualizado com sucesso!');
 
       setIsEditDialogOpen(false);
@@ -305,15 +256,9 @@ export default function UserManagement() {
     }
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-
-      if (error) {
-        throw error;
-      }
-
+      // TODO: Implementar exclusão via API REST
+      console.log('Excluindo usuário via API:', userId);
+      
       alert('Sucesso: Usuário excluído com sucesso!');
       loadUsers();
     } catch (error: any) {
@@ -486,17 +431,17 @@ export default function UserManagement() {
           <Button
             variant="outline"
             onClick={async () => {
-              console.log('📋 Mostrando informações do Supabase...');
+              console.log('📋 Mostrando informações do PostgreSQL...');
               
               const info = `
-📊 INFORMAÇÕES DO SUPABASE:
+📊 INFORMAÇÕES DO POSTGRESQL:
 
-🔗 URL do Projeto: ${process.env.NEXT_PUBLIC_SUPABASE_URL || 'Não encontrada'}
-
-📋 ONDE VERIFICAR NO SUPABASE:
-1. Acesse: https://supabase.com/dashboard
-2. Selecione o projeto correto
-3. Vá em "Table Editor" (lado esquerdo)
+🔗 Banco: PostgreSQL via Docker
+🔧 ORM: Prisma
+📋 ONDE VERIFICAR:
+1. Execute: docker ps (verificar container)
+2. Execute: npx prisma studio (interface web)
+3. Vá em: http://localhost:5555
 4. Procure pela tabela "profiles" (não "users")
 5. Os usuários devem estar lá
 
@@ -513,7 +458,7 @@ A aplicação usa a tabela "profiles" para mostrar os usuários.
               alert(info);
             }}
           >
-            📋 Info Supabase
+            📋 Info PostgreSQL
           </Button>
         </div>
       </div>

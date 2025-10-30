@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+// Migrado para usar APIs do Prisma
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,43 +25,26 @@ const SignupPage = () => {
     setError(null);
 
     try {
-      // Create user with Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
+      // Create user via API
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          full_name: fullName || email.split('@')[0],
+          role: 'pending'
+        })
       });
 
-      if (error) {
-        throw error;
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Erro no cadastro');
       }
-
-      if (data.user) {
-        // Add user to profiles table with 'pending' status
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            email: data.user.email,
-            role: 'pending', // Status pendente até aprovação
-            full_name: fullName || email.split('@')[0], // Nome fornecido ou baseado no email
-            created_at: new Date().toISOString()
-          });
-
-        if (insertError) {
-          console.error('Error inserting user profile:', insertError);
-          // Tentar inserir sem campos opcionais
-          const { error: simpleInsertError } = await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              email: data.user.email,
-              role: 'pending'
-            });
-          
-          if (simpleInsertError) {
-            console.error('Error inserting simple profile:', simpleInsertError);
-          }
-        }
 
         // Novo fluxo: Enviar emails separados
         try {
@@ -127,7 +110,6 @@ const SignupPage = () => {
           description: 'Sua conta foi criada e você receberá um email de confirmação. Aguarde a aprovação do administrador para acessar o sistema.' 
         });
         router.push('/login');
-      }
     } catch (err: any) {
       console.error('Signup error:', err);
       setError(err.message);

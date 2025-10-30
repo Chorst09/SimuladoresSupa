@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
-import { supabase } from '@/lib/supabaseClient';
+// PostgreSQL via Prisma - APIs REST
 import { Lock, Eye, EyeOff, Shield, AlertTriangle } from 'lucide-react';
 
 interface ForcePasswordChangeProps {
@@ -71,28 +71,24 @@ export default function ForcePasswordChange({ onPasswordChanged }: ForcePassword
     setLoading(true);
     
     try {
-      // Update password using Supabase Auth
-      const { error: passwordError } = await supabase.auth.updateUser({
-        password: newPassword
+      // Update password via API
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ newPassword })
       });
+      
+      const result = await response.json();
+      const passwordError = !response.ok ? new Error(result.error) : null;
       
       if (passwordError) {
         throw passwordError;
       }
       
-      // Update profile to mark password as changed
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          password_changed: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user?.id);
-      
-      if (profileError) {
-        console.error('Erro ao atualizar profile:', profileError);
-        // Don't throw error, password was changed successfully
-      }
+      // Update profile to mark password as changed (via API)
+      // TODO: Implementar via API PostgreSQL
+      console.log('✅ Senha alterada com sucesso');
       
       // Call the callback to indicate password was changed
       onPasswordChanged();

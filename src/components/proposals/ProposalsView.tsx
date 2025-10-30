@@ -46,8 +46,10 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
     const term = searchTerm.toLowerCase();
 
     const titleMatch = typeof proposal.title === 'string' && proposal.title.toLowerCase().includes(term);
-    const clientMatch = typeof proposal.client === 'string' && proposal.client.toLowerCase().includes(term);
-    const accountManagerMatch = typeof proposal.accountManager === 'string' && proposal.accountManager.toLowerCase().includes(term);
+    const clientMatch = (typeof proposal.client === 'string' && proposal.client.toLowerCase().includes(term)) ||
+                       (typeof proposal.client === 'object' && proposal.client?.name?.toLowerCase().includes(term));
+    const accountManagerMatch = (typeof proposal.accountManager === 'string' && proposal.accountManager.toLowerCase().includes(term)) ||
+                               (typeof proposal.accountManager === 'object' && proposal.accountManager?.name?.toLowerCase().includes(term));
 
     const isMatch = titleMatch || clientMatch || accountManagerMatch;
     return isMatch;

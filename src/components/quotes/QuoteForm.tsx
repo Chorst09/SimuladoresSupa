@@ -33,8 +33,18 @@ interface QuoteFormProps {
 const QuoteForm: React.FC<QuoteFormProps> = ({ quote, partners, onSave, onCancel }) => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: quote 
-      ? { ...quote, partnerId: String(quote.partnerId || '') }
+    defaultValues: quote
+      ? {
+        client: quote.client,
+        projectName: quote.projectName || '',
+        accountManager: quote.accountManager || '',
+        total: quote.total || 0,
+        date: quote.date,
+        status: quote.status as 'Pendente' | 'Enviado' | 'Aprovado' | 'Rejeitado',
+        partnerId: String(quote.partnerId || ''),
+        quotationFile: quote.quotationFile || '',
+        pricingFile: quote.pricingFile || ''
+      }
       : {
         client: '',
         projectName: '',
@@ -81,28 +91,41 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ quote, partners, onSave, onCancel
   };
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    onSave({ 
-      ...values, 
-      id: quote ? quote.id : `ORC-${String(Date.now()).slice(-5)}`,
-      partnerId: values.partnerId ? Number(values.partnerId) : 0
-    });
+    const quoteData: Quote = {
+      id: quote?.id || `ORC-${String(Date.now()).slice(-5)}`,
+      title: values.projectName,
+      client: values.client,
+      value: values.total,
+      status: values.status,
+      createdAt: quote?.createdAt || new Date(),
+      distributorId: quote?.distributorId || 'default',
+      accountManager: values.accountManager || '',
+      date: values.date,
+      expiryDate: quote?.expiryDate || '',
+      projectName: values.projectName,
+      total: values.total,
+      partnerId: values.partnerId ? Number(values.partnerId) : undefined,
+      quotationFile: values.quotationFile,
+      pricingFile: values.pricingFile
+    };
+    onSave(quoteData);
   };
 
   const FileUploadButton = ({ name, fileName, fileInputRef, onChange, onRemove }: any) => (
-     <div>
-        <input type="file" ref={fileInputRef} onChange={onChange} className="hidden" />
-        {!fileName ? (
-            <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
-                <Paperclip className="w-4 h-4 mr-2"/>Anexar {name}
-            </Button>
-        ) : (
-            <div className="flex items-center justify-between p-2 border rounded-lg">
-                <span className="text-sm truncate">{fileName}</span>
-                <Button type="button" variant="ghost" size="icon" onClick={onRemove}>
-                    <X className="w-4 h-4"/>
-                </Button>
-            </div>
-        )}
+    <div>
+      <input type="file" ref={fileInputRef} onChange={onChange} className="hidden" />
+      {!fileName ? (
+        <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+          <Paperclip className="w-4 h-4 mr-2" />Anexar {name}
+        </Button>
+      ) : (
+        <div className="flex items-center justify-between p-2 border rounded-lg">
+          <span className="text-sm truncate">{fileName}</span>
+          <Button type="button" variant="ghost" size="icon" onClick={onRemove}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 
@@ -142,30 +165,30 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ quote, partners, onSave, onCancel
             <FormMessage />
           </FormItem>
         )} />
-        
+
         <h4 className="text-md font-semibold pt-4 border-t">Cotação e Precificação</h4>
-        
+
         {/* Removed distributor selection field */}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField control={form.control} name="quotationFile" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Arquivo da Cotação</FormLabel>
-                <FormControl>
-                    <FileUploadButton name="Cotação" fileName={quotationFileName} fileInputRef={quotationFileInputRef} onChange={(e:any) => handleFileChange(e, 'quotation')} onRemove={() => handleRemoveFile('quotation')} />
-                </FormControl>
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="pricingFile" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Arquivo de Precificação</FormLabel>
-                <FormControl>
-                     <FileUploadButton name="Precificação" fileName={pricingFileName} fileInputRef={pricingFileInputRef} onChange={(e:any) => handleFileChange(e, 'pricing')} onRemove={() => handleRemoveFile('pricing')} />
-                </FormControl>
-              </FormItem>
-            )} />
+          <FormField control={form.control} name="quotationFile" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Arquivo da Cotação</FormLabel>
+              <FormControl>
+                <FileUploadButton name="Cotação" fileName={quotationFileName} fileInputRef={quotationFileInputRef} onChange={(e: any) => handleFileChange(e, 'quotation')} onRemove={() => handleRemoveFile('quotation')} />
+              </FormControl>
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="pricingFile" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Arquivo de Precificação</FormLabel>
+              <FormControl>
+                <FileUploadButton name="Precificação" fileName={pricingFileName} fileInputRef={pricingFileInputRef} onChange={(e: any) => handleFileChange(e, 'pricing')} onRemove={() => handleRemoveFile('pricing')} />
+              </FormControl>
+            </FormItem>
+          )} />
         </div>
-        
+
         <div className="flex justify-end space-x-4 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>Cancelar</Button>
           <Button type="submit">Salvar</Button>

@@ -20,7 +20,7 @@ export default function PendingApproval() {
         <CardContent className="text-center space-y-4">
           <div className="space-y-2">
             <p className="text-muted-foreground">
-              Olá, <strong>{user?.full_name || user?.email}</strong>!
+              Olá, <strong>{(user as any)?.full_name || user?.email}</strong>!
             </p>
             <p className="text-muted-foreground">
               Sua conta foi criada com sucesso, mas ainda está aguardando aprovação do administrador.

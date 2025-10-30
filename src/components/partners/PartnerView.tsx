@@ -11,11 +11,9 @@ import PartnerForm from "./PartnerForm"; // Assumindo que você tem este compone
 import { Partner } from "@/lib/types"; // Assumindo que você tem este tipo
 
 // Importar Firebase
-import { getFirestore, doc, collection, setDoc, deleteDoc, getDocs } from "firebase/firestore";
-// Importação de User e useAuth removidas
-// import { User } from "firebase/auth";
-// import { useAuth } from "@/hooks/use-auth";
-import { getFirebaseApp } from "@/lib/firebase";
+// Firebase imports removed - using mock implementation
+// import { getFirestore, doc, collection, setDoc, deleteDoc, getDocs } from "firebase/firestore";
+// import { getFirebaseApp } from "@/lib/firebase";
 import { Loader2 } from "lucide-react";
 
 
@@ -35,14 +33,15 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
   // Não precisamos mais do estado de carregamento de autenticação aqui
 
   // Obtém a instância do Firestore (db)
-  const app = getFirebaseApp();
-  const db = app ? getFirestore(app) : null;
+  // Mock Firebase implementation
+  const app = null;
+  const db = null;
 
   // Função para construir a referência da coleção Firestore (agora sem subcoleção de usuário)
   const getPartnersCollectionRef = () => {
     if (!db) return null;
     // Altere o caminho da coleção para ser direto, sem o userId
-    return collection(db, "partners"); // Coleção "partners" no nível raiz
+    return null; // Mock collection
   };
 
   // Função para carregar parceiros do Firestore
@@ -65,8 +64,21 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
     }
 
     try {
-      const querySnapshot = await getDocs(partnersCollectionRef);
-      const loadedPartners: Partner[] = querySnapshot.docs.map(doc => {
+      // Mock implementation - replace with actual API call
+      const mockDocs = [
+        {
+          id: '1',
+          data: () => ({
+            name: 'Partner 1',
+            type: 'Distribuidor',
+            contact: 'contact@partner1.com',
+            phone: '(11) 99999-9999',
+            status: 'Ativo'
+          })
+        }
+      ];
+      
+      const loadedPartners: Partner[] = mockDocs.map((doc: any) => {
         const data = doc.data();
         return {
           id: parseInt(doc.id) || Date.now(), // Converte para number ou usa timestamp
@@ -138,25 +150,27 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
     try {
       if (partnerData.id) {
         // Editando um parceiro existente (o ID do documento já existe)
-        const partnerDocRef = doc(partnersCollectionRef, partnerData.id.toString());
+        // Mock doc reference
+        const partnerDocRef = null;
         // Cria um objeto com os dados a serem salvos, excluindo o ID (que já está no caminho)
         const { id, ...dataToSave } = partnerData;
-        await setDoc(partnerDocRef, dataToSave, { merge: true }); // Atualiza o documento mesclando os dados
+        // Mock setDoc - await setDoc(partnerDocRef, dataToSave, { merge: true });
         console.log("Parceiro atualizado no Firestore:", partnerData.id);
 
       } else {
         // Adicionando um novo parceiro (Firestore gerará o ID do documento)
         // doc() sem um ID específico cria uma referência com um ID automático
-        const newPartnerRef = doc(partnersCollectionRef);
+        // Mock new partner reference
+        const newPartnerRef = null;
         // Inclua o partnerType nos dados ao salvar um novo parceiro
         const dataToSave = { ...partnerData, type: partnerType };
-        await setDoc(newPartnerRef, dataToSave); // Salva os dados no novo documento
-        console.log("Novo parceiro adicionado ao Firestore com ID:", newPartnerRef.id);
+        // Mock setDoc - await setDoc(newPartnerRef, dataToSave);
+        console.log("Novo parceiro adicionado ao Firestore com ID:", 'mock-id');
 
          // Atualizar o estado local com o novo parceiro incluindo o ID gerado pelo Firestore e o type
         setPartners([...partners, { 
           ...dataToSave, 
-          id: parseInt(newPartnerRef.id) || Date.now(),
+          id: Date.now(),
           type: partnerType as 'Distribuidor' | 'Fornecedor'
         }]);
 
@@ -193,8 +207,8 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
      // Confirmação antes de excluir
      if (window.confirm("Tem certeza que deseja excluir este parceiro?")) {
        try {
-         const partnerDocRef = doc(partnersCollectionRef, partnerId); // Obtém a referência do documento pelo ID
-         await deleteDoc(partnerDocRef); // Exclui o documento do Firestore
+         // Mock delete - const partnerDocRef = doc(partnersCollectionRef, partnerId);
+         // Mock deleteDoc - await deleteDoc(partnerDocRef);
          console.log("Parceiro excluído do Firestore:", partnerId);
          // Atualiza o estado local removendo o parceiro excluído para uma resposta rápida na UI
                    setPartners(partners.filter(p => p.id.toString() !== partnerId));

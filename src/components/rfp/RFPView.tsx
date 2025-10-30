@@ -282,7 +282,7 @@ const RFPView: React.FC<RFPViewProps> = ({ rfps, onAdd, onUpdate, onDelete }) =>
             </TableHeader>
             <TableBody>
               {filteredRFPs.map((rfp) => {
-                const daysUntilDeadline = getDaysUntilDeadline(rfp.deadlineDate);
+                const daysUntilDeadline = getDaysUntilDeadline(rfp.deadlineDate || '');
                 const isOverdue = daysUntilDeadline < 0;
                 const isUrgent = daysUntilDeadline <= 7 && daysUntilDeadline >= 0;
 
@@ -298,7 +298,7 @@ const RFPView: React.FC<RFPViewProps> = ({ rfps, onAdd, onUpdate, onDelete }) =>
                     </TableCell>
                     <TableCell>{rfp.client}</TableCell>
                     <TableCell>
-                      <Badge className={getTypeColor(rfp.type)}>
+                      <Badge className={getTypeColor(rfp.type || '')}>
                         {rfp.type}
                       </Badge>
                     </TableCell>
@@ -310,7 +310,7 @@ const RFPView: React.FC<RFPViewProps> = ({ rfps, onAdd, onUpdate, onDelete }) =>
                     <TableCell>{rfp.category}</TableCell>
                     <TableCell>
                       <div className={`text-sm ${isOverdue ? 'text-red-600 font-semibold' : isUrgent ? 'text-orange-600 font-semibold' : ''}`}>
-                        {formatDate(rfp.deadlineDate)}
+                        {formatDate(rfp.deadlineDate || '')}
                         {isOverdue && <div className="text-xs">Vencido há {Math.abs(daysUntilDeadline)} dias</div>}
                         {isUrgent && <div className="text-xs">Vence em {daysUntilDeadline} dias</div>}
                       </div>
@@ -387,7 +387,7 @@ const RFPView: React.FC<RFPViewProps> = ({ rfps, onAdd, onUpdate, onDelete }) =>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Tipo</Label>
-                  <Badge className={getTypeColor(viewingRFP.type)}>
+                  <Badge className={getTypeColor(viewingRFP.type || '')}>
                     {viewingRFP.type}
                   </Badge>
                 </div>
@@ -399,12 +399,12 @@ const RFPView: React.FC<RFPViewProps> = ({ rfps, onAdd, onUpdate, onDelete }) =>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Data de Publicação</Label>
-                  <p>{formatDate(viewingRFP.publishDate)}</p>
+                  <p>{formatDate(viewingRFP.publishDate || '')}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Data Limite</Label>
-                  <p className={getDaysUntilDeadline(viewingRFP.deadlineDate) < 0 ? 'text-red-600 font-semibold' : ''}>
-                    {formatDate(viewingRFP.deadlineDate)}
+                  <p className={getDaysUntilDeadline(viewingRFP.deadlineDate || '') < 0 ? 'text-red-600 font-semibold' : ''}>
+                    {formatDate(viewingRFP.deadlineDate || '')}
                   </p>
                 </div>
                 {viewingRFP.submissionDate && (

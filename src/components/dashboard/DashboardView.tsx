@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+// PostgreSQL via Prisma - APIs REST
 import { useAuth } from '@/hooks/use-auth';
 import { Proposal, Partner } from '@/lib/types';
 import ProposalsView from '@/components/proposals/ProposalsView';
@@ -180,16 +180,16 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
 
     const fetchPartners = async () => {
       try {
-        const { data: partnersData, error } = await supabase
-          .from('partners')
-          .select('*');
+        // Partners desabilitado - migrar para API quando necessário
+        const partnersData: any[] = [];
+        const error = null;
 
         if (error) {
           console.error('Erro ao buscar parceiros:', error);
           return;
         }
 
-        const partnersList = (partnersData || []).map(data => {
+        const partnersList = (partnersData || []).map((data: any) => {
           return {
             id: data.id || 0,
             name: data.name || 'Sem nome',

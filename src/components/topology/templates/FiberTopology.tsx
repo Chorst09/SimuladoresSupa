@@ -17,30 +17,35 @@ export function createFiberTopology(
       type: 'olt',
       label: 'OLT Provedor',
       icon: '🏢',
+      quantityKey: 'olts',
     },
     {
       id: 'optical-splitter',
       type: 'splitter',
       label: 'Splitter Óptico',
       icon: '🔀',
+      quantityKey: 'splitters',
     },
     {
       id: 'customer-ont',
       type: 'ont',
       label: 'ONT Cliente',
       icon: '📡',
+      quantityKey: 'onts',
     },
     {
       id: 'customer-router',
       type: 'router',
       label: customizations['q-roteador-modelo'] || 'Router',
       icon: '🔀',
+      quantityKey: 'routers',
     },
     {
       id: 'client-devices',
       type: 'client',
       label: `Dispositivos (${customizations['q-dispositivos-conectados'] || 'N/A'})`,
       icon: '💻',
+      quantityKey: 'clients',
     },
   ];
 
@@ -51,6 +56,7 @@ export function createFiberTopology(
       type: 'switch',
       label: 'Switch',
       icon: '🔳',
+      quantityKey: 'switches',
     });
   }
 

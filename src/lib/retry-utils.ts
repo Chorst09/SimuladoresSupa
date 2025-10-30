@@ -30,7 +30,7 @@ export const DEFAULT_RETRY_OPTIONS: RetryOptions = {
   jitterFactor: 0.1,
   retryableErrors: [
     'UNAVAILABLE',
-    'DEADLINE_EXCEEDED', 
+    'DEADLINE_EXCEEDED',
     'RESOURCE_EXHAUSTED',
     'INTERNAL',
     'connection',
@@ -63,11 +63,11 @@ export const RETRY_CONFIGS = {
  */
 export function isRetryableError(error: any, retryableErrors: string[]): boolean {
   if (!error) return false;
-  
+
   const errorMessage = error?.message || error?.toString() || '';
   const errorCode = error?.code || '';
-  
-  return retryableErrors.some(pattern => 
+
+  return retryableErrors.some(pattern =>
     errorMessage.toLowerCase().includes(pattern.toLowerCase()) ||
     errorCode.toLowerCase().includes(pattern.toLowerCase())
   );
@@ -77,18 +77,18 @@ export function isRetryableError(error: any, retryableErrors: string[]): boolean
  * Calculate delay with exponential backoff and jitter
  */
 function calculateDelay(
-  attempt: number, 
-  baseDelayMs: number, 
-  maxDelayMs: number, 
-  backoffMultiplier: number, 
+  attempt: number,
+  baseDelayMs: number,
+  maxDelayMs: number,
+  backoffMultiplier: number,
   jitterFactor: number
 ): number {
   const exponentialDelay = baseDelayMs * Math.pow(backoffMultiplier, attempt - 1);
   const cappedDelay = Math.min(exponentialDelay, maxDelayMs);
-  
+
   // Add jitter to prevent thundering herd
   const jitter = cappedDelay * jitterFactor * (Math.random() - 0.5);
-  
+
   return Math.max(0, cappedDelay + jitter);
 }
 
@@ -109,59 +109,59 @@ export async function withRetry<T>(
 ): Promise<RetryResult<T>> {
   const config = { ...DEFAULT_RETRY_OPTIONS, ...options };
   const startTime = Date.now();
-  
+
   let lastError: any;
   let attempts = 0;
-  
+
   for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
     attempts = attempt;
-    
+
     try {
       const result = await operation();
       const duration = Date.now() - startTime;
-      
+
       if (attempt > 1) {
         console.log(`${operationName} succeeded on attempt ${attempt}/${config.maxAttempts} after ${duration}ms`);
       }
-      
+
       return {
         success: true,
         result,
         attempts,
         totalDuration: duration
       };
-      
+
     } catch (error) {
       lastError = error;
-      
+
       // Check if error is retryable
       if (!isRetryableError(error, config.retryableErrors)) {
-        console.log(`${operationName} failed with non-retryable error on attempt ${attempt}:`, error?.message || error);
+        console.log(`${operationName} failed with non-retryable error on attempt ${attempt}:`, (error as any)?.message || error);
         break;
       }
-      
+
       // Don't retry on last attempt
       if (attempt === config.maxAttempts) {
-        console.log(`${operationName} failed after ${attempt} attempts:`, error?.message || error);
+        console.log(`${operationName} failed after ${attempt} attempts:`, (error as any)?.message || error);
         break;
       }
-      
+
       // Calculate delay and wait
       const delay = calculateDelay(
-        attempt, 
-        config.baseDelayMs, 
-        config.maxDelayMs, 
-        config.backoffMultiplier, 
+        attempt,
+        config.baseDelayMs,
+        config.maxDelayMs,
+        config.backoffMultiplier,
         config.jitterFactor
       );
-      
-      console.log(`${operationName} failed on attempt ${attempt}/${config.maxAttempts}, retrying in ${delay}ms:`, error?.message || error);
+
+      console.log(`${operationName} failed on attempt ${attempt}/${config.maxAttempts}, retrying in ${delay}ms:`, (error as any)?.message || error);
       await sleep(delay);
     }
   }
-  
+
   const totalDuration = Date.now() - startTime;
-  
+
   return {
     success: false,
     error: lastError,
@@ -190,13 +190,13 @@ export class CircuitBreaker {
   private failures = 0;
   private lastFailureTime = 0;
   private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
-  
+
   constructor(
     private failureThreshold: number = 5,
     private recoveryTimeoutMs: number = 60000,
     private successThreshold: number = 2
-  ) {}
-  
+  ) { }
+
   async execute<T>(operation: () => Promise<T>, operationName: string = 'operation'): Promise<T> {
     if (this.state === 'OPEN') {
       if (Date.now() - this.lastFailureTime < this.recoveryTimeoutMs) {
@@ -204,7 +204,7 @@ export class CircuitBreaker {
       }
       this.state = 'HALF_OPEN';
     }
-    
+
     try {
       const result = await operation();
       this.onSuccess();
@@ -214,22 +214,22 @@ export class CircuitBreaker {
       throw error;
     }
   }
-  
+
   private onSuccess(): void {
     this.failures = 0;
     this.state = 'CLOSED';
   }
-  
+
   private onFailure(): void {
     this.failures++;
     this.lastFailureTime = Date.now();
-    
+
     if (this.failures >= this.failureThreshold) {
       this.state = 'OPEN';
       console.warn(`Circuit breaker opened after ${this.failures} failures`);
     }
   }
-  
+
   getState(): { state: string; failures: number; lastFailureTime: number } {
     return {
       state: this.state,
@@ -253,18 +253,18 @@ export async function executeWithRecovery<T>(
 ): Promise<T> {
   const executeOperation = async () => {
     const retryResult = await withFirestoreRetry(operation, operationType, operationName);
-    
+
     if (!retryResult.success) {
       throw retryResult.lastAttemptError || new Error(`${operationName} failed after ${retryResult.attempts} attempts`);
     }
-    
+
     return retryResult.result!;
   };
-  
+
   if (useCircuitBreaker) {
     return databaseCircuitBreaker.execute(executeOperation, operationName);
   }
-  
+
   return executeOperation();
 }
 
@@ -297,33 +297,33 @@ export async function executeWithAdvancedRecovery<T>(
   operationName: string = 'database operation'
 ): Promise<{ result: T; usedFallback: boolean; recoveryMethod?: string }> {
   const config = { ...DEFAULT_RECOVERY_OPTIONS, ...options };
-  
+
   try {
     // Try primary operation with retry and circuit breaker
     const result = await executeWithRecovery(primaryOperation, 'query', operationName);
     return { result, usedFallback: false };
   } catch (primaryError) {
-    console.warn(`Primary operation failed for ${operationName}:`, primaryError?.message);
-    
+    console.warn(`Primary operation failed for ${operationName}:`, (primaryError as any)?.message);
+
     if (!config.enableFallback || !fallbackOperation) {
       throw primaryError;
     }
-    
+
     try {
       console.log(`Attempting fallback strategy: ${config.fallbackStrategy} for ${operationName}`);
       const fallbackResult = await executeWithRecovery(fallbackOperation, 'query', `${operationName} (fallback)`);
-      
-      return { 
-        result: fallbackResult, 
-        usedFallback: true, 
-        recoveryMethod: config.fallbackStrategy 
+
+      return {
+        result: fallbackResult,
+        usedFallback: true,
+        recoveryMethod: config.fallbackStrategy
       };
     } catch (fallbackError) {
       console.error(`Both primary and fallback operations failed for ${operationName}:`, {
-        primaryError: primaryError?.message,
-        fallbackError: fallbackError?.message
+        primaryError: (primaryError as any)?.message,
+        fallbackError: (fallbackError as any)?.message
       });
-      
+
       // Throw the original error to maintain error context
       throw primaryError;
     }
@@ -335,7 +335,7 @@ export async function executeWithAdvancedRecovery<T>(
  */
 export class ClientSideSorter {
   static sortByDate<T extends { createdAt: any }>(
-    items: T[], 
+    items: T[],
     direction: 'asc' | 'desc' = 'desc'
   ): T[] {
     return [...items].sort((a, b) => {
@@ -344,22 +344,22 @@ export class ClientSideSorter {
       return direction === 'desc' ? dateB - dateA : dateA - dateB;
     });
   }
-  
+
   static sortByField<T>(
-    items: T[], 
-    field: keyof T, 
+    items: T[],
+    field: keyof T,
     direction: 'asc' | 'desc' = 'asc'
   ): T[] {
     return [...items].sort((a, b) => {
       const valueA = a[field];
       const valueB = b[field];
-      
+
       if (valueA < valueB) return direction === 'asc' ? -1 : 1;
       if (valueA > valueB) return direction === 'asc' ? 1 : -1;
       return 0;
     });
   }
-  
+
   static limitResults<T>(items: T[], limit: number): T[] {
     return items.slice(0, limit);
   }
@@ -370,7 +370,7 @@ export class ClientSideSorter {
  */
 export class FallbackCache {
   private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
-  
+
   set(key: string, data: any, ttlMs: number = 300000): void {
     this.cache.set(key, {
       data,
@@ -378,23 +378,23 @@ export class FallbackCache {
       ttl: ttlMs
     });
   }
-  
+
   get(key: string): any | null {
     const entry = this.cache.get(key);
     if (!entry) return null;
-    
+
     if (Date.now() - entry.timestamp > entry.ttl) {
       this.cache.delete(key);
       return null;
     }
-    
+
     return entry.data;
   }
-  
+
   clear(): void {
     this.cache.clear();
   }
-  
+
   size(): number {
     return this.cache.size;
   }

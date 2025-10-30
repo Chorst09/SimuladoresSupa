@@ -44,7 +44,12 @@ const RoForm: React.FC<RoFormProps> = ({ ro, suppliers, onSave, onCancel }) => {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    onSave({ ...values, id: ro ? ro.id : Date.now(), supplierId: Number(values.supplierId) });
+    onSave({ 
+      ...values, 
+      id: ro ? ro.id : Date.now(), 
+      partnerId: 0, // Valor padrão para partnerId
+      supplierId: Number(values.supplierId) 
+    });
   };
 
   return (

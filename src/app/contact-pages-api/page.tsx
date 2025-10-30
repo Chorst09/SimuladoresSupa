@@ -9,7 +9,7 @@ export default function ContactPagesAPIPage() {
             Contato - Pages API
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300">
-            Este formulário usa a Pages API (/pages/api/contact) para enviar dados ao Supabase.
+            Este formulário usa a Pages API (/pages/api/contact) para enviar dados ao PostgreSQL.
           </p>
         </div>
         

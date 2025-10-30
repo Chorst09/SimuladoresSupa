@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react';
-import type { BidDocs } from '@/lib/types';
+import { BidDocs } from '@/lib/types';
 import FileUploadSection from './FileUploadSection';
 
 interface BidsDocumentationViewProps {
@@ -12,11 +12,11 @@ interface BidsDocumentationViewProps {
 const BidsDocumentationView: React.FC<BidsDocumentationViewProps> = ({ docs, onDocsChange }) => {
     const handleFileAdd = (category: keyof BidDocs, file: File) => {
         const newFile = { id: Date.now(), name: file.name };
-        onDocsChange(prevDocs => ({ ...prevDocs, [category]: [...prevDocs[category], newFile] }));
+        onDocsChange((prevDocs: BidDocs) => ({ ...prevDocs, [category]: [...prevDocs[category], newFile] }));
     };
 
     const handleFileRemove = (category: keyof BidDocs, fileId: number) => {
-        onDocsChange(prevDocs => ({ ...prevDocs, [category]: prevDocs[category].filter(f => f.id !== fileId) }));
+        onDocsChange((prevDocs: BidDocs) => ({ ...prevDocs, [category]: prevDocs[category].filter((f: any) => f.id !== fileId) }));
     };
 
     return (

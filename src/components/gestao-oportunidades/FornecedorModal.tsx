@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { fornecedorSchema, type FornecedorFormData } from '@/lib/validations/gestao-oportunidades';
-import { supabase } from '@/lib/supabaseClient';
 
 interface FornecedorModalProps {
   isOpen: boolean;
@@ -61,15 +60,20 @@ export default function FornecedorModal({ isOpen, onClose, onSuccess }: Forneced
       // Validar dados
       const validatedData = fornecedorSchema.parse(formData);
       
-      // Inserir no Supabase
-      const { data, error } = await supabase
-        .from('fornecedores')
-        .insert([validatedData])
-        .select()
-        .single();
+      // Inserir via API
+      const response = await fetch('/api/fornecedores', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(validatedData)
+      });
 
-      if (error) {
-        throw error;
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Erro ao criar fornecedor');
       }
 
       // Sucesso
@@ -97,7 +101,7 @@ export default function FornecedorModal({ isOpen, onClose, onSuccess }: Forneced
         });
         setErrors(fieldErrors);
       } else {
-        // Erro do Supabase
+        // Erro da API
         setErrors({ submit: error.message || 'Erro ao cadastrar fornecedor' });
       }
     } finally {

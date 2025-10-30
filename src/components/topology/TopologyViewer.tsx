@@ -30,6 +30,7 @@ const generateAndPositionDevices = (
           label: `${type.charAt(0).toUpperCase() + type.slice(1)} ${i + 1}`,
           type: type as any,
           position: { x: 0, y: 0 }, // Placeholder
+          quantityKey: key
         });
       }
     }
@@ -117,6 +118,7 @@ export function TopologyViewer({
           label: `${deviceTmpl.label} ${i + 1}`,
           type: deviceTmpl.type,
           position: { x: Math.random() * template.layout.width, y: Math.random() * template.layout.height },
+          quantityKey: deviceTmpl.quantityKey
         });
       }
     });
@@ -147,6 +149,7 @@ export function TopologyViewer({
       label: data.label,
       type: data.type as any,
       position: { x: 50, y: 50 }, // Default position, can be improved
+      quantityKey: `${data.type}Quantity`
     };
     setDevices(prev => [...prev, newDevice]);
     setIsAddModalOpen(false);

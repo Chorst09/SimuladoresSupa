@@ -45,8 +45,8 @@ const EditalAnalysisView: React.FC<EditalAnalysisViewProps> = ({
     return editais.filter(edital => {
       const matchesSearch = 
         edital.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        edital.publishingBody.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        edital.publicationNumber.toLowerCase().includes(searchTerm.toLowerCase());
+        edital.publishingBody?.toLowerCase() || "".includes(searchTerm.toLowerCase()) ||
+        edital.publicationNumber?.toLowerCase() || "".includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || edital.status === statusFilter;
       const matchesCategory = categoryFilter === 'all' || edital.category === categoryFilter;
@@ -273,7 +273,7 @@ const EditalAnalysisView: React.FC<EditalAnalysisViewProps> = ({
               <div>
                 <p className="text-sm font-medium text-gray-600">Valor Total</p>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(editais.reduce((sum, e) => sum + e.estimatedValue, 0))}
+                  {formatCurrency(editais.reduce((sum, e) => sum + e.estimatedValue || 0, 0))}
                 </p>
               </div>
             </div>
@@ -288,7 +288,7 @@ const EditalAnalysisView: React.FC<EditalAnalysisViewProps> = ({
                 <p className="text-sm font-medium text-gray-600">Urgentes</p>
                 <p className="text-2xl font-bold">
                   {editais.filter(e => {
-                    const daysUntil = getDaysUntil(e.openingDate);
+                    const daysUntil = getDaysUntil(e.openingDate || "");
                     return daysUntil <= 7 && daysUntil >= 0;
                   }).length}
                 </p>

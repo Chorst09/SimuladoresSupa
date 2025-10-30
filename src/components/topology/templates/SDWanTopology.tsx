@@ -22,19 +22,22 @@ export function createSDWanTopology(
       id: 'cloud-controller',
       type: 'controller',
       label: controllerModel,
-      icon: '☁️'
+      icon: '☁️',
+      quantityKey: 'controllers'
     },
     {
       id: 'main-appliance',
       type: 'appliance',
       label: mainApplianceModel,
-      icon: '💻'
+      icon: '💻',
+      quantityKey: 'appliances'
     },
     {
       id: 'local-lan',
       type: 'switch',
       label: 'LAN Local',
-      icon: '🔌'
+      icon: '🔌',
+      quantityKey: 'switches'
     }
   ];
 
@@ -59,7 +62,7 @@ export function createSDWanTopology(
 
   // Dynamically add WAN links
   if (wanLinks.includes('mpls')) {
-    baseDevices.push({ id: 'mpls-connection', type: 'wan', label: 'MPLS', icon: '🌐' });
+    baseDevices.push({ id: 'mpls-connection', type: 'wan', label: 'MPLS', icon: '🌐', quantityKey: 'wan' });
     connections.push({
       id: 'appliance-to-mpls',
       from: 'main-appliance',
@@ -70,7 +73,7 @@ export function createSDWanTopology(
     });
   }
   if (wanLinks.includes('internet')) {
-    baseDevices.push({ id: 'internet-connection', type: 'wan', label: 'Internet', icon: '🌍' });
+    baseDevices.push({ id: 'internet-connection', type: 'wan', label: 'Internet', icon: '🌍', quantityKey: 'wan' });
     connections.push({
       id: 'appliance-to-internet',
       from: 'main-appliance',
@@ -81,7 +84,7 @@ export function createSDWanTopology(
     });
   }
   if (wanLinks.includes('lte')) {
-    baseDevices.push({ id: 'lte-connection', type: 'wan', label: '4G/5G', icon: '📱' });
+    baseDevices.push({ id: 'lte-connection', type: 'wan', label: '4G/5G', icon: '📱', quantityKey: 'wan' });
     connections.push({
       id: 'appliance-to-lte',
       from: 'main-appliance',
@@ -95,7 +98,7 @@ export function createSDWanTopology(
   // Dynamically add remote sites
   remoteSites.forEach((siteName: string, index: number) => {
     const siteId = `remote-site-${index + 1}`;
-    baseDevices.push({ id: siteId, type: 'appliance', label: siteName, icon: '🏢' });
+    baseDevices.push({ id: siteId, type: 'appliance', label: siteName, icon: '🏢', quantityKey: 'appliances' });
     connections.push({
       id: `tunnel-to-${siteId}`,
       from: 'main-appliance',

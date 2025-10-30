@@ -1,21 +1,16 @@
-import { supabase } from './supabaseClient';
-
 /**
  * Limpa completamente a sessão de autenticação
- * Útil quando há problemas com refresh tokens
+ * Útil quando há problemas com tokens
  */
 export const clearAuthSession = async () => {
   try {
-    // Tentar fazer logout com escopo global primeiro
-    await supabase.auth.signOut({ scope: 'global' });
+    // Fazer logout via API
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include'
+    });
   } catch (error) {
-    console.warn('Erro ao fazer logout global:', error);
-    try {
-      // Se falhar, tentar logout local
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch (localError) {
-      console.warn('Erro ao fazer logout local:', localError);
-    }
+    console.warn('Erro ao fazer logout via API:', error);
   }
 
   // Limpar TODOS os dados de storage
@@ -26,7 +21,7 @@ export const clearAuthSession = async () => {
     // Limpar completamente sessionStorage
     sessionStorage.clear();
     
-    // Limpar cookies relacionados ao Supabase (se houver)
+    // Limpar cookies de autenticação
     document.cookie.split(";").forEach(function(c) { 
       document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
     });
@@ -42,7 +37,6 @@ export const forceAuthReset = async () => {
   // Limpar sessão
   await clearAuthSession();
   
-  // Recriar cliente Supabase com configuração limpa
   if (typeof window !== 'undefined') {
     // Aguardar um pouco para garantir que tudo foi limpo
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -53,19 +47,19 @@ export const forceAuthReset = async () => {
 };
 
 /**
- * Verifica se o erro é relacionado a refresh token
+ * Verifica se o erro é relacionado a token de autenticação
  */
-export const isRefreshTokenError = (error: any): boolean => {
+export const isAuthTokenError = (error: any): boolean => {
   if (!error) return false;
   
   const errorMessage = error.message?.toLowerCase() || '';
   const errorName = error.name?.toLowerCase() || '';
   
   return (
-    errorMessage.includes('refresh token') ||
-    errorMessage.includes('invalid refresh') ||
-    errorMessage.includes('token not found') ||
-    errorName.includes('authapierror')
+    errorMessage.includes('token') ||
+    errorMessage.includes('unauthorized') ||
+    errorMessage.includes('invalid') ||
+    errorName.includes('autherror')
   );
 };
 
@@ -74,18 +68,21 @@ export const isRefreshTokenError = (error: any): boolean => {
  */
 export const recoverOrClearSession = async () => {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const response = await fetch('/api/auth/me', {
+      credentials: 'include'
+    });
     
-    if (error && isRefreshTokenError(error)) {
+    if (!response.ok) {
       console.log('🔄 Sessão inválida detectada, limpando...');
       await clearAuthSession();
       return null;
     }
     
-    return session;
+    const result = await response.json();
+    return result.success ? result.data : null;
   } catch (error) {
     console.error('Erro ao recuperar sessão:', error);
-    if (isRefreshTokenError(error)) {
+    if (isAuthTokenError(error)) {
       await clearAuthSession();
     }
     return null;

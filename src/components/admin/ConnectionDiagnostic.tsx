@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, XCircle, Loader2, Wifi } from 'lucide-react';
@@ -16,233 +15,207 @@ export default function ConnectionDiagnostic() {
   const [testing, setTesting] = useState(false);
   const [results, setResults] = useState<DiagnosticResult[]>([]);
 
-  const fixRLSEmergency = async () => {
-    setTesting(true);
-    
-    try {
-      const response = await fetch('/api/fix-rls-emergency', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        alert('✅ RLS corrigido com sucesso!\n\n' + result.message);
-        // Executar diagnóstico novamente
-        await runDiagnostics();
-      } else {
-        alert('❌ Erro na correção RLS:\n\n' + result.error + '\n\nInstruções:\n' + (result.instructions?.join('\n') || ''));
-      }
-    } catch (error: any) {
-      alert('❌ Erro ao executar correção RLS:\n\n' + error.message);
-    }
-    
-    setTesting(false);
-  };
-
   const runDiagnostics = async () => {
     setTesting(true);
-    const diagnostics: DiagnosticResult[] = [];
+    setResults([]);
 
-    // Test 1: Environment Variables
-    diagnostics.push({
-      test: 'Variáveis de Ambiente',
-      status: 'testing',
-      message: 'Verificando configuração...'
-    });
+    const diagnostics: DiagnosticResult[] = [
+      { test: 'Configuração do Banco', status: 'testing', message: 'Verificando...' },
+      { test: 'Conectividade API', status: 'testing', message: 'Testando...' },
+      { test: 'Banco de Dados', status: 'testing', message: 'Verificando...' },
+      { test: 'Tabela Profiles', status: 'testing', message: 'Testando...' }
+    ];
+
     setResults([...diagnostics]);
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
+    // Test 1: Database Configuration
+    const databaseUrl = process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
       diagnostics[0] = {
-        test: 'Variáveis de Ambiente',
+        test: 'Configuração do Banco',
         status: 'error',
-        message: 'Variáveis NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY não configuradas'
+        message: 'Variável DATABASE_URL não configurada'
       };
     } else {
       diagnostics[0] = {
-        test: 'Variáveis de Ambiente',
+        test: 'Configuração do Banco',
         status: 'success',
-        message: `URL: ${supabaseUrl.substring(0, 30)}...`
+        message: 'DATABASE_URL configurada'
       };
     }
+
     setResults([...diagnostics]);
 
-    // Test 2: Network Connectivity
-    diagnostics.push({
-      test: 'Conectividade de Rede',
+    // Test 2: API Connectivity
+    diagnostics[1] = {
+      test: 'Conectividade API',
       status: 'testing',
-      message: 'Testando conexão...'
-    });
+      message: 'Testando conexão com API...'
+    };
+
     setResults([...diagnostics]);
 
     try {
-      const response = await fetch(supabaseUrl + '/rest/v1/', {
-        method: 'HEAD',
+      const response = await fetch('/api/health', {
+        method: 'GET',
         headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
+          'Content-Type': 'application/json',
         }
       });
 
-      if (response.ok || response.status === 404) {
+      if (response.ok) {
         diagnostics[1] = {
-          test: 'Conectividade de Rede',
+          test: 'Conectividade API',
           status: 'success',
-          message: 'Conexão com Supabase estabelecida'
+          message: 'API respondendo corretamente'
         };
       } else {
         diagnostics[1] = {
-          test: 'Conectividade de Rede',
+          test: 'Conectividade API',
           status: 'error',
-          message: `Erro HTTP: ${response.status} ${response.statusText}`
+          message: `API retornou status ${response.status}`
         };
       }
     } catch (error: any) {
       diagnostics[1] = {
-        test: 'Conectividade de Rede',
+        test: 'Conectividade API',
         status: 'error',
         message: `Erro de rede: ${error.message}`
       };
     }
+
     setResults([...diagnostics]);
 
-    // Test 3: Supabase Client
-    diagnostics.push({
-      test: 'Cliente Supabase',
+    // Test 3: Database Connection
+    diagnostics[2] = {
+      test: 'Banco de Dados',
       status: 'testing',
-      message: 'Testando cliente...'
-    });
+      message: 'Testando conexão com PostgreSQL...'
+    };
+
     setResults([...diagnostics]);
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('count')
-        .limit(1);
+      const response = await fetch('/api/database/test', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-      if (error) {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         diagnostics[2] = {
-          test: 'Cliente Supabase',
-          status: 'error',
-          message: `Erro do Supabase: ${error.message}`
+          test: 'Banco de Dados',
+          status: 'success',
+          message: 'PostgreSQL conectado via Prisma'
         };
       } else {
         diagnostics[2] = {
-          test: 'Cliente Supabase',
-          status: 'success',
-          message: 'Cliente Supabase funcionando'
+          test: 'Banco de Dados',
+          status: 'error',
+          message: `Erro no banco: ${result.error || 'Erro desconhecido'}`
         };
       }
     } catch (error: any) {
       diagnostics[2] = {
-        test: 'Cliente Supabase',
+        test: 'Banco de Dados',
         status: 'error',
-        message: `Erro do cliente: ${error.message}`
+        message: `Erro de conexão: ${error.message}`
       };
     }
+
     setResults([...diagnostics]);
 
-    // Test 4: Table Access
-    diagnostics.push({
-      test: 'Acesso à Tabela Profiles',
+    // Test 4: Profiles Table
+    diagnostics[3] = {
+      test: 'Tabela Profiles',
       status: 'testing',
-      message: 'Verificando tabela...'
-    });
+      message: 'Verificando tabela profiles...'
+    };
+
     setResults([...diagnostics]);
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id')
-        .limit(1);
-
-      if (error) {
-        if (error.message.includes('relation "profiles" does not exist')) {
-          diagnostics[3] = {
-            test: 'Acesso à Tabela Profiles',
-            status: 'error',
-            message: 'Tabela "profiles" não existe. Execute o script SQL de correção.'
-          };
-        } else {
-          diagnostics[3] = {
-            test: 'Acesso à Tabela Profiles',
-            status: 'error',
-            message: `Erro de acesso: ${error.message}`
-          };
+      const response = await fetch('/api/profiles?limit=1', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
         }
-      } else {
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         diagnostics[3] = {
-          test: 'Acesso à Tabela Profiles',
+          test: 'Tabela Profiles',
           status: 'success',
           message: 'Tabela profiles acessível'
+        };
+      } else {
+        diagnostics[3] = {
+          test: 'Tabela Profiles',
+          status: 'error',
+          message: `Erro na tabela: ${result.error || 'Erro desconhecido'}`
         };
       }
     } catch (error: any) {
       diagnostics[3] = {
-        test: 'Acesso à Tabela Profiles',
+        test: 'Tabela Profiles',
         status: 'error',
-        message: `Erro: ${error.message}`
+        message: `Erro de acesso: ${error.message}`
       };
     }
-    setResults([...diagnostics]);
 
+    setResults([...diagnostics]);
     setTesting(false);
   };
 
-  const getStatusIcon = (status: DiagnosticResult['status']) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'error':
-        return <XCircle className="h-5 w-5 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-red-500" />;
       case 'testing':
-        return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />;
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+      default:
+        return null;
     }
   };
 
+  const hasErrors = results.some(r => r.status === 'error');
+
   return (
-    <Card className="mt-4">
+    <Card className="mt-6">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Wifi className="h-5 w-5" />
-          Diagnóstico de Conectividade
+          Diagnóstico de Conexão
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-2 mb-4">
-          <Button 
-            onClick={runDiagnostics} 
-            disabled={testing}
-          >
-            {testing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Testando...
-              </>
-            ) : (
-              'Executar Diagnóstico'
-            )}
-          </Button>
-          
-          <Button 
-            onClick={fixRLSEmergency} 
-            disabled={testing}
-            variant="destructive"
-          >
-            🚨 Corrigir RLS
-          </Button>
-        </div>
+        <Button 
+          onClick={runDiagnostics} 
+          disabled={testing}
+          className="mb-4"
+        >
+          {testing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Testando...
+            </>
+          ) : (
+            'Executar Diagnóstico'
+          )}
+        </Button>
 
         {results.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {results.map((result, index) => (
-              <div key={index} className="flex items-start gap-3 p-3 border rounded-lg">
+              <div key={index} className="flex items-center gap-2 p-2 border rounded">
                 {getStatusIcon(result.status)}
                 <div className="flex-1">
                   <div className="font-medium">{result.test}</div>
@@ -254,17 +227,18 @@ export default function ConnectionDiagnostic() {
         )}
 
         {results.length > 0 && !testing && (
-          <div className="mt-4 p-3 bg-muted rounded-lg">
-            <h4 className="font-medium mb-2">Próximos Passos:</h4>
-            <ul className="text-sm space-y-1">
-              {results.some(r => r.status === 'error') ? (
+          <div className="mt-4 p-4 bg-muted rounded-lg">
+            <h4 className="font-semibold mb-2">Soluções para Problemas Comuns:</h4>
+            <ul className="text-sm space-y-1 text-muted-foreground">
+              {hasErrors ? (
                 <>
-                  <li>• Se há erros de variáveis de ambiente, configure-as no Vercel</li>
-                  <li>• Se há erros de tabela, execute o script fix-admin-creation.sql no Supabase</li>
-                  <li>• Se há erros de rede, verifique sua conexão com a internet</li>
+                  <li>• Se há erros de configuração, verifique a variável DATABASE_URL</li>
+                  <li>• Se há erros de API, verifique se o servidor está rodando</li>
+                  <li>• Se há erros de banco, execute: npx prisma migrate dev</li>
+                  <li>• Se há erros de tabela, execute: npx prisma db seed</li>
                 </>
               ) : (
-                <li>• ✅ Todos os testes passaram! Você pode tentar criar o administrador.</li>
+                <li>• ✅ Todos os testes passaram! O sistema está funcionando corretamente.</li>
               )}
             </ul>
           </div>

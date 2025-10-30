@@ -34,7 +34,7 @@ const PriceRecordView: React.FC<PriceRecordViewProps> = ({ priceRecords, onAdd, 
       const matchesSearch = 
         record.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.description.toLowerCase().includes(searchTerm.toLowerCase());
+        (record.description || '').toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
       const matchesType = typeFilter === 'all' || record.type === typeFilter;
@@ -243,7 +243,7 @@ const PriceRecordView: React.FC<PriceRecordViewProps> = ({ priceRecords, onAdd, 
               <div>
                 <p className="text-sm font-medium text-gray-600">Valor Total</p>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(priceRecords.reduce((sum, r) => sum + r.totalValue, 0))}
+                  {formatCurrency(priceRecords.reduce((sum, r) => sum + (r.totalValue || 0), 0))}
                 </p>
               </div>
             </div>
@@ -288,7 +288,7 @@ const PriceRecordView: React.FC<PriceRecordViewProps> = ({ priceRecords, onAdd, 
             </TableHeader>
             <TableBody>
               {filteredPriceRecords.map((record) => {
-                const daysUntilValidity = getDaysUntilValidity(record.validityDate);
+                const daysUntilValidity = getDaysUntilValidity(record.validityDate || '');
                 const isExpired = daysUntilValidity < 0;
                 const isExpiringSoon = daysUntilValidity <= 30 && daysUntilValidity >= 0;
 
@@ -304,7 +304,7 @@ const PriceRecordView: React.FC<PriceRecordViewProps> = ({ priceRecords, onAdd, 
                     </TableCell>
                     <TableCell>{record.client}</TableCell>
                     <TableCell>
-                      <Badge className={getTypeColor(record.type)}>
+                      <Badge className={getTypeColor(record.type || '')}>
                         {record.type}
                       </Badge>
                     </TableCell>
@@ -316,13 +316,13 @@ const PriceRecordView: React.FC<PriceRecordViewProps> = ({ priceRecords, onAdd, 
                     <TableCell>{record.category}</TableCell>
                     <TableCell>
                       <div className={`text-sm ${isExpired ? 'text-red-600 font-semibold' : isExpiringSoon ? 'text-orange-600 font-semibold' : ''}`}>
-                        {formatDate(record.validityDate)}
+                        {formatDate(record.validityDate || '')}
                         {isExpired && <div className="text-xs">Vencida há {Math.abs(daysUntilValidity)} dias</div>}
                         {isExpiringSoon && <div className="text-xs">Vence em {daysUntilValidity} dias</div>}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-semibold">{formatCurrency(record.totalValue)}</div>
+                      <div className="font-semibold">{formatCurrency(record.totalValue || 0)}</div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">{record.items.length} itens</div>
@@ -396,7 +396,7 @@ const PriceRecordView: React.FC<PriceRecordViewProps> = ({ priceRecords, onAdd, 
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Tipo</Label>
-                  <Badge className={getTypeColor(viewingPriceRecord.type)}>
+                  <Badge className={getTypeColor(viewingPriceRecord.type || '')}>
                     {viewingPriceRecord.type}
                   </Badge>
                 </div>
@@ -408,12 +408,12 @@ const PriceRecordView: React.FC<PriceRecordViewProps> = ({ priceRecords, onAdd, 
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Data de Publicação</Label>
-                  <p>{formatDate(viewingPriceRecord.publishDate)}</p>
+                  <p>{formatDate(viewingPriceRecord.publishDate || '')}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Data de Validade</Label>
-                  <p className={getDaysUntilValidity(viewingPriceRecord.validityDate) < 0 ? 'text-red-600 font-semibold' : ''}>
-                    {formatDate(viewingPriceRecord.validityDate)}
+                  <p className={getDaysUntilValidity(viewingPriceRecord.validityDate || '') < 0 ? 'text-red-600 font-semibold' : ''}>
+                    {formatDate(viewingPriceRecord.validityDate || '')}
                   </p>
                 </div>
                 {viewingPriceRecord.renewalDate && (
@@ -424,7 +424,7 @@ const PriceRecordView: React.FC<PriceRecordViewProps> = ({ priceRecords, onAdd, 
                 )}
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Valor Total</Label>
-                  <p className="text-lg font-semibold">{formatCurrency(viewingPriceRecord.totalValue)}</p>
+                  <p className="text-lg font-semibold">{formatCurrency(viewingPriceRecord.totalValue || 0)}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Gerente de Conta</Label>
