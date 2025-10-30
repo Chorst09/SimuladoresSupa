@@ -5,7 +5,11 @@
 services:
   # Banco de dados PostgreSQL (Desenvolvimento)
   db:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: postgres
+    image: simuladores-postgres:dev
     container_name: simuladores_db_dev
     restart: unless-stopped
     env_file:

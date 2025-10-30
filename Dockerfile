@@ -1,7 +1,34 @@
 # ==========================================
 # MULTI-STAGE DOCKERFILE
-# Suporta desenvolvimento e produção
+# Suporta desenvolvimento, produção e PostgreSQL customizado
 # ==========================================
+
+# ==================================
+# STAGE 0: POSTGRES (PostgreSQL customizado)
+# ==================================
+FROM postgres:16-alpine AS postgres
+
+# Instalar extensões necessárias
+RUN apk add --no-cache postgresql-contrib
+
+# Criar script de inicialização inline
+RUN mkdir -p /docker-entrypoint-initdb.d && \
+    echo "-- Criar schemas necessários" > /docker-entrypoint-initdb.d/01-init.sql && \
+    echo "CREATE SCHEMA IF NOT EXISTS auth;" >> /docker-entrypoint-initdb.d/01-init.sql && \
+    echo "CREATE SCHEMA IF NOT EXISTS public;" >> /docker-entrypoint-initdb.d/01-init.sql && \
+    echo "GRANT ALL ON SCHEMA auth TO postgres;" >> /docker-entrypoint-initdb.d/01-init.sql && \
+    echo "GRANT ALL ON SCHEMA public TO postgres;" >> /docker-entrypoint-initdb.d/01-init.sql && \
+    echo "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";" >> /docker-entrypoint-initdb.d/01-init.sql && \
+    echo "CREATE EXTENSION IF NOT EXISTS \"pg_stat_statements\";" >> /docker-entrypoint-initdb.d/01-init.sql && \
+    echo "CREATE EXTENSION IF NOT EXISTS \"pg_trgm\";" >> /docker-entrypoint-initdb.d/01-init.sql && \
+    echo "SET timezone = 'America/Sao_Paulo';" >> /docker-entrypoint-initdb.d/01-init.sql
+
+# Configurações de performance
+RUN echo "shared_preload_libraries = 'pg_stat_statements'" >> /usr/local/share/postgresql/postgresql.conf.sample && \
+    echo "pg_stat_statements.track = all" >> /usr/local/share/postgresql/postgresql.conf.sample && \
+    echo "timezone = 'America/Sao_Paulo'" >> /usr/local/share/postgresql/postgresql.conf.sample
+
+EXPOSE 5432
 
 # ==================================
 # STAGE 1: BASE (Dependências do sistema)

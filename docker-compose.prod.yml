@@ -6,8 +6,9 @@ services:
   # Banco de dados PostgreSQL (Produção)
   db:
     build:
-      context: ./database
-      dockerfile: Dockerfile.postgres
+      context: .
+      dockerfile: Dockerfile
+      target: postgres
     image: simuladores-postgres:prod
     container_name: simuladores_db_prod
     restart: always
