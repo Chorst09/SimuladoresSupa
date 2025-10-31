@@ -3,7 +3,7 @@ import { prisma } from './prisma';
 
 // Configuração do pool de conexões PostgreSQL (mantido para compatibilidade)
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres_password@localhost:5432/simuladores_db',
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres@localhost:5432/simuladores_db',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 20, // Máximo de conexões no pool
   idleTimeoutMillis: 30000,
@@ -110,8 +110,8 @@ export const crmService = {
 
   async createOportunidade(data: any) {
     const { fornecedores, ...oportunidadeData } = data;
-    
-    return await prisma.$transaction(async (tx) => {
+
+    return await prisma.$transaction(async (tx: any) => {
       // Criar oportunidade
       const oportunidade = await tx.oportunidade.create({
         data: oportunidadeData,

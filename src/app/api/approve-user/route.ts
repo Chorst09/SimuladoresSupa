@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/database';
+// import { query } from '@/lib/database'; // Unused import
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Verificar se o token não expirou (24 horas)
     const tokenAge = Date.now() - parseInt(timestamp);
     const maxAge = 24 * 60 * 60 * 1000; // 24 horas em ms
-    
+
     if (tokenAge > maxAge) {
       return NextResponse.json({ error: 'Token expirado' }, { status: 400 });
     }
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     const user = await prisma.profile.findFirst({
       where: { email: userEmail }
     });
-    
+
     const userError = !user ? new Error('Usuário não encontrado') : null;
 
     console.log('📊 Resultado da busca:', { user, userError });
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     // Atualizar o role do usuário usando Prisma
     const updatedUser = await prisma.profile.update({
       where: { id: user.id },
-      data: { 
+      data: {
         role: role,
         updated_at: new Date()
       }

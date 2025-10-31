@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 
 interface CommissionChannelSeller {
@@ -144,7 +144,7 @@ export function useCommissions(): UseCommissionsResult {
     }
   };
 
-  const fetchData = async (attempt = 0): Promise<void> => {
+  const fetchData = useCallback(async (attempt = 0): Promise<void> => {
     try {
       setError(null);
 
@@ -231,7 +231,7 @@ export function useCommissions(): UseCommissionsResult {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     // Só tentar carregar dados quando a autenticação terminar de carregar
@@ -243,7 +243,7 @@ export function useCommissions(): UseCommissionsResult {
         setError('Erro crítico ao inicializar comissões. Usando dados padrão.');
       });
     }
-  }, [authLoading]);
+  }, [authLoading, fetchData]);
 
   return {
     channelSeller,

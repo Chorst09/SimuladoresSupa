@@ -74,7 +74,7 @@ const MaquinasVirtuaisCalculatorSimple = () => {
                 setSelectedPlan(currentPlanInState);
             }
         }
-    }, [vmPlans, selectedPlan?.id]);
+    }, [vmPlans, selectedPlan?.id, selectedPlan]);
 
     const monthlyPrice = selectedPlan ? selectedPlan.price * quantity : 0;
     const setupCost = selectedPlan ? selectedPlan.setupCost * quantity : 0;
@@ -122,11 +122,10 @@ const MaquinasVirtuaisCalculatorSimple = () => {
                             {vmPlans.map((plan) => (
                                 <div
                                     key={plan.id}
-                                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                                        selectedPlan?.id === plan.id
+                                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedPlan?.id === plan.id
                                             ? 'border-blue-500 bg-blue-50'
                                             : 'border-gray-200 hover:border-gray-300'
-                                    }`}
+                                        }`}
                                     onClick={() => handlePlanSelect(plan.id)}
                                 >
                                     <div className="flex justify-between items-start">

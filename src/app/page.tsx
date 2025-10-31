@@ -7,13 +7,13 @@ import { useAdmin } from "@/hooks/use-admin";
 
 import {
     Loader2, LogOut, User, Briefcase, BarChart, Calculator,
-    Server, Phone, Wifi, Radio, CheckSquare, BarChart3, ClipboardList,
+    Server, Phone, Wifi, CheckSquare, BarChart3, ClipboardList,
     ChevronDown, Moon, Sun, Users, Shield, MapPin
 } from 'lucide-react';
 
 // Importe seus componentes de UI
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Unused imports
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 // Lazy load dos componentes pesados
@@ -29,7 +29,7 @@ const InternetManRadioCalculator = lazy(() => import('@/components/calculators/I
 const AnaliseConcorrencia = lazy(() => import('@/app/ferramentas/analise-concorrencia/page'));
 const PhysicalVirtualConversion = lazy(() => import('@/components/tools/PhysicalVirtualConversion'));
 const UserManagement = lazy(() => import('@/components/admin/UserManagement'));
-const AdminSetup = lazy(() => import('@/components/admin/AdminSetup'));
+// const AdminSetup = lazy(() => import('@/components/admin/AdminSetup')); // Unused import
 const PendingApproval = lazy(() => import('@/components/auth/PendingApproval'));
 
 
@@ -43,7 +43,7 @@ import { useTheme } from 'next-themes';
 
 export default function App() {
     const { user, loading, logout } = useAuth();
-    const { hasAnyAdmin, loading: adminLoading } = useAdmin();
+    const { loading: adminLoading } = useAdmin();
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
 
@@ -51,12 +51,12 @@ export default function App() {
 
     useEffect(() => {
         setMounted(true);
-        
+
         // Verificar parâmetros de URL para navegação direta
         if (typeof window !== 'undefined') {
             const urlParams = new URLSearchParams(window.location.search);
             const adminParam = urlParams.get('admin');
-            
+
             if (adminParam === 'user-management') {
                 setActiveTab('user-management');
             }
@@ -65,7 +65,7 @@ export default function App() {
 
 
     // Definir itens de navegação
-    const navItems: NavItem[] = [
+    const navItems: NavItem[] = useMemo(() => [
         {
             id: 'dashboard',
             label: 'Dashboard',
@@ -100,7 +100,7 @@ export default function App() {
                 { id: 'physical-virtual-conversion', label: 'Conversão Física/Virtual', icon: <Server className="h-4 w-4" /> },
                 { id: 'site-survey', label: 'Site Survey', icon: <MapPin className="h-4 w-4" /> },
                 { id: 'it-assessment', label: 'Assessment de TI', icon: <BarChart3 className="h-4 w-4" /> },
-                { id: 'poc', label:'Provas de Conceito (POC)', icon: <ClipboardList className="h-4 w-4" /> }
+                { id: 'poc', label: 'Provas de Conceito (POC)', icon: <ClipboardList className="h-4 w-4" /> }
             ]
         },
         // Adicionar gerenciamento de usuários apenas para administradores
@@ -112,7 +112,7 @@ export default function App() {
                 { id: 'user-management', label: 'Gerenciar Usuários', icon: <Users className="h-4 w-4" /> }
             ]
         }] : [])
-    ];
+    ], [user?.role]);
 
     // Lógica para encontrar o item de navegação atual (adapte)
     const currentNavItem = useMemo(() => {
@@ -125,7 +125,7 @@ export default function App() {
             }
         }
         return { ...navItems[0], parentLabel: null };
-    }, [activeTab]);
+    }, [activeTab, navItems]);
 
 
     // Função para Renderizar o Conteúdo da View Ativa com Suspense
@@ -137,7 +137,7 @@ export default function App() {
         );
 
         switch (activeTab) {
-            case 'dashboard': 
+            case 'dashboard':
                 return (
                     <Suspense fallback={<LoadingSpinner />}>
                         <DashboardView onNavigateToCalculator={setActiveTab} />
@@ -149,13 +149,13 @@ export default function App() {
                         <GestaoOportunidades />
                     </Suspense>
                 );
-            case 'calculator-pabx-sip': 
+            case 'calculator-pabx-sip':
                 return (
                     <Suspense fallback={<LoadingSpinner />}>
                         <PABXSIPCalculator onBackToDashboard={() => setActiveTab('dashboard')} />
                     </Suspense>
                 );
-            case 'calculator-maquinas-virtuais': 
+            case 'calculator-maquinas-virtuais':
                 return (
                     <Suspense fallback={<LoadingSpinner />}>
                         <MaquinasVirtuaisCalculator onBackToDashboard={() => setActiveTab('dashboard')} />
@@ -212,11 +212,11 @@ export default function App() {
                 );
             case 'site-survey':
                 return <iframe src="/site-survey" className="w-full h-screen border-0" title="Site Survey" />;
-            case 'it-assessment': 
+            case 'it-assessment':
                 return <iframe src="/it-assessment.html" className="w-full h-screen border-0" title="Assessment de TI" />;
-            case 'poc': 
+            case 'poc':
                 return <iframe src="/poc-management.html" className="w-full h-screen border-0" title="Provas de Conceito POC" />;
-            default: 
+            default:
                 return (
                     <Suspense fallback={<LoadingSpinner />}>
                         <DashboardView />
@@ -298,7 +298,7 @@ export default function App() {
                             // Handle items with href (external links)
                             if (item.href) {
                                 return (
-                                    <a 
+                                    <a
                                         key={item.id}
                                         href={item.href}
                                         className="flex items-center px-4 py-3 text-sm font-medium rounded-md hover:bg-accent hover:text-accent-foreground"
@@ -308,7 +308,7 @@ export default function App() {
                                     </a>
                                 );
                             }
-                            
+
                             // Handle items with sub-items
                             if (item.subItems) {
                                 return (
@@ -316,11 +316,10 @@ export default function App() {
                                         key={item.id}
                                         defaultOpen={item.subItems.some(sub => sub.id === activeTab)}
                                     >
-                                        <CollapsibleTrigger className={`w-full inline-flex items-center justify-between gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 ${
-                                            item.subItems.some(sub => sub.id === activeTab) 
-                                                ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80' 
-                                                : 'hover:bg-accent hover:text-accent-foreground'
-                                        }`}>
+                                        <CollapsibleTrigger className={`w-full inline-flex items-center justify-between gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 ${item.subItems.some(sub => sub.id === activeTab)
+                                            ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                            : 'hover:bg-accent hover:text-accent-foreground'
+                                            }`}>
                                             <div className="flex items-center gap-3">
                                                 {item.icon}
                                                 <span>{item.label}</span>
@@ -343,7 +342,7 @@ export default function App() {
                                     </Collapsible>
                                 );
                             }
-                            
+
                             // Handle regular items without sub-items
                             return (
                                 <Button

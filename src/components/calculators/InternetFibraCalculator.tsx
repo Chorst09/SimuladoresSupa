@@ -15,10 +15,9 @@ import { ClientData, AccountManagerData } from '@/lib/types';
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
-import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
+import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
 import { formatPercentage } from '@/lib/utils';
 import {
-    Wifi,
     Calculator,
     FileText,
     Plus,
@@ -296,7 +295,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         if (currentProposal?.id) {
             setHasChanged(true);
         }
-    }, [selectedSpeed, contractTerm, includeInstallation, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, clientData, accountManagerData]);
+    }, [selectedSpeed, contractTerm, includeInstallation, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, clientData, accountManagerData, currentProposal?.id]);
 
     // Hook para comissões editáveis
     const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
@@ -421,7 +420,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 appliedDirectorDiscountPercentage
             )
         };
-    }, [selectedSpeed, fibraPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
+    }, [selectedSpeed, fibraPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeInstallation]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const fetchProposals = React.useCallback(async () => {
@@ -527,7 +526,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     const custoFibra = result?.fiberCost || 7000;
 
     // Função para aplicar descontos no total mensal
-    const applyDiscounts = (baseTotal: number): number => {
+    const applyDiscounts = useCallback((baseTotal: number): number => {
         let discountedTotal = baseTotal;
 
         // Aplicar desconto do vendedor (5%)
@@ -542,7 +541,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         }
 
         return discountedTotal;
-    };
+    }, [applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     // Função para calcular DRE por período de contrato
     const calculateDREForPeriod = useCallback((months: number) => {
@@ -719,7 +718,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         custoFibra,
         taxRates.simplesNacional,
         taxRates.banda,
-        commissionPercentage,
+
         includeReferralPartner,
         includeInfluencerPartner,
         createLastMile,
@@ -732,7 +731,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         channelIndicator,
         channelInfluencer,
         channelSeller,
-        seller
+        seller,
+        applyDiscounts
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo
@@ -790,7 +790,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             lucratividade: number;
             paybackMeses: number;
         };
-    }, [calculateDREForPeriod]);
+    }, [calculateDREForPeriod, appliedDirectorDiscountPercentage, applySalespersonDiscount, result?.fiberCost]);
 
     const handleSavePrices = () => {
         // Save the prices to local storage
@@ -1675,8 +1675,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         <div className="flex justify-between items-center">
                                                             <span className="text-sm text-slate-300">Diferença de Valor:</span>
                                                             <span className={`font-semibold ${result.monthlyPrice - previousMonthlyFee >= 0
-                                                                    ? 'text-green-400'
-                                                                    : 'text-red-400'
+                                                                ? 'text-green-400'
+                                                                : 'text-red-400'
                                                                 }`}>
                                                                 {result.monthlyPrice - previousMonthlyFee >= 0 ? '+' : ''}
                                                                 {formatCurrency(result.monthlyPrice - previousMonthlyFee)}

@@ -10,10 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import RoForm from './RoForm';
 
 interface RoManagementViewProps {
-  ros: RO[];
-  partners: Partner[];
-  onSave: (ro: RO) => void;
-  onDelete: (id: number) => void;
+    ros: RO[];
+    partners: Partner[];
+    onSave: (ro: RO) => void;
+    onDelete: (id: number) => void;
 }
 
 const RoManagementView: React.FC<RoManagementViewProps> = ({ ros, partners, onSave, onDelete }) => {
@@ -39,7 +39,7 @@ const RoManagementView: React.FC<RoManagementViewProps> = ({ ros, partners, onSa
     return (
         <Card className="shadow-lg">
             <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                <CardTitle className="text-2xl mb-4 sm:mb-0">Gestão de RO's</CardTitle>
+                <CardTitle className="text-2xl mb-4 sm:mb-0">Gestão de RO&apos;s</CardTitle>
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                     <DialogTrigger asChild>
                         <Button onClick={() => handleOpenModal()}>

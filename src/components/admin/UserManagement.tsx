@@ -34,7 +34,7 @@ export default function UserManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<ExtendedUserProfile | null>(null);
-  
+
   // Form states
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
@@ -54,10 +54,10 @@ export default function UserManagement() {
     try {
       console.log('🔄 Carregando usuários via API...');
       setLoading(true);
-      
+
       // Add timestamp to prevent caching
       const timestamp = new Date().getTime();
-      
+
       // Use the new API endpoint that bypasses RLS
       const response = await fetch(`/api/users?t=${timestamp}`, {
         method: 'GET',
@@ -68,9 +68,9 @@ export default function UserManagement() {
       });
 
       const result = await response.json();
-      
+
       console.log('📊 Resposta da API (timestamp:', timestamp, '):', result);
-      
+
       if (!result.success) {
         // Handle RLS blocking specifically
         if (result.needsRlsFix) {
@@ -80,13 +80,13 @@ export default function UserManagement() {
         }
         throw new Error(result.error || 'Erro ao carregar usuários');
       }
-      
+
       if (!result.users || result.users.length === 0) {
         console.log('⚠️ Nenhum usuário encontrado');
         setUsers([]);
         return;
       }
-      
+
       // Mapear para ExtendedUserProfile
       const mappedUsers: ExtendedUserProfile[] = result.users.map((user: any) => ({
         id: user.id,
@@ -97,10 +97,10 @@ export default function UserManagement() {
         updated_at: user.updated_at || new Date().toISOString(),
         password_changed: user.password_changed !== false
       }));
-      
+
       setUsers(mappedUsers);
       console.log(`✅ ${mappedUsers.length} usuários carregados via API:`, mappedUsers);
-      
+
       // Debug: Show detailed user info
       console.log('🔍 DETALHES DOS USUÁRIOS CARREGADOS:');
       mappedUsers.forEach((user, index) => {
@@ -112,12 +112,12 @@ export default function UserManagement() {
           created_at: user.created_at
         });
       });
-      
+
     } catch (error: any) {
       console.error('❌ Erro ao carregar usuários via API:', error);
       setError('Erro ao carregar usuários: ' + error.message);
       setUsers([]);
-      
+
     } finally {
       setLoading(false);
     }
@@ -125,7 +125,7 @@ export default function UserManagement() {
 
   const handleAddUser = async () => {
     setAddUserError(null);
-    
+
     if (!newUserEmail || !newUserPassword) {
       alert('Erro: Email e senha são obrigatórios.');
       return;
@@ -133,7 +133,7 @@ export default function UserManagement() {
 
     try {
       console.log('🔄 Criando usuário via API admin...');
-      
+
       // Try the new confirmed API first
       let response = await fetch('/api/create-user-confirmed', {
         method: 'POST',
@@ -149,10 +149,10 @@ export default function UserManagement() {
       });
 
       let result = await response.json();
-      
+
       if (!result.success) {
         console.log('🔄 API confirmada falhou, tentando API admin...');
-        
+
         // Fallback to admin API
         response = await fetch('/api/create-user-admin', {
           method: 'POST',
@@ -168,10 +168,10 @@ export default function UserManagement() {
         });
 
         result = await response.json();
-        
+
         if (!result.success) {
           console.log('🔄 API admin falhou, tentando API simples...');
-          
+
           // Final fallback to simple API
           const fallbackResponse = await fetch('/api/create-user-simple', {
             method: 'POST',
@@ -187,7 +187,7 @@ export default function UserManagement() {
           });
 
           const fallbackResult = await fallbackResponse.json();
-          
+
           if (!fallbackResult.success) {
             throw new Error(fallbackResult.error || 'Erro ao criar usuário');
           }
@@ -213,10 +213,10 @@ export default function UserManagement() {
         await loadUsers();
         console.log('✅ Lista de usuários recarregada');
       }, 1000);
-      
+
     } catch (error: any) {
       console.error('❌ Erro ao criar usuário:', error);
-      
+
       let description = error.message || 'Não foi possível criar o usuário.';
       if (error.message.includes('User already registered')) {
         description = 'Este email já está em uso. Tente usar outro email.';
@@ -227,7 +227,7 @@ export default function UserManagement() {
       } else if (error.message.includes('only request this after')) {
         description = 'Limite de criação atingido. Aguarde 1 minuto e tente novamente.';
       }
-      
+
       alert(`❌ Erro: ${description}`);
     }
   };
@@ -238,7 +238,7 @@ export default function UserManagement() {
     try {
       // TODO: Implementar atualização via API REST
       console.log('Atualizando usuário via API:', editingUser);
-      
+
       alert('Sucesso: Usuário atualizado com sucesso!');
 
       setIsEditDialogOpen(false);
@@ -258,7 +258,7 @@ export default function UserManagement() {
     try {
       // TODO: Implementar exclusão via API REST
       console.log('Excluindo usuário via API:', userId);
-      
+
       alert('Sucesso: Usuário excluído com sucesso!');
       loadUsers();
     } catch (error: any) {
@@ -300,7 +300,7 @@ export default function UserManagement() {
             Gerencie usuários, permissões e acessos do sistema
           </p>
         </div>
-        
+
         <div className="flex space-x-2">
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -367,14 +367,14 @@ export default function UserManagement() {
               </div>
             </DialogContent>
           </Dialog>
-          
+
           <Button
             variant="outline"
             onClick={() => window.open('/signup', '_blank')}
           >
             📝 Cadastro Público
           </Button>
-          
+
           <Button
             variant="outline"
             onClick={async () => {
@@ -383,41 +383,41 @@ export default function UserManagement() {
                 const response = await fetch('/api/debug-users');
                 const result = await response.json();
                 console.log('🔍 RESULTADO DEBUG COMPLETO:', result);
-                
+
                 // Show detailed info in alert
                 let message = '🔍 RESULTADO DEBUG:\n\n';
-                
+
                 if (result.results?.anonKey) {
                   message += `📊 Anon Key: ${result.results.anonKey.count} usuários\n`;
                   if (result.results.anonKey.users) {
                     result.results.anonKey.users.forEach((user: any, i: number) => {
-                      message += `  ${i+1}. ${user.email} (${user.role})\n`;
+                      message += `  ${i + 1}. ${user.email} (${user.role})\n`;
                     });
                   }
                   message += '\n';
                 }
-                
+
                 if (result.results?.serviceKey) {
                   message += `🔑 Service Key: ${result.results.serviceKey.count} usuários\n`;
                   if (result.results.serviceKey.users) {
                     result.results.serviceKey.users.forEach((user: any, i: number) => {
-                      message += `  ${i+1}. ${user.email} (${user.role})\n`;
+                      message += `  ${i + 1}. ${user.email} (${user.role})\n`;
                     });
                   }
                   message += '\n';
                 }
-                
+
                 if (result.results?.authUsers) {
                   message += `🔐 Auth Users: ${result.results.authUsers.count} usuários\n`;
                   if (result.results.authUsers.users) {
                     result.results.authUsers.users.forEach((user: any, i: number) => {
-                      message += `  ${i+1}. ${user.email}\n`;
+                      message += `  ${i + 1}. ${user.email}\n`;
                     });
                   }
                 }
-                
+
                 message += '\n📋 Verifique o console para detalhes completos!';
-                
+
                 alert(message);
               } catch (error) {
                 console.error('❌ Erro no debug:', error);
@@ -427,12 +427,12 @@ export default function UserManagement() {
           >
             🔍 Debug Usuários
           </Button>
-          
+
           <Button
             variant="outline"
             onClick={async () => {
               console.log('📋 Mostrando informações do PostgreSQL...');
-              
+
               const info = `
 📊 INFORMAÇÕES DO POSTGRESQL:
 
@@ -453,7 +453,7 @@ export default function UserManagement() {
 Se você está olhando "auth.users", os dados podem ser diferentes.
 A aplicação usa a tabela "profiles" para mostrar os usuários.
               `;
-              
+
               console.log(info);
               alert(info);
             }}
@@ -470,7 +470,7 @@ A aplicação usa a tabela "profiles" para mostrar os usuários.
             Usuários do Sistema ({users.length})
           </CardTitle>
           <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg">
-            💡 <strong>Dica:</strong> Se houver limite de criação de usuários, use o botão "📝 Cadastro Público" 
+            💡 <strong>Dica:</strong> Se houver limite de criação de usuários, use o botão &quot;📝 Cadastro Público&quot;
             para que os usuários se cadastrem diretamente e depois aprove-os aqui.
           </div>
         </CardHeader>
@@ -499,13 +499,13 @@ A aplicação usa a tabela "profiles" para mostrar os usuários.
                       ) : (
                         <User className="h-4 w-4 mr-1 text-blue-500" />
                       )}
-                      {user.role === 'admin' ? 'Administrador' : 
-                       user.role === 'director' ? 'Diretor' : 'Usuário'}
+                      {user.role === 'admin' ? 'Administrador' :
+                        user.role === 'director' ? 'Diretor' : 'Usuário'}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {user.created_at ? 
-                      new Date(user.created_at).toLocaleDateString('pt-BR') 
+                    {user.created_at ?
+                      new Date(user.created_at).toLocaleDateString('pt-BR')
                       : '-'
                     }
                   </TableCell>
@@ -570,10 +570,10 @@ A aplicação usa a tabela "profiles" para mostrar os usuários.
               </div>
               <div>
                 <Label htmlFor="edit-role">Função</Label>
-                <Select 
-                  value={editingUser.role} 
-                  onValueChange={(value: UserRole | 'pending' | 'seller') => 
-                    setEditingUser({...editingUser, role: value})
+                <Select
+                  value={editingUser.role}
+                  onValueChange={(value: UserRole | 'pending' | 'seller') =>
+                    setEditingUser({ ...editingUser, role: value })
                   }
                 >
                   <SelectTrigger>

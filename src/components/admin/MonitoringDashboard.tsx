@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
-  Database, 
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Database,
   RefreshCw,
   TrendingUp,
   XCircle,
@@ -75,24 +75,24 @@ export function MonitoringDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
 
-  const fetchMonitoringData = async (endpoint: string = 'stats') => {
+  const fetchMonitoringData = useCallback(async (endpoint: string = 'stats') => {
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetch(`/api/monitoring?endpoint=${endpoint}`);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch monitoring data: ${response.statusText}`);
       }
 
       const result = await response.json();
-      
+
       setData(prev => ({
         ...prev,
         [endpoint]: endpoint === 'stats' ? result.performance : result
       }));
-      
+
       setLastUpdated(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch monitoring data');
@@ -100,24 +100,24 @@ export function MonitoringDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     await Promise.all([
       fetchMonitoringData('stats'),
       fetchMonitoringData('logs'),
       fetchMonitoringData('alerts'),
       fetchMonitoringData('health')
     ]);
-  };
+  }, [fetchMonitoringData]);
 
   useEffect(() => {
     fetchAllData();
-  }, []);
+  }, [fetchAllData]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (autoRefresh) {
       interval = setInterval(() => {
         fetchAllData();
@@ -129,7 +129,7 @@ export function MonitoringDashboard() {
         clearInterval(interval);
       }
     };
-  }, [autoRefresh]);
+  }, [autoRefresh, fetchAllData]);
 
   const getHealthStatusColor = (status: string) => {
     switch (status) {
@@ -230,14 +230,13 @@ export function MonitoringDashboard() {
                 <Progress value={data.health.healthScore} className="h-2" />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Object.entries(data.health.healthChecks || {}).map(([key, check]) => (
                 <div key={key} className="text-center">
-                  <div className={`inline-flex items-center gap-1 text-sm font-medium ${
-                    check.status === 'PASS' ? 'text-green-600' : 
+                  <div className={`inline-flex items-center gap-1 text-sm font-medium ${check.status === 'PASS' ? 'text-green-600' :
                     check.status === 'WARNING' ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
+                    }`}>
                     {check.status === 'PASS' ? (
                       <CheckCircle className="h-4 w-4" />
                     ) : check.status === 'WARNING' ? (
@@ -386,7 +385,7 @@ export function MonitoringDashboard() {
                       <AlertDescription className="mt-2">
                         <div className="mb-2">{alert.errorMessage}</div>
                         <div className="text-sm text-muted-foreground mb-2">
-                          First: {formatTimestamp(alert.firstOccurrence)} | 
+                          First: {formatTimestamp(alert.firstOccurrence)} |
                           Last: {formatTimestamp(alert.lastOccurrence)}
                         </div>
                         {alert.suggestedActions.length > 0 && (

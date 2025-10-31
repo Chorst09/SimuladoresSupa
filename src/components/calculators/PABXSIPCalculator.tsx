@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from "sonner"; // Added toast import
 // PostgreSQL via Prisma - APIs REST
 import CommissionTablesUnified from './CommissionTablesUnified';
 // import { CommissionData } from '@/lib/types'; // Removido - usando hook useCommissions
-import { DRETable, DRETableProps } from './DRETable';
+import { DRETable } from './DRETable';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Phone, PhoneForwarded, Edit, Plus, Save, Download, Trash2, ArrowLeft } from 'lucide-react';
+import { Phone, PhoneForwarded, Edit, Plus, Download, Trash2, ArrowLeft } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ClientManagerForm } from './ClientManagerForm';
 
@@ -210,9 +210,9 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 sip_include_setup: sipIncludeSetup,
             };
             console.log('Salvando configurações PABX via API:', configData);
-            
+
             // TODO: Fazer chamada para API REST aqui
-            
+
             toast.success('Configurações salvas com sucesso!');
         } catch (error) {
             console.error('Erro ao salvar configurações:', error);
@@ -224,7 +224,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         currentUser, pabxExtensions, pabxModality, pabxPremiumPlan, pabxPremiumSubPlan,
         pabxPremiumEquipment, contractDuration, pabxIncludeSetup, pabxIncludeDevices,
         pabxDeviceQuantity, pabxIncludeAI, aiAgentPlan, pabxAIPlan, includeParceiroIndicador,
-        sipPlan, sipIncludeSetup, sipAdditionalChannels, sipWithEquipment
+        sipPlan, sipIncludeSetup
     ]);
 
     // Dados de preços do List Price - PABX (editáveis)
@@ -473,9 +473,9 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
             // TODO: Implementar API para salvar preços PABX
             console.log('Salvando preços via API:', priceUpdates);
-            
+
             // TODO: Fazer chamada para API REST aqui
-            
+
             toast.success('Preços salvos com sucesso!');
             console.log('Preços salvos com sucesso!');
         } catch (error) {
@@ -489,10 +489,10 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         try {
             // TODO: Implementar API para carregar preços PABX
             console.log('Carregando preços via API...');
-            
+
             // TODO: Fazer chamada para API REST aqui
             const data: any[] | null = null; // Temporário
-            
+
             if (data && (data as any[]).length > 0) {
                 console.log('Dados carregados via API:', data);
 
@@ -521,11 +521,12 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             console.error('Erro ao carregar preços:', error);
             toast.error('Erro ao carregar preços do banco de dados');
         }
-    }, [savePABXPrices]);
+    }, []);
 
     // Force update specific values on component mount
     useEffect(() => {
         forceUpdateSpecificValues();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Load prices on component mount
@@ -662,7 +663,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         // Obter comissões da tabela editável
         const months = contractTerm;
         const temParceiros = includeParceiroIndicador || includeInfluencerPartner;
-        
+
         // Calcular comissão do vendedor baseado na presença de parceiros
         const vendedorCommissionRate = temParceiros
             ? getChannelSellerCommissionRate(channelSeller, months) / 100
@@ -721,7 +722,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
     const getPremiumPriceRange = useCallback((extensions: number, plan: string, subPlan: string): string => {
         if (extensions >= 2 && extensions <= 9) return '2 a 9 ramais';
-        
+
         // Para planos Ilimitados, usar faixas específicas
         if (subPlan.toLowerCase() === 'ilimitado') {
             if (extensions >= 10 && extensions <= 19) return '10 a 19 ramais';
@@ -730,7 +731,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             // Para planos Tarifados, usar faixa combinada 10-49
             if (extensions >= 10 && extensions <= 49) return '10 a 49 ramais';
         }
-        
+
         if (extensions >= 50 && extensions <= 99) return '50 a 99 ramais';
         if (extensions >= 100 && extensions <= 199) return '100 a 199 ramais';
         if (extensions >= 200) return '+ de 200 ramais';
@@ -742,6 +743,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         if (pabxModality === 'Premium') {
             calculatePABX();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pabxModality, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxExtensions, pabxIncludeAI, pabxAIPlan]);
 
     // Função removida - usando funções do hook useCommissions
@@ -820,7 +822,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             const pricePerExtension = pabxPremiumEquipment === 'Com'
                 ? (priceData as any).comEquipamento
                 : (priceData as any).semEquipamento;
-            
+
             const baseMonthly = pricePerExtension * pabxExtensions;
 
             // Custo de aparelhos já está incluído no preço Premium
@@ -921,8 +923,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
     // Reset additional channels when restricted plans are selected
     useEffect(() => {
-        if (sipPlan === 'SIP TARIFADO 30 Canais' || 
-            sipPlan === 'SIP TARIFADO 60 Canais' || 
+        if (sipPlan === 'SIP TARIFADO 30 Canais' ||
+            sipPlan === 'SIP TARIFADO 60 Canais' ||
             sipPlan === 'SIP ILIMITADO 60 Canais') {
             setSipAdditionalChannels(0);
         }
@@ -1050,11 +1052,11 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         }
 
         setProposalItems(items);
-        
+
         // Load status and changes
         setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
         setProposalChanges(proposal.changes || '');
-        
+
         setCurrentView('proposal-summary');
     };
 
@@ -1271,17 +1273,17 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     useEffect(() => {
         const result = calculatePABX();
         setPabxResult(result);
-    }, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxPrices, aiAgentPrices, getPriceRange]);
+    }, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxPrices, aiAgentPrices, getPriceRange, calculatePABX]);
 
     // Detectar mudanças nos valores para mostrar botão de nova versão
     useEffect(() => {
         if (currentProposal?.id) {
             setHasChanged(true);
         }
-    }, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, sipPlan, sipIncludeSetup, sipAdditionalChannels, sipWithEquipment, clientData, accountManagerData, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
+    }, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, sipPlan, sipIncludeSetup, sipAdditionalChannels, sipWithEquipment, clientData, accountManagerData, applySalespersonDiscount, appliedDirectorDiscountPercentage, currentProposal?.id]);
 
     // Alias for backward compatibility
-    const calculatePABXResult = useCallback(calculatePABX, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxPrices, aiAgentPrices, getPriceRange]);
+    const calculatePABXResult = useCallback(calculatePABX, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxPrices, aiAgentPrices, getPriceRange, calculatePABX]);
 
     // Função para salvar a proposta (usando apenas API)
     const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
@@ -1292,10 +1294,10 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
         try {
             setSaving(true);
-            
+
             // Usar a função saveProposal que já existe e funciona com API
             await saveProposal();
-            
+
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
             alert('Erro ao salvar proposta. Tente novamente.');
@@ -1512,7 +1514,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                 {filteredProposals.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={6} className="text-center py-8 text-slate-400">
-                                            Nenhuma proposta encontrada. Clique em "Nova Proposta" para começar.
+                                            Nenhuma proposta encontrada. Clique em &quot;Nova Proposta&quot; para começar.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -1521,8 +1523,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                             <TableCell className="text-slate-300">{proposal.baseId || proposal.id}</TableCell>
                                             <TableCell className="text-slate-300">{typeof proposal.client === 'string' ? proposal.client : proposal.client?.name || 'Sem nome'} (v{proposal.version})</TableCell>
                                             <TableCell className="text-slate-300">{
-                                                typeof proposal.client === 'object' && proposal.client?.projectName 
-                                                    ? proposal.client.projectName 
+                                                typeof proposal.client === 'object' && proposal.client?.projectName
+                                                    ? proposal.client.projectName
                                                     : proposal.clientData?.projectName || 'Projeto não informado'
                                             }</TableCell>
                                             <TableCell className="text-slate-300">{proposal.createdAt ? (isNaN(new Date(proposal.createdAt).getTime()) ? 'N/A' : new Date(proposal.createdAt).toLocaleDateString('pt-BR')) : 'N/A'}</TableCell>
@@ -1592,24 +1594,24 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Dados do Cliente</h3>
                             <div className="space-y-2 text-sm">
                                 <p><strong>Nome:</strong> {
-                                    typeof currentProposal.client === 'object' && currentProposal.client?.name 
-                                        ? currentProposal.client.name 
-                                        : currentProposal.clientData?.name || 
-                                          (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.name
+                                        ? currentProposal.client.name
+                                        : currentProposal.clientData?.name ||
+                                        (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
                                 }</p>
                                 <p><strong>Email:</strong> {
-                                    typeof currentProposal.client === 'object' && currentProposal.client?.email 
-                                        ? currentProposal.client.email 
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.email
+                                        ? currentProposal.client.email
                                         : currentProposal.clientData?.email || 'N/A'
                                 }</p>
                                 <p><strong>Telefone:</strong> {
-                                    typeof currentProposal.client === 'object' && currentProposal.client?.phone 
-                                        ? currentProposal.client.phone 
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.phone
+                                        ? currentProposal.client.phone
                                         : currentProposal.clientData?.phone || 'N/A'
                                 }</p>
                                 <p><strong>Contato:</strong> {
-                                    typeof currentProposal.client === 'object' && currentProposal.client?.contact 
-                                        ? currentProposal.client.contact 
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.contact
+                                        ? currentProposal.client.contact
                                         : currentProposal.clientData?.contact || 'N/A'
                                 }</p>
                             </div>
@@ -1618,8 +1620,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Nome do Projeto</h3>
                             <div className="space-y-2 text-sm">
                                 <p className="font-medium text-base">{
-                                    typeof currentProposal.client === 'object' && currentProposal.client?.projectName 
-                                        ? currentProposal.client.projectName 
+                                    typeof currentProposal.client === 'object' && currentProposal.client?.projectName
+                                        ? currentProposal.client.projectName
                                         : currentProposal.clientData?.projectName || 'Projeto não informado'
                                 }</p>
                                 <p className="text-gray-600 text-xs mt-2">
@@ -1837,8 +1839,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                         placeholder="Digite a quantidade de ramais"
                                     />
                                     <p className="text-xs text-slate-400 mt-1">
-                                        Faixa de preço: {pabxModality === 'Standard' 
-                                            ? getPriceRange(pabxExtensions) + ' ramais' 
+                                        Faixa de preço: {pabxModality === 'Standard'
+                                            ? getPriceRange(pabxExtensions) + ' ramais'
                                             : getPremiumPriceRange(pabxExtensions, pabxPremiumPlan, pabxPremiumSubPlan)
                                         }
                                     </p>
@@ -2059,7 +2061,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                 <span>Ramais configurados:</span>
                                                 <span>{pabxExtensions} ramais</span>
                                             </div>
-                                            
+
                                             {pabxModality === 'Standard' ? (
                                                 <>
                                                     <div className="flex justify-between text-slate-300">
@@ -2119,7 +2121,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                     </div>
                                                 </>
                                             )}
-                                            
+
                                             {pabxResult.aiAgentCost > 0 && (
                                                 <div className="flex justify-between">
                                                     <span>Agente IA ({pabxAIPlan}):</span>
@@ -2185,9 +2187,9 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
                                 <div>
                                     <Label htmlFor="sip-additional-channels">Canais Adicionais</Label>
-                                    {(sipPlan === 'SIP TARIFADO 30 Canais' || 
-                                      sipPlan === 'SIP TARIFADO 60 Canais' || 
-                                      sipPlan === 'SIP ILIMITADO 60 Canais') ? (
+                                    {(sipPlan === 'SIP TARIFADO 30 Canais' ||
+                                        sipPlan === 'SIP TARIFADO 60 Canais' ||
+                                        sipPlan === 'SIP ILIMITADO 60 Canais') ? (
                                         <div className="bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-orange-400 font-medium">
                                             Sem Possibilidade
                                         </div>
@@ -2271,7 +2273,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                
+
                                 <div className="mb-4">
                                     <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
                                     <textarea
@@ -2450,7 +2452,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
                         // CORREÇÃO: Não considerar custos PABX e SIP como custos operacionais (já são valores de venda)
                         // Considerar apenas Custo/Desp (10%) e Impostos (15%)
-                        
+
                         // Cálculo do DRE seguindo o modelo contábil correto
                         const receitaOperacionalBruta = dreMonthlyRevenue;
 

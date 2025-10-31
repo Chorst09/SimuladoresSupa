@@ -136,9 +136,9 @@ const getMaxPaybackMonths = (contractTerm: number): number => {
 };
 
 const calculatePayback = (
-    installationFee: number, 
-    okCost: number, 
-    monthlyRevenue: number, 
+    installationFee: number,
+    okCost: number,
+    monthlyRevenue: number,
     contractTerm: number,
     applySalespersonDiscount: boolean = false,
     appliedDirectorDiscountPercentage: number = 0
@@ -162,27 +162,27 @@ const calculatePayback = (
     // Cálculo mês a mês
     for (let month = 1; month <= contractTerm; month++) {
         let monthlyNetFlow = 0;
-        
+
         if (month === 1) {
             // MÊS 1: Primeira Mensalidade (COM comissão do vendedor)
             const monthlyBandCost = discountedMonthlyRevenue * 0.0725; // Custo banda 7.25%
             const monthlyTaxImpost = discountedMonthlyRevenue * 0.15; // Imposto 15%
             const monthlyCommission = discountedMonthlyRevenue * 0.144; // Comissão vendedor 14.4% (só no mês 1)
             const monthlyCustoDesp = discountedMonthlyRevenue * 0.10; // Custo/Despesa 10%
-            
+
             monthlyNetFlow = discountedMonthlyRevenue - monthlyBandCost - monthlyTaxImpost - monthlyCommission - monthlyCustoDesp;
         } else {
             // MÊS 2+: Fluxo Recorrente (SEM comissão do vendedor)
             const monthlyBandCost = discountedMonthlyRevenue * 0.0725; // Custo banda 7.25%
             const monthlyTaxImpost = discountedMonthlyRevenue * 0.15; // Imposto 15%
             const monthlyCustoDesp = discountedMonthlyRevenue * 0.10; // Custo/Despesa 10%
-            
+
             monthlyNetFlow = discountedMonthlyRevenue - monthlyBandCost - monthlyTaxImpost - monthlyCustoDesp;
         }
-        
+
         // Acumular o fluxo mensal
         cumulativeBalance += monthlyNetFlow;
-        
+
         // Quando o saldo acumulado fica positivo, retorna o mês atual
         if (cumulativeBalance >= 0) {
             return month;
@@ -193,17 +193,17 @@ const calculatePayback = (
 };
 
 const validatePayback = (
-    installationFee: number, 
-    okCost: number, 
-    monthlyRevenue: number, 
+    installationFee: number,
+    okCost: number,
+    monthlyRevenue: number,
     contractTerm: number,
     applySalespersonDiscount: boolean = false,
     appliedDirectorDiscountPercentage: number = 0
 ): { isValid: boolean, actualPayback: number, maxPayback: number } => {
     const actualPayback = calculatePayback(
-        installationFee, 
-        okCost, 
-        monthlyRevenue, 
+        installationFee,
+        okCost,
+        monthlyRevenue,
         contractTerm,
         applySalespersonDiscount,
         appliedDirectorDiscountPercentage
@@ -281,17 +281,17 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
 
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
     // Usa apenas o valor mensal para buscar o percentual na tabela de comissões
-    const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number): number => {
+    const getPartnerIndicatorRate = useCallback((monthlyRevenue: number, contractMonths: number): number => {
         if (!channelIndicator || !includeReferralPartner) return 0;
         return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths) / 100;
-    };
+    }, [channelIndicator, includeReferralPartner]);
 
     // Função para obter taxa de comissão do Parceiro Influenciador usando as tabelas editáveis
     // Usa apenas o valor mensal para buscar o percentual na tabela de comissões
-    const getPartnerInfluencerRate = (monthlyRevenue: number, contractMonths: number): number => {
+    const getPartnerInfluencerRate = useCallback((monthlyRevenue: number, contractMonths: number): number => {
         if (!channelInfluencer || !includeInfluencerPartner) return 0;
         return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths) / 100;
-    };
+    }, [channelInfluencer, includeInfluencerPartner]);
 
     // Estados para DRE e tributação
     const [isEditingTaxes, setIsEditingTaxes] = useState<boolean>(false);
@@ -357,6 +357,24 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
 
     // Partner indicator ranges handled by getPartnerIndicatorRate
 
+    // Função para aplicar descontos no total mensal
+    const applyDiscounts = useCallback((baseTotal: number): number => {
+        let discountedTotal = baseTotal;
+
+        // Aplicar desconto do vendedor (5%)
+        if (applySalespersonDiscount) {
+            discountedTotal = discountedTotal * 0.95;
+        }
+
+        // Aplicar desconto do diretor (percentual configurado)
+        if (appliedDirectorDiscountPercentage > 0) {
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            discountedTotal = discountedTotal * directorDiscountFactor;
+        }
+
+        return discountedTotal;
+    }, [applySalespersonDiscount, appliedDirectorDiscountPercentage]);
+
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const result = useMemo(() => {
         if (!selectedSpeed) return null;
@@ -364,17 +382,17 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         if (!plan) return null;
 
         let monthlyPrice = getMonthlyPrice(plan, debouncedContractTerm);
-        
+
         // Aplicar descontos
         monthlyPrice = applyDiscounts(monthlyPrice);
-        
+
         // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
         if (temParceiros) {
             monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
             console.log('Acréscimo de 20% aplicado no result.monthlyPrice - InternetOKv2:', monthlyPrice);
         }
-        
+
         return {
             ...plan,
             monthlyPrice,
@@ -390,7 +408,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                 appliedDirectorDiscountPercentage
             )
         };
-    }, [selectedSpeed, doubleFiberRadioPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
+    }, [selectedSpeed, doubleFiberRadioPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeInstallation, applyDiscounts]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const fetchProposals = React.useCallback(async () => {
@@ -458,7 +476,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         if (currentProposal?.id) {
             setHasChanged(true);
         }
-    }, [selectedSpeed, contractTerm, clientData, accountManagerData, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner]);
+    }, [selectedSpeed, contractTerm, clientData, accountManagerData, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, currentProposal?.id]);
 
     // Removed debug useEffect to prevent unnecessary re-renders
 
@@ -489,24 +507,6 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
     const taxaInstalacao = includeInstallation ? (result?.installationCost || 2500) : 0;
     const custoDoubleFiberRadio = result?.doubleFiberRadioCost || 7000;
 
-    // Função para aplicar descontos no total mensal
-    const applyDiscounts = (baseTotal: number): number => {
-        let discountedTotal = baseTotal;
-
-        // Aplicar desconto do vendedor (5%)
-        if (applySalespersonDiscount) {
-            discountedTotal = discountedTotal * 0.95;
-        }
-
-        // Aplicar desconto do diretor (percentual configurado)
-        if (appliedDirectorDiscountPercentage > 0) {
-            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
-            discountedTotal = discountedTotal * directorDiscountFactor;
-        }
-
-        return discountedTotal;
-    };
-
     // Helper para acessar dreCalculations de forma segura
     const getDreValue = (calculations: any, period: number | string, field: string) => {
         return calculations?.[period]?.[field] || 0;
@@ -522,7 +522,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         if (result) {
             // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
             monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
-            
+
             // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
             const temParceiros = includeReferralPartner || includeInfluencerPartner;
             console.log('DEBUG - InternetOKv2:', {
@@ -531,7 +531,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                 temParceiros,
                 monthlyValueBefore: monthlyValue
             });
-            
+
             if (temParceiros) {
                 const originalValue = monthlyValue;
                 monthlyValue = monthlyValue * 1.20; // Acréscimo de 20%
@@ -540,23 +540,23 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                     withIncrease: monthlyValue
                 });
             }
-            
+
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
         }
 
         const receitaInstalacao = taxaInstalacao;
         const receitaTotalPrimeiromes = totalRevenue + receitaInstalacao;
-        
+
         // CORREÇÃO: Custo de banda = velocidade × 2,09 × meses do período
         // Se Last Mile estiver marcado, não considerar custo da banda
         const velocidade = result?.speed || 0; // Velocidade em Mbps
         const custoBandaMensal = createLastMile ? 0 : velocidade * taxRates.banda; // Se Last Mile, custo = 0, senão 600 × 2,09 = 1.254,00
         const custoBanda = custoBandaMensal * months; // 1.254,00 × 12 = 15.048,00 (ou 0 se Last Mile)
-        
+
         // Custo Fibra/Radio vem da calculadora conforme prazo contratual e velocidade
         const custoDoubleFiberRadioCalculadora = custoDoubleFiberRadio;
-        
+
         const fundraising = 0; // Conforme tabela
         const lastMile = createLastMile ? lastMileCost : 0; // Incluir custo Last Mile quando selecionado
 
@@ -565,30 +565,30 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
 
         // Impostos sobre receita
         const simplesNacional = receitaTotalPrimeiromes * simplesNacionalRate;
-        
+
         // CORREÇÃO: Cálculo das comissões seguindo o modelo do Internet Rádio
         // Se é cliente existente, comissão apenas sobre a diferença de valor
-        const baseComissionValue = isExistingClient && previousMonthlyFee > 0 
+        const baseComissionValue = isExistingClient && previousMonthlyFee > 0
             ? Math.max(0, (monthlyValue - previousMonthlyFee) * months) // Comissão apenas sobre a diferença
             : totalRevenue; // Comissão apenas sobre valor mensal (sem taxa de instalação)
-        
-        const comissaoParceiroIndicador = includeReferralPartner 
+
+        const comissaoParceiroIndicador = includeReferralPartner
             ? baseComissionValue * (getPartnerIndicatorRate(monthlyValue, contractTerm))
             : 0;
-        
-        const comissaoParceiroInfluenciador = includeInfluencerPartner 
+
+        const comissaoParceiroInfluenciador = includeInfluencerPartner
             ? baseComissionValue * (getPartnerInfluencerRate(monthlyValue, contractTerm))
             : 0;
-        
+
         // Calcular a comissão do vendedor baseado na presença de parceiros
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
-        const comissaoVendedor = temParceiros 
+        const comissaoVendedor = temParceiros
             ? (baseComissionValue * (getChannelSellerCommissionRate(channelSeller, contractTerm) / 100)) // Canal/Vendedor quando há parceiros
             : (baseComissionValue * (getSellerCommissionRate(seller, contractTerm) / 100)); // Vendedor quando não há parceiros
-        
+
         // Total das comissões
         const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
-        
+
         const custoDespesa = receitaTotalPrimeiromes * 0.10; // 10% conforme padrão
 
         // Balance (Lucro Líquido) - Receita total (incluindo instalação) menos todos os custos
@@ -606,20 +606,20 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
 
 
         // Cálculos financeiros corretos:
-        
+
         // 1. Margem Líquida: (Lucro Líquido / Receita Total) * 100
         const margemLiquida = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
-        
+
         // 2. ROI (Return on Investment): (Lucro Líquido / Investimento Inicial) * 100
         const valorInvestido = custoDoubleFiberRadioCalculadora + lastMile + receitaInstalacao; // Investimento inicial total
         const roi = valorInvestido > 0 ? (balance / valorInvestido) * 100 : 0;
-        
+
         // 3. ROI Anualizado: ROI ajustado para base anual
         const roiAnualizado = months > 0 ? (roi * 12) / months : 0;
-        
+
         // 4. Rentabilidade sobre Vendas: mesmo que margem líquida (manter compatibilidade)
         const rentabilidade = margemLiquida;
-        
+
         // 5. Lucratividade: Lucro por período (mantendo para compatibilidade)
         const receitaPeriodo = monthlyValue * months;
         const lucratividade = receitaPeriodo > 0 ? (balance / receitaPeriodo) * 100 : 0;
@@ -630,8 +630,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
 
         // Calcular diferença de valores contrato para clientes existentes
         // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
-        const diferencaMensal = isExistingClient && previousMonthlyFee > 0 
-            ? (monthlyValue - previousMonthlyFee) 
+        const diferencaMensal = isExistingClient && previousMonthlyFee > 0
+            ? (monthlyValue - previousMonthlyFee)
             : 0;
         const diferencaValoresContrato = diferencaMensal * months;
 
@@ -663,7 +663,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         custoDoubleFiberRadio,
         taxRates.simplesNacional,
         taxRates.banda,
-        commissionPercentage,
+
         includeReferralPartner,
         includeInfluencerPartner,
         isExistingClient,
@@ -672,7 +672,12 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         lastMileCost,
         applySalespersonDiscount,
         appliedDirectorDiscountPercentage,
-        contractTerm
+        contractTerm,
+        applyDiscounts,
+        channelSeller,
+        getPartnerIndicatorRate,
+        getPartnerInfluencerRate,
+        seller
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo
@@ -713,7 +718,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                 appliedDirectorDiscountPercentage
             ),
         };
-    }, [calculateDREForPeriod]);
+    }, [calculateDREForPeriod, appliedDirectorDiscountPercentage, applySalespersonDiscount, result?.doubleFiberRadioCost]);
 
     const handleSavePrices = () => {
         // Save the prices to local storage
@@ -962,7 +967,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         }
 
         // Handle products - check multiple possible locations and formats
-        let products = [];
+        let products: any[] = [];
         if (proposal.products && Array.isArray(proposal.products)) {
             products = proposal.products;
         } else if (proposal.items && Array.isArray(proposal.items)) {
@@ -978,11 +983,11 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         }
 
         setAddedProducts(products);
-        
+
         // Load status and changes
         setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
         setProposalChanges(proposal.changes || '');
-        
+
         setViewMode('proposal-summary');
     };
 
@@ -1015,7 +1020,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         }
 
         // Handle products - check multiple possible locations and formats
-        let products = [];
+        let products: any[] = [];
         if (proposal.products && Array.isArray(proposal.products)) {
             products = proposal.products;
         } else if (proposal.items && Array.isArray(proposal.items)) {
@@ -1267,8 +1272,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                             <TableCell>{p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>
                                             <TableCell>{
-                                                typeof p.client === 'object' && p.client?.projectName 
-                                                    ? p.client.projectName 
+                                                typeof p.client === 'object' && p.client?.projectName
+                                                    ? p.client.projectName
                                                     : p.clientData?.projectName || 'Projeto não informado'
                                             }</TableCell>
                                             <TableCell>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</TableCell>
@@ -1322,24 +1327,24 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Dados do Cliente</h3>
                                 <div className="space-y-2 text-sm">
                                     <p><strong>Nome:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.name 
-                                            ? currentProposal.client.name 
-                                            : currentProposal.clientData?.name || 
-                                              (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.name
+                                            ? currentProposal.client.name
+                                            : currentProposal.clientData?.name ||
+                                            (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
                                     }</p>
                                     <p><strong>Email:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.email 
-                                            ? currentProposal.client.email 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.email
+                                            ? currentProposal.client.email
                                             : currentProposal.clientData?.email || 'N/A'
                                     }</p>
                                     <p><strong>Telefone:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.phone 
-                                            ? currentProposal.client.phone 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.phone
+                                            ? currentProposal.client.phone
                                             : currentProposal.clientData?.phone || 'N/A'
                                     }</p>
                                     <p><strong>Contato:</strong> {
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.contact 
-                                            ? currentProposal.client.contact 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.contact
+                                            ? currentProposal.client.contact
                                             : currentProposal.clientData?.contact || 'N/A'
                                     }</p>
                                 </div>
@@ -1348,8 +1353,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Nome do Projeto</h3>
                                 <div className="space-y-2 text-sm">
                                     <p className="font-medium text-base">{
-                                        typeof currentProposal.client === 'object' && currentProposal.client?.projectName 
-                                            ? currentProposal.client.projectName 
+                                        typeof currentProposal.client === 'object' && currentProposal.client?.projectName
+                                            ? currentProposal.client.projectName
                                             : currentProposal.clientData?.projectName || 'Projeto não informado'
                                     }</p>
                                     <p className="text-gray-600 text-xs mt-2">
@@ -1441,11 +1446,11 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                 {(() => {
                                     const totalSetup = currentProposal.totalSetup;
                                     const totalMonthly = currentProposal.totalMonthly;
-                                    
+
                                     // Usar a nova lógica de payback se houver produtos
                                     const firstProduct = (currentProposal.items || currentProposal.products || [])[0];
                                     let paybackMonths = 0;
-                                    
+
                                     if (firstProduct && totalSetup > 0) {
                                         paybackMonths = calculatePayback(
                                             totalSetup,
@@ -1471,7 +1476,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                             paybackMonths = 0;
                                         }
                                     }
-                                    
+
                                     const maxPayback = getMaxPaybackMonths(contractTerm);
                                     const isValid = paybackMonths <= maxPayback && paybackMonths > 0;
 
@@ -1708,7 +1713,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        
+
                                         <div className="mb-4">
                                             <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
                                             <textarea
@@ -1844,13 +1849,13 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                                         Limpar Tudo
                                                     </Button>
                                                     {hasChanged && currentProposal?.id && (
-                                                        <Button 
+                                                        <Button
                                                             onClick={() => {
                                                                 if (currentProposal.id) {
                                                                     handleSave(currentProposal.id, true);
                                                                     setHasChanged(false);
                                                                 }
-                                                            }} 
+                                                            }}
                                                             className="bg-blue-600 hover:bg-blue-700"
                                                         >
                                                             Salvar como Nova Versão
@@ -2226,8 +2231,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
 
                                                     return alerts.map((alert, index) => (
                                                         <div key={index} className={`p-3 rounded-lg border-l-4 ${alert.type === 'success' ? 'bg-green-900/20 border-green-500' :
-                                                                alert.type === 'warning' ? 'bg-yellow-900/20 border-yellow-500' :
-                                                                    'bg-blue-900/20 border-blue-500'
+                                                            alert.type === 'warning' ? 'bg-yellow-900/20 border-yellow-500' :
+                                                                'bg-blue-900/20 border-blue-500'
                                                             }`}>
                                                             <div className="flex items-start gap-3">
                                                                 <span className="text-lg">{alert.icon}</span>

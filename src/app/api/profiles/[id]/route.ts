@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const profile = await prisma.profile.findUnique({
       where: { id },
@@ -22,9 +22,9 @@ export async function GET(
 
     if (!profile) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Perfil não encontrado' 
+        {
+          success: false,
+          error: 'Perfil não encontrado'
         },
         { status: 404 }
       );
@@ -37,9 +37,9 @@ export async function GET(
   } catch (error) {
     console.error('Erro ao buscar profile:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Erro interno do servidor' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro interno do servidor'
       },
       { status: 500 }
     );
@@ -48,10 +48,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     const profile = await prisma.profile.update({
@@ -70,9 +70,9 @@ export async function PUT(
   } catch (error) {
     console.error('Erro ao atualizar profile:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Erro interno do servidor' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro interno do servidor'
       },
       { status: 500 }
     );

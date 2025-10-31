@@ -120,10 +120,10 @@ const calculatePayback = (
 
     // CORREÇÃO: Retornar valores específicos calculados para InternetManRadio (igual ao Internet Fibra)
     console.log(`InternetManRadio calculatePayback chamado com contractTerm: ${contractTerm}`);
-    
+
     // Converter para número para garantir comparação correta
     const term = Number(contractTerm);
-    
+
     if (term === 12) {
         console.log('InternetManRadio: Retornando 6 meses para contrato de 12 meses');
         return 6;  // 12 meses = 6 meses de payback calculado
@@ -144,10 +144,10 @@ const calculatePayback = (
         console.log('InternetManRadio: Retornando 14 meses para contrato de 60 meses');
         return 14; // 60 meses = 14 meses de payback calculado
     }
-    
+
     // Para outros prazos, usar cálculo real
     console.log('InternetManRadio: Usando cálculo real para prazo não padrão:', term);
-    
+
     // Aplicar descontos no valor mensal
     const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
     const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
@@ -265,7 +265,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
         if (currentProposal?.id) {
             setHasChanged(true);
         }
-    }, [selectedSpeed, contractTerm, includeInstallation, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, createLastMile, lastMileCost, clientData, accountManagerData]);
+    }, [selectedSpeed, contractTerm, includeInstallation, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, createLastMile, lastMileCost, clientData, accountManagerData, currentProposal?.id]);
 
     // Hook para comissões editáveis
     const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
@@ -380,7 +380,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                 appliedDirectorDiscountPercentage
             )
         };
-    }, [selectedSpeed, radioPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
+    }, [selectedSpeed, radioPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeInstallation]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const fetchProposals = React.useCallback(async () => {
@@ -490,7 +490,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
     const custoRadio = result?.radioCost || 7000;
 
     // Função para aplicar descontos no total mensal
-    const applyDiscounts = (baseTotal: number): number => {
+    const applyDiscounts = useCallback((baseTotal: number): number => {
         let discountedTotal = baseTotal;
 
         // Aplicar desconto do vendedor (5%)
@@ -505,7 +505,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
         }
 
         return discountedTotal;
-    };
+    }, [applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     // Função para calcular DRE por período de contrato
     const calculateDREForPeriod = useCallback((months: number) => {
@@ -575,16 +575,16 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
         // CORREÇÃO: Lógica correta das comissões
         // Se NÃO há parceiros: usar comissão do VENDEDOR
         // Se HÁ parceiros: usar comissão do CANAL/VENDEDOR + comissões dos parceiros
-        
+
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
-        
+
         // CORREÇÃO: Calcular base para comissões
         // Se "Já é cliente da Base?" está marcado, usar diferença de valores
         // Senão, usar valor mensal total
-        const baseParaComissao = isExistingClient 
+        const baseParaComissao = isExistingClient
             ? (monthlyValue - previousMonthlyFee) // Diferença de valores
             : monthlyValue; // Valor total
-        
+
         console.log(`InternetManRadio - Base para comissão: ${baseParaComissao} (isExistingClient: ${isExistingClient})`);
 
         // Calcular comissão do vendedor/canal
@@ -646,10 +646,10 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
         const roiAnualizado = months > 0 ? (roi * 12) / months : 0;
 
         // Cálculos financeiros conforme planilha:
-        
+
         // Rentabilidade % = (Balance / Custo do Projeto) * 100
         const rentabilidade = custoRadioCalculadora > 0 ? (balance / custoRadioCalculadora) * 100 : 0;
-        
+
         // Lucratividade % = (Balance / Receita Total) * 100
         const lucratividade = receitaTotalPrimeiromes > 0 ? (balance / receitaTotalPrimeiromes) * 100 : 0;
 
@@ -694,13 +694,19 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
         custoRadio,
         taxRates.simplesNacional,
         taxRates.banda,
-        commissionPercentage,
+
         includeReferralPartner,
         includeInfluencerPartner,
         createLastMile,
         lastMileCost,
         isExistingClient,
-        previousMonthlyFee
+        previousMonthlyFee,
+        applyDiscounts,
+        channelIndicator,
+        channelInfluencer,
+        channelSeller,
+        contractTerm,
+        seller
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo
@@ -741,7 +747,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                 appliedDirectorDiscountPercentage
             ),
         };
-    }, [calculateDREForPeriod]);
+    }, [calculateDREForPeriod, appliedDirectorDiscountPercentage, applySalespersonDiscount, result?.radioCost]);
 
     const handleSavePrices = () => {
         // Save the prices to local storage

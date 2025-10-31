@@ -39,14 +39,14 @@ export default function SiteSurveyPage() {
   const [viewMode, setViewMode] = useState('list'); // 'list', 'customer', 'survey', 'details', 'topology'
   const [surveys, setSurveys] = useState<SiteSurvey[]>([]);
   const [currentCustomerData, setCurrentCustomerData] = useState<CustomerData | null>(null);
-    const { toast } = useToast();
+  const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [surveyToDelete, setSurveyToDelete] = useState<string | null>(null);
-    const [selectedSurvey, setSelectedSurvey] = useState<SiteSurvey | null>(null);
+  const [selectedSurvey, setSelectedSurvey] = useState<SiteSurvey | null>(null);
   const [topologyConfig, setTopologyConfig] = useState<TopologyConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
+  useEffect(() => {
     const fetchSurveys = async () => {
       try {
         const response = await fetch('/api/site-surveys');
@@ -82,7 +82,7 @@ export default function SiteSurveyPage() {
       details,
       createdAt: new Date().toISOString(),
     };
-    
+
     try {
       const response = await fetch('/api/site-surveys', {
         method: 'POST',
@@ -103,16 +103,16 @@ export default function SiteSurveyPage() {
         title: "Site Survey Salvo!",
         description: `O survey para o cliente ${newSurvey.customerName} foi criado com sucesso.`,
       });
-      
+
       setViewMode('list');
       setCurrentCustomerData(null);
     } catch (error: any) {
       console.error("Error adding document: ", error);
-      
-      toast({ 
-        title: "Erro ao Salvar", 
-        description: "Não foi possível salvar o survey.", 
-        variant: "destructive" 
+
+      toast({
+        title: "Erro ao Salvar",
+        description: "Não foi possível salvar o survey.",
+        variant: "destructive"
       });
     }
   };
@@ -129,7 +129,7 @@ export default function SiteSurveyPage() {
 
       const updatedSurveys = surveys.filter(s => s.id !== surveyId);
       setSurveys(updatedSurveys);
-      
+
       toast({
         title: "Site Survey Excluído",
         description: "O levantamento foi removido com sucesso.",
@@ -143,7 +143,7 @@ export default function SiteSurveyPage() {
     setIsDeleteDialogOpen(false);
   };
 
-    const openDeleteDialog = (surveyId: string) => {
+  const openDeleteDialog = (surveyId: string) => {
     setSurveyToDelete(surveyId);
     setIsDeleteDialogOpen(true);
   };
@@ -162,7 +162,7 @@ export default function SiteSurveyPage() {
       type: survey.surveyType.toLowerCase() as any,
       customerName: survey.customerName,
       address: survey.address,
-      customizations: { 
+      customizations: {
         ...survey.details,
         ...deviceQuantities
       }
@@ -201,7 +201,7 @@ export default function SiteSurveyPage() {
     );
   }
 
-    if (viewMode === 'topology' && selectedSurvey && topologyConfig) {
+  if (viewMode === 'topology' && selectedSurvey && topologyConfig) {
     return (
       <div className="container mx-auto py-8">
         <Button variant="ghost" onClick={handleBack} className="mb-4">
@@ -212,9 +212,9 @@ export default function SiteSurveyPage() {
         <div style={{ height: '70vh', border: '1px solid #ccc', borderRadius: '8px' }} className="p-4 bg-white">
           <div className="text-center text-gray-500 mt-20">
             <h4 className="text-lg font-medium mb-2">
-              Topologia - {topologyConfig.type === 'fiber' ? 'Internet via Fibra Óptica' : 
-                          topologyConfig.type === 'radio' ? 'Internet via Rádio Enlace' :
-                          topologyConfig.type === 'wifi' ? 'Access Points (Wi-Fi)' : 'SD-WAN'}
+              Topologia - {topologyConfig.type === 'fiber' ? 'Internet via Fibra Óptica' :
+                topologyConfig.type === 'radio' ? 'Internet via Rádio Enlace' :
+                  topologyConfig.type === 'wifi' ? 'Access Points (Wi-Fi)' : 'SD-WAN'}
             </h4>
             <p className="text-sm">Diagrama de topologia para {topologyConfig.customerName}</p>
             <p className="text-xs text-gray-400 mt-2">Endereço: {topologyConfig.address}</p>
@@ -263,7 +263,7 @@ export default function SiteSurveyPage() {
           Criar Novo Site Survey
         </Button>
       </div>
-      
+
       {isLoading ? (
         <div className="text-center py-16">
           <p>Carregando surveys...</p>
@@ -294,7 +294,7 @@ export default function SiteSurveyPage() {
       ) : (
         <div className="text-center py-16 border-2 border-dashed rounded-lg">
           <h2 className="text-xl font-semibold">Nenhum Site Survey Encontrado</h2>
-          <p className="text-muted-foreground text-sm mt-2">Clique em "Criar Novo Site Survey" para começar.</p>
+          <p className="text-muted-foreground text-sm mt-2">Clique em &quot;Criar Novo Site Survey&quot; para começar.</p>
         </div>
       )}
 

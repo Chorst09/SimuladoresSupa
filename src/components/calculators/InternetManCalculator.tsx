@@ -318,17 +318,17 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
     // Usa apenas o valor mensal para buscar o percentual na tabela de comissões
-    const getPartnerIndicatorRate = (monthlyRevenue: number, contractMonths: number): number => {
+    const getPartnerIndicatorRate = useCallback((monthlyRevenue: number, contractMonths: number): number => {
         if (!channelIndicator || !includeReferralPartner) return 0;
         return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths) / 100;
-    };
+    }, [channelIndicator, includeReferralPartner]);
 
     // Função para obter taxa de comissão do Parceiro Influenciador usando as tabelas editáveis
     // Usa apenas o valor mensal para buscar o percentual na tabela de comissões
-    const getPartnerInfluencerRate = (monthlyRevenue: number, contractMonths: number): number => {
+    const getPartnerInfluencerRate = useCallback((monthlyRevenue: number, contractMonths: number): number => {
         if (!channelInfluencer || !includeInfluencerPartner) return 0;
         return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths) / 100;
-    };
+    }, [channelInfluencer, includeInfluencerPartner]);
 
     // Estados para DRE e tributação
     const [isEditingTaxes, setIsEditingTaxes] = useState<boolean>(false);
@@ -411,7 +411,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     }, [taxRegimeValues.csllIr]);
 
     // Função para aplicar descontos no total mensal
-    const applyDiscounts = (baseTotal: number): number => {
+    const applyDiscounts = useCallback((baseTotal: number): number => {
         let discountedTotal = baseTotal;
 
         // Aplicar desconto do vendedor (5%)
@@ -426,7 +426,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }
 
         return discountedTotal;
-    };
+    }, [applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
     // Partner indicator ranges handled by getPartnerIndicatorRate
 
@@ -474,7 +474,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 return validation;
             })()
         };
-    }, [selectedSpeed, manPlans, contractTerm, includeInstallation, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage]);
+    }, [selectedSpeed, manPlans, contractTerm, includeInstallation, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage, applyDiscounts, debouncedContractTerm]);
 
     // Cálculo detalhado de custos e margens (DRE)
     const {
@@ -563,7 +563,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         };
     }, [
         result, revenueTaxes, profitTaxes, markup, commissionPercentage,
-        applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner
+        applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner,
+        contractTerm, getPartnerIndicatorRate, getPartnerInfluencerRate
     ]);
 
     // Efeitos
@@ -632,7 +633,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         if (currentProposal?.id) {
             setHasChanged(true);
         }
-    }, [selectedSpeed, contractTerm, clientData, accountManagerData, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner]);
+    }, [selectedSpeed, contractTerm, clientData, accountManagerData, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, currentProposal?.id]);
 
     // Removed debug useEffect to prevent unnecessary re-renders
 
@@ -735,7 +736,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 fiberCost: result.fiberCost || 0
             }
         };
-    }, [result, commissionPercentage, revenueTaxes, profitTaxes, appliedDirectorDiscountPercentage, includeReferralPartner]);
+    }, [result, commissionPercentage, revenueTaxes, profitTaxes, appliedDirectorDiscountPercentage, includeReferralPartner, contractTerm, getPartnerIndicatorRate]);
 
     // DRE calculations - Melhorado conforme solicitação
     // Dados base: Velocidade 600 Mbps, Taxa de instalação = 2500,00, Custo Fibra/Radio = 7000,00
@@ -913,17 +914,22 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         taxaInstalacao,
         custoDoubleFiberRadio,
         taxRates.simplesNacional,
-        taxRates.cofins,
-        taxRates.pisCofins,
-        revenueTaxes,
-        profitTaxes,
-        commissionPercentage,
+
         includeReferralPartner,
         includeInfluencerPartner,
         createLastMile,
         lastMileCost,
         isExistingClient,
-        previousMonthlyFee
+        previousMonthlyFee,
+        appliedDirectorDiscountPercentage,
+        applyDiscounts,
+        applySalespersonDiscount,
+        channelIndicator,
+        channelInfluencer,
+        channelSeller,
+        contractTerm,
+        seller,
+        taxRates.banda
     ]);
 
     // Calcular DRE para todos os períodos usando useMemo
@@ -966,7 +972,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             margemLiquida: dre12.margemLiquida,
             markup: dre12.markup
         };
-    }, [calculateDREForPeriod]);
+    }, [calculateDREForPeriod, appliedDirectorDiscountPercentage, applySalespersonDiscount, contractTerm, result?.cost]);
 
     const handleSavePrices = () => {
         // Use the already calculated price breakdown

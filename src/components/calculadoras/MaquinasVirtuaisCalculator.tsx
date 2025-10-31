@@ -219,7 +219,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             console.error("Erro ao buscar propostas: ", error);
             setProposals([]);
         }
-    }, [currentUser?.token, currentUser?.role]); // Dependências mais específicas
+    }, [currentUser]); // Dependências mais específicas
 
     // Consolidar useEffects relacionados ao usuário para evitar re-renders em cascata
     useEffect(() => {
@@ -695,8 +695,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             return;
         }
 
-        let setup = pabxIncludeSetup ? tier.setup : 0;
-        let baseMonthly = tier.monthly * pabxExtensions;
+        const setup = pabxIncludeSetup ? tier.setup : 0;
+        const baseMonthly = tier.monthly * pabxExtensions;
         let deviceRentalCost = 0;
         let aiAgentCost = 0;
 
@@ -797,16 +797,16 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     ]);
 
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
-    const getReferralPartnerCommissionRate = (monthlyRevenue: number, contractMonths: number): number => {
+    const getReferralPartnerCommissionRate = useCallback((monthlyRevenue: number, contractMonths: number): number => {
         if (!channelIndicator || !includeReferralPartner) return 0;
         return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths);
-    };
+    }, [channelIndicator, includeReferralPartner]);
 
     // Função para obter taxa de comissão do Parceiro Influenciador usando as tabelas editáveis
-    const getInfluencerPartnerCommissionRate = (monthlyRevenue: number, contractMonths: number): number => {
+    const getInfluencerPartnerCommissionRate = useCallback((monthlyRevenue: number, contractMonths: number): number => {
         if (!channelInfluencer || !includeInfluencerPartner) return 0;
         return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths);
-    };
+    }, [channelInfluencer, includeInfluencerPartner]);
 
     // Cálculo detalhado de custos e margens
     const {
@@ -833,7 +833,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         // Calcular a comissão correta baseado na presença de parceiros
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
-        const calculatedCommissionValue = temParceiros 
+        const calculatedCommissionValue = temParceiros
             ? (priceAfterDirectorDiscount * (getChannelSellerCommissionRate(channelSeller, vmContractPeriod) / 100)) // Canal/Vendedor quando há parceiros
             : (priceAfterDirectorDiscount * (getSellerCommissionRate(seller, vmContractPeriod) / 100)); // Vendedor quando não há parceiros
         const revenueTaxValue = priceAfterDirectorDiscount * T_rev;
@@ -927,7 +927,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 setupFee: setupFee
             }
         };
-    }, [calculateVMCost, revenueTaxes, profitTaxes, markup, contractDiscount, commissionPercentage, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, setupFee]);
+    }, [calculateVMCost, revenueTaxes, profitTaxes, markup, contractDiscount, commissionPercentage, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, setupFee, channelSeller, seller, vmContractPeriod, getInfluencerPartnerCommissionRate, getReferralPartnerCommissionRate]);
 
 
 
@@ -1354,18 +1354,18 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     // Função para aplicar descontos no total mensal
     const applyDiscounts = (baseTotal: number): number => {
         let discountedTotal = baseTotal;
-        
+
         // Aplicar desconto do vendedor (5%)
         if (applySalespersonDiscount) {
             discountedTotal = discountedTotal * 0.95;
         }
-        
+
         // Aplicar desconto do diretor (percentual configurado)
         if (appliedDirectorDiscountPercentage > 0) {
             const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
             discountedTotal = discountedTotal * directorDiscountFactor;
         }
-        
+
         return discountedTotal;
     };
 
@@ -1395,7 +1395,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         try {
             const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
-            
+
             // Aplicar descontos no total mensal
             const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
             const proposalVersion = getProposalVersion();
@@ -1585,7 +1585,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                         {(filteredProposals ?? []).length === 0 ? (
                                             <TableRow key="no-proposals-found">
                                                 <TableCell colSpan={5} className="text-center py-8 text-slate-400">
-                                                    No proposal found. Click on "New Proposal" to start.
+                                                    No proposal found. Click on &quot;New Proposal&quot; to start.
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
@@ -2958,7 +2958,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div className="text-center py-8 text-slate-400">
                                                                 <Server className="h-12 w-12 mx-auto mb-4 opacity-50" />
                                                                 <p>Nenhuma VM adicionada à proposta ainda.</p>
-                                                                <p className="text-sm">Configure uma VM na aba "Calculadora VM" e clique em "Adicionar à Proposta".</p>
+                                                                <p className="text-sm">Configure uma VM na aba &quot;Calculadora VM&quot; e clique em &quot;Adicionar à Proposta&quot;.</p>
                                                             </div>
                                                         ) : (
                                                             <>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 // PostgreSQL via Prisma - APIs REST
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -220,7 +220,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const fetchProposals = React.useCallback(async () => {
         console.log('🔄 fetchProposals called at:', new Date().toISOString());
         console.log('👤 Current user:', currentUser ? { id: currentUser.id, role: currentUser.role } : 'null');
-        
+
         if (!currentUser || !currentUser.role) {
             console.log('❌ User not found or no role - clearing proposals');
             setProposals([]);
@@ -240,7 +240,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             if (response.ok) {
                 const proposalsData = await response.json();
                 console.log('✅ Raw proposals loaded:', proposalsData.length);
-                
+
                 if (proposalsData.length > 0) {
                     console.log('📋 Sample proposal:', {
                         id: proposalsData[0].id,
@@ -250,13 +250,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                         createdAt: proposalsData[0].createdAt
                     });
                 }
-                
+
                 // Filter for VM proposals (API já filtra por type=VM, mas vamos garantir)
                 const vmProposals = proposalsData.filter((p: any) =>
                     p.type === 'VM' || p.baseId?.startsWith('Prop_MV_')
                 );
                 console.log('🔧 VM proposals after filter:', vmProposals.length);
-                
+
                 if (vmProposals.length !== proposalsData.length) {
                     console.log('⚠️ Some proposals were filtered out');
                     console.log('📊 Filtered proposals by type:', proposalsData.reduce((acc: any, p: any) => {
@@ -264,7 +264,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                         return acc;
                     }, {}));
                 }
-                
+
                 setProposals(vmProposals);
                 console.log('✅ Proposals set in state:', vmProposals.length);
             } else {
@@ -283,7 +283,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         if (currentUser?.id) {
             fetchProposals();
         }
-    }, [currentUser?.id]);
+    }, [currentUser?.id, fetchProposals]);
 
     useEffect(() => {
         if (!currentUser?.id) return;
@@ -300,13 +300,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 setHddSasCost(0.2);
                 setSsdPerformanceCost(0.35);
                 console.log('SSD Performance Cost set to:', 0.35);
-                
+
                 // Force correct value after a small delay to ensure it's applied
                 setTimeout(() => {
                     setSsdPerformanceCost(0.35);
                     console.log('SSD Performance Cost forced to:', 0.35);
                 }, 100);
-                
+
                 // Additional force after 500ms
                 setTimeout(() => {
                     setSsdPerformanceCost(0.35);
@@ -336,7 +336,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     48: 15,
                     60: 20,
                 });
-                
+
                 // Clear old localStorage to prevent conflicts
                 localStorage.removeItem(`vmPricingSettings_${currentUser.id}`);
                 // Force clear all VM related localStorage
@@ -447,7 +447,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         // Fórmula: Markup = (DF + DV + ML) / (100 - DF - DV - ML) × 100
         const totalDespesasEMargem = despesasFixas + despesasVariaveis + margemLiquidaDesejada;
         const denominador = 100 - totalDespesasEMargem;
-        
+
         console.log('Markup Calculation:', {
             despesasFixas,
             despesasVariaveis,
@@ -455,15 +455,15 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             totalDespesasEMargem,
             denominador
         });
-        
+
         // Teste manual: DF=15, DV=0, ML=31 = 46, denominador = 54, markup = 46/54*100 = 85.18
         const testeManual = (15 + 0 + 31) / (100 - 15 - 0 - 31) * 100;
         console.log('Teste manual markup:', testeManual);
-        
+
         if (denominador > 0 && totalDespesasEMargem >= 0) {
             const markupCalculado = (totalDespesasEMargem / denominador) * 100;
             console.log('Markup calculado:', markupCalculado);
-            
+
             // Forçar markup correto temporariamente para debug
             if (markupCalculado < 10) {
                 console.log('Markup muito baixo, forçando 85%');
@@ -479,16 +479,16 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     }, [despesasFixas, despesasVariaveis, margemLiquidaDesejada]);
 
     // Função para calcular valor de venda de um item baseado no custo + markup
-    const calculateSalePrice = (cost: number): number => {
+    const calculateSalePrice = useCallback((cost: number): number => {
         return cost * (1 + markup / 100);
-    };
+    }, [markup]);
 
     // Detectar mudanças nos valores para mostrar botão de nova versão
     useEffect(() => {
         if (currentProposal?.id) {
             setHasChanged(true);
         }
-    }, [addedProducts, clientData, accountManagerData, selectedTaxRegime, taxRates, setupFee, vmContractPeriod, vmQuantity]);
+    }, [addedProducts, clientData, accountManagerData, selectedTaxRegime, taxRates, setupFee, vmContractPeriod, vmQuantity, currentProposal?.id]);
 
 
 
@@ -851,8 +851,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             return;
         }
 
-        let setup = pabxIncludeSetup ? tier.setup : 0;
-        let baseMonthly = tier.monthly * pabxExtensions;
+        const setup = pabxIncludeSetup ? tier.setup : 0;
+        const baseMonthly = tier.monthly * pabxExtensions;
         let deviceRentalCost = 0;
         let aiAgentCost = 0;
 
@@ -954,9 +954,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             cpuSalePrice: vmOperatingSystem.includes('Windows') ? vmCpuCores * calculateSalePrice(vcpuWindowsCost) : vmCpuCores * calculateSalePrice(vcpuLinuxCost),
             ramSalePrice: vmRamGb * calculateSalePrice(ramCost),
             storageSalePrice: vmStorageType === 'HDD SAS' ? vmStorageSize * calculateSalePrice(hddSasCost) : 0,
-            windowsLicenseSalePrice: vmOperatingSystem === 'Windows Server 2022 Standard' ? vmCpuCores * calculateSalePrice(windowsServerCost) : 
-                                   vmOperatingSystem === 'Windows 10 Pro' ? vmCpuCores * calculateSalePrice(windows10ProCost) :
-                                   vmOperatingSystem === 'Windows 11 Pro' ? vmCpuCores * calculateSalePrice(windows11ProCost) : 0,
+            windowsLicenseSalePrice: vmOperatingSystem === 'Windows Server 2022 Standard' ? vmCpuCores * calculateSalePrice(windowsServerCost) :
+                vmOperatingSystem === 'Windows 10 Pro' ? vmCpuCores * calculateSalePrice(windows10ProCost) :
+                    vmOperatingSystem === 'Windows 11 Pro' ? vmCpuCores * calculateSalePrice(windows11ProCost) : 0,
             managementSalePrice: vmManagementSupport ? calculateSalePrice(managementAndSupportCost) : 0,
             totalSalePrice: salePrice
         });
@@ -967,20 +967,20 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         vmBackupSize, vmAdditionalIp, vmSnapshot, vmVpnSiteToSite, vmManagementSupport,
         vcpuWindowsCost, vcpuLinuxCost, ramCost, hddSasCost, ssdPerformanceCost, nvmeCost,
         network10GbpsCost, windowsServerCost, windows10ProCost, windows11ProCost, backupCostPerGb,
-        additionalIpCost, snapshotCost, vpnSiteToSiteCost, managementAndSupportCost, markup
+        additionalIpCost, snapshotCost, vpnSiteToSiteCost, managementAndSupportCost, calculateSalePrice
     ]);
 
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
-    const getReferralPartnerCommissionRate = (monthlyRevenue: number, contractMonths: number): number => {
+    const getReferralPartnerCommissionRate = useCallback((monthlyRevenue: number, contractMonths: number): number => {
         if (!channelIndicator || !includeReferralPartner) return 0;
         return getChannelIndicatorCommissionRate(channelIndicator, monthlyRevenue, contractMonths);
-    };
+    }, [channelIndicator, includeReferralPartner]);
 
     // Função para obter taxa de comissão do Parceiro Influenciador usando as tabelas editáveis
-    const getInfluencerPartnerCommissionRate = (monthlyRevenue: number, contractMonths: number): number => {
+    const getInfluencerPartnerCommissionRate = useCallback((monthlyRevenue: number, contractMonths: number): number => {
         if (!channelInfluencer || !includeInfluencerPartner) return 0;
         return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths);
-    };
+    }, [channelInfluencer, includeInfluencerPartner]);
 
     // Cálculo simplificado usando valores de venda diretos
     const {
@@ -993,7 +993,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     } = useMemo(() => {
         // Usar o valor de venda calculado diretamente
         let baseSalePrice = calculateVMSalePrice;
-        
+
         // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
         console.log('DEBUG - MaquinasVirtuais:', {
@@ -1002,7 +1002,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             temParceiros,
             baseSalePriceBefore: baseSalePrice
         });
-        
+
         if (temParceiros) {
             const originalValue = baseSalePrice;
             baseSalePrice = baseSalePrice * 1.20; // Acréscimo de 20%
@@ -1011,7 +1011,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 withIncrease: baseSalePrice
             });
         }
-        
+
         // Aplicar descontos contratuais
         const contractDiscountAmount = baseSalePrice * (contractDiscount / 100);
         const priceAfterContractDiscount = baseSalePrice - contractDiscountAmount;
@@ -1055,11 +1055,11 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         // Cálculo simplificado de margens
         const totalCommissions = calculatedCommissionValue + calculatedReferralPartnerCommission + calculatedInfluencerPartnerCommission;
-        
+
         // Para fins de relatório, calcular custos base aproximados
         const estimatedBaseCost = baseSalePrice / (1 + markup / 100);
         const calculatedMarkupValue = baseSalePrice - estimatedBaseCost;
-        
+
         const netProfit = finalPrice - estimatedBaseCost - totalCommissions;
         const calculatedNetMargin = finalPrice > 0 ? (netProfit / finalPrice) * 100 : 0;
         const realMarkupPercentage = estimatedBaseCost > 0 ? (calculatedMarkupValue / estimatedBaseCost) * 100 : 0;
@@ -1103,7 +1103,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 setupFee: setupFee
             }
         };
-    }, [calculateVMSalePrice, markup, contractDiscount, commissionPercentage, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, vmContractPeriod, channelSeller, seller, channelIndicator, channelInfluencer]);
+    }, [calculateVMSalePrice, markup, contractDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, vmContractPeriod, channelSeller, seller, getInfluencerPartnerCommissionRate, getReferralPartnerCommissionRate, setupFee, vmQuantity]);
 
 
 
@@ -2027,7 +2027,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                         {(filteredProposals ?? []).length === 0 ? (
                                             <TableRow key="no-proposals-found">
                                                 <TableCell colSpan={6} className="text-center py-8 text-slate-400">
-                                                    No proposal found. Click on "New Proposal" to start.
+                                                    No proposal found. Click on &quot;New Proposal&quot; to start.
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
@@ -4161,7 +4161,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                             <div className="text-center py-8 text-slate-400">
                                                                 <Server className="h-12 w-12 mx-auto mb-4 opacity-50" />
                                                                 <p>Nenhuma VM adicionada à proposta ainda.</p>
-                                                                <p className="text-sm">Configure uma VM na aba "Calculadora VM" e clique em "Adicionar à Proposta".</p>
+                                                                <p className="text-sm">Configure uma VM na aba &quot;Calculadora VM&quot; e clique em &quot;Adicionar à Proposta&quot;.</p>
                                                             </div>
                                                         ) : (
                                                             <>
@@ -4180,7 +4180,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </div>
-                                                                
+
                                                                 <div className="mb-4">
                                                                     <Label htmlFor="proposal-changes" className="mb-2 block">Alterações</Label>
                                                                     <textarea

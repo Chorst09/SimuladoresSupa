@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -160,7 +160,7 @@ const VMCalculator: React.FC<VMCalculatorProps> = ({ onSave, onCancel, proposalT
       currentRound: 0
     },
     {
-      id: 'vm_2', 
+      id: 'vm_2',
       proposalNumber: 'VM-2024-002',
       name: 'Proposta VM Corporativa',
       clientName: 'TECH SOLUTIONS',
@@ -255,7 +255,7 @@ const VMCalculator: React.FC<VMCalculatorProps> = ({ onSave, onCancel, proposalT
 
   // Função para gerar número da proposta automaticamente
   const generateProposalNumber = (): string => {
-    const existingProposalsThisYear = proposals.filter(p => 
+    const existingProposalsThisYear = proposals.filter(p =>
       new Date(p.date).getFullYear() === new Date().getFullYear()
     );
     const nextNumber = existingProposalsThisYear.length + 1;
@@ -264,7 +264,7 @@ const VMCalculator: React.FC<VMCalculatorProps> = ({ onSave, onCancel, proposalT
   };
 
   // Função para calcular preço de uma VM
-  const calculateVMPrice = (vm: VMConfig): number => {
+  const calculateVMPrice = useCallback((vm: VMConfig): number => {
     const vcpuCost = vm.vcpu * pricingConfig.vcpuPerCore;
     const ramCost = vm.ram * pricingConfig.ramPerGB;
     const storageCost = vm.storageSize * pricingConfig.storagePerGB[vm.storageType as keyof typeof pricingConfig.storagePerGB];
@@ -276,14 +276,14 @@ const VMCalculator: React.FC<VMCalculatorProps> = ({ onSave, onCancel, proposalT
     const vpnCost = vm.vpnSiteToSite ? pricingConfig.vpnSiteToSite : 0;
 
     return vcpuCost + ramCost + storageCost + networkCost + osCost + backupCost + additionalIPCost + additionalSnapshotCost + vpnCost;
-  };
+  }, [pricingConfig]);
 
   // Calcular preço total
   const calculateTotalPrice = useMemo(() => {
     return currentProposal.vms.reduce((total, vm) => {
       return total + (calculateVMPrice(vm) * vm.quantity);
     }, 0);
-  }, [currentProposal.vms, pricingConfig]);
+  }, [currentProposal.vms, calculateVMPrice]);
 
   // Filtrar propostas
   const filteredProposals = proposals.filter(proposal =>
@@ -390,27 +390,27 @@ const VMCalculator: React.FC<VMCalculatorProps> = ({ onSave, onCancel, proposalT
             }
         }
     `;
-    
+
     // Create style element
     const styleElement = document.createElement('style');
     styleElement.textContent = printStyles;
     document.head.appendChild(styleElement);
-    
+
     // Add print-area class to the proposal view
     const proposalElement = document.querySelector('.proposal-view');
     if (proposalElement) {
-        proposalElement.classList.add('print-area');
+      proposalElement.classList.add('print-area');
     }
-    
+
     // Trigger print
     window.print();
-    
+
     // Clean up
     setTimeout(() => {
-        document.head.removeChild(styleElement);
-        if (proposalElement) {
-            proposalElement.classList.remove('print-area');
-        }
+      document.head.removeChild(styleElement);
+      if (proposalElement) {
+        proposalElement.classList.remove('print-area');
+      }
     }, 1000);
   };
 
@@ -626,7 +626,7 @@ const VMCalculator: React.FC<VMCalculatorProps> = ({ onSave, onCancel, proposalT
                   <div className="text-center py-16">
                     <FileText className="h-12 w-12 mx-auto mb-4 text-slate-400" />
                     <h3 className="text-lg font-semibold text-white mb-2">Nenhuma proposta encontrada</h3>
-                    <p className="text-slate-400">Clique em "Nova Proposta" para começar.</p>
+                    <p className="text-slate-400">Clique em &quot;Nova Proposta&quot; para começar.</p>
                   </div>
                 )}
               </CardContent>
@@ -715,13 +715,12 @@ const VMCalculator: React.FC<VMCalculatorProps> = ({ onSave, onCancel, proposalT
                         <div key={index} className="border border-gray-300 p-3 rounded">
                           <div className="flex justify-between items-start mb-2">
                             <h4 className="font-semibold">Rodada {round.roundNumber}</h4>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              round.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                            <span className={`px-2 py-1 rounded text-xs ${round.status === 'accepted' ? 'bg-green-100 text-green-800' :
                               round.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {round.status === 'accepted' ? 'Aceito' : 
-                               round.status === 'rejected' ? 'Rejeitado' : 'Ativo'}
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                              {round.status === 'accepted' ? 'Aceito' :
+                                round.status === 'rejected' ? 'Rejeitado' : 'Ativo'}
                             </span>
                           </div>
                           <p className="text-sm text-gray-600 mb-2">{round.description}</p>

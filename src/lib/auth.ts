@@ -1,4 +1,4 @@
-import { query, transaction } from './database';
+// import { query, transaction } from './database'; // Unused imports
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -30,10 +30,10 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 // Função para gerar JWT
 export function generateToken(user: User): string {
   return jwt.sign(
-    { 
-      id: user.id, 
-      email: user.email, 
-      role: user.role 
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
@@ -43,7 +43,7 @@ export function generateToken(user: User): string {
 // Função para verificar JWT
 export function verifyToken(token: string): User | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
     return {
       id: decoded.id,
       email: decoded.email,
@@ -57,26 +57,23 @@ export function verifyToken(token: string): User | null {
 // Função para fazer login
 export async function signIn(email: string, password: string): Promise<AuthResult> {
   try {
-    const result = await query(
-      `SELECT u.id, u.email, u.encrypted_password, p.role, p.full_name 
-       FROM auth.users u 
-       LEFT JOIN profiles p ON u.id = p.id 
-       WHERE u.email = $1`,
-      [email]
-    );
+    const { prisma } = await import('./prisma');
 
-    if (result.rows.length === 0) {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { profile: true }
+    });
+
+    if (!user) {
       return { user: null, error: 'Usuário não encontrado' };
     }
 
-    const user = result.rows[0];
-    
     if (!user.encrypted_password) {
       return { user: null, error: 'Senha não configurada' };
     }
 
     const isValidPassword = await verifyPassword(password, user.encrypted_password);
-    
+
     if (!isValidPassword) {
       return { user: null, error: 'Senha incorreta' };
     }
@@ -84,8 +81,8 @@ export async function signIn(email: string, password: string): Promise<AuthResul
     const userData: User = {
       id: user.id,
       email: user.email,
-      role: user.role || 'user',
-      full_name: user.full_name
+      role: user.profile?.role || 'user',
+      full_name: user.profile?.full_name
     };
 
     return { user: userData, error: null };
@@ -99,33 +96,13 @@ export async function signIn(email: string, password: string): Promise<AuthResul
 export async function signUp(email: string, password: string, fullName: string, role: string = 'user'): Promise<AuthResult> {
   try {
     const hashedPassword = await hashPassword(password);
-    
-    const result = await transaction(async (client) => {
-      // Criar usuário na tabela auth.users
-      const userResult = await client.query(
-        `INSERT INTO auth.users (email, encrypted_password, email_confirmed_at, role)
-         VALUES ($1, $2, NOW(), 'authenticated')
-         RETURNING id, email`,
-        [email, hashedPassword]
-      );
 
-      const userId = userResult.rows[0].id;
-
-      // Criar perfil
-      await client.query(
-        `INSERT INTO profiles (id, full_name, email, role)
-         VALUES ($1, $2, $3, $4)`,
-        [userId, fullName, email, role]
-      );
-
-      // Criar entrada na tabela users (compatibilidade)
-      await client.query(
-        `INSERT INTO users (id, email, role)
-         VALUES ($1, $2, $3)`,
-        [userId, email, role]
-      );
-
-      return userResult.rows[0];
+    const { authService } = await import('./database');
+    const result = await authService.createUser({
+      email,
+      encrypted_password: hashedPassword,
+      full_name: fullName,
+      role
     });
 
     const userData: User = {
@@ -136,13 +113,13 @@ export async function signUp(email: string, password: string, fullName: string, 
     };
 
     return { user: userData, error: null };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Sign up error:', error);
-    
-    if (error.code === '23505') { // Unique violation
+
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') { // Prisma unique constraint violation
       return { user: null, error: 'Email já está em uso' };
     }
-    
+
     return { user: null, error: 'Erro interno do servidor' };
   }
 }
@@ -153,37 +130,26 @@ export async function getCurrentUser(token?: string): Promise<User | null> {
     if (!token) {
       return null;
     }
-    
-    if (!token) {
-      return null;
-    }
 
     const decoded = verifyToken(token);
-    
+
     if (!decoded) {
       return null;
     }
 
-    // Buscar dados atualizados do usuário
-    const result = await query(
-      `SELECT u.id, u.email, p.role, p.full_name 
-       FROM auth.users u 
-       LEFT JOIN profiles p ON u.id = p.id 
-       WHERE u.id = $1`,
-      [decoded.id]
-    );
+    // Buscar dados atualizados do usuário usando Prisma
+    const { authService } = await import('./database');
+    const user = await authService.findUserByEmail(decoded.email);
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return null;
     }
 
-    const user = result.rows[0];
-    
     return {
       id: user.id,
       email: user.email,
-      role: user.role || 'user',
-      full_name: user.full_name
+      role: user.profile?.role || user.user_compat?.role || 'user',
+      full_name: user.profile?.full_name
     };
   } catch (error) {
     console.error('Get current user error:', error);
@@ -205,25 +171,22 @@ export function hasPermission(userRole: string, requiredRoles: string[]): boolea
 // Função para obter usuário por ID
 export async function getUserById(id: string): Promise<User | null> {
   try {
-    const result = await query(
-      `SELECT u.id, u.email, p.role, p.full_name 
-       FROM auth.users u 
-       LEFT JOIN profiles p ON u.id = p.id 
-       WHERE u.id = $1`,
-      [id]
-    );
+    const { prisma } = await import('./database');
 
-    if (result.rows.length === 0) {
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { profile: true, user_compat: true }
+    });
+
+    if (!user) {
       return null;
     }
 
-    const user = result.rows[0];
-    
     return {
       id: user.id,
       email: user.email,
-      role: user.role || 'user',
-      full_name: user.full_name
+      role: user.profile?.role || user.user_compat?.role || 'user',
+      full_name: user.profile?.full_name
     };
   } catch (error) {
     console.error('Get user by ID error:', error);

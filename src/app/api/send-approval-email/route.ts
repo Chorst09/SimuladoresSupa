@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     if (process.env.RESEND_API_KEY) {
       try {
         console.log('🔑 Chave Resend encontrada, tentando enviar email...');
-        
+
         const resendResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -146,12 +146,12 @@ export async function POST(request: NextRequest) {
     // Log de backup se o email não foi enviado
     if (!emailSent) {
       console.log('🔄 Email não foi enviado via Resend, registrando para notificação manual...');
-      console.log('📧 Administradores que deveriam receber o email:', admins.map(admin => admin.email));
+      console.log('📧 Administradores que deveriam receber o email:', admins.map((admin: any) => admin.email));
     }
 
     // Log detalhado para debug
     console.log('📧 Detalhes do email de aprovação:', {
-      admins: admins.map(admin => ({ email: admin.email, name: admin.full_name })),
+      admins: admins.map((admin: any) => ({ email: admin.email, name: admin.full_name })),
       newUser: { email: userEmail, name: userName },
       emailSent,
       emailError,
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
       admins: admins.length,
       emailSent,
       emailError: emailError || undefined,
-      adminEmails: admins.map(admin => admin.email)
+      adminEmails: admins.map((admin: any) => admin.email)
     });
 
   } catch (error) {

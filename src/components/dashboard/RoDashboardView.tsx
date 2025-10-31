@@ -28,11 +28,11 @@ const RoDashboardView: React.FC<RoDashboardViewProps> = ({ ros, partners }) => {
   };
 
   const sortedRos = [...ros].sort((a, b) => getDaysToExpire(a.expiryDate) - getDaysToExpire(b.expiryDate));
-  
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle>RO's Próximos da Expiração</CardTitle>
+        <CardTitle>RO&apos;s Próximos da Expiração</CardTitle>
         <CardDescription>
           Registros de oportunidade que precisam de atenção.
         </CardDescription>

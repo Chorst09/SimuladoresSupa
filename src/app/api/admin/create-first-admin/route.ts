@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name, role } = await request.json();
+    const { email, password, name } = await request.json();
 
     // Validações básicas
     if (!email || !password) {
@@ -52,8 +52,8 @@ export async function POST(request: NextRequest) {
 
     // Criar o usuário primeiro na tabela User
     const userId = crypto.randomUUID();
-    
-    const user = await prisma.user.create({
+
+    await prisma.user.create({
       data: {
         id: userId,
         email: email.toLowerCase().trim(),
@@ -88,14 +88,14 @@ export async function POST(request: NextRequest) {
       data: admin
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Erro ao criar primeiro administrador:', error);
 
     let errorMessage = 'Erro interno do servidor';
-    
-    if (error.code === 'P2002') {
+
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
       errorMessage = 'Este email já está em uso';
-    } else if (error.message) {
+    } else if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
       errorMessage = error.message;
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,10 +60,10 @@ const PhysicalVirtualConversion = () => {
     licenseRightsText: ''
   });
 
-  const calculateP2V = () => {
+  const calculateP2V = useCallback(() => {
     const totalPhysicalCores = physicalCpus * coresPerCpu;
     const totalLogicalCores = hasHyperThreading ? totalPhysicalCores * 2 : totalPhysicalCores;
-    
+
     // Hypervisor overhead and efficiency factors (based on industry standards)
     const hypervisorOverheads = {
       vmware: { cpu: 0.05, ram: 0.08, reserve: 4 }, // VMware vSphere
@@ -106,7 +106,7 @@ const PhysicalVirtualConversion = () => {
 
     // Generate recommendations and notes
     const notes = [];
-    
+
     if (hypervisor === 'vmware') {
       notes.push('VMware vSphere: Considera overhead de CPU (~5%) e RAM (~8%)');
       notes.push('Reserva recomendada: 4GB para vCenter/ESXi');
@@ -143,9 +143,9 @@ const PhysicalVirtualConversion = () => {
       efficiency: efficiency * 100,
       notes
     });
-  };
+  }, [physicalCpus, coresPerCpu, cpuFrequency, hasHyperThreading, physicalRam, hypervisor, workloadType, performanceTarget]);
 
-  const calculateLicensing = () => {
+  const calculateLicensing = useCallback(() => {
     const totalPhysicalCores = physicalCpus * coresPerCpu;
     const minCoresByProcessor = physicalCpus * 8; // Mínimo 8 cores por processador
     const baseCoresToLicense = Math.max(totalPhysicalCores, minCoresByProcessor, 16); // Mínimo 16 cores total
@@ -169,15 +169,15 @@ const PhysicalVirtualConversion = () => {
       totalPacksNeeded,
       licenseRightsText
     });
-  };
+  }, [physicalCpus, coresPerCpu, edition, vmCount]);
 
   useEffect(() => {
     calculateP2V();
-  }, [physicalCpus, coresPerCpu, cpuFrequency, hasHyperThreading, physicalRam, hypervisor, workloadType, performanceTarget]);
+  }, [physicalCpus, coresPerCpu, cpuFrequency, hasHyperThreading, physicalRam, hypervisor, workloadType, performanceTarget, calculateP2V]);
 
   useEffect(() => {
     calculateLicensing();
-  }, [physicalCpus, coresPerCpu, edition, vmCount]);
+  }, [physicalCpus, coresPerCpu, edition, vmCount, calculateLicensing]);
 
   const formatNumber = (num: number) => {
     return num.toLocaleString('pt-BR');
@@ -301,7 +301,7 @@ const PhysicalVirtualConversion = () => {
                     className="mt-1"
                   />
                 </div>
-                
+
                 {/* Physical Server Summary */}
                 <div className="mt-6 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                   <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Resumo Físico:</h4>
@@ -408,7 +408,7 @@ const PhysicalVirtualConversion = () => {
                       de {hasHyperThreading ? (physicalCpus * coresPerCpu * 2) : (physicalCpus * coresPerCpu)} threads disponíveis
                     </p>
                   </div>
-                  
+
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400">RAM Recomendada</p>
                     <p className="text-4xl font-bold text-green-600 dark:text-green-400">

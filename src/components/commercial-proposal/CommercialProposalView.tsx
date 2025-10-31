@@ -22,14 +22,14 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
     // 1. Calculadoras salvam: clientData (objeto) e accountManagerData (objeto)
     // 2. Mock API usa: client (objeto) e accountManager (objeto)  
     // 3. Prisma armazena: client_data e account_manager (com underscore)
-    clientName: proposal?.clientData?.name || proposal?.clientData?.companyName || 
-                proposal?.client_data?.name || proposal?.client_data?.companyName || '',
+    clientName: proposal?.clientData?.name || proposal?.clientData?.companyName ||
+      proposal?.client_data?.name || proposal?.client_data?.companyName || '',
     clientProject: proposal?.clientData?.projectName || proposal?.client_data?.projectName || '',
     clientEmail: proposal?.clientData?.email || proposal?.client_data?.email || '',
     clientPhone: proposal?.clientData?.phone || proposal?.client_data?.phone || '',
     clientContact: proposal?.clientData?.contact || proposal?.client_data?.contact || '',
-    accountManagerName: proposal?.accountManager?.name || proposal?.accountManagerData?.name || 
-                        (typeof proposal?.accountManager === 'string' ? proposal?.accountManager : '') || '',
+    accountManagerName: proposal?.accountManager?.name || proposal?.accountManagerData?.name ||
+      (typeof proposal?.accountManager === 'string' ? proposal?.accountManager : '') || '',
     accountManagerEmail: proposal?.accountManager?.email || proposal?.accountManagerData?.email || '',
     accountManagerPhone: proposal?.accountManager?.phone || proposal?.accountManagerData?.phone || '',
     date: proposal?.date || new Date().toLocaleDateString('pt-BR'),
@@ -184,8 +184,8 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
               </div>
               <div>
                 <Label htmlFor="productType">Tipo de Produto</Label>
-                <Select 
-                  value={proposalData.productType} 
+                <Select
+                  value={proposalData.productType}
                   onValueChange={(value) => setProposalData(prev => ({ ...prev, productType: value }))}
                 >
                   <SelectTrigger>
@@ -201,7 +201,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 </Select>
               </div>
             </div>
-            
+
             {/* Campo de upload de imagem */}
             <div className="mt-4">
               <Label htmlFor="serviceImage">Imagem do Serviço</Label>
@@ -218,7 +218,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 </p>
               </div>
             </div>
-            
+
             {/* Campo de upload do logo */}
             <div className="mt-4">
               <Label htmlFor="logoImage">Logo da Empresa</Label>
@@ -240,9 +240,9 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
       )}
 
       {/* Proposta Comercial - Página 1 */}
-      <div className="proposal-page bg-white border rounded-lg shadow-lg print:shadow-none print:border-none" style={{ 
-        width: '210mm', 
-        height: '297mm', 
+      <div className="proposal-page bg-white border rounded-lg shadow-lg print:shadow-none print:border-none" style={{
+        width: '210mm',
+        height: '297mm',
         margin: '0 auto',
         pageBreakAfter: 'always',
         pageBreakInside: 'avoid'
@@ -253,10 +253,10 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
         }}>
-          
+
           {/* Overlay escuro para melhorar legibilidade */}
           <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 to-blue-800/80"></div>
-          
+
           {/* Padrão de grade sutil sobre a imagem */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0" style={{
@@ -274,8 +274,9 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
               {proposalData.logoImage ? (
                 // Logo carregado pelo usuário
                 <div className="w-full h-full flex items-center justify-center">
-                  <img 
-                    src={proposalData.logoImage} 
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={proposalData.logoImage}
                     alt="Logo da Empresa"
                     className="max-w-full max-h-full object-contain"
                   />
@@ -337,8 +338,9 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
               {proposalData.serviceImage ? (
                 // Imagem carregada pelo usuário
                 <div className="h-full w-full relative">
-                  <img 
-                    src={proposalData.serviceImage} 
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={proposalData.serviceImage}
                     alt="Imagem do Serviço"
                     className="h-full w-full object-cover"
                   />
@@ -361,20 +363,20 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                     <div className="absolute left-6 top-2 w-1 h-44 bg-blue-300 opacity-80"></div>
                     <div className="absolute left-8 top-2 w-1 h-44 bg-blue-300 opacity-80"></div>
                     <div className="absolute left-10 top-2 w-1 h-44 bg-blue-300 opacity-80"></div>
-                    
+
                     {/* Racks de servidor à direita */}
                     <div className="absolute right-2 top-2 w-1 h-44 bg-blue-300 opacity-80"></div>
                     <div className="absolute right-4 top-2 w-1 h-44 bg-blue-300 opacity-80"></div>
                     <div className="absolute right-6 top-2 w-1 h-44 bg-blue-300 opacity-80"></div>
                     <div className="absolute right-8 top-2 w-1 h-44 bg-blue-300 opacity-80"></div>
                     <div className="absolute right-10 top-2 w-1 h-44 bg-blue-300 opacity-80"></div>
-                    
+
                     {/* Luzes azuis nos racks */}
                     <div className="absolute left-3 top-8 w-1 h-1 bg-blue-200 rounded-full animate-pulse"></div>
                     <div className="absolute left-5 top-12 w-1 h-1 bg-blue-200 rounded-full animate-pulse"></div>
                     <div className="absolute left-7 top-16 w-1 h-1 bg-blue-200 rounded-full animate-pulse"></div>
                     <div className="absolute left-9 top-20 w-1 h-1 bg-blue-200 rounded-full animate-pulse"></div>
-                    
+
                     <div className="absolute right-3 top-8 w-1 h-1 bg-blue-200 rounded-full animate-pulse"></div>
                     <div className="absolute right-5 top-12 w-1 h-1 bg-blue-200 rounded-full animate-pulse"></div>
                     <div className="absolute right-7 top-16 w-1 h-1 bg-blue-200 rounded-full animate-pulse"></div>
@@ -404,7 +406,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                   <div className="bg-white"></div>
                   <div className="bg-white"></div>
                   <div className="bg-white"></div>
-                  
+
                   <div className="bg-white"></div>
                   <div className="bg-gray-800"></div>
                   <div className="bg-gray-800"></div>
@@ -413,7 +415,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                   <div className="bg-gray-800"></div>
                   <div className="bg-white"></div>
                   <div className="bg-white"></div>
-                  
+
                   <div className="bg-white"></div>
                   <div className="bg-gray-800"></div>
                   <div className="bg-white"></div>
@@ -422,7 +424,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                   <div className="bg-gray-800"></div>
                   <div className="bg-white"></div>
                   <div className="bg-white"></div>
-                  
+
                   <div className="bg-white"></div>
                   <div className="bg-gray-800"></div>
                   <div className="bg-white"></div>
@@ -431,7 +433,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                   <div className="bg-gray-800"></div>
                   <div className="bg-white"></div>
                   <div className="bg-white"></div>
-                  
+
                   <div className="bg-white"></div>
                   <div className="bg-gray-800"></div>
                   <div className="bg-white"></div>
@@ -440,7 +442,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                   <div className="bg-gray-800"></div>
                   <div className="bg-white"></div>
                   <div className="bg-white"></div>
-                  
+
                   <div className="bg-white"></div>
                   <div className="bg-gray-800"></div>
                   <div className="bg-gray-800"></div>
@@ -449,7 +451,7 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                   <div className="bg-gray-800"></div>
                   <div className="bg-white"></div>
                   <div className="bg-white"></div>
-                  
+
                   <div className="bg-white"></div>
                   <div className="bg-white"></div>
                   <div className="bg-white"></div>
@@ -470,9 +472,9 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
       </div>
 
       {/* Segunda Página - Dados Detalhados */}
-      <div className="proposal-page bg-white border rounded-lg shadow-lg print:shadow-none print:border-none mt-6" style={{ 
-        width: '210mm', 
-        height: '297mm', 
+      <div className="proposal-page bg-white border rounded-lg shadow-lg print:shadow-none print:border-none mt-6" style={{
+        width: '210mm',
+        height: '297mm',
         margin: '0 auto',
         pageBreakAfter: 'always',
         pageBreakInside: 'avoid'

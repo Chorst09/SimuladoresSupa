@@ -6,23 +6,23 @@ import { Prisma } from '@prisma/client';
 // =====================================================
 
 // Tipos para incluir relacionamentos
-export type UserWithProfile = Prisma.UserGetPayload<{
-  include: { profile: true; user_compat: true }
-}>;
+// export type UserWithProfile = Prisma.UserGetPayload<{
+//   include: { profile: true; user_compat: true }
+// }>;
 
-export type OportunidadeWithRelations = Prisma.OportunidadeGetPayload<{
-  include: {
-    cliente: true;
-    responsavel: { include: { profile: true } };
-    fornecedores: { include: { fornecedor: true } };
-    atividades: true;
-    notificacoes: true;
-  }
-}>;
+// export type OportunidadeWithRelations = Prisma.OportunidadeGetPayload<{
+//   include: {
+//     cliente: true;
+//     responsavel: { include: { profile: true } };
+//     fornecedores: { include: { fornecedor: true } };
+//     atividades: true;
+//     notificacoes: true;
+//   }
+// }>;
 
-export type ProposalWithCreator = Prisma.ProposalGetPayload<{
-  include: { creator: { include: { profile: true } } }
-}>;
+// export type ProposalWithCreator = Prisma.ProposalGetPayload<{
+//   include: { creator: { include: { profile: true } } }
+// }>;
 
 // =====================================================
 // FUNÇÕES DE VALIDAÇÃO
@@ -92,7 +92,7 @@ export const auditService = {
     limit?: number;
   }) {
     const where: any = {};
-    
+
     if (filters?.userId) where.user_id = filters.userId;
     if (filters?.tableName) where.table_name = filters.tableName;
     if (filters?.action) where.action = filters.action;
@@ -128,7 +128,7 @@ export const configService = {
   async setConfig(key: string, value: any, description?: string): Promise<void> {
     await prisma.systemConfig.upsert({
       where: { config_key: key },
-      update: { 
+      update: {
         config_value: JSON.parse(JSON.stringify(value)),
         updated_at: new Date()
       },
@@ -143,11 +143,11 @@ export const configService = {
   async getAllConfigs(): Promise<Record<string, any>> {
     const configs = await prisma.systemConfig.findMany();
     const result: Record<string, any> = {};
-    
-    configs.forEach(config => {
+
+    configs.forEach((config: any) => {
       result[config.config_key] = config.config_value;
     });
-    
+
     return result;
   }
 };
@@ -269,7 +269,7 @@ export const statsService = {
       prisma.oportunidade.count({
         where: userId ? { responsavel_id: userId } : undefined
       }),
-      
+
       // Oportunidades abertas
       prisma.oportunidade.count({
         where: {
@@ -277,17 +277,17 @@ export const statsService = {
           ...(userId && { responsavel_id: userId })
         }
       }),
-      
+
       // Total de clientes
       prisma.cliente.count({
         where: { status: 'ativo' }
       }),
-      
+
       // Total de fornecedores
       prisma.fornecedor.count({
         where: { status: 'ativo' }
       }),
-      
+
       // Pipeline total
       prisma.oportunidade.aggregate({
         where: {
@@ -296,7 +296,7 @@ export const statsService = {
         },
         _sum: { valor_estimado: true }
       }),
-      
+
       // Oportunidades por fase
       prisma.oportunidade.groupBy({
         by: ['fase'],
@@ -312,7 +312,7 @@ export const statsService = {
       totalClientes,
       totalFornecedores,
       pipelineTotal: pipelineTotal._sum.valor_estimado || 0,
-      oportunidadesPorFase: oportunidadesPorFase.reduce((acc, item) => {
+      oportunidadesPorFase: oportunidadesPorFase.reduce((acc: any, item: any) => {
         acc[item.fase] = {
           count: item._count.id,
           value: Number(item._sum.valor_estimado || 0)
@@ -340,13 +340,13 @@ export const withAudit = async <T>(
 ): Promise<T> => {
   try {
     const result = await operation();
-    
+
     // Log da ação bem-sucedida
     await auditService.logAction({
       ...auditParams,
       newValues: result
     });
-    
+
     return result;
   } catch (error) {
     // Log do erro
@@ -355,12 +355,12 @@ export const withAudit = async <T>(
       action: `${auditParams.action}_ERROR`,
       newValues: { error: error instanceof Error ? error.message : 'Unknown error' }
     });
-    
+
     throw error;
   }
 };
 
-export default {
+const prismaUtils = {
   validators,
   auditService,
   configService,
@@ -369,3 +369,5 @@ export default {
   statsService,
   withAudit
 };
+
+export default prismaUtils;

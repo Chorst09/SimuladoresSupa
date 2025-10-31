@@ -1,7 +1,7 @@
 // src/components/partners/PartnerView.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -45,7 +45,7 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
   };
 
   // Função para carregar parceiros do Firestore
-  const loadPartners = async () => {
+  const loadPartners = useCallback(async () => {
     // Verifica se Firestore está disponível antes de tentar carregar
     if (!db) {
       setPartners([]);
@@ -77,7 +77,7 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
           })
         }
       ];
-      
+
       const loadedPartners: Partner[] = mockDocs.map((doc: any) => {
         const data = doc.data();
         return {
@@ -111,13 +111,13 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
     } finally {
       setLoadingPartners(false); // Indica que o carregamento terminou
     }
-  };
+  }, [db, partnerType]);
 
   // Efeito para carregar parceiros quando o componente monta
   useEffect(() => {
     loadPartners();
-     // Removida a dependência 'user'
-  }, [db, partnerType]); // Adicionada dependência 'db' e 'partnerType'
+    // Removida a dependência 'user'
+  }, [db, partnerType, loadPartners]); // Adicionada dependência 'db' e 'partnerType'
 
 
   const handleOpenModal = (partner?: Partner) => {
@@ -132,7 +132,7 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
 
   // Lógica para salvar/atualizar parceiro no Firestore
   const handleSave = async (partnerData: Partner) => {
-     // Verifica se Firestore está disponível antes de salvar
+    // Verifica se Firestore está disponível antes de salvar
     if (!db) {
       console.error("Firestore não disponível para salvar.");
       // Implementar feedback para o usuário (ex: toast de erro)
@@ -142,9 +142,9 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
     const partnersCollectionRef = getPartnersCollectionRef(); // Usa a nova função
 
     if (!partnersCollectionRef) {
-       console.error("Referência da coleção de parceiros não disponível.");
-       // Implementar feedback para o usuário
-       return;
+      console.error("Referência da coleção de parceiros não disponível.");
+      // Implementar feedback para o usuário
+      return;
     }
 
     try {
@@ -167,9 +167,9 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
         // Mock setDoc - await setDoc(newPartnerRef, dataToSave);
         console.log("Novo parceiro adicionado ao Firestore com ID:", 'mock-id');
 
-         // Atualizar o estado local com o novo parceiro incluindo o ID gerado pelo Firestore e o type
-        setPartners([...partners, { 
-          ...dataToSave, 
+        // Atualizar o estado local com o novo parceiro incluindo o ID gerado pelo Firestore e o type
+        setPartners([...partners, {
+          ...dataToSave,
           id: Date.now(),
           type: partnerType as 'Distribuidor' | 'Fornecedor'
         }]);
@@ -189,84 +189,84 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
 
   // Lógica para excluir parceiro do Firestore
   const handleDelete = async (partnerId: string) => {
-      // Verifica se Firestore está disponível antes de excluir
-      if (!db) {
-       console.error("Firestore não disponível para excluir.");
-       // Implementar feedback para o usuário
-       return;
-     }
+    // Verifica se Firestore está disponível antes de excluir
+    if (!db) {
+      console.error("Firestore não disponível para excluir.");
+      // Implementar feedback para o usuário
+      return;
+    }
 
-     const partnersCollectionRef = getPartnersCollectionRef(); // Usa a nova função
+    const partnersCollectionRef = getPartnersCollectionRef(); // Usa a nova função
 
-     if (!partnersCollectionRef) {
-        console.error("Referência da coleção de parceiros não disponível.");
-        // Implementar feedback para o usuário
-        return;
-     }
+    if (!partnersCollectionRef) {
+      console.error("Referência da coleção de parceiros não disponível.");
+      // Implementar feedback para o usuário
+      return;
+    }
 
-     // Confirmação antes de excluir
-     if (window.confirm("Tem certeza que deseja excluir este parceiro?")) {
-       try {
-         // Mock delete - const partnerDocRef = doc(partnersCollectionRef, partnerId);
-         // Mock deleteDoc - await deleteDoc(partnerDocRef);
-         console.log("Parceiro excluído do Firestore:", partnerId);
-         // Atualiza o estado local removendo o parceiro excluído para uma resposta rápida na UI
-                   setPartners(partners.filter(p => p.id.toString() !== partnerId));
-         // Implementar toast de sucesso
-       } catch (error) {
-         console.error("Erro ao excluir parceiro do Firestore:", error);
-         // Implementar tratamento de erro na UI (com toast)
-       }
-     }
-   };
+    // Confirmação antes de excluir
+    if (window.confirm("Tem certeza que deseja excluir este parceiro?")) {
+      try {
+        // Mock delete - const partnerDocRef = doc(partnersCollectionRef, partnerId);
+        // Mock deleteDoc - await deleteDoc(partnerDocRef);
+        console.log("Parceiro excluído do Firestore:", partnerId);
+        // Atualiza o estado local removendo o parceiro excluído para uma resposta rápida na UI
+        setPartners(partners.filter(p => p.id.toString() !== partnerId));
+        // Implementar toast de sucesso
+      } catch (error) {
+        console.error("Erro ao excluir parceiro do Firestore:", error);
+        // Implementar tratamento de erro na UI (com toast)
+      }
+    }
+  };
 
 
   return (
     <Card className="shadow-lg">
       {/* Não precisamos mais verificar loadingAuth */}
       {/* {!loadingAuth && ( */}
-        <>
-          <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-            <CardTitle className="text-2xl mb-4 sm:mb-0">Lista de {partnerType}s</CardTitle>
-             {/* O botão "Novo" não depende mais do usuário logado */}
-            {/* {user && ( */}
-              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => handleOpenModal()}>
-                    <PlusCircle size={20} className="mr-2" />
-                    Novo {partnerType}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>{editingPartner ? `Editar ${partnerType}` : `Adicionar Novo ${partnerType}`}</DialogTitle>
-                  </DialogHeader>
-                   {/* Renderiza o formulário de parceiro */}
-                  {isModalOpen && (
-                    <PartnerForm
-                      partner={editingPartner}
-                      onSave={handleSave}
-                      onCancel={handleCloseModal}
-                      partnerType={partnerType as any}
-                    />
-                  )}
-                </DialogContent>
-              </Dialog>
-            {/* )} */}
-          </CardHeader>
-          <CardContent>
-             <div className="overflow-x-auto">
-               {/* Renderiza o loader enquanto carrega a lista de parceiros */}
-               {loadingPartners ? (
-                  <div className="flex justify-center items-center h-32">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    <span>Carregando {partnerType}s...</span>
-                  </div>
-               ) : partners.length === 0 ? (
-                 // Mensagem se não houver parceiros
-                 <p className="text-center text-gray-500">Nenhum {partnerType} encontrado.</p>
-               ) : (
-               // Renderiza a tabela de parceiros
+      <>
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <CardTitle className="text-2xl mb-4 sm:mb-0">Lista de {partnerType}s</CardTitle>
+          {/* O botão "Novo" não depende mais do usuário logado */}
+          {/* {user && ( */}
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => handleOpenModal()}>
+                <PlusCircle size={20} className="mr-2" />
+                Novo {partnerType}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{editingPartner ? `Editar ${partnerType}` : `Adicionar Novo ${partnerType}`}</DialogTitle>
+              </DialogHeader>
+              {/* Renderiza o formulário de parceiro */}
+              {isModalOpen && (
+                <PartnerForm
+                  partner={editingPartner}
+                  onSave={handleSave}
+                  onCancel={handleCloseModal}
+                  partnerType={partnerType as any}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
+          {/* )} */}
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            {/* Renderiza o loader enquanto carrega a lista de parceiros */}
+            {loadingPartners ? (
+              <div className="flex justify-center items-center h-32">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <span>Carregando {partnerType}s...</span>
+              </div>
+            ) : partners.length === 0 ? (
+              // Mensagem se não houver parceiros
+              <p className="text-center text-gray-500">Nenhum {partnerType} encontrado.</p>
+            ) : (
+              // Renderiza a tabela de parceiros
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -292,21 +292,21 @@ const PartnerView: React.FC<PartnerViewProps> = ({ partnerType }) => {
                         <Button variant="ghost" size="icon" onClick={() => handleOpenModal(partner)}>
                           <Edit size={18} />
                         </Button>
-                         {/* Botão de excluir não depende mais do usuário logado */}
+                        {/* Botão de excluir não depende mais do usuário logado */}
                         {/* {user && ( */}
-                                                       <Button variant="ghost" size="icon" onClick={() => handleDelete(partner.id.toString())}> {/* Usa partner.id! para afirmar que não é undefined */}
-                            <Trash2 size={18} className="text-red-500" />
-                          </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(partner.id.toString())}> {/* Usa partner.id! para afirmar que não é undefined */}
+                          <Trash2 size={18} className="text-red-500" />
+                        </Button>
                         {/* )} */}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              )}
-            </div>
-          </CardContent>
-        </>
+            )}
+          </div>
+        </CardContent>
+      </>
       {/* )} */}
     </Card>
   );

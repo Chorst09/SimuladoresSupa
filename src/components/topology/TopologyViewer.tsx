@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { TopologyConfig, NetworkDevice, Connection } from './types/topology';
@@ -66,13 +66,13 @@ interface TopologyViewerProps {
   onExport?: (format: 'png' | 'pdf' | 'svg') => void;
 }
 
-export function TopologyViewer({ 
-  config, 
-  showExportOptions = false, 
+export function TopologyViewer({
+  config,
+  showExportOptions = false,
   className = '',
-  onExport 
+  onExport
 }: TopologyViewerProps) {
-  const getTopologyTemplate = () => {
+  const getTopologyTemplate = useCallback(() => {
     switch (config.type) {
       case 'fiber':
         return templates.fiberTemplate;
@@ -85,7 +85,7 @@ export function TopologyViewer({
       default:
         return templates.fiberTemplate;
     }
-  };
+  }, [config.type]);
 
   const getTopologyTitle = () => {
     const titles: Record<string, string> = {
@@ -136,7 +136,7 @@ export function TopologyViewer({
     setDevices(newDevices);
     setConnections(newConnections);
     setLayout(template.layout);
-  }, [config]);
+  }, [config, getTopologyTemplate]);
 
   const handleDeleteDevice = (deviceId: string) => {
     setDevices(prev => prev.filter(d => d.id !== deviceId));
@@ -163,10 +163,10 @@ export function TopologyViewer({
   const handleUpdateDevice = (data: { label: string; type: string }) => {
     if (!editingDevice) return;
 
-    setDevices(prev => 
-      prev.map(d => 
-        d.id === editingDevice.id 
-          ? { ...d, label: data.label, type: data.type as any } 
+    setDevices(prev =>
+      prev.map(d =>
+        d.id === editingDevice.id
+          ? { ...d, label: data.label, type: data.type as any }
           : d
       )
     );
@@ -184,7 +184,7 @@ export function TopologyViewer({
     );
   };
 
-    const handleExport = async (format: 'png' | 'pdf' | 'svg') => {
+  const handleExport = async (format: 'png' | 'pdf' | 'svg') => {
     if (!diagramRef.current) return;
 
     const diagramElement = diagramRef.current;
@@ -192,46 +192,46 @@ export function TopologyViewer({
     const fileName = `${title.replace(/ /g, '_')}_${config.customerName.replace(/ /g, '_')}`.toLowerCase();
 
     if (format === 'svg') {
-        const svgElement = diagramElement.querySelector('svg');
-        if (svgElement) {
-            const serializer = new XMLSerializer();
-            const svgString = serializer.serializeToString(svgElement);
-            const blob = new Blob([svgString], { type: 'image/svg+xml' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${fileName}.svg`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-        return;
-    }
-
-    const canvas = await html2canvas(diagramElement, {
-        scale: 2, 
-        useCORS: true,
-        backgroundColor: '#ffffff',
-    });
-
-    if (format === 'png') {
-        const image = canvas.toDataURL('image/png', 1.0);
+      const svgElement = diagramElement.querySelector('svg');
+      if (svgElement) {
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svgElement);
+        const blob = new Blob([svgString], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = image;
-        a.download = `${fileName}.png`;
+        a.href = url;
+        a.download = `${fileName}.svg`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+      return;
+    }
+
+    const canvas = await html2canvas(diagramElement, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+    });
+
+    if (format === 'png') {
+      const image = canvas.toDataURL('image/png', 1.0);
+      const a = document.createElement('a');
+      a.href = image;
+      a.download = `${fileName}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } else if (format === 'pdf') {
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-            unit: 'px',
-            format: [canvas.width, canvas.height]
-        });
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-        pdf.save(`${fileName}.pdf`);
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save(`${fileName}.pdf`);
     }
   };
 
@@ -247,59 +247,59 @@ export function TopologyViewer({
             Cliente: {config.customerName} | Endereço: {config.address}
           </p>
         </div>
-        
-        <div className="flex items-center gap-4">
-        <Button onClick={() => setIsAddModalOpen(true)} size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          Adicionar Dispositivo
-        </Button>
 
-        {showExportOptions && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleExport('png')}
-              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-            >
-              PNG
-            </button>
-            <button
-              onClick={() => handleExport('pdf')}
-              className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-            >
-              PDF
-            </button>
-            <button
-              onClick={() => handleExport('svg')}
-              className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
-            >
-              SVG
-            </button>
-          </div>
-        )}
-      </div>
+        <div className="flex items-center gap-4">
+          <Button onClick={() => setIsAddModalOpen(true)} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Dispositivo
+          </Button>
+
+          {showExportOptions && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleExport('png')}
+                className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+              >
+                PNG
+              </button>
+              <button
+                onClick={() => handleExport('pdf')}
+                className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+              >
+                PDF
+              </button>
+              <button
+                onClick={() => handleExport('svg')}
+                className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+              >
+                SVG
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Diagram */}
-            <div className="relative" ref={diagramRef}>
-        <DiagramRenderer 
+      <div className="relative" ref={diagramRef}>
+        <DiagramRenderer
           devices={devices}
           connections={connections}
           layout={layout}
           onDeleteDevice={handleDeleteDevice}
           onDeviceClick={handleDeviceClick}
           onUpdateDevicePosition={handleUpdateDevicePosition}
-          className="w-full" 
+          className="w-full"
         />
       </div>
 
       {/* Legend */}
-      <AddDeviceModal 
+      <AddDeviceModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAddDevice={handleAddDevice}
       />
 
-      <EditDeviceModal 
+      <EditDeviceModal
         isOpen={isEditModalOpen}
         onClose={() => {
           setIsEditModalOpen(false);

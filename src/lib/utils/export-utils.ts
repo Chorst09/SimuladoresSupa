@@ -26,32 +26,32 @@ export const convertToCSV = (
 
   const { includeHeaders = true } = options;
   const headers = Object.keys(data[0]);
-  
+
   let csv = '';
-  
+
   if (includeHeaders) {
     csv += headers.join(',') + '\n';
   }
-  
+
   data.forEach(row => {
     const values = headers.map(header => {
-      let value = row[header];
-      
+      const value = row[header];
+
       // Handle different data types
       if (value === null || value === undefined) {
         return '';
       }
-      
+
       if (typeof value === 'string' && value.includes(',')) {
         return `"${value}"`;
       }
-      
+
       return value.toString();
     });
-    
+
     csv += values.join(',') + '\n';
   });
-  
+
   return csv;
 };
 
@@ -75,17 +75,17 @@ export const convertToText = (
   if (!data.length) return '';
 
   let text = '';
-  
+
   data.forEach((item, index) => {
     text += `=== Item ${index + 1} ===\n`;
-    
+
     Object.entries(item).forEach(([key, value]) => {
       text += `${key}: ${value}\n`;
     });
-    
+
     text += '\n';
   });
-  
+
   return text;
 };
 
@@ -99,16 +99,16 @@ export const downloadFile = (
 ): void => {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
-  
+
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
   link.style.display = 'none';
-  
+
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  
+
   URL.revokeObjectURL(url);
 };
 
@@ -135,19 +135,19 @@ export const exportData = (
       mimeType = 'text/csv';
       extension = 'csv';
       break;
-    
+
     case 'json':
       content = convertToJSON(data);
       mimeType = 'application/json';
       extension = 'json';
       break;
-    
+
     case 'txt':
       content = convertToText(data);
       mimeType = 'text/plain';
       extension = 'txt';
       break;
-    
+
     default:
       throw new Error(`Formato não suportado: ${format}`);
   }
@@ -206,7 +206,7 @@ export const exportProposals = (
   options: ExportOptions = {}
 ): void => {
   const formattedData = proposals.map(formatProposalForExport);
-  
+
   exportData(formattedData, {
     filename: 'propostas',
     ...options
@@ -220,10 +220,10 @@ export const exportDRE = (
   dreData: Record<number, any>,
   options: ExportOptions = {}
 ): void => {
-  const formattedData = Object.entries(dreData).map(([period, dre]) => 
+  const formattedData = Object.entries(dreData).map(([period, dre]) =>
     formatDREForExport(dre, parseInt(period))
   );
-  
+
   exportData(formattedData, {
     filename: 'dre-analysis',
     ...options
@@ -243,7 +243,7 @@ export const exportCalculatorConfig = (
     'Data de Exportação': formatDate(new Date().toISOString()),
     'Configurações': JSON.stringify(config, null, 2)
   }];
-  
+
   exportData(formattedData, {
     filename: `config-${calculatorType.toLowerCase()}`,
     format: 'json',
@@ -261,7 +261,7 @@ export const generateProposalReport = (
 ): void => {
   const reportData = {
     proposta: formatProposalForExport(proposal),
-    dre: dreData ? Object.entries(dreData).map(([period, dre]) => 
+    dre: dreData ? Object.entries(dreData).map(([period, dre]) =>
       formatDREForExport(dre, parseInt(period))
     ) : [],
     metadata: {
@@ -269,9 +269,9 @@ export const generateProposalReport = (
       versao: '1.0'
     }
   };
-  
+
   const content = JSON.stringify(reportData, null, 2);
   const filename = `relatorio-${proposal.baseId || proposal.id}.json`;
-  
+
   downloadFile(content, filename, 'application/json');
 };

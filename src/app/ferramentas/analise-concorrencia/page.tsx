@@ -107,7 +107,7 @@ export default function AnaliseConcorrencia() {
     else if (speed <= 500) costPerMbps = pricing.tiers[500];
     else if (speed <= 1000) costPerMbps = pricing.tiers[1000];
 
-    let servicePrice = pricing.base + (costPerMbps * speed);
+    const servicePrice = pricing.base + (costPerMbps * speed);
     const discountFactor = termDiscounts[contractTerm] || 1.0;
     let basePrice = servicePrice * discountFactor;
 
@@ -119,7 +119,7 @@ export default function AnaliseConcorrencia() {
       let finalPrice = basePrice;
       let finalInstallation = installationPricing[product];
 
-      switch(profile) {
+      switch (profile) {
         case 'premium':
           finalPrice *= 1.15;
           finalInstallation *= 1.2;
@@ -188,7 +188,7 @@ export default function AnaliseConcorrencia() {
     await new Promise(resolve => setTimeout(resolve, 2500));
 
     const analysisResults = generateMockData(formData.product, formData.speed, formData.connectionType, formData.contractTerm);
-    
+
     const analysis: AnalysisData = {
       timestamp: new Date().toISOString(),
       params: formData,
@@ -224,7 +224,7 @@ export default function AnaliseConcorrencia() {
     try {
       const canvas = await html2canvas(reportRef.current, { scale: 2 });
       const imgData = canvas.toDataURL('image/png');
-      
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'px',
@@ -235,7 +235,7 @@ export default function AnaliseConcorrencia() {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      
+
       const dateStr = new Date(currentAnalysis.timestamp).toLocaleDateString('pt-BR').replace(/\//g, '-');
       pdf.save(`relatorio-analise-${dateStr}.pdf`);
     } catch (error) {
@@ -293,7 +293,7 @@ export default function AnaliseConcorrencia() {
               </label>
               <select
                 value={formData.product}
-                onChange={(e) => setFormData({...formData, product: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, product: e.target.value })}
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="Internet Fibra">Internet Fibra</option>
@@ -311,7 +311,7 @@ export default function AnaliseConcorrencia() {
               <input
                 type="number"
                 value={formData.speed}
-                onChange={(e) => setFormData({...formData, speed: parseInt(e.target.value) || 0})}
+                onChange={(e) => setFormData({ ...formData, speed: parseInt(e.target.value) || 0 })}
                 placeholder="Ex: 100"
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
@@ -325,7 +325,7 @@ export default function AnaliseConcorrencia() {
               <select
                 value={formData.state}
                 onChange={(e) => {
-                  setFormData({...formData, state: e.target.value, city: ''});
+                  setFormData({ ...formData, state: e.target.value, city: '' });
                 }}
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
@@ -343,7 +343,7 @@ export default function AnaliseConcorrencia() {
               </label>
               <select
                 value={formData.city}
-                onChange={(e) => setFormData({...formData, city: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                 disabled={!formData.state}
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
@@ -361,7 +361,7 @@ export default function AnaliseConcorrencia() {
               </label>
               <select
                 value={formData.connectionType}
-                onChange={(e) => setFormData({...formData, connectionType: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, connectionType: e.target.value })}
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="ADSL">Padrão (ADSL/DHCP)</option>
@@ -376,7 +376,7 @@ export default function AnaliseConcorrencia() {
               </label>
               <select
                 value={formData.contractTerm}
-                onChange={(e) => setFormData({...formData, contractTerm: parseInt(e.target.value)})}
+                onChange={(e) => setFormData({ ...formData, contractTerm: parseInt(e.target.value) })}
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value={12}>12 meses</option>
@@ -512,7 +512,7 @@ export default function AnaliseConcorrencia() {
                 <div className="text-gray-700 dark:text-gray-300 space-y-4">
                   {currentAnalysis.aiInsights.split('\n\n').map((paragraph, index) => (
                     <p key={index} className="leading-relaxed">
-                      {paragraph.split('**').map((text, i) => 
+                      {paragraph.split('**').map((text, i) =>
                         i % 2 === 1 ? <strong key={i}>{text}</strong> : text
                       )}
                     </p>

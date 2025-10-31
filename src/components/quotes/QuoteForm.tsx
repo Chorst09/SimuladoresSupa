@@ -156,7 +156,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ quote, partners, onSave, onCancel
               <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
               <SelectContent>
                 <SelectItem value="Pendente">Pendente</SelectItem>
-                // Removed 'Aguardando Distribuidor' status
+                {/* Removed 'Aguardando Distribuidor' status */}
                 <SelectItem value="Enviado">Enviado</SelectItem>
                 <SelectItem value="Aprovado">Aprovado</SelectItem>
                 <SelectItem value="Rejeitado">Rejeitado</SelectItem>

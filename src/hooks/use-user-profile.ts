@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 
 import { UserRole } from '@/lib/types';
@@ -35,7 +35,7 @@ export function useUserProfile(): UseUserProfileResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!user) {
       setProfile(null);
       setIsLoading(false);
@@ -48,14 +48,14 @@ export function useUserProfile(): UseUserProfileResult {
 
       // Buscar perfil via API
       console.log('🔍 Buscando perfil para usuário:', user.id, user.email);
-      
+
       const response = await fetch(`/api/profiles/${user.id}`, {
         credentials: 'include'
       });
-      
+
       let data = null;
       let profileError = null;
-      
+
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
@@ -66,12 +66,12 @@ export function useUserProfile(): UseUserProfileResult {
       } else {
         profileError = `HTTP ${response.status}`;
       }
-      
+
       console.log('📊 Resultado da busca:', { data, error: profileError });
 
       if (profileError || !data) {
         console.log('⚠️ Perfil não encontrado, criando perfil básico');
-        
+
         // Criar perfil básico - assumir que é director se for o primeiro usuário
         const profileData: UserProfile = {
           id: user.id,
@@ -83,7 +83,7 @@ export function useUserProfile(): UseUserProfileResult {
         };
 
         setProfile(profileData);
-        
+
         // Tentar criar perfil via API (sem bloquear se falhar)
         try {
           console.log('💾 Tentando criar perfil via API');
@@ -95,7 +95,7 @@ export function useUserProfile(): UseUserProfileResult {
             credentials: 'include',
             body: JSON.stringify(profileData)
           });
-          
+
           if (createResponse.ok) {
             console.log('✅ Perfil criado com sucesso');
           }
@@ -109,7 +109,7 @@ export function useUserProfile(): UseUserProfileResult {
     } catch (err) {
       console.error('Erro ao buscar perfil do usuário:', err);
       setError(err instanceof Error ? err.message : 'Erro ao carregar perfil');
-      
+
       // Fallback final: usar dados básicos como admin
       if (user) {
         console.log('🆘 Fallback final - criando perfil director');
@@ -125,7 +125,7 @@ export function useUserProfile(): UseUserProfileResult {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   const updateRole = async (userId: string, newRole: UserRole): Promise<boolean> => {
     try {
@@ -140,7 +140,7 @@ export function useUserProfile(): UseUserProfileResult {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           role: newRole,
           updated_at: new Date().toISOString()
         })
@@ -168,7 +168,7 @@ export function useUserProfile(): UseUserProfileResult {
     if (!authLoading) {
       fetchProfile();
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, fetchProfile]);
 
   // Computed properties baseadas no role
   const isAdmin = profile?.role === 'admin' || profile?.role === 'director'; // Director também é admin
@@ -199,10 +199,10 @@ export function useUserProfile(): UseUserProfileResult {
 
 // Hook para verificar permissões específicas
 export function usePermissions() {
-  const { 
-    canAccessCommissions, 
-    canAccessPricing, 
-    canAccessDRE, 
+  const {
+    canAccessCommissions,
+    canAccessPricing,
+    canAccessDRE,
     canViewAllProposals,
     isAdmin,
     isDirector,

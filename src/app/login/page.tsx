@@ -1,8 +1,8 @@
 // src/app/login/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+// import { useRouter } from 'next/navigation'; // Unused
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -12,14 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import LoadingSpinner from '@/components/ui/loading-spinner';
-import AuthRedirect from '@/components/auth/AuthRedirect';
+// import AuthRedirect from '@/components/auth/AuthRedirect'; // Unused import
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  // const router = useRouter(); // Unused variable
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
@@ -45,29 +45,30 @@ const LoginPage = () => {
       }
 
       toast({ title: 'Login bem-sucedido!', description: 'Redirecionando...' });
-      
+
       // Fazer redirecionamento direto após login bem-sucedido
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 1000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login error:', err);
-      setError(err.message);
-      
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+      setError(errorMessage);
+
       // Provide more user-friendly error messages
-      let errorMessage = 'Verifique suas credenciais.';
-      if (err.message.includes('Usuário não encontrado')) {
-        errorMessage = 'Email não cadastrado.';
-      } else if (err.message.includes('Senha incorreta')) {
-        errorMessage = 'Senha incorreta.';
-      } else if (err.message.includes('Too many requests')) {
-        errorMessage = 'Muitas tentativas. Tente novamente em alguns minutos.';
+      let userFriendlyMessage = 'Verifique suas credenciais.';
+      if (errorMessage.includes('Usuário não encontrado')) {
+        userFriendlyMessage = 'Email não cadastrado.';
+      } else if (errorMessage.includes('Senha incorreta')) {
+        userFriendlyMessage = 'Senha incorreta.';
+      } else if (errorMessage.includes('Too many requests')) {
+        userFriendlyMessage = 'Muitas tentativas. Tente novamente em alguns minutos.';
       }
-      
-      toast({ 
-        title: 'Erro no login', 
-        description: errorMessage, 
-        variant: 'destructive' 
+
+      toast({
+        title: 'Erro no login',
+        description: userFriendlyMessage,
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
