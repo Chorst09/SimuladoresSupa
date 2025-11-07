@@ -7,7 +7,7 @@ async function main() {
   console.log('🌱 Iniciando seed do banco de dados...')
 
   // 1. Criar usuário admin padrão
-  const adminEmail = 'admin@simuladores.com'
+  const adminEmail = 'admin@sistema.com'
   const adminPassword = await bcrypt.hash('admin123', 10)
 
   const adminUser = await prisma.user.upsert({
@@ -42,25 +42,25 @@ async function main() {
   // Criar usuários de exemplo com diferentes roles
   const exampleUsers = [
     {
-      email: 'diretor@simuladores.com',
+      email: 'diretor@sistema.com',
       password: 'diretor123',
       role: 'diretor',
       full_name: 'João Diretor'
     },
     {
-      email: 'gerente@simuladores.com',
+      email: 'gerente@sistema.com',
       password: 'gerente123',
       role: 'gerente',
       full_name: 'Maria Gerente'
     },
     {
-      email: 'vendedor@simuladores.com',
+      email: 'vendedor@sistema.com',
       password: 'vendedor123',
       role: 'vendedor',
       full_name: 'Carlos Vendedor'
     },
     {
-      email: 'usuario@simuladores.com',
+      email: 'usuario@sistema.com',
       password: 'usuario123',
       role: 'user',
       full_name: 'Ana Usuário'
@@ -255,7 +255,7 @@ async function main() {
     },
     {
       config_key: 'email_notifications',
-      config_value: { enabled: true, from: 'noreply@simuladores.com' },
+      config_value: { enabled: true, from: 'noreply@sistema.com' },
       description: 'Configurações de notificações por email'
     },
     {

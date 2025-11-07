@@ -133,7 +133,7 @@ DATABASE_EXTERNAL_PORT=5433
 ### Usuário Admin Padrão
 
 ```
-Email: admin@simuladores.com
+Email: admin@sistema.com
 Senha: admin123
 ```
 
