@@ -10,8 +10,11 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require
 ```
 **Importante:** 
 - Use um banco PostgreSQL hospedado (Supabase, Neon, Railway, etc.)
+- **NÃO use localhost** - o Vercel não consegue acessar seu banco local
 - Adicione `?sslmode=require` no final da URL para conexões seguras
-- Exemplo: `postgresql://postgres:senha@db.exemplo.com:5432/simuladores?sslmode=require`
+- Exemplo Supabase: `postgresql://postgres.xxxxx:senha@aws-0-sa-east-1.pooler.supabase.com:5432/postgres`
+
+**Recomendação:** Use Supabase (gratuito) - veja SETUP_SUPABASE.md para instruções detalhadas
 
 ### 2. Autenticação
 ```

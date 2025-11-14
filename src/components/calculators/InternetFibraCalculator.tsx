@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
 import { formatPercentage } from '@/lib/utils';
+import { generateNextProposalId } from '@/lib/proposal-id-generator';
 import {
     Calculator,
     FileText,
@@ -936,7 +937,11 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     throw new Error('Erro ao atualizar proposta');
                 }
             } else {
+                // Gerar ID único para a proposta
+                const baseId = generateNextProposalId(proposals, 'FIBER', proposalVersion);
+                
                 const proposalToSave = {
+                    base_id: baseId,
                     title: `Proposta Internet Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,

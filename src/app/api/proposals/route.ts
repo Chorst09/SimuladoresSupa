@@ -104,17 +104,21 @@ export async function POST(request: NextRequest) {
       products,
       items_data,
       client_data,
-      metadata
+      metadata,
+      base_id // Aceitar base_id do cliente se fornecido
     } = body
 
-    // Gerar base_id único
-    const timestamp = Date.now().toString(36)
-    const random = Math.random().toString(36).substring(2, 8)
-    const base_id = `PROP-${timestamp}-${random}`.toUpperCase()
+    // Se base_id não foi fornecido, gerar um genérico
+    let finalBaseId = base_id
+    if (!finalBaseId) {
+      const timestamp = Date.now().toString(36)
+      const random = Math.random().toString(36).substring(2, 8)
+      finalBaseId = `PROP-${timestamp}-${random}`.toUpperCase()
+    }
 
     const proposal = await prisma.proposal.create({
       data: {
-        base_id,
+        base_id: finalBaseId,
         title,
         client: client || {},
         type: type || 'standard',
