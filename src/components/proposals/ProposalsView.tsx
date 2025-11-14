@@ -70,16 +70,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
 
   const filteredProposals = proposals.filter(proposal => {
     if (!proposal) return false; // Defensively handle null/undefined proposals in the array
-    const term = searchTerm.toLowerCase();
-
-    const titleMatch = typeof proposal.title === 'string' && proposal.title.toLowerCase().includes(term);
-    const clientMatch = (typeof proposal.client === 'string' && proposal.client.toLowerCase().includes(term)) ||
-                       (typeof proposal.client === 'object' && proposal.client?.name?.toLowerCase().includes(term));
-    const accountManagerMatch = (typeof proposal.accountManager === 'string' && proposal.accountManager.toLowerCase().includes(term)) ||
-                               (typeof proposal.accountManager === 'object' && proposal.accountManager?.name?.toLowerCase().includes(term));
-
-    const searchMatch = titleMatch || clientMatch || accountManagerMatch;
-
+    
     // Filtro por gerente de contas
     if (selectedAccountManager !== 'all') {
       const proposalManager = typeof proposal.accountManager === 'string' 
@@ -91,7 +82,20 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
       }
     }
 
-    return searchMatch;
+    // Filtro por termo de busca (apenas se houver termo)
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+
+      const titleMatch = typeof proposal.title === 'string' && proposal.title.toLowerCase().includes(term);
+      const clientMatch = (typeof proposal.client === 'string' && proposal.client.toLowerCase().includes(term)) ||
+                         (typeof proposal.client === 'object' && proposal.client?.name?.toLowerCase().includes(term));
+      const accountManagerMatch = (typeof proposal.accountManager === 'string' && proposal.accountManager.toLowerCase().includes(term)) ||
+                                 (typeof proposal.accountManager === 'object' && proposal.accountManager?.name?.toLowerCase().includes(term));
+
+      return titleMatch || clientMatch || accountManagerMatch;
+    }
+
+    return true;
   });
 
   const getStatusColor = (status: string) => {
