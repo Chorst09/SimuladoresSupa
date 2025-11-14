@@ -939,14 +939,19 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 }
             } else {
                 // Mapear propostas para o formato esperado pelo gerador
+                console.log('📊 Total de propostas carregadas:', proposals.length);
+                console.log('📋 Propostas:', proposals.map(p => ({ id: p.id, base_id: p.base_id, baseId: p.baseId, type: p.type })));
+                
                 const proposalsWithBaseId = proposals.map(p => ({
                     base_id: p.base_id || p.baseId || ''
                 }));
                 
+                console.log('🔄 Propostas mapeadas:', proposalsWithBaseId);
+                
                 // Gerar ID único para a proposta
                 const baseId = generateNextProposalId(proposalsWithBaseId, 'FIBER', proposalVersion);
                 console.log('🆔 ID gerado para nova proposta:', baseId);
-                console.log('📊 Propostas existentes:', proposals.length);
+                console.log('📝 Versão:', proposalVersion);
                 
                 const proposalToSave = {
                     base_id: baseId,
