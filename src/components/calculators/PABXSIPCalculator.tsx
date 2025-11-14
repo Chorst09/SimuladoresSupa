@@ -1241,12 +1241,16 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             });
 
             if (response.ok) {
-                const proposalsData = await response.json();
+                const result = await response.json();
                 // Filter for PABX proposals
-                const pabxProposals = proposalsData.filter((p: any) =>
-                    p.type === 'PABX' || p.baseId?.startsWith('Prop_PabxSip_')
-                );
-                setSavedProposals(pabxProposals);
+                if (result.success && result.data && result.data.proposals) {
+                    const pabxProposals = result.data.proposals.filter((p: any) =>
+                        p.type === 'PABX' || p.base_id?.startsWith('Prop_PabxSip_')
+                    );
+                    setSavedProposals(pabxProposals);
+                } else {
+                    setSavedProposals([]);
+                }
             } else {
                 console.error('Erro ao buscar propostas:', response.statusText);
                 setSavedProposals([]);

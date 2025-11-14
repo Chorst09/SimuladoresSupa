@@ -584,12 +584,16 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             });
 
             if (response.ok) {
-                const proposalsData = await response.json();
+                const result = await response.json();
                 // Filter for MAN Internet proposals
-                const manProposals = proposalsData.filter((p: any) =>
-                    p.type === 'INTERNET_MAN_FIBRA' || p.baseId?.startsWith('Prop_ManFibra_')
-                );
-                setProposals(manProposals);
+                if (result.success && result.data && result.data.proposals) {
+                    const manProposals = result.data.proposals.filter((p: any) =>
+                        p.type === 'INTERNET_MAN_FIBRA' || p.base_id?.startsWith('Prop_ManFibra_')
+                    );
+                    setProposals(manProposals);
+                } else {
+                    setProposals([]);
+                }
             } else {
                 console.error('Erro ao buscar propostas:', response.statusText);
                 setProposals([]);

@@ -427,12 +427,16 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
             });
 
             if (response.ok) {
-                const proposalsData = await response.json();
+                const result = await response.json();
                 // Filter for Fibra Internet proposals
-                const fibraProposals = proposalsData.filter((p: any) =>
-                    p.type === 'FIBER' || p.baseId?.startsWith('Prop_InterFibra_')
-                );
-                setProposals(fibraProposals);
+                if (result.success && result.data && result.data.proposals) {
+                    const fibraProposals = result.data.proposals.filter((p: any) =>
+                        p.type === 'FIBER' || p.base_id?.startsWith('Prop_InterFibra_')
+                    );
+                    setProposals(fibraProposals);
+                } else {
+                    setProposals([]);
+                }
             } else {
                 console.error('Erro ao buscar propostas:', response.statusText);
                 setProposals([]);

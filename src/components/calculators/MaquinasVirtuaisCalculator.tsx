@@ -238,35 +238,43 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             console.log('📡 API response status:', response.status);
 
             if (response.ok) {
-                const proposalsData = await response.json();
-                console.log('✅ Raw proposals loaded:', proposalsData.length);
+                const result = await response.json();
+                
+                if (result.success && result.data && result.data.proposals) {
+                    const proposalsData = result.data.proposals;
+                    console.log('✅ Raw proposals loaded:', proposalsData.length);
 
-                if (proposalsData.length > 0) {
-                    console.log('📋 Sample proposal:', {
-                        id: proposalsData[0].id,
-                        baseId: proposalsData[0].baseId,
-                        title: proposalsData[0].title,
-                        type: proposalsData[0].type,
-                        createdAt: proposalsData[0].createdAt
-                    });
+                    if (proposalsData.length > 0) {
+                        console.log('📋 Sample proposal:', {
+                            id: proposalsData[0].id,
+                            baseId: proposalsData[0].base_id,
+                            title: proposalsData[0].title,
+                            type: proposalsData[0].type,
+                            createdAt: proposalsData[0].created_at
+                        });
+                    }
+
+                    // Filter for VM proposals (API já filtra por type=VM, mas vamos garantir)
+                    const vmProposals = proposalsData.filter((p: any) =>
+                        p.type === 'VM' || p.base_id?.startsWith('Prop_MV_')
+                    );
+                    
+                    console.log('🔧 VM proposals after filter:', vmProposals.length);
+
+                    if (vmProposals.length !== proposalsData.length) {
+                        console.log('⚠️ Some proposals were filtered out');
+                        console.log('📊 Filtered proposals by type:', proposalsData.reduce((acc: any, p: any) => {
+                            acc[p.type] = (acc[p.type] || 0) + 1;
+                            return acc;
+                        }, {}));
+                    }
+
+                    setProposals(vmProposals);
+                    console.log('✅ Proposals set in state:', vmProposals.length);
+                } else {
+                    console.error('❌ Formato de resposta inesperado:', result);
+                    setProposals([]);
                 }
-
-                // Filter for VM proposals (API já filtra por type=VM, mas vamos garantir)
-                const vmProposals = proposalsData.filter((p: any) =>
-                    p.type === 'VM' || p.baseId?.startsWith('Prop_MV_')
-                );
-                console.log('🔧 VM proposals after filter:', vmProposals.length);
-
-                if (vmProposals.length !== proposalsData.length) {
-                    console.log('⚠️ Some proposals were filtered out');
-                    console.log('📊 Filtered proposals by type:', proposalsData.reduce((acc: any, p: any) => {
-                        acc[p.type] = (acc[p.type] || 0) + 1;
-                        return acc;
-                    }, {}));
-                }
-
-                setProposals(vmProposals);
-                console.log('✅ Proposals set in state:', vmProposals.length);
             } else {
                 console.error('❌ API error - Status:', response.status);
                 const errorText = await response.text();

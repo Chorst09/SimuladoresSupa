@@ -462,12 +462,16 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
             });
 
             if (response.ok) {
-                const proposalsData = await response.json();
+                const result = await response.json();
                 // Filter for Radio Internet proposals
-                const radioProposals = proposalsData.filter((p: any) =>
-                    p.type === 'RADIO' || p.baseId?.startsWith('Prop_InternetRadio_')
-                );
-                setProposals(radioProposals);
+                if (result.success && result.data && result.data.proposals) {
+                    const radioProposals = result.data.proposals.filter((p: any) =>
+                        p.type === 'RADIO' || p.base_id?.startsWith('Prop_InternetRadio_')
+                    );
+                    setProposals(radioProposals);
+                } else {
+                    setProposals([]);
+                }
             } else {
                 console.error('Erro ao buscar propostas:', response.statusText);
                 setProposals([]);

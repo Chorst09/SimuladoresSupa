@@ -524,12 +524,16 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
             });
 
             if (response.ok) {
-                const proposalsData = await response.json();
+                const result = await response.json();
                 // Filter for Double Fibra Radio proposals
-                const doubleProposals = proposalsData.filter((p: any) =>
-                    p.type === 'DOUBLE' || p.baseId?.startsWith('Prop_Double_')
-                );
-                setProposals(doubleProposals);
+                if (result.success && result.data && result.data.proposals) {
+                    const doubleProposals = result.data.proposals.filter((p: any) =>
+                        p.type === 'DOUBLE' || p.base_id?.startsWith('Prop_Double_')
+                    );
+                    setProposals(doubleProposals);
+                } else {
+                    setProposals([]);
+                }
             } else {
                 console.error('Erro ao buscar propostas:', response.statusText);
                 setProposals([]);

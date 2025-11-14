@@ -399,12 +399,16 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
             });
 
             if (response.ok) {
-                const proposalsData = await response.json();
+                const result = await response.json();
                 // Filter for Internet Man Radio proposals
-                const manRadioProposals = proposalsData.filter((p: any) =>
-                    p.type === 'MANRADIO' || p.baseId?.startsWith('Prop_ManRadio_')
-                );
-                setProposals(manRadioProposals);
+                if (result.success && result.data && result.data.proposals) {
+                    const manRadioProposals = result.data.proposals.filter((p: any) =>
+                        p.type === 'MANRADIO' || p.base_id?.startsWith('Prop_ManRadio_')
+                    );
+                    setProposals(manRadioProposals);
+                } else {
+                    setProposals([]);
+                }
             } else {
                 console.error('Erro ao buscar propostas:', response.statusText);
                 setProposals([]);

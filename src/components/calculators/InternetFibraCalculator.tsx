@@ -439,12 +439,19 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             });
 
             if (response.ok) {
-                const proposalsData = await response.json();
-                // Filter for Fibra Internet proposals
-                const fibraProposals = proposalsData.filter((p: any) =>
-                    p.type === 'FIBER' || p.baseId?.startsWith('Prop_InternetFibra_')
-                );
-                setProposals(fibraProposals);
+                const result = await response.json();
+                
+                // Verificar se a resposta tem a estrutura esperada
+                if (result.success && result.data && result.data.proposals) {
+                    // Filter for Fibra Internet proposals
+                    const fibraProposals = result.data.proposals.filter((p: any) =>
+                        p.type === 'FIBER' || p.base_id?.startsWith('Prop_InternetFibra_')
+                    );
+                    setProposals(fibraProposals);
+                } else {
+                    console.error('Formato de resposta inesperado:', result);
+                    setProposals([]);
+                }
             } else {
                 console.error('Erro ao buscar propostas:', response.statusText);
                 setProposals([]);
