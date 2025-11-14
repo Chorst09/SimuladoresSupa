@@ -42,9 +42,18 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
   const [showCommercialProposal, setShowCommercialProposal] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
 
-  // Extrair lista única de gerentes de contas
+  // Lista de gerentes de contas (fixos + dinâmicos das propostas)
   const accountManagers = React.useMemo(() => {
-    const managers = new Set<string>();
+    // Gerentes fixos
+    const fixedManagers = [
+      'Willian Conrrales',
+      'Plinico Ginnasi',
+      'Fabio Oliveira'
+    ];
+    
+    const managers = new Set<string>(fixedManagers);
+    
+    // Adicionar gerentes das propostas existentes
     proposals.forEach(proposal => {
       if (proposal.accountManager) {
         const managerName = typeof proposal.accountManager === 'string' 
@@ -55,6 +64,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
         }
       }
     });
+    
     return Array.from(managers).sort();
   }, [proposals]);
 
