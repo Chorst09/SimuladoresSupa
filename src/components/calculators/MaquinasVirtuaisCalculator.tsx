@@ -1698,7 +1698,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             const proposalVersion = getProposalVersion();
 
             // Mapear propostas para o formato esperado pelo gerador
-            const proposalsWithBaseId = savedProposals.map((p: any) => ({
+            const proposalsWithBaseId = proposals.map((p: any) => ({
                 base_id: p.base_id || p.baseId || ''
             }));
             
