@@ -38,7 +38,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
   const accountManagers = React.useMemo(() => {
     // Gerentes fixos
     const fixedManagers = [
-      'Willian Conrrales',
+      'Willian Conralles',
       'Plinico Ginnasi',
       'Fabio Oliveira'
     ];
