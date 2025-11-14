@@ -199,6 +199,20 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
     return distributor?.name || 'N/A';
   };
 
+  const getProductName = (type: string) => {
+    const productMap: Record<string, string> = {
+      'PABX': 'PABX/SIP',
+      'VM': 'Máquinas Virtuais',
+      'FIBER': 'Internet Fibra',
+      'RADIO': 'Internet Rádio',
+      'DOUBLE': 'Double Fibra/Rádio',
+      'INTERNET_MAN_FIBRA': 'Internet MAN Fibra',
+      'MANRADIO': 'Internet MAN Rádio',
+      'standard': 'Padrão'
+    };
+    return productMap[type] || type || 'N/A';
+  };
+
   const handleNavigateToCalculator = (proposal: Proposal) => {
     const baseId = proposal.baseId || '';
     let tab = 'dashboard';
@@ -404,7 +418,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
                   <TableHead className="text-slate-300">Título</TableHead>
                   <TableHead className="text-slate-300">Cliente</TableHead>
                   <TableHead className="text-slate-300">Gerente de Conta</TableHead>
-                  <TableHead className="text-slate-300">Distribuidor</TableHead>
+                  <TableHead className="text-slate-300">Produto</TableHead>
                   <TableHead className="text-slate-300">Valor</TableHead>
                   <TableHead className="text-slate-300">Status</TableHead>
                   <TableHead className="text-slate-300">Data de Criação</TableHead>
@@ -418,7 +432,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
                     <TableCell className="font-medium text-white">{proposal.title}</TableCell>
                     <TableCell className="text-slate-300">{typeof proposal.client === 'string' ? proposal.client : proposal.client?.name || 'N/A'}</TableCell>
                     <TableCell className="text-slate-300">{typeof proposal.accountManager === 'string' ? proposal.accountManager : proposal.accountManager?.name || 'N/A'}</TableCell>
-                    <TableCell className="text-slate-300">{getDistributorName(proposal.distributorId)}</TableCell>
+                    <TableCell className="text-slate-300">{getProductName(proposal.type)}</TableCell>
                     <TableCell className="text-slate-300">{formatCurrency(proposal.value || 0)}</TableCell>
                     <TableCell>
                       <Badge className={`${getStatusColor(proposal.status)} border-0`}>
