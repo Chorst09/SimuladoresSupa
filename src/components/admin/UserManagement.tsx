@@ -131,11 +131,15 @@ export default function UserManagement() {
       return;
     }
 
-    try {
-      console.log('🔄 Criando usuário via API admin...');
+    if (!newUserName) {
+      alert('Erro: Nome completo é obrigatório.');
+      return;
+    }
 
-      // Try the new confirmed API first
-      let response = await fetch('/api/create-user-confirmed', {
+    try {
+      console.log('🔄 Criando usuário via API signup...');
+
+      const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,62 +147,18 @@ export default function UserManagement() {
         body: JSON.stringify({
           email: newUserEmail,
           password: newUserPassword,
-          name: newUserName,
+          full_name: newUserName,
           role: newUserRole
         })
       });
 
-      let result = await response.json();
+      const result = await response.json();
 
       if (!result.success) {
-        console.log('🔄 API confirmada falhou, tentando API admin...');
-
-        // Fallback to admin API
-        response = await fetch('/api/create-user-admin', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: newUserEmail,
-            password: newUserPassword,
-            name: newUserName,
-            role: newUserRole
-          })
-        });
-
-        result = await response.json();
-
-        if (!result.success) {
-          console.log('🔄 API admin falhou, tentando API simples...');
-
-          // Final fallback to simple API
-          const fallbackResponse = await fetch('/api/create-user-simple', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email: newUserEmail,
-              password: newUserPassword,
-              name: newUserName,
-              role: newUserRole
-            })
-          });
-
-          const fallbackResult = await fallbackResponse.json();
-
-          if (!fallbackResult.success) {
-            throw new Error(fallbackResult.error || 'Erro ao criar usuário');
-          }
-
-          alert('✅ Usuário criado com sucesso!\n\n⚠️ IMPORTANTE: O usuário precisa confirmar o email antes de fazer login.\n\n' + (fallbackResult.message || ''));
-        } else {
-          alert('✅ Usuário criado com sucesso!\n\n✨ Email confirmado automaticamente pelo admin!\n\n' + (result.message || ''));
-        }
-      } else {
-        alert('✅ Usuário criado com sucesso!\n\n🎉 Email confirmado automaticamente! O usuário pode fazer login imediatamente.\n\n' + (result.message || ''));
+        throw new Error(result.error || 'Erro ao criar usuário');
       }
+
+      alert('✅ Usuário criado com sucesso!\n\nO usuário pode fazer login imediatamente.');
 
       // Reset form
       setNewUserEmail('');
@@ -218,14 +178,12 @@ export default function UserManagement() {
       console.error('❌ Erro ao criar usuário:', error);
 
       let description = error.message || 'Não foi possível criar o usuário.';
-      if (error.message.includes('User already registered')) {
+      if (error.message.includes('User already registered') || error.message.includes('já existe')) {
         description = 'Este email já está em uso. Tente usar outro email.';
-      } else if (error.message.includes('Invalid email')) {
+      } else if (error.message.includes('Invalid email') || error.message.includes('inválido')) {
         description = 'Email inválido. Verifique e tente novamente.';
-      } else if (error.message.includes('Password should be at least')) {
+      } else if (error.message.includes('Password should be at least') || error.message.includes('pelo menos 6')) {
         description = 'Senha fraca. Use uma senha com pelo menos 6 caracteres.';
-      } else if (error.message.includes('only request this after')) {
-        description = 'Limite de criação atingido. Aguarde 1 minuto e tente novamente.';
       }
 
       alert(`❌ Erro: ${description}`);
