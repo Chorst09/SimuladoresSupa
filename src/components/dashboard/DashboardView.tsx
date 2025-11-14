@@ -137,7 +137,11 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
         const proposalsData = await response.json();
         console.log('Fetched proposals from API:', proposalsData);
 
-        const proposalsList = (proposalsData || []).map((data: any) => {
+        // A API retorna { success: true, data: { proposals: [...] } }
+        const proposalsArray = proposalsData?.data?.proposals || proposalsData?.proposals || proposalsData || [];
+        console.log('Proposals array:', proposalsArray);
+
+        const proposalsList = proposalsArray.map((data: any) => {
           let title = data.title || "Proposta";
           
           // If title is not set, generate from baseId
