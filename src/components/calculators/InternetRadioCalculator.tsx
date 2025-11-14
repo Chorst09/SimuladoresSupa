@@ -939,13 +939,19 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 }
             } else {
                 // Mapear propostas para o formato esperado pelo gerador
+                console.log('📊 Total de propostas:', proposals.length);
+                console.log('📋 Propostas:', proposals);
+                
                 const proposalsWithBaseId = proposals.map((p: any) => ({
                     base_id: p.base_id || p.baseId || ''
                 }));
                 
+                console.log('🔄 Propostas mapeadas:', proposalsWithBaseId);
+                
                 // Gerar ID único para a proposta
                 const baseId = generateNextProposalId(proposalsWithBaseId, 'RADIO', proposalVersion);
                 console.log('🆔 ID gerado para nova proposta:', baseId);
+                console.log('📝 Versão da proposta:', proposalVersion);
                 
                 const proposalToSave = {
                     base_id: baseId,
