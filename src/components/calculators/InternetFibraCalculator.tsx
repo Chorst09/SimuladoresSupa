@@ -85,7 +85,8 @@ interface FibraPlan {
 
 interface Proposal {
     id: string;
-    baseId: string;
+    baseId?: string;  // Formato antigo (camelCase)
+    base_id?: string; // Formato novo (snake_case do banco)
     version: number;
     client: ClientData | string;
     accountManager: AccountManagerData | string;
@@ -937,8 +938,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     throw new Error('Erro ao atualizar proposta');
                 }
             } else {
+                // Mapear propostas para o formato esperado pelo gerador
+                const proposalsWithBaseId = proposals.map(p => ({
+                    base_id: p.base_id || p.baseId || ''
+                }));
+                
                 // Gerar ID único para a proposta
-                const baseId = generateNextProposalId(proposals, 'FIBER', proposalVersion);
+                const baseId = generateNextProposalId(proposalsWithBaseId, 'FIBER', proposalVersion);
                 console.log('🆔 ID gerado para nova proposta:', baseId);
                 console.log('📊 Propostas existentes:', proposals.length);
                 
