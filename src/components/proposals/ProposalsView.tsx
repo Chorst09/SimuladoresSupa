@@ -32,9 +32,19 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
     console.log('ProposalsView Debug:', {
       totalProposals: proposals.length,
       proposals: proposals.slice(0, 3),
-      user: user
+      user: user,
+      accountManagers: accountManagers,
+      selectedAccountManager: selectedAccountManager
     });
-  }, [proposals, user]);
+    
+    // Log de todos os gerentes nas propostas
+    console.log('Gerentes nas propostas:', proposals.map(p => ({
+      title: p.title,
+      accountManager: p.accountManager,
+      accountManagerType: typeof p.accountManager,
+      accountManagerName: typeof p.accountManager === 'string' ? p.accountManager : p.accountManager?.name
+    })));
+  }, [proposals, user, accountManagers, selectedAccountManager]);
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAccountManager, setSelectedAccountManager] = useState<string>('all');
@@ -76,6 +86,15 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
       const proposalManager = typeof proposal.accountManager === 'string' 
         ? proposal.accountManager 
         : proposal.accountManager?.name || '';
+      
+      // Debug log
+      console.log('Filtro Debug:', {
+        selectedManager: selectedAccountManager,
+        proposalManager: proposalManager,
+        accountManagerType: typeof proposal.accountManager,
+        accountManagerRaw: proposal.accountManager,
+        match: proposalManager === selectedAccountManager
+      });
       
       if (proposalManager !== selectedAccountManager) {
         return false;
