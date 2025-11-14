@@ -37,9 +37,26 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
   }, [proposals, user]);
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedAccountManager, setSelectedAccountManager] = useState<string>('all');
   const [showProposalTypeDialog, setShowProposalTypeDialog] = useState(false);
   const [showCommercialProposal, setShowCommercialProposal] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+
+  // Extrair lista única de gerentes de contas
+  const accountManagers = React.useMemo(() => {
+    const managers = new Set<string>();
+    proposals.forEach(proposal => {
+      if (proposal.accountManager) {
+        const managerName = typeof proposal.accountManager === 'string' 
+          ? proposal.accountManager 
+          : proposal.accountManager?.name;
+        if (managerName) {
+          managers.add(managerName);
+        }
+      }
+    });
+    return Array.from(managers).sort();
+  }, [proposals]);
 
   const filteredProposals = proposals.filter(proposal => {
     if (!proposal) return false; // Defensively handle null/undefined proposals in the array
@@ -51,8 +68,20 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
     const accountManagerMatch = (typeof proposal.accountManager === 'string' && proposal.accountManager.toLowerCase().includes(term)) ||
                                (typeof proposal.accountManager === 'object' && proposal.accountManager?.name?.toLowerCase().includes(term));
 
-    const isMatch = titleMatch || clientMatch || accountManagerMatch;
-    return isMatch;
+    const searchMatch = titleMatch || clientMatch || accountManagerMatch;
+
+    // Filtro por gerente de contas
+    if (selectedAccountManager !== 'all') {
+      const proposalManager = typeof proposal.accountManager === 'string' 
+        ? proposal.accountManager 
+        : proposal.accountManager?.name || '';
+      
+      if (proposalManager !== selectedAccountManager) {
+        return false;
+      }
+    }
+
+    return searchMatch;
   });
 
   const getStatusColor = (status: string) => {
@@ -259,14 +288,44 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
         </div>
       </div>
 
-      {/* Filtro de Busca */}
-      <div className="flex items-center space-x-2">
+      {/* Filtros de Busca */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Input
           placeholder="Buscar propostas..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400 focus:border-cyan-400"
         />
+        
+        <div className="flex items-center gap-2">
+          <User className="h-4 w-4 text-slate-400" />
+          <select
+            value={selectedAccountManager}
+            onChange={(e) => setSelectedAccountManager(e.target.value)}
+            className="bg-slate-800/50 border border-slate-600 text-white rounded-md px-3 py-2 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 min-w-[200px]"
+          >
+            <option value="all">Todos os Gerentes</option>
+            {accountManagers.map((manager) => (
+              <option key={manager} value={manager}>
+                {manager}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {(searchTerm || selectedAccountManager !== 'all') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedAccountManager('all');
+            }}
+            className="text-slate-400 hover:text-white hover:bg-slate-700/50"
+          >
+            Limpar Filtros
+          </Button>
+        )}
       </div>
 
       {/* Tabela de Propostas Moderna */}
