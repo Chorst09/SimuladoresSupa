@@ -15,6 +15,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:commission": "jest --testPathPattern=commission",
+    "check-env": "node scripts/check-env.js",
     "db:setup": "./scripts/setup-database.sh",
     "db:reset": "npx prisma db push --force-reset && npx prisma db seed",
     "db:seed": "npx prisma db seed",
