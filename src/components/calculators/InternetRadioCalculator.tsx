@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
 import { Proposal, UserProfile, ClientData, AccountManagerData } from '@/lib/types'; // Importar a interface Proposal, UserProfile, ClientData e AccountManagerData do arquivo centralizado
+import { generateNextProposalId } from '@/lib/proposal-id-generator';
 import {
     Wifi,
     Calculator,
@@ -937,7 +938,17 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     throw new Error('Erro ao atualizar proposta');
                 }
             } else {
+                // Mapear propostas para o formato esperado pelo gerador
+                const proposalsWithBaseId = proposals.map((p: any) => ({
+                    base_id: p.base_id || p.baseId || ''
+                }));
+                
+                // Gerar ID único para a proposta
+                const baseId = generateNextProposalId(proposalsWithBaseId, 'RADIO', proposalVersion);
+                console.log('🆔 ID gerado para nova proposta:', baseId);
+                
                 const proposalToSave = {
+                    base_id: baseId,
                     title: `Proposta Internet Rádio V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
@@ -961,7 +972,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     changes: proposalChanges
                 };
 
-                console.log('Dados da proposta a ser salva:', proposalToSave);
+                console.log('📤 Dados da proposta a ser salva:', proposalToSave);
 
                 const response = await fetch('/api/proposals', {
                     method: 'POST',
