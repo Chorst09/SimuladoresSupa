@@ -971,6 +971,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     changes: proposalChanges
                 };
 
+                console.log('📤 Enviando proposta para API:', proposalToSave);
+                
                 const response = await fetch('/api/proposals', {
                     method: 'POST',
                     headers: {
@@ -981,10 +983,15 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 });
 
                 if (response.ok) {
-                    const savedProposal = await response.json();
-                    alert(`Proposta ${savedProposal.id} salva com sucesso!`);
+                    const result = await response.json();
+                    console.log('✅ Resposta da API:', result);
+                    const savedProposal = result.data || result;
+                    console.log('💾 Proposta salva:', savedProposal);
+                    alert(`Proposta ${savedProposal.base_id || savedProposal.id} salva com sucesso!`);
                     setCurrentProposal(savedProposal);
                 } else {
+                    const errorText = await response.text();
+                    console.error('❌ Erro da API:', errorText);
                     throw new Error('Erro ao salvar proposta');
                 }
             }
