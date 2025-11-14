@@ -30,6 +30,8 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAccountManager, setSelectedAccountManager] = useState<string>('all');
+  const [appliedAccountManager, setAppliedAccountManager] = useState<string>('all');
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
   const [showProposalTypeDialog, setShowProposalTypeDialog] = useState(false);
   const [showCommercialProposal, setShowCommercialProposal] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
@@ -60,6 +62,20 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
     return Array.from(managers).sort();
   }, [proposals]);
 
+  // Função para aplicar filtros
+  const handleApplyFilters = () => {
+    setAppliedAccountManager(selectedAccountManager);
+    setAppliedSearchTerm(searchTerm);
+  };
+
+  // Função para limpar filtros
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedAccountManager('all');
+    setAppliedSearchTerm('');
+    setAppliedAccountManager('all');
+  };
+
   // Debug effect
   React.useEffect(() => {
     console.log('ProposalsView Debug:', {
@@ -67,7 +83,8 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
       proposals: proposals.slice(0, 3),
       user: user,
       accountManagers: accountManagers,
-      selectedAccountManager: selectedAccountManager
+      selectedAccountManager: selectedAccountManager,
+      appliedAccountManager: appliedAccountManager
     });
     
     // Log de todos os gerentes nas propostas
@@ -77,34 +94,34 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
       accountManagerType: typeof p.accountManager,
       accountManagerName: typeof p.accountManager === 'string' ? p.accountManager : p.accountManager?.name
     })));
-  }, [proposals, user, accountManagers, selectedAccountManager]);
+  }, [proposals, user, accountManagers, selectedAccountManager, appliedAccountManager]);
 
   const filteredProposals = proposals.filter(proposal => {
     if (!proposal) return false; // Defensively handle null/undefined proposals in the array
     
-    // Filtro por gerente de contas
-    if (selectedAccountManager !== 'all') {
+    // Filtro por gerente de contas (usando o filtro aplicado)
+    if (appliedAccountManager !== 'all') {
       const proposalManager = typeof proposal.accountManager === 'string' 
         ? proposal.accountManager 
         : proposal.accountManager?.name || '';
       
       // Debug log
       console.log('Filtro Debug:', {
-        selectedManager: selectedAccountManager,
+        appliedManager: appliedAccountManager,
         proposalManager: proposalManager,
         accountManagerType: typeof proposal.accountManager,
         accountManagerRaw: proposal.accountManager,
-        match: proposalManager === selectedAccountManager
+        match: proposalManager === appliedAccountManager
       });
       
-      if (proposalManager !== selectedAccountManager) {
+      if (proposalManager !== appliedAccountManager) {
         return false;
       }
     }
 
-    // Filtro por termo de busca (apenas se houver termo)
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+    // Filtro por termo de busca (usando o termo aplicado)
+    if (appliedSearchTerm) {
+      const term = appliedSearchTerm.toLowerCase();
 
       const titleMatch = typeof proposal.title === 'string' && proposal.title.toLowerCase().includes(term);
       const clientMatch = (typeof proposal.client === 'string' && proposal.client.toLowerCase().includes(term)) ||
@@ -328,6 +345,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
           placeholder="Buscar propostas..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleApplyFilters()}
           className="max-w-sm bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400 focus:border-cyan-400"
         />
         
@@ -347,14 +365,18 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
           </select>
         </div>
 
-        {(searchTerm || selectedAccountManager !== 'all') && (
+        <Button
+          onClick={handleApplyFilters}
+          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white border-0"
+        >
+          Aplicar Filtro
+        </Button>
+
+        {(appliedSearchTerm || appliedAccountManager !== 'all') && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setSearchTerm('');
-              setSelectedAccountManager('all');
-            }}
+            onClick={handleClearFilters}
             className="text-slate-400 hover:text-white hover:bg-slate-700/50"
           >
             Limpar Filtros
