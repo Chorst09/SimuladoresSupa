@@ -231,6 +231,8 @@ export class CalculatorLogger {
    * Salva logs no localStorage
    */
   private saveToStorage(): void {
+    if (typeof window === 'undefined') return;
+    
     try {
       const recentLogs = this.logs.slice(-100); // Salva apenas os 100 mais recentes
       localStorage.setItem('calculator-logs', JSON.stringify(recentLogs));
@@ -243,6 +245,8 @@ export class CalculatorLogger {
    * Carrega logs do localStorage
    */
   private loadFromStorage(): void {
+    if (typeof window === 'undefined') return;
+    
     try {
       const stored = localStorage.getItem('calculator-logs');
       if (stored) {
@@ -432,8 +436,21 @@ export class CalculatorLogger {
   }
 }
 
-// Instância global do logger
-export const calculatorLogger = new CalculatorLogger();
+// Instância global do logger (lazy initialization)
+let calculatorLoggerInstance: CalculatorLogger | null = null;
+
+function getCalculatorLogger(): CalculatorLogger {
+  if (!calculatorLoggerInstance) {
+    calculatorLoggerInstance = new CalculatorLogger();
+  }
+  return calculatorLoggerInstance;
+}
+
+export const calculatorLogger = {
+  get instance() {
+    return getCalculatorLogger();
+  }
+};
 
 // Funções de conveniência
 export const logCalculatorAction = (
@@ -443,11 +460,13 @@ export const logCalculatorAction = (
   data?: any,
   userId?: string
 ) => {
-  calculatorLogger.logCalculatorAction(calculatorType, action, message, data, userId);
+  if (typeof window === 'undefined') return;
+  getCalculatorLogger().logCalculatorAction(calculatorType, action, message, data, userId);
 };
 
 export const logError = (error: Error, context?: string, additionalData?: any) => {
-  calculatorLogger.logError(error, context, additionalData);
+  if (typeof window === 'undefined') return;
+  getCalculatorLogger().logError(error, context, additionalData);
 };
 
 export const logPerformance = (
@@ -456,7 +475,8 @@ export const logPerformance = (
   context?: string,
   additionalData?: any
 ) => {
-  calculatorLogger.logPerformance(operation, duration, context, additionalData);
+  if (typeof window === 'undefined') return;
+  getCalculatorLogger().logPerformance(operation, duration, context, additionalData);
 };
 
 // Wrapper para medir performance de funções

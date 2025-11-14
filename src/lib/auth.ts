@@ -57,26 +57,37 @@ export function verifyToken(token: string): User | null {
 // Função para fazer login
 export async function signIn(email: string, password: string): Promise<AuthResult> {
   try {
+    console.log('🔐 Tentando fazer login:', email);
+    
     const { prisma } = await import('./prisma');
 
+    console.log('📊 Buscando usuário no banco...');
     const user = await prisma.user.findUnique({
       where: { email },
       include: { profile: true }
     });
 
     if (!user) {
+      console.log('❌ Usuário não encontrado:', email);
       return { user: null, error: 'Usuário não encontrado' };
     }
 
+    console.log('✅ Usuário encontrado:', user.email);
+
     if (!user.encrypted_password) {
+      console.log('❌ Senha não configurada para:', email);
       return { user: null, error: 'Senha não configurada' };
     }
 
+    console.log('🔑 Verificando senha...');
     const isValidPassword = await verifyPassword(password, user.encrypted_password);
 
     if (!isValidPassword) {
+      console.log('❌ Senha incorreta para:', email);
       return { user: null, error: 'Senha incorreta' };
     }
+
+    console.log('✅ Login bem-sucedido:', email);
 
     const userData: User = {
       id: user.id,
@@ -86,9 +97,14 @@ export async function signIn(email: string, password: string): Promise<AuthResul
     };
 
     return { user: userData, error: null };
-  } catch (error) {
-    console.error('Sign in error:', error);
-    return { user: null, error: 'Erro interno do servidor' };
+  } catch (error: any) {
+    console.error('❌ Sign in error:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    return { user: null, error: `Erro interno: ${error.message}` };
   }
 }
 

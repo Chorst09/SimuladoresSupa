@@ -1,4 +1,5 @@
 // src/app/layout.tsx
+import '@/lib/polyfills';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/hooks/use-auth';
