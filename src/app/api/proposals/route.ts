@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
           version: true,
           client: true,
           client_data: true,
+          account_manager: true,
           products: true,
           items_data: true,
           metadata: true,
@@ -86,6 +87,7 @@ export async function GET(request: NextRequest) {
       createdAt: p.created_at,
       updatedAt: p.updated_at,
       clientData: p.client_data,
+      accountManager: p.account_manager,
       itemsData: p.items_data
     }))
 
