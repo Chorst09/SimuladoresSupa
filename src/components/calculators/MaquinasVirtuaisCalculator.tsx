@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CommissionTablesUnified from './CommissionTablesUnified';
 import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
+import { generateNextProposalId } from '@/lib/proposal-id-generator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -1696,7 +1697,17 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
             const proposalVersion = getProposalVersion();
 
+            // Mapear propostas para o formato esperado pelo gerador
+            const proposalsWithBaseId = savedProposals.map((p: any) => ({
+                base_id: p.base_id || p.baseId || ''
+            }));
+            
+            // Gerar ID único para a proposta
+            const baseId = generateNextProposalId(proposalsWithBaseId, 'VM', proposalVersion);
+            console.log('🆔 ID gerado para nova proposta VM:', baseId);
+
             const proposalToSave = {
+                base_id: baseId,
                 title: `Proposta Máquinas Virtuais V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                 client: clientData.companyName || clientData.name || 'Cliente não informado',
                 accountManager: accountManagerData.name || 'Gerente não informado',
