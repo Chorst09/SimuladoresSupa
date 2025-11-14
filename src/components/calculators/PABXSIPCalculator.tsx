@@ -37,6 +37,7 @@ interface AccountManagerData {
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate, getDirectorCommissionRate } from '@/hooks/use-commissions';
+import { generateNextProposalId } from '@/lib/proposal-id-generator';
 
 // Interfaces
 interface PABXResult {
@@ -1163,7 +1164,17 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         const proposalVersion = hasDiscounts ? 2 : 1;
 
         try {
+            // Mapear propostas para o formato esperado pelo gerador
+            const proposalsWithBaseId = savedProposals.map((p: any) => ({
+                base_id: p.base_id || p.baseId || ''
+            }));
+            
+            // Gerar ID único para a proposta
+            const baseId = generateNextProposalId(proposalsWithBaseId, 'PABX', proposalVersion);
+            console.log('🆔 ID gerado para nova proposta PABX:', baseId);
+
             const proposalData = {
+                base_id: baseId,
                 title: `Proposta PABX/SIP - ${clientData.name}`,
                 client: clientData.name,
                 type: 'PABX',
@@ -1524,7 +1535,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                 ) : (
                                     filteredProposals.map((proposal) => (
                                         <TableRow key={proposal.id} className="border-slate-800 hover:bg-slate-800/50">
-                                            <TableCell className="text-slate-300">{proposal.baseId || proposal.id}</TableCell>
+                                            <TableCell className="text-slate-300">{proposal.base_id || proposal.baseId || proposal.id}</TableCell>
                                             <TableCell className="text-slate-300">{typeof proposal.client === 'string' ? proposal.client : proposal.client?.name || 'Sem nome'} (v{proposal.version})</TableCell>
                                             <TableCell className="text-slate-300">{
                                                 typeof proposal.client === 'object' && proposal.client?.projectName

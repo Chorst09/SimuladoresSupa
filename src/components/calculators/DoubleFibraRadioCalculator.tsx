@@ -16,6 +16,7 @@ import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
+import { generateNextProposalId } from '@/lib/proposal-id-generator';
 
 import {
     Wifi,
@@ -1002,7 +1003,17 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                     throw new Error('Erro ao atualizar proposta');
                 }
             } else {
+                // Mapear propostas para o formato esperado pelo gerador
+                const proposalsWithBaseId = proposals.map((p: any) => ({
+                    base_id: p.base_id || p.baseId || ''
+                }));
+                
+                // Gerar ID único para a proposta
+                const baseId = generateNextProposalId(proposalsWithBaseId, 'DOUBLE', proposalVersion);
+                console.log('🆔 ID gerado para nova proposta Double:', baseId);
+
                 const proposalToSave = {
+                    base_id: baseId,
                     title: `Proposta Internet Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
                     client: clientData.companyName || clientData.name || 'Cliente não informado',
                     value: finalTotalMonthly,
@@ -1420,7 +1431,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                 <TableBody>
                                     {filteredProposals.map(p => (
                                         <TableRow key={p.id} className="border-slate-800">
-                                            <TableCell>{p.baseId || p.id}</TableCell>
+                                            <TableCell>{p.base_id || p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>
                                             <TableCell>{
                                                 typeof p.client === 'object' && p.client?.projectName

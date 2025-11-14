@@ -93,24 +93,34 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
+    // Aceitar tanto snake_case quanto camelCase
     const {
       title,
       client,
       type,
       value,
       total_setup,
+      totalSetup,
       total_monthly,
+      totalMonthly,
       contract_period,
+      contractPeriod,
       expiry_date,
+      expiryDate,
       products,
       items_data,
+      itemsData,
       client_data,
+      clientData,
       metadata,
-      base_id // Aceitar base_id do cliente se fornecido
+      base_id,
+      baseId,
+      date,
+      status
     } = body
 
     // SEMPRE usar o base_id fornecido, ou gerar um genérico
-    const finalBaseId = base_id || `PROP-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase()
+    const finalBaseId = base_id || baseId || `PROP-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase()
     
     console.log('🆔 Salvando proposta com base_id:', finalBaseId)
 
@@ -120,15 +130,16 @@ export async function POST(request: NextRequest) {
         title,
         client: client || {},
         type: type || 'standard',
-        status: 'Rascunho',
+        status: status || 'Rascunho',
         value: value || 0,
-        total_setup: total_setup || 0,
-        total_monthly: total_monthly || 0,
-        contract_period: contract_period || 12,
-        expiry_date: expiry_date ? new Date(expiry_date) : null,
+        total_setup: total_setup || totalSetup || 0,
+        total_monthly: total_monthly || totalMonthly || 0,
+        contract_period: contract_period || contractPeriod || 12,
+        date: date ? new Date(date) : new Date(),
+        expiry_date: expiry_date || expiryDate ? new Date(expiry_date || expiryDate) : null,
         products: products || [],
-        items_data: items_data || [],
-        client_data: client_data || null,
+        items_data: items_data || itemsData || [],
+        client_data: client_data || clientData || null,
         metadata: metadata || {}
       },
       include: {

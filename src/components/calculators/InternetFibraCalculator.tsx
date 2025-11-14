@@ -1364,7 +1364,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 <TableBody>
                                     {filteredProposals.map((p: Proposal) => (
                                         <TableRow key={p.id} className="border-slate-800">
-                                            <TableCell>{p.baseId || p.id}</TableCell>
+                                            <TableCell>{p.base_id || p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>
                                             <TableCell>{
                                                 typeof p.client === 'object' && p.client?.projectName
