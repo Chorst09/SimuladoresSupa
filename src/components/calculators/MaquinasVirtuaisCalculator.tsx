@@ -1925,7 +1925,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                             : currentProposal.clientData?.projectName || 'Projeto não informado'
                                     }</p>
                                     <p className="text-gray-600 text-xs mt-2">
-                                        <strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}
+                                        <strong>ID da Proposta:</strong> {currentProposal.base_id || currentProposal.baseId || currentProposal.id}
                                     </p>
                                     <p className="text-gray-600 text-xs">
                                         <strong>Versão:</strong> v{currentProposal.version || 1}
@@ -2052,7 +2052,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                         ) : (
                                             filteredProposals.map((p: Proposal) => (
                                                 <TableRow key={p.id} className="border-slate-800">
-                                                    <TableCell>{p.base_id || p.baseId || p.id}</TableCell>
+                                                    <TableCell>{p.base_id || p.base_id || p.baseId || p.id}</TableCell>
                                                     <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Sem nome'} (v{p.version})</TableCell>
                                                     <TableCell>{
                                                         typeof p.client === 'object' && p.client?.projectName

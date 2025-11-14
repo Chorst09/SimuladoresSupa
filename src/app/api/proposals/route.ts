@@ -168,10 +168,19 @@ export async function POST(request: NextRequest) {
       success: true,
       data: proposal
     }, { status: 201 })
-  } catch (error) {
-    console.error('Erro ao criar proposta:', error)
+  } catch (error: any) {
+    console.error('❌ Erro ao criar proposta:', error)
+    console.error('❌ Erro detalhado:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta
+    })
     return NextResponse.json(
-      { success: false, error: 'Erro interno do servidor' },
+      { 
+        success: false, 
+        error: 'Erro interno do servidor',
+        details: error.message 
+      },
       { status: 500 }
     )
   }

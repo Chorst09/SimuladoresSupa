@@ -1117,7 +1117,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
 
     const filteredProposals = proposals.filter(p =>
         p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase())
+        (p.base_id || p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handlePrint = () => {
@@ -1284,7 +1284,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                 <TableBody>
                                     {filteredProposals.map(p => (
                                         <TableRow key={p.id} className="border-slate-800">
-                                            <TableCell>{p.base_id || p.baseId || p.id}</TableCell>
+                                            <TableCell>{p.base_id || p.base_id || p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>
                                             <TableCell>{
                                                 typeof p.client === 'object' && p.client?.projectName
@@ -1373,7 +1373,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                             : currentProposal.clientData?.projectName || 'Projeto não informado'
                                     }</p>
                                     <p className="text-gray-600 text-xs mt-2">
-                                        <strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}
+                                        <strong>ID da Proposta:</strong> {currentProposal.base_id || currentProposal.baseId || currentProposal.id}
                                     </p>
                                     <p className="text-gray-600 text-xs">
                                         <strong>Versão:</strong> v{currentProposal.version || 1}
@@ -1447,7 +1447,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
-                                    <p><strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}</p>
+                                    <p><strong>ID da Proposta:</strong> {currentProposal.base_id || currentProposal.baseId || currentProposal.id}</p>
                                     <p><strong>Versão:</strong> {currentProposal.version}</p>
                                     <p><strong>Período do Contrato:</strong> {currentProposal.contractPeriod ? `${currentProposal.contractPeriod} meses` : 'N/A'}</p>
                                 </div>

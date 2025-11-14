@@ -1535,7 +1535,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                 ) : (
                                     filteredProposals.map((proposal) => (
                                         <TableRow key={proposal.id} className="border-slate-800 hover:bg-slate-800/50">
-                                            <TableCell className="text-slate-300">{proposal.base_id || proposal.baseId || proposal.id}</TableCell>
+                                            <TableCell className="text-slate-300">{proposal.base_id || proposal.base_id || proposal.baseId || proposal.id}</TableCell>
                                             <TableCell className="text-slate-300">{typeof proposal.client === 'string' ? proposal.client : proposal.client?.name || 'Sem nome'} (v{proposal.version})</TableCell>
                                             <TableCell className="text-slate-300">{
                                                 typeof proposal.client === 'object' && proposal.client?.projectName
@@ -1640,7 +1640,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                         : currentProposal.clientData?.projectName || 'Projeto não informado'
                                 }</p>
                                 <p className="text-gray-600 text-xs mt-2">
-                                    <strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}
+                                    <strong>ID da Proposta:</strong> {currentProposal.base_id || currentProposal.baseId || currentProposal.id}
                                 </p>
                                 <p className="text-gray-600 text-xs">
                                     <strong>Versão:</strong> v{currentProposal.version || 1}
@@ -1724,7 +1724,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                         ? new Date((currentProposal.createdAt as any).toDate()).toLocaleDateString('pt-BR')
                                         : (isNaN(new Date(currentProposal.createdAt).getTime()) ? 'N/A' : new Date(currentProposal.createdAt).toLocaleDateString('pt-BR'))
                                 ) : 'N/A'}</p>
-                                <p><strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}</p>
+                                <p><strong>ID da Proposta:</strong> {currentProposal.base_id || currentProposal.baseId || currentProposal.id}</p>
                                 <p><strong>Versão:</strong> {currentProposal.version || 1}</p>
                                 <p><strong>Período do Contrato:</strong> {currentProposal.contractPeriod ? `${currentProposal.contractPeriod} meses` : 'N/A'}</p>
                             </div>
