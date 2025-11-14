@@ -1376,7 +1376,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
     const filteredProposals = proposals.filter(p =>
         (typeof p.client === 'object' ? p.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) : p.client?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (p.base_id || p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase())
+        (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handlePrint = () => {
@@ -1543,7 +1543,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 <TableBody>
                                     {filteredProposals.map(p => (
                                         <TableRow key={p.id} className="border-slate-800">
-                                            <TableCell>{p.base_id || p.base_id || p.baseId || p.id}</TableCell>
+                                            <TableCell>{p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>
                                             <TableCell>{
                                                 typeof p.client === 'object' && p.client?.projectName
@@ -1614,23 +1614,23 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                     <p><strong>Nome:</strong> {
                                         typeof currentProposal.client === 'object' && currentProposal.client?.name
                                             ? currentProposal.client.name
-                                            : (currentProposal.client_data || currentProposal.clientData)?.name ||
+                                            : currentProposal.clientData?.name ||
                                             (typeof currentProposal.client === 'string' ? currentProposal.client : 'N/A')
                                     }</p>
                                     <p><strong>Email:</strong> {
                                         typeof currentProposal.client === 'object' && currentProposal.client?.email
                                             ? currentProposal.client.email
-                                            : (currentProposal.client_data || currentProposal.clientData)?.email || 'N/A'
+                                            : currentProposal.clientData?.email || 'N/A'
                                     }</p>
                                     <p><strong>Telefone:</strong> {
                                         typeof currentProposal.client === 'object' && currentProposal.client?.phone
                                             ? currentProposal.client.phone
-                                            : (currentProposal.client_data || currentProposal.clientData)?.phone || 'N/A'
+                                            : currentProposal.clientData?.phone || 'N/A'
                                     }</p>
                                     <p><strong>Contato:</strong> {
                                         typeof currentProposal.client === 'object' && currentProposal.client?.contact
                                             ? currentProposal.client.contact
-                                            : (currentProposal.client_data || currentProposal.clientData)?.contact || 'N/A'
+                                            : currentProposal.clientData?.contact || 'N/A'
                                     }</p>
                                 </div>
                             </div>
@@ -1643,7 +1643,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                             : currentProposal.clientData?.projectName || 'Projeto não informado'
                                     }</p>
                                     <p className="text-gray-600 text-xs mt-2">
-                                        <strong>ID da Proposta:</strong> {currentProposal.base_id || currentProposal.baseId || currentProposal.id}
+                                        <strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}
                                     </p>
                                     <p className="text-gray-600 text-xs">
                                         <strong>Versão:</strong> v{currentProposal.version || 1}
@@ -1717,7 +1717,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 </div>
                                 <div>
                                     <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
-                                    <p><strong>ID da Proposta:</strong> {currentProposal.base_id || currentProposal.baseId || currentProposal.id}</p>
+                                    <p><strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}</p>
                                     <p><strong>Versão:</strong> {currentProposal.version}</p>
                                     <p><strong>Período do Contrato:</strong> {currentProposal.contractPeriod ? `${currentProposal.contractPeriod} meses` : 'N/A'}</p>
                                 </div>

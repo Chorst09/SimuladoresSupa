@@ -1266,7 +1266,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     const filteredProposals = proposals.filter(p => {
         const clientName = typeof p.client === 'string' ? p.client : p.client?.name || '';
         return clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.base_id || p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase());
+            (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase());
     });
 
     const handlePrint = () => {
@@ -1433,7 +1433,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                 <TableBody>
                                     {filteredProposals.map(p => (
                                         <TableRow key={p.id} className="border-slate-800">
-                                            <TableCell>{p.base_id || p.base_id || p.baseId || p.id}</TableCell>
+                                            <TableCell>{p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>
                                             <TableCell>{
                                                 typeof p.client === 'object' && p.client?.projectName
@@ -1533,7 +1533,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                             : currentProposal.clientData?.projectName || 'Projeto não informado'
                                     }</p>
                                     <p className="text-gray-600 text-xs mt-2">
-                                        <strong>ID da Proposta:</strong> {currentProposal.base_id || currentProposal.baseId || currentProposal.id}
+                                        <strong>ID da Proposta:</strong> {currentProposal.baseId || currentProposal.id}
                                     </p>
                                     <p className="text-gray-600 text-xs">
                                         <strong>Versão:</strong> v{currentProposal.version || 1}
