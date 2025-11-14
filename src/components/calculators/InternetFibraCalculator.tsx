@@ -447,7 +447,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 if (result.success && result.data && result.data.proposals) {
                     // Filter for Fibra Internet proposals
                     const fibraProposals = result.data.proposals.filter((p: any) =>
-                        p.type === 'FIBER' || p.base_id?.startsWith('Prop_InternetFibra_')
+                        p.type === 'FIBER' || p.base_id?.startsWith('Prop_Inter_Fibra_')
                     );
                     setProposals(fibraProposals);
                 } else {

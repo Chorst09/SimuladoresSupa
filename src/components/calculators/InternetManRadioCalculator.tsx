@@ -404,7 +404,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                 // Filter for Internet Man Radio proposals
                 if (result.success && result.data && result.data.proposals) {
                     const manRadioProposals = result.data.proposals.filter((p: any) =>
-                        p.type === 'MANRADIO' || p.base_id?.startsWith('Prop_ManRadio_')
+                        p.type === 'MANRADIO' || p.base_id?.startsWith('Prop_InterMan_Radio_')
                     );
                     setProposals(manRadioProposals);
                 } else {

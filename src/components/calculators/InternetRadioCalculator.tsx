@@ -467,7 +467,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 // Filter for Radio Internet proposals
                 if (result.success && result.data && result.data.proposals) {
                     const radioProposals = result.data.proposals.filter((p: any) =>
-                        p.type === 'RADIO' || p.base_id?.startsWith('Prop_InternetRadio_')
+                        p.type === 'RADIO' || p.base_id?.startsWith('Prop_Inter_Radio_')
                     );
                     setProposals(radioProposals);
                 } else {

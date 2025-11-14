@@ -529,7 +529,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 // Filter for Double Fibra Radio proposals
                 if (result.success && result.data && result.data.proposals) {
                     const doubleProposals = result.data.proposals.filter((p: any) =>
-                        p.type === 'DOUBLE' || p.base_id?.startsWith('Prop_Double_')
+                        p.type === 'DOUBLE' || p.base_id?.startsWith('Prop_Inter_Double_')
                     );
                     setProposals(doubleProposals);
                 } else {

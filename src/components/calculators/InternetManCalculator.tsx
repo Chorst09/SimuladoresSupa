@@ -589,7 +589,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 // Filter for MAN Internet proposals
                 if (result.success && result.data && result.data.proposals) {
                     const manProposals = result.data.proposals.filter((p: any) =>
-                        p.type === 'INTERNET_MAN_FIBRA' || p.base_id?.startsWith('Prop_ManFibra_')
+                        p.type === 'INTERNET_MAN_FIBRA' || p.base_id?.startsWith('Prop_Inter_Man_')
                     );
                     setProposals(manProposals);
                 } else {
