@@ -92,7 +92,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    console.log('📥 API recebeu body:', JSON.stringify(body, null, 2))
     
     const {
       title,
@@ -110,18 +109,10 @@ export async function POST(request: NextRequest) {
       base_id // Aceitar base_id do cliente se fornecido
     } = body
 
-    console.log('🆔 base_id recebido:', base_id)
-
-    // Se base_id não foi fornecido, gerar um genérico
-    let finalBaseId = base_id
-    if (!finalBaseId) {
-      console.log('⚠️ base_id não fornecido, gerando genérico')
-      const timestamp = Date.now().toString(36)
-      const random = Math.random().toString(36).substring(2, 8)
-      finalBaseId = `PROP-${timestamp}-${random}`.toUpperCase()
-    }
+    // SEMPRE usar o base_id fornecido, ou gerar um genérico
+    const finalBaseId = base_id || `PROP-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase()
     
-    console.log('✅ base_id final:', finalBaseId)
+    console.log('🆔 Salvando proposta com base_id:', finalBaseId)
 
     const proposal = await prisma.proposal.create({
       data: {
@@ -154,6 +145,12 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+    })
+
+    console.log('✅ Proposta salva no banco:', {
+      id: proposal.id,
+      base_id: proposal.base_id,
+      title: proposal.title
     })
 
     return NextResponse.json({
