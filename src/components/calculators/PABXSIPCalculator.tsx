@@ -1243,7 +1243,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         }
 
         try {
-            const response = await fetch('/api/proposals', {
+            // Buscar TODAS as propostas para evitar IDs duplicados
+            const response = await fetch('/api/proposals?all=true', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1258,6 +1259,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     const pabxProposals = result.data.proposals.filter((p: any) =>
                         p.type === 'PABX' || p.base_id?.startsWith('Prop_PabxSip_')
                     );
+                    console.log(`📊 Total de propostas PABX carregadas: ${pabxProposals.length}`);
                     setSavedProposals(pabxProposals);
                 } else {
                     setSavedProposals([]);

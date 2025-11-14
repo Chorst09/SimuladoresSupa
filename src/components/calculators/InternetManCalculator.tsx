@@ -576,7 +576,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }
 
         try {
-            const response = await fetch('/api/proposals', {
+            // Buscar TODAS as propostas para evitar IDs duplicados
+            const response = await fetch('/api/proposals?all=true', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -591,6 +592,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     const manProposals = result.data.proposals.filter((p: any) =>
                         p.type === 'INTERNET_MAN_FIBRA' || p.base_id?.startsWith('Prop_Inter_Man_')
                     );
+                    console.log(`📊 Total de propostas INTERNET_MAN_FIBRA carregadas: ${manProposals.length}`);
                     setProposals(manProposals);
                 } else {
                     setProposals([]);
@@ -1548,7 +1550,18 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     ? p.client.projectName
                                                     : p.clientData?.projectName || 'Projeto não informado'
                                             }</TableCell>
-                                            <TableCell>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</TableCell>
+                                            <TableCell>{
+                                                (() => {
+                                                    const dateToUse = p.date || p.createdAt;
+                                                    if (!dateToUse) return 'N/A';
+                                                    try {
+                                                        const date = new Date(dateToUse);
+                                                        return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('pt-BR');
+                                                    } catch {
+                                                        return 'N/A';
+                                                    }
+                                                })()
+                                            }</TableCell>
                                             <TableCell>{formatCurrency(p.totalMonthly || p.value || 0)}</TableCell>
                                             <TableCell>
                                                 <div className="flex gap-2">

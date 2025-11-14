@@ -419,7 +419,8 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
         }
 
         try {
-            const response = await fetch('/api/proposals', {
+            // Buscar TODAS as propostas para evitar IDs duplicados
+            const response = await fetch('/api/proposals?all=true', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -434,6 +435,7 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                     const fibraProposals = result.data.proposals.filter((p: any) =>
                         p.type === 'FIBER' || p.base_id?.startsWith('Prop_Inter_Fibra_')
                     );
+                    console.log(`📊 Total de propostas FIBER carregadas: ${fibraProposals.length}`);
                     setProposals(fibraProposals);
                 } else {
                     setProposals([]);
@@ -1291,7 +1293,18 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                                     ? p.client.projectName
                                                     : p.clientData?.projectName || 'Projeto não informado'
                                             }</TableCell>
-                                            <TableCell>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</TableCell>
+                                            <TableCell>{
+                                                (() => {
+                                                    const dateToUse = p.date || p.createdAt;
+                                                    if (!dateToUse) return 'N/A';
+                                                    try {
+                                                        const date = new Date(dateToUse);
+                                                        return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('pt-BR');
+                                                    } catch {
+                                                        return 'N/A';
+                                                    }
+                                                })()
+                                            }</TableCell>
                                             <TableCell>{formatCurrency(p.totalMonthly || p.value || 0)}</TableCell>
                                             <TableCell>
                                                 <div className="flex gap-2">

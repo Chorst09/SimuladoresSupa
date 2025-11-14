@@ -230,7 +230,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         try {
             console.log('🔍 Fetching VM proposals from API...');
-            const response = await fetch('/api/proposals?type=VM', {
+            // Buscar TODAS as propostas para evitar IDs duplicados
+            const response = await fetch('/api/proposals?type=VM&all=true', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',

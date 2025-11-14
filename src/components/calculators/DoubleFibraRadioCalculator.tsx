@@ -516,7 +516,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         }
 
         try {
-            const response = await fetch('/api/proposals', {
+            // Buscar TODAS as propostas para evitar IDs duplicados
+            const response = await fetch('/api/proposals?all=true', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -531,6 +532,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                     const doubleProposals = result.data.proposals.filter((p: any) =>
                         p.type === 'DOUBLE' || p.base_id?.startsWith('Prop_Inter_Double_')
                     );
+                    console.log(`📊 Total de propostas DOUBLE carregadas: ${doubleProposals.length}`);
                     setProposals(doubleProposals);
                 } else {
                     setProposals([]);
@@ -1438,7 +1440,18 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                     ? p.client.projectName
                                                     : p.clientData?.projectName || 'Projeto não informado'
                                             }</TableCell>
-                                            <TableCell>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</TableCell>
+                                            <TableCell>{
+                                                (() => {
+                                                    const dateToUse = p.date || p.createdAt;
+                                                    if (!dateToUse) return 'N/A';
+                                                    try {
+                                                        const date = new Date(dateToUse);
+                                                        return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('pt-BR');
+                                                    } catch {
+                                                        return 'N/A';
+                                                    }
+                                                })()
+                                            }</TableCell>
                                             <TableCell>{formatCurrency(p.totalMonthly || p.value || 0)}</TableCell>
                                             <TableCell>
                                                 <div className="flex gap-2">

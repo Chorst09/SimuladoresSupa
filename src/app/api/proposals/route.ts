@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
+    const all = searchParams.get('all') === 'true' // Novo parâmetro para buscar todas
     const status = searchParams.get('status')
     const type = searchParams.get('type')
     const search = searchParams.get('search')
@@ -30,12 +31,12 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    // Buscar propostas com paginação
-    const [proposals, total] = await Promise.all([
+    // Buscar propostas com ou sem paginação
+    const [proposalsRaw, total] = await Promise.all([
       prisma.proposal.findMany({
         where,
-        skip,
-        take: limit,
+        skip: all ? undefined : skip,
+        take: all ? undefined : limit,
         orderBy: { created_at: 'desc' },
         select: {
           id: true,
@@ -51,6 +52,12 @@ export async function GET(request: NextRequest) {
           expiry_date: true,
           created_at: true,
           updated_at: true,
+          version: true,
+          client: true,
+          client_data: true,
+          products: true,
+          items_data: true,
+          metadata: true,
           creator: {
             select: {
               id: true,
@@ -67,6 +74,20 @@ export async function GET(request: NextRequest) {
       }),
       prisma.proposal.count({ where })
     ])
+
+    // Transformar para camelCase para compatibilidade com frontend
+    const proposals = proposalsRaw.map(p => ({
+      ...p,
+      baseId: p.base_id,
+      totalSetup: p.total_setup,
+      totalMonthly: p.total_monthly,
+      contractPeriod: p.contract_period,
+      expiryDate: p.expiry_date,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+      clientData: p.client_data,
+      itemsData: p.items_data
+    }))
 
     return NextResponse.json({
       success: true,
@@ -90,8 +111,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let body: any
+  
   try {
-    const body = await request.json()
+    body = await request.json()
     
     // Aceitar tanto snake_case quanto camelCase
     const {
@@ -116,13 +139,33 @@ export async function POST(request: NextRequest) {
       base_id,
       baseId,
       date,
-      status
+      status,
+      version
     } = body
 
-    // SEMPRE usar o base_id fornecido, ou gerar um genérico
-    const finalBaseId = base_id || baseId || `PROP-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase()
+    // Gerar base_id único
+    let finalBaseId = base_id || baseId
     
-    console.log('🆔 Salvando proposta com base_id:', finalBaseId)
+    // Se não foi fornecido um base_id, gerar um único
+    if (!finalBaseId) {
+      finalBaseId = `PROP-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase()
+    }
+    
+    console.log('🆔 Tentando salvar proposta com base_id:', finalBaseId)
+
+    // Verificar se já existe uma proposta com este base_id
+    const existingProposal = await prisma.proposal.findUnique({
+      where: { base_id: finalBaseId }
+    })
+
+    if (existingProposal) {
+      console.log('⚠️ base_id já existe, gerando um novo com sufixo único')
+      // Se já existe, adicionar um sufixo único
+      const timestamp = Date.now().toString(36)
+      const random = Math.random().toString(36).substring(2, 6)
+      finalBaseId = `${finalBaseId}_${timestamp}${random}`.toUpperCase()
+      console.log('🆔 Novo base_id gerado:', finalBaseId)
+    }
 
     const proposal = await prisma.proposal.create({
       data: {
@@ -137,6 +180,7 @@ export async function POST(request: NextRequest) {
         contract_period: contract_period || contractPeriod || 12,
         date: date ? new Date(date) : new Date(),
         expiry_date: expiry_date || expiryDate ? new Date(expiry_date || expiryDate) : null,
+        version: version || 1,
         products: products || [],
         items_data: items_data || itemsData || [],
         client_data: client_data || clientData || null,
@@ -175,6 +219,67 @@ export async function POST(request: NextRequest) {
       code: error.code,
       meta: error.meta
     })
+    
+    // Se ainda assim houver erro de duplicata, tentar uma última vez com ID completamente aleatório
+    if (error.code === 'P2002' && error.meta?.target?.includes('base_id')) {
+      console.log('🔄 Tentando novamente com ID completamente aleatório')
+      try {
+        const randomBaseId = `PROP-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 12)}`.toUpperCase()
+        
+        const proposal = await prisma.proposal.create({
+          data: {
+            base_id: randomBaseId,
+            title: body.title,
+            client: body.client || {},
+            type: body.type || 'standard',
+            status: body.status || 'Rascunho',
+            value: body.value || 0,
+            total_setup: body.total_setup || body.totalSetup || 0,
+            total_monthly: body.total_monthly || body.totalMonthly || 0,
+            contract_period: body.contract_period || body.contractPeriod || 12,
+            date: body.date ? new Date(body.date) : new Date(),
+            expiry_date: body.expiry_date || body.expiryDate ? new Date(body.expiry_date || body.expiryDate) : null,
+            version: body.version || 1,
+            products: body.products || [],
+            items_data: body.items_data || body.itemsData || [],
+            client_data: body.client_data || body.clientData || null,
+            metadata: body.metadata || {}
+          },
+          include: {
+            creator: {
+              select: {
+                id: true,
+                email: true,
+                profile: {
+                  select: {
+                    full_name: true,
+                    role: true
+                  }
+                }
+              }
+            }
+          }
+        })
+        
+        console.log('✅ Proposta salva com ID alternativo:', randomBaseId)
+        
+        return NextResponse.json({
+          success: true,
+          data: proposal
+        }, { status: 201 })
+      } catch (retryError: any) {
+        console.error('❌ Erro na segunda tentativa:', retryError)
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Erro ao salvar proposta após múltiplas tentativas',
+            details: retryError.message 
+          },
+          { status: 500 }
+        )
+      }
+    }
+    
     return NextResponse.json(
       { 
         success: false, 
