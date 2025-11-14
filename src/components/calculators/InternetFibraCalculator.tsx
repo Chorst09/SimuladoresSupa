@@ -939,6 +939,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             } else {
                 // Gerar ID único para a proposta
                 const baseId = generateNextProposalId(proposals, 'FIBER', proposalVersion);
+                console.log('🆔 ID gerado para nova proposta:', baseId);
+                console.log('📊 Propostas existentes:', proposals.length);
                 
                 const proposalToSave = {
                     base_id: baseId,
