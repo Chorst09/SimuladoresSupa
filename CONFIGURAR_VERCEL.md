@@ -1,7 +1,66 @@
 # Configuração do Vercel - Variáveis de Ambiente
 
 ## Problema
-O erro `Can't reach database server at localhost:5432` indica que o Prisma está tentando se conectar ao banco de dados local em vez do banco de produção.
+O erro `Can't reach database server at localhost:5432` indica que o Prisma está tentando se conectar ao banco de dados local (Docker) em vez do banco de produção.
+
+## Contexto
+- **Desenvolvimento Local:** PostgreSQL rodando no Docker (localhost:5432)
+- **Produção (Vercel):** Precisa de um banco de dados PostgreSQL hospedado na nuvem
+
+## Opções de Banco de Dados para Produção
+
+### Opção 1: Vercel Postgres (Recomendado - Mais Simples)
+✅ Integração nativa com Vercel
+✅ Configuração automática
+✅ Plano gratuito disponível
+
+**Como configurar:**
+1. Acesse seu projeto no Vercel
+2. Vá em **Storage** > **Create Database**
+3. Escolha **Postgres**
+4. Clique em **Continue** e depois **Create**
+5. As variáveis de ambiente serão configuradas automaticamente!
+
+### Opção 2: Supabase (Recomendado - Mais Recursos)
+✅ Plano gratuito generoso
+✅ Interface de administração
+✅ Backups automáticos
+✅ APIs REST e Realtime
+
+**Como configurar:**
+1. Crie uma conta em: https://supabase.com
+2. Crie um novo projeto
+3. Vá em **Settings** > **Database**
+4. Copie a **Connection string** (Transaction Mode - porta 6543)
+
+### Opção 3: Neon (Serverless PostgreSQL)
+✅ Serverless (escala automaticamente)
+✅ Plano gratuito
+✅ Ótima performance
+
+**Como configurar:**
+1. Crie uma conta em: https://neon.tech
+2. Crie um novo projeto
+3. Copie a connection string
+
+### Opção 4: Railway
+✅ Fácil de usar
+✅ Plano gratuito
+✅ Suporte a Docker
+
+**Como configurar:**
+1. Crie uma conta em: https://railway.app
+2. Crie um novo projeto PostgreSQL
+3. Copie a connection string
+
+### Opção 5: Render
+✅ Plano gratuito
+✅ Fácil configuração
+
+**Como configurar:**
+1. Crie uma conta em: https://render.com
+2. Crie um novo PostgreSQL database
+3. Copie a connection string
 
 ## Solução
 
@@ -18,38 +77,42 @@ Acesse o painel do Vercel e configure as seguintes variáveis de ambiente:
 ```
 DATABASE_URL
 ```
-**Valor:** Sua connection string do Supabase (formato PostgreSQL)
+**Valor:** Connection string do seu banco de dados em produção
+
+**Exemplos:**
+
+**Vercel Postgres:**
+```
+postgres://default:[PASSWORD]@[HOST]-pooler.us-east-1.postgres.vercel-storage.com:5432/verceldb?sslmode=require
+```
+
+**Supabase:**
 ```
 postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 ```
 
-**Importante:** Use a connection string de **Transaction Mode** (porta 6543) do Supabase para melhor compatibilidade com Prisma.
+**Neon:**
+```
+postgresql://[USER]:[PASSWORD]@[HOST].neon.tech/[DATABASE]?sslmode=require
+```
+
+**Railway:**
+```
+postgresql://postgres:[PASSWORD]@[HOST].railway.app:5432/railway
+```
+
+**Render:**
+```
+postgresql://[USER]:[PASSWORD]@[HOST].render.com/[DATABASE]
+```
 
 ```
 DIRECT_URL
 ```
-**Valor:** Connection string direta do Supabase (porta 5432)
+**Valor:** Connection string direta (opcional, apenas se usar Supabase com pooling)
 ```
 postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 ```
-
-```
-NEXT_PUBLIC_SUPABASE_URL
-```
-**Valor:** URL do seu projeto Supabase
-```
-https://[PROJECT-REF].supabase.co
-```
-
-```
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-```
-**Valor:** Chave anônima do Supabase (encontrada em Settings > API)
-
-```
-SUPABASE_SERVICE_ROLE_KEY
-```
-**Valor:** Service role key do Supabase (encontrada em Settings > API)
 
 ```
 NEXTAUTH_SECRET
@@ -69,12 +132,45 @@ NODE_ENV
 ```
 **Valor:** `production`
 
-### 2. Onde Encontrar as Credenciais do Supabase
+### 2. Migrar o Banco de Dados para Produção
 
-1. Acesse: https://supabase.com/dashboard/project/[seu-projeto]
-2. Vá em **Settings** > **Database**
-3. Role até **Connection string** e copie a string de **Transaction Mode**
-4. Substitua `[YOUR-PASSWORD]` pela senha do banco de dados
+Após criar o banco de dados em produção, você precisa criar as tabelas:
+
+#### Opção A: Usando Prisma Migrate (Recomendado)
+
+```bash
+# 1. Configure a DATABASE_URL de produção localmente (temporariamente)
+export DATABASE_URL="sua-connection-string-de-producao"
+
+# 2. Execute as migrations
+npx prisma migrate deploy
+
+# 3. (Opcional) Popular com dados iniciais
+npx prisma db seed
+```
+
+#### Opção B: Usando Prisma Push (Mais Rápido)
+
+```bash
+# 1. Configure a DATABASE_URL de produção localmente (temporariamente)
+export DATABASE_URL="sua-connection-string-de-producao"
+
+# 2. Sincronize o schema
+npx prisma db push
+
+# 3. (Opcional) Popular com dados iniciais
+npx prisma db seed
+```
+
+#### Opção C: Exportar/Importar do Docker
+
+```bash
+# 1. Exportar dados do Docker
+docker exec simuladores_db pg_dump -U postgres simuladores_db > backup.sql
+
+# 2. Importar para produção (exemplo com psql)
+psql "sua-connection-string-de-producao" < backup.sql
+```
 
 ### 3. Atualizar o Schema do Prisma (Opcional)
 
