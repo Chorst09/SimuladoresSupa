@@ -118,6 +118,14 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
     
+    console.log('📥 Recebendo proposta:', {
+      type: body.type,
+      title: body.title,
+      hasAccountManager: !!body.accountManager,
+      accountManagerType: typeof body.accountManager,
+      fields: Object.keys(body)
+    })
+    
     // Aceitar tanto snake_case quanto camelCase
     const {
       title,
@@ -171,26 +179,30 @@ export async function POST(request: NextRequest) {
       console.log('🆔 Novo base_id gerado:', finalBaseId)
     }
 
-    const proposal = await prisma.proposal.create({
-      data: {
-        base_id: finalBaseId,
-        title,
-        client: client || {},
-        account_manager: account_manager || accountManager || null,
-        type: type || 'standard',
-        status: status || 'Rascunho',
-        value: value || 0,
-        total_setup: total_setup || totalSetup || 0,
-        total_monthly: total_monthly || totalMonthly || 0,
-        contract_period: contract_period || contractPeriod || 12,
-        date: date ? new Date(date) : new Date(),
-        expiry_date: expiry_date || expiryDate ? new Date(expiry_date || expiryDate) : null,
+    const dataToCreate = {
+      base_id: finalBaseId,
+      title,
+      client: client || {},
+      account_manager: account_manager || accountManager || null,
+      type: type || 'standard',
+      status: status || 'Rascunho',
+      value: value || 0,
+      total_setup: total_setup || totalSetup || 0,
+      total_monthly: total_monthly || totalMonthly || 0,
+      contract_period: contract_period || contractPeriod || 12,
+      date: date ? new Date(date) : new Date(),
+      expiry_date: expiry_date || expiryDate ? new Date(expiry_date || expiryDate) : null,
         version: version || 1,
         products: products || [],
         items_data: items_data || itemsData || [],
         client_data: client_data || clientData || null,
         metadata: metadata || {}
-      },
+      }
+    
+    console.log('💾 Dados que serão salvos no Prisma:', JSON.stringify(dataToCreate, null, 2))
+
+    const proposal = await prisma.proposal.create({
+      data: dataToCreate,
       include: {
         creator: {
           select: {
