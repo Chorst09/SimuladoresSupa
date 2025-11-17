@@ -1177,30 +1177,30 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 base_id: baseId,
                 title: `Proposta PABX/SIP - ${clientData.name}`,
                 client: clientData.name,
+                accountManager: accountManagerData, // Enviar objeto completo
                 type: 'PABX',
                 status: selectedStatus,
-                value: finalTotalMonthly, // Use discounted value
-                totalMonthly: finalTotalMonthly, // Use discounted value
-                totalSetup: finalTotalSetup, // Use discounted value
-                rawTotalMonthly: rawTotalMonthly, // Store raw values for reference
-                rawTotalSetup: rawTotalSetup, // Store raw values for reference
-                createdBy: currentUser.id || 'anonymous',
-                distributorId: accountManagerData.distributorId || '',
-                accountManager: accountManagerData.name || '',
-                items: proposalItems,
-                clientData: clientData,
-                accountManagerData: accountManagerData,
-                // Save discount information
-                discountInfo: {
-                    applySalespersonDiscount: applySalespersonDiscount,
-                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                    salespersonDiscountFactor: salespersonDiscountFactor,
-                    directorDiscountFactor: directorDiscountFactor,
-                    hasDiscounts: hasDiscounts
-                },
+                value: finalTotalMonthly,
+                totalMonthly: finalTotalMonthly,
+                totalSetup: finalTotalSetup,
                 contractPeriod: contractDuration,
-                version: proposalVersion, // Set version based on discount application
-                changes: proposalChanges
+                version: proposalVersion,
+                clientData: clientData,
+                products: proposalItems, // Renomear items para products
+                metadata: {
+                    // Salvar informações adicionais em metadata
+                    rawTotalMonthly: rawTotalMonthly,
+                    rawTotalSetup: rawTotalSetup,
+                    distributorId: accountManagerData.distributorId || '',
+                    discountInfo: {
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        salespersonDiscountFactor: salespersonDiscountFactor,
+                        directorDiscountFactor: directorDiscountFactor,
+                        hasDiscounts: hasDiscounts
+                    },
+                    changes: proposalChanges
+                }
             };
 
             const response = await fetch('/api/proposals', {
