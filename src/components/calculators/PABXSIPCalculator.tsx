@@ -130,7 +130,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     const [pabxPremiumPlan, setPabxPremiumPlan] = useState<'Essencial' | 'Profissional'>('Essencial');
     const [pabxPremiumSubPlan, setPabxPremiumSubPlan] = useState<'Ilimitado' | 'Tarifado'>('Ilimitado');
     const [pabxPremiumEquipment, setPabxPremiumEquipment] = useState<'Com' | 'Sem'>('Sem');
-    const [contractDuration, setContractDuration] = useState<string>('24');
+    const [contractDuration, setContractDuration] = useState<number>(24);
     const [pabxPremiumSetupFee, setPabxPremiumSetupFee] = useState<number>(2500); // Taxa de setup Premium
 
     // Hook para comissões editáveis
@@ -781,7 +781,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             };
         } else { // Premium
             // Buscar o plano baseado no prazo do contrato (24 ou 36 meses)
-            const contractPlan = pabxPremiumPrices[contractDuration as keyof typeof pabxPremiumPrices];
+            const contractPlan = pabxPremiumPrices[contractDuration.toString() as keyof typeof pabxPremiumPrices];
             if (!contractPlan) {
                 console.log('Contrato não encontrado:', contractDuration);
                 return { setup: 0, baseMonthly: 0, deviceRentalCost: 0, aiAgentCost: 0, totalMonthly: 0 };
@@ -993,9 +993,9 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     // Aplicar desconto do diretor (personalizável)
     const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
 
-    const partnerIndicatorCommission = (getPartnerIndicatorRate(rawTotalMonthly, parseInt(contractDuration, 10)) / 100) * rawTotalMonthly;
+    const partnerIndicatorCommission = (getPartnerIndicatorRate(rawTotalMonthly, contractDuration) / 100) * rawTotalMonthly;
 
-    const influencerPartnerCommission = (getPartnerInfluencerRate(rawTotalMonthly, parseInt(contractDuration, 10)) / 100) * rawTotalMonthly;
+    const influencerPartnerCommission = (getPartnerInfluencerRate(rawTotalMonthly, contractDuration) / 100) * rawTotalMonthly;
 
     // Desconto do vendedor e diretor aplicado apenas sobre o valor mensal, não sobre o setup
     const finalTotalSetup = rawTotalSetup; // Sem desconto no setup
@@ -1116,7 +1116,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
         // Restore contract duration if it exists
         if (proposal.contractPeriod) {
-            setContractDuration(proposal.contractPeriod.toString());
+            setContractDuration(Number(proposal.contractPeriod));
         }
 
         // Load status and changes
@@ -1740,7 +1740,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                             {(() => {
                                 const totalSetup = currentProposal.totalSetup;
                                 const totalMonthly = currentProposal.totalMonthly;
-                                const contractTerm = parseInt(contractDuration) || 12;
+                                const contractTerm = contractDuration || 12;
 
                                 // Usar a função calculatePayback padronizada
                                 const paybackMonths = calculatePayback(
@@ -1868,8 +1868,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                     <div className="space-y-2">
                                         <Label>Duração do Contrato</Label>
                                         <RadioGroup
-                                            value={contractDuration}
-                                            onValueChange={setContractDuration}
+                                            value={contractDuration.toString()}
+                                            onValueChange={(value) => setContractDuration(Number(value))}
                                             className="grid grid-cols-2 md:grid-cols-5 gap-2"
                                         >
                                             {[12, 24, 36, 48, 60].map((months) => (
@@ -1890,8 +1890,8 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                     <div className="space-y-2">
                                         <Label>Duração do Contrato</Label>
                                         <RadioGroup
-                                            value={contractDuration}
-                                            onValueChange={setContractDuration}
+                                            value={contractDuration.toString()}
+                                            onValueChange={(value) => setContractDuration(Number(value))}
                                             className="grid grid-cols-2 gap-2"
                                         >
                                             {[24, 36].map((months) => (
@@ -2436,7 +2436,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 <TabsContent value="dre">
                     {(() => {
                         const dreMonthlyRevenue = (pabxResult?.totalMonthly || 0) + (sipResult?.monthly || 0);
-                        const months = parseInt(contractDuration);
+                        const months = contractDuration;
                         // Cálculo correto das comissões baseado na seleção dos parceiros
                         const comissaoParceiroIndicador = includeParceiroIndicador
                             ? (dreMonthlyRevenue * (getChannelIndicatorCommissionRate(channelIndicator, dreMonthlyRevenue, months) / 100))
