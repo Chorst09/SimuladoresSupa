@@ -2,6 +2,22 @@
 
 Sistema completo de calculadoras e simuladores para precificação de serviços de TI, com gestão de propostas comerciais e sistema de comissões.
 
+## � Índicoe
+
+- [Funcionalidades](#-funcionalidades-principais)
+- [Tecnologias](#️-tecnologias)
+- [Instalação](#-instalação-e-configuração)
+- [Configuração](#-configuração-do-ambiente)
+- [Docker](#-docker)
+- [Banco de Dados](#️-banco-de-dados)
+- [Deploy](#-deploy-e-configuração)
+- [Deploy Vercel](#-deploy-no-vercel)
+- [Migração Docker para Produção](#-migração-docker-para-produção)
+- [Atualização de Calculadores](#-atualização-de-calculadores)
+- [Perfis de Usuário](#-perfis-de-usuário)
+- [Testes](#-testes)
+- [Troubleshooting](#-troubleshooting)
+
 ## 🚀 Funcionalidades Principais
 
 ### Calculadoras
@@ -18,13 +34,14 @@ Sistema completo de calculadoras e simuladores para precificação de serviços 
 - **DRE (Demonstrativo de Resultado)** - Análise financeira
 - **Gestão de Oportunidades** - CRM integrado
 - **Análise de Editais** - Ferramenta para licitações
+- **Filtro por Gerente de Contas** - Filtrar propostas por gerente
 
 ### Administração
 - **Gestão de Usuários** - Controle de acesso por perfis
 - **Relatórios** - Dashboard com métricas e KPIs
 - **Configurações** - Parâmetros do sistema
 
-## 🛠️ Tecnologias
+## �️I Tecnologias
 
 - **Frontend**: Next.js 15, React 18, TypeScript
 - **Styling**: Tailwind CSS, Radix UI
@@ -115,21 +132,6 @@ JWT_SECRET=your_jwt_secret_here
 RESEND_API_KEY=your_resend_api_key
 ```
 
-### Configuração de Portas
-
-Para alterar as portas dos serviços, edite as variáveis no arquivo `.env`:
-
-```bash
-# Exemplo: Usar porta 3001 para aplicação
-APP_PORT=3001
-
-# Exemplo: Usar porta 8081 para PgAdmin  
-PGADMIN_PORT=8081
-
-# Exemplo: Usar porta 5433 para PostgreSQL
-DATABASE_EXTERNAL_PORT=5433
-```
-
 ### Usuário Admin Padrão
 
 ```
@@ -159,8 +161,6 @@ docker-compose --profile admin up -d
 - **Aplicação**: http://localhost:${APP_PORT} (configurável via .env)
 - **PgAdmin**: http://localhost:${PGADMIN_PORT} (configurável via .env)
 - **PostgreSQL**: localhost:${DATABASE_EXTERNAL_PORT} (configurável via .env)
-
-**Credenciais são definidas nos arquivos .env**
 
 ### Comandos Úteis
 
@@ -209,11 +209,214 @@ npm run db:seed     # Popular dados iniciais
 npm run db:studio   # Abrir Prisma Studio
 ```
 
-**✅ MIGRAÇÃO COMPLETA:**
-- ✅ **Supabase REMOVIDO** - 100% PostgreSQL + Prisma
-- ✅ **Schema consolidado** - `prisma/schema.prisma`
-- ✅ **Dados iniciais** - `prisma/seed.ts`
-- ✅ **Deploy automatizado** - Scripts prontos
+## 🚀 Deploy e Configuração
+
+### Script Unificado de Deploy
+
+O projeto inclui um script `deploy.sh` que centraliza todas as operações:
+
+```bash
+# Ver ajuda completa
+./deploy.sh --help
+
+# Setup inicial (cria arquivos .env)
+./deploy.sh install
+
+# Desenvolvimento
+./deploy.sh dev                    # Básico
+./deploy.sh dev --admin            # Com PgAdmin
+
+# Produção
+./deploy.sh prod                   # Básico
+./deploy.sh prod --nginx           # Com Nginx
+./deploy.sh prod --admin           # Com PgAdmin
+
+# Backup e restore
+./deploy.sh backup dev             # Backup desenvolvimento
+./deploy.sh backup prod            # Backup produção
+./deploy.sh restore --file backup.sql dev
+
+# Utilitários
+./deploy.sh build --no-cache       # Build sem cache
+./deploy.sh clean --force          # Limpeza completa
+./deploy.sh logs                   # Ver logs
+./deploy.sh status                 # Status dos serviços
+```
+
+## 🌐 Deploy no Vercel
+
+### Opções de Banco de Dados para Produção
+
+#### Opção 1: Vercel Postgres (Recomendado - Mais Simples)
+✅ Integração nativa com Vercel  
+✅ Configuração automática  
+✅ Plano gratuito disponível
+
+**Como configurar:**
+1. Acesse seu projeto no Vercel
+2. Vá em **Storage** > **Create Database**
+3. Escolha **Postgres**
+4. Clique em **Continue** e depois **Create**
+5. As variáveis de ambiente serão configuradas automaticamente!
+
+#### Opção 2: Supabase (Mais Recursos)
+✅ Plano gratuito: 500 MB de armazenamento  
+✅ Interface de administração  
+✅ Backups automáticos
+
+**Como configurar:**
+1. Crie uma conta em: https://supabase.com
+2. Crie um novo projeto
+3. Vá em **Settings** > **Database**
+4. Copie a **Connection string** (Transaction Mode - porta 6543)
+
+#### Opção 3: Neon (Serverless)
+✅ Serverless (escala automaticamente)  
+✅ Plano gratuito: 512 MB
+
+**Como configurar:**
+1. Crie uma conta em: https://neon.tech
+2. Crie um novo projeto
+3. Copie a connection string
+
+### Configurar Variáveis de Ambiente no Vercel
+
+1. Acesse: https://vercel.com/seu-usuario/seu-projeto/settings/environment-variables
+
+2. Adicione as variáveis:
+
+```env
+DATABASE_URL=sua-connection-string-aqui
+NEXTAUTH_SECRET=sua-secret-key-aleatoria
+NEXTAUTH_URL=https://seu-projeto.vercel.app
+NODE_ENV=production
+```
+
+### Migrar Schema para Produção
+
+```bash
+# 1. Criar arquivo .env.production
+echo 'DATABASE_URL="sua-connection-string-aqui"' > .env.production
+
+# 2. Sincronizar schema
+npx dotenv -e .env.production -- npx prisma db push
+
+# 3. Gerar Prisma Client
+npx prisma generate
+```
+
+### Fazer Redeploy no Vercel
+
+1. Vá em **Deployments**
+2. Clique em **Redeploy** no último deployment
+3. **Desmarque** "Use existing Build Cache"
+4. Clique em **Redeploy**
+
+### Troubleshooting Vercel
+
+**Erro: "Can't reach database server"**
+- ✅ Verifique se `DATABASE_URL` está configurada no Vercel
+- ✅ Verifique se a connection string está correta
+- ✅ Adicione `?sslmode=require` no final da URL
+
+**Erro: "Too many connections"**
+- ✅ Use connection pooling (porta 6543 no Supabase)
+- ✅ Adicione `?pgbouncer=true` na connection string
+
+## 🐳 Migração Docker para Produção
+
+### Situação
+- **Desenvolvimento:** PostgreSQL rodando no Docker (localhost:5432)
+- **Produção:** Vercel precisa de banco hospedado na nuvem
+
+### Solução Rápida
+
+1. **Criar banco no Vercel:**
+   - Acesse: https://vercel.com/dashboard
+   - Selecione seu projeto
+   - Vá em **Storage** > **Create Database**
+   - Escolha **Postgres** > **Continue** > **Create**
+   - ✅ Variáveis configuradas automaticamente!
+
+2. **Migrar schema:**
+   ```bash
+   # Criar .env.production com a connection string do Vercel
+   echo 'DATABASE_URL="sua-connection-string-vercel"' > .env.production
+   
+   # Migrar schema
+   npx dotenv -e .env.production -- npx prisma db push
+   ```
+
+3. **Redeploy no Vercel:**
+   - Vá em **Deployments**
+   - Clique em **Redeploy**
+   - Desmarque "Use existing Build Cache"
+   - Clique em **Redeploy**
+
+### Exportar/Importar Dados do Docker
+
+```bash
+# 1. Exportar dados do Docker
+docker exec simuladores_db pg_dump -U postgres -d simuladores_db --clean --if-exists > backup.sql
+
+# 2. Importar para produção
+psql "sua-connection-string-producao" < backup.sql
+```
+
+### Comandos Úteis
+
+```bash
+# Testar conexão com banco de produção
+npx dotenv -e .env.production -- npx prisma db pull
+
+# Ver dados no Prisma Studio
+npx dotenv -e .env.production -- npx prisma studio
+
+# Backup do banco de produção
+pg_dump "sua-connection-string" > backup-producao.sql
+```
+
+## 🔄 Atualização de Calculadores
+
+### Sistema de IDs Padronizado
+
+Os IDs das propostas seguem um padrão específico:
+- PABX/SIP: `Prop_Pabx_Sip_001_v1`
+- Máquinas Virtuais: `Prop_MV_001_v1`
+- Internet Fibra: `Prop_Inter_Fibra_001_v1`
+- Internet Rádio: `Prop_Inter_Radio_001_v1`
+- Double Fibra/Rádio: `Prop_Inter_Double_001_v1`
+- Internet MAN Fibra: `Prop_Inter_Man_001_v1`
+- Internet MAN Rádio: `Prop_InterMan_Radio_001_v1`
+
+### Como Atualizar um Calculador
+
+```typescript
+// 1. Adicionar import no topo do arquivo
+import { generateNextProposalId } from '@/lib/proposal-id-generator';
+
+// 2. Gerar o base_id antes de salvar
+const baseId = generateNextProposalId(proposals, 'TIPO_AQUI', proposalVersion);
+
+const proposalToSave = {
+    base_id: baseId,  // <-- Adicionar esta linha
+    title: `Proposta...`,
+    // ... resto dos campos
+};
+```
+
+### Tipos Disponíveis
+
+```typescript
+type ProposalType = 
+  | 'PABX'           // Prop_Pabx_Sip_001_v1
+  | 'VM'             // Prop_MV_001_v1
+  | 'FIBER'          // Prop_Inter_Fibra_001_v1
+  | 'RADIO'          // Prop_Inter_Radio_001_v1
+  | 'DOUBLE'         // Prop_Inter_Double_001_v1
+  | 'INTERNET_MAN_FIBRA'  // Prop_Inter_Man_001_v1
+  | 'MANRADIO';      // Prop_InterMan_Radio_001_v1
+```
 
 ## 👥 Perfis de Usuário
 
@@ -251,132 +454,6 @@ npm run test:coverage
 npm run test:commission
 ```
 
-## 📁 Estrutura do Projeto
-
-```
-├── src/
-│   ├── app/                 # Pages (App Router)
-│   ├── components/          # Componentes React
-│   ├── hooks/              # Custom hooks
-│   ├── lib/                # Utilitários e configurações
-│   └── styles/             # Estilos globais
-├── database/
-│   └── init/               # Scripts PostgreSQL (apenas 2 arquivos)
-│       ├── 01-migration.sql    # Migração completa
-│       └── 02-seeds.sql        # Dados iniciais
-├── scripts/                # Scripts utilitários
-├── docs/legacy/            # Documentação histórica
-└── backup/                 # Backups e arquivos antigos
-    └── database-old/       # Arquivos SQL antigos
-```
-
-## 🚀 Deploy e Configuração
-
-### Script Unificado de Deploy
-
-O projeto inclui um script `deploy.sh` que centraliza todas as operações:
-
-```bash
-# Ver ajuda completa
-./deploy.sh --help
-
-# Setup inicial (cria arquivos .env)
-./deploy.sh install
-
-# Desenvolvimento
-./deploy.sh dev                    # Básico
-./deploy.sh dev --admin            # Com PgAdmin
-
-# Produção
-./deploy.sh prod                   # Básico
-./deploy.sh prod --nginx           # Com Nginx
-./deploy.sh prod --admin           # Com PgAdmin
-
-# Backup e restore
-./deploy.sh backup dev             # Backup desenvolvimento
-./deploy.sh backup prod            # Backup produção
-./deploy.sh restore --file backup.sql dev
-
-# Utilitários
-./deploy.sh build --no-cache       # Build sem cache
-./deploy.sh clean --force          # Limpeza completa
-./deploy.sh logs                   # Ver logs
-./deploy.sh status                 # Status dos serviços
-```
-
-### Configuração de Ambientes
-
-#### 1. Setup Inicial
-```bash
-# Executar apenas uma vez
-./deploy.sh install
-```
-
-Isso cria:
-- `.env.development` - Configurações de desenvolvimento
-- `.env.production` - Configurações de produção (ALTERE AS SENHAS!)
-- Diretórios necessários (backups, logs, nginx/ssl)
-
-#### 2. Desenvolvimento
-```bash
-# Editar .env.development se necessário
-./deploy.sh dev --admin
-```
-
-**Acessos:**
-- Aplicação: http://localhost:${APP_PORT} (padrão: 3000)
-- PgAdmin: http://localhost:${PGADMIN_PORT} (padrão: 8080)
-- PostgreSQL: localhost:${DATABASE_EXTERNAL_PORT} (padrão: 5432)
-
-**Credenciais PgAdmin (desenvolvimento):**
-- Email: ${PGADMIN_DEFAULT_EMAIL} (padrão: dev@simuladores.local)
-- Senha: ${PGADMIN_DEFAULT_PASSWORD} (padrão: dev123)
-
-#### 3. Produção
-```bash
-# IMPORTANTE: Editar .env.production ANTES do deploy
-# Alterar TODAS as senhas e chaves secretas!
-./deploy.sh prod --nginx
-```
-
-**Verificações de Segurança:**
-- ⚠️ **OBRIGATÓRIO**: Alterar `DATABASE_PASSWORD`
-- ⚠️ **OBRIGATÓRIO**: Alterar `NEXTAUTH_SECRET` (32+ caracteres)
-- ⚠️ **OBRIGATÓRIO**: Alterar `JWT_SECRET` (32+ caracteres)
-- ⚠️ **OBRIGATÓRIO**: Alterar `PGADMIN_DEFAULT_PASSWORD`
-- ⚠️ **OBRIGATÓRIO**: Configurar `NEXTAUTH_URL` com domínio real
-
-### Migração e Seed do Banco
-
-O banco é configurado automaticamente durante o primeiro start com apenas 2 arquivos:
-
-```bash
-database/init/
-├── 01-migration.sql     # Migração completa (schema, tabelas, funções, índices)
-└── 02-seeds.sql         # Dados iniciais (usuário admin, comissões, exemplos)
-```
-
-**Estrutura Simplificada:**
-- ✅ **Apenas 2 arquivos SQL**: Migração completa + Seeds
-- ✅ **Sem poluição**: Arquivos antigos movidos para `backup/database-old/`
-- ✅ **Execução automática**: PostgreSQL executa na ordem correta
-
-**Usuário Admin Padrão:**
-- Email: `admin@sistema.com`
-- Senha: `admin123`
-
-### Backup Automático
-
-```bash
-# Backup manual
-./deploy.sh backup dev     # ou prod
-
-# Backup automático (adicionar ao cron)
-0 2 * * * /path/to/project/deploy.sh backup prod
-```
-
-Backups são salvos em `backups/` e mantidos por 7 dias.
-
 ## 🔍 Troubleshooting
 
 ### Problemas Comuns
@@ -388,8 +465,6 @@ Backups são salvos em `backups/` e mantidos por 7 dias.
 ./deploy.sh logs
 
 # Testar conexão diretamente
-podman exec simuladores_db_dev pg_isready -U postgres -d simuladores_dev
-# ou com docker:
 docker exec simuladores_db_dev pg_isready -U postgres -d simuladores_dev
 ```
 
@@ -409,18 +484,18 @@ DATABASE_EXTERNAL_PORT=5433 # PostgreSQL na porta 5433
 # Verificar se migration executou
 ./deploy.sh logs
 # Verificar tabelas criadas
-podman exec -it simuladores_db_dev psql -U postgres -d simuladores_dev -c "\dt"
+docker exec -it simuladores_db_dev psql -U postgres -d simuladores_dev -c "\dt"
 ```
 
-**Problemas com Podman:**
-```bash
-# Se Podman não funcionar, forçar uso do Docker
-export CONTAINER_ENGINE=docker
-./deploy.sh dev
+**Erro de base_id duplicado:**
+- ✅ Sistema agora verifica IDs únicos automaticamente
+- ✅ Busca todas as propostas para evitar duplicatas
+- ✅ Retry automático com ID alternativo
 
-# Verificar se socket do Podman está ativo
-systemctl --user status podman.socket
-```
+**Filtro por gerente não funciona:**
+- ✅ Certifique-se de que o campo `accountManager` está sendo salvo
+- ✅ Clique em "Aplicar Filtro" após selecionar o gerente
+- ✅ Verifique os logs do console para debug
 
 ### Health Check
 
@@ -432,13 +507,30 @@ systemctl --user status podman.socket
 curl http://localhost:3000/api/health
 ```
 
-## 📚 Documentação Adicional
+## 📁 Estrutura do Projeto
 
-- **Documentação Legacy**: `docs/legacy/` - Documentação histórica consolidada
-- **Scripts Legacy**: `scripts/legacy/` - Scripts antigos e utilitários
-- **Backup SQL**: `backup/sql-files-removed/` - Arquivos SQL antigos
-
-> **Nota**: Toda documentação foi consolidada neste README.md único para evitar poluição de arquivos .md espalhados pelo projeto.
+```
+├── src/
+│   ├── app/                 # Pages (App Router)
+│   ├── components/          # Componentes React
+│   │   ├── calculators/     # Calculadoras
+│   │   ├── proposals/       # Gestão de propostas
+│   │   └── dashboard/       # Dashboard
+│   ├── hooks/              # Custom hooks
+│   ├── lib/                # Utilitários e configurações
+│   └── styles/             # Estilos globais
+├── database/
+│   └── init/               # Scripts PostgreSQL
+│       ├── 01-migration.sql    # Migração completa
+│       └── 02-seeds.sql        # Dados iniciais
+├── scripts/                # Scripts utilitários
+│   ├── deploy.sh           # Script unificado de deploy
+│   ├── check-env.js        # Verificar variáveis de ambiente
+│   └── setup-database.sh   # Configurar banco
+└── prisma/                 # Prisma ORM
+    ├── schema.prisma       # Schema do banco
+    └── seed.ts             # Seed de dados
+```
 
 ## 🤝 Contribuição
 
@@ -454,67 +546,28 @@ Este projeto é propriedade privada. Todos os direitos reservados.
 
 ## 📞 Suporte
 
-Para suporte técnico ou dúvidas sobre o sistema, consulte a documentação em `docs/legacy/` ou entre em contato com a equipe de desenvolvimento.
+Para suporte técnico ou dúvidas sobre o sistema, entre em contato com a equipe de desenvolvimento.
 
 ---
 
-## ✅ Melhorias Implementadas
+## ✅ Melhorias Recentes
 
-### Consolidação de Documentação
-- ✅ **README.md único**: Toda documentação consolidada em um arquivo
-- ✅ **Documentação legacy**: Arquivos antigos movidos para `docs/legacy/`
-- ✅ **Sem poluição**: Eliminados arquivos .md espalhados pelo projeto
+### Sistema de Propostas
+- ✅ **Correção de IDs duplicados**: Sistema verifica e gera IDs únicos automaticamente
+- ✅ **Filtro por gerente de contas**: Filtrar propostas por gerente com botão "Aplicar Filtro"
+- ✅ **Coluna Produto**: Substituída coluna "Distribuidor" por "Produto" com nomes amigáveis
+- ✅ **Campo account_manager**: Salvo corretamente no banco de dados
+- ✅ **Exibição de dados**: Cliente, gerente e data exibidos corretamente
 
-### Configuração de Ambientes
-- ✅ **Variáveis .env**: Configuração correta para desenvolvimento e produção
-- ✅ **Migração automática**: Scripts SQL executados automaticamente na inicialização
-- ✅ **Seed de dados**: Usuário admin e dados iniciais criados automaticamente
-- ✅ **Verificações de segurança**: Validação de senhas em produção
+### API e Banco de Dados
+- ✅ **API otimizada**: Retorna todos os campos necessários (client, account_manager, version)
+- ✅ **Transformação camelCase**: Conversão automática de snake_case para camelCase
+- ✅ **Busca sem paginação**: Parâmetro `all=true` para buscar todas as propostas
+- ✅ **Retry automático**: Tentativa com ID alternativo em caso de duplicata
 
-### Banco de Dados Simplificado
-- ✅ **Apenas 2 arquivos SQL**: Migração completa + Seeds consolidados
-- ✅ **Sem poluição**: Múltiplos arquivos .sql movidos para backup
-- ✅ **Estrutura limpa**: `database/init/` com apenas o essencial
-- ✅ **Backup preservado**: Arquivos antigos em `backup/database-old/`
-
-### Compatibilidade de Containers
-- ✅ **Suporte Podman**: Detecção automática e preferência por Podman
-- ✅ **Fallback Docker**: Compatibilidade mantida com Docker
-- ✅ **Script unificado**: Um comando para todas as operações
-
-### Deploy Automatizado
-- ✅ **Deploy script**: `./deploy.sh` centraliza todas as operações
-- ✅ **Ambientes separados**: Configurações distintas para dev/prod
-- ✅ **Backup automático**: Sistema de backup integrado
-- ✅ **Health checks**: Monitoramento de saúde dos serviços
-
----
-
-## 🎯 Resumo das Melhorias
-
-### ✅ Documentação Consolidada
-- **README.md único** na raiz do projeto
-- **Documentação legacy** movida para `docs/legacy/`
-- **Sem arquivos .md espalhados** poluindo o código
-
-### ✅ Banco de Dados Simplificado  
-- **Apenas 2 arquivos SQL**: `01-migration.sql` + `02-seeds.sql`
-- **15+ arquivos antigos** movidos para `backup/database-old/`
-- **Estrutura limpa** em `database/init/`
-
-### ✅ Deploy Automatizado
-- **Script unificado** `./deploy.sh` para todas as operações
-- **Suporte Podman/Docker** com detecção automática
-- **Configuração por ambiente** (.env.development / .env.production)
-
-### ✅ Configuração Correta
-- **Variáveis de ambiente** carregadas corretamente
-- **Migração automática** na inicialização do container
-- **Seed automático** com usuário admin e dados iniciais
-
-### ✅ Portas Configuráveis
-- **Todas as portas** definidas via variáveis .env
-- **Flexibilidade total** para evitar conflitos
-- **Configuração por ambiente** (dev/prod independentes)
+### Documentação
+- ✅ **README consolidado**: Toda documentação em um único arquivo
+- ✅ **Guias de deploy**: Instruções completas para Vercel e produção
+- ✅ **Script de verificação**: `npm run check-env` para validar configuração
 
 **Sistema desenvolvido para otimização de processos comerciais e precificação de serviços de TI.**
