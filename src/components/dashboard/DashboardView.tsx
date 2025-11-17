@@ -164,6 +164,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
             version: data.version || 1,
             title: title,
             client: data.client || 'N/A',
+            type: data.type || 'standard',
             value: data.value || 0,
             status: data.status || 'Rascunho',
             createdBy: data.createdBy || 'N/A',
