@@ -73,7 +73,458 @@ O projeto suporta tanto **Docker** quanto **Podman**:
 - **Docker**: Fallback se Podman não estiver instalado
 - **Detecção automática**: O script `deploy.sh` escolhe automaticamente
 
-## 📦 Instalação e Configuração
+## 📦 Tutorial Completo de Instalação e Deploy
+
+### 🖥️ Parte 1: Instalação em Ambiente de Desenvolvimento (PC Local)
+
+#### Pré-requisitos
+- Node.js 20+
+- Docker ou Podman (detecção automática)
+- Git
+- Editor de código (VS Code, etc.)
+
+#### Passo 1: Clonar o Repositório
+
+```bash
+# Clonar o projeto
+git clone <repositorio>
+cd simuladores
+```
+
+#### Passo 2: Configurar Variáveis de Ambiente
+
+```bash
+# Copiar arquivo de exemplo
+cp .env.example .env.development
+
+# Editar o arquivo .env.development
+nano .env.development
+```
+
+**Configuração mínima para desenvolvimento:**
+
+```env
+# Aplicação
+NODE_ENV=development
+PORT=3000
+NEXTAUTH_URL=http://localhost:3000
+
+# Banco de Dados
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/simuladores_db
+DATABASE_HOST=db
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres
+DATABASE_NAME=simuladores_db
+DATABASE_EXTERNAL_PORT=5432
+
+# Segurança (gerar com: openssl rand -base64 32)
+NEXTAUTH_SECRET=sua_chave_secreta_aqui
+JWT_SECRET=sua_chave_jwt_aqui
+
+# Email (opcional para desenvolvimento)
+RESEND_API_KEY=re_sua_chave_resend
+
+# Debug
+DEBUG=true
+LOG_LEVEL=debug
+ENABLE_DEBUG_ROUTES=true
+ENABLE_TEST_DATA=true
+```
+
+#### Passo 3: Iniciar Ambiente de Desenvolvimento
+
+```bash
+# Opção 1: Usar Docker (recomendado)
+./deploy.sh dev
+
+# Opção 2: Usar Docker com PgAdmin
+./deploy.sh dev --admin
+
+# Opção 3: Desenvolvimento local (sem Docker)
+npm install
+npm run dev
+```
+
+#### Passo 4: Acessar a Aplicação
+
+```
+Aplicação: http://localhost:3000
+PgAdmin (se iniciado): http://localhost:8080
+```
+
+**Credenciais padrão (criadas pelo seed):**
+- Email: `admin@sistema.com`
+- Senha: `admin123`
+
+#### Passo 5: Trabalhar no Desenvolvimento
+
+```bash
+# Ver logs em tempo real
+./deploy.sh logs
+
+# Parar containers
+./deploy.sh stop
+
+# Reiniciar containers
+./deploy.sh restart
+
+# Fazer backup do banco
+./deploy.sh backup dev
+
+# Restaurar backup
+./deploy.sh restore dev backup_file.sql
+```
+
+#### Estrutura de Desenvolvimento
+
+```
+simuladores/
+├── src/
+│   ├── app/              # Next.js App Router (páginas e API)
+│   ├── components/       # Componentes React
+│   ├── hooks/           # Custom hooks
+│   ├── lib/             # Utilitários e configurações
+│   └── styles/          # Estilos globais
+├── prisma/
+│   ├── schema.prisma    # Schema do banco de dados
+│   └── seed.ts          # Dados iniciais
+├── .env.development     # Variáveis de ambiente (dev)
+├── .env.production      # Variáveis de ambiente (prod)
+├── deploy.sh            # Script de deploy unificado
+└── docker-compose.yml   # Configuração Docker
+```
+
+---
+
+### 🚀 Parte 2: Deploy em Servidor Remoto
+
+#### Informações do Servidor
+
+```
+Servidor: 10.10.50.246
+Usuário: double
+Senha SSH: D0ubl3T3l3c0m
+Senha Sudo: D0ubl3T3l3c0m
+Pasta do Projeto: ~/simuladores
+```
+
+⚠️ **IMPORTANTE:** O servidor já possui outras aplicações rodando:
+- Porta 3000 está em uso
+- Porta 5432 está em uso
+- Use portas alternativas configuradas em `.env.production`
+
+#### Passo 1: Preparar Ambiente de Produção Local
+
+```bash
+# 1. Configurar variáveis de produção
+cp .env.example .env.production
+nano .env.production
+```
+
+**Configuração para produção (exemplo):**
+
+```env
+# Aplicação
+NODE_ENV=production
+APP_PORT=3009                    # ⚠️ Porta alternativa (3000 em uso)
+NEXTAUTH_URL=http://10.10.50.246:3009
+
+# Banco de Dados
+DATABASE_URL=postgresql://postgres:senha_forte@db:5432/simuladores_db
+DATABASE_HOST=db
+DATABASE_USER=postgres
+DATABASE_PASSWORD=senha_forte_aqui
+DATABASE_NAME=simuladores_db
+DATABASE_EXTERNAL_PORT=5433      # ⚠️ Porta alternativa (5432 em uso)
+
+# Segurança (GERAR NOVAS CHAVES!)
+NEXTAUTH_SECRET=$(openssl rand -base64 32)
+JWT_SECRET=$(openssl rand -base64 32)
+
+# Email
+RESEND_API_KEY=re_sua_chave_resend_producao
+
+# Debug (desabilitar em produção)
+DEBUG=false
+LOG_LEVEL=info
+ENABLE_DEBUG_ROUTES=false
+ENABLE_TEST_DATA=false
+
+# PgAdmin
+PGADMIN_PORT=8080
+```
+
+#### Passo 2: Construir Imagem Docker
+
+```bash
+# Construir imagem de produção
+docker build -t simuladores-app:latest .
+
+# Ou usar o script de deploy
+./deploy.sh build
+```
+
+#### Passo 3: Salvar Imagem para Transferência
+
+```bash
+# Salvar imagem em arquivo
+docker save simuladores-app:latest | gzip > simuladores-app.tar.gz
+
+# Verificar tamanho do arquivo
+ls -lh simuladores-app.tar.gz
+```
+
+#### Passo 4: Transferir Arquivos para o Servidor
+
+```bash
+# Transferir imagem Docker
+scp simuladores-app.tar.gz double@10.10.50.246:~/
+
+# Transferir arquivos de configuração
+scp .env.production double@10.10.50.246:~/simuladores/.env.production
+scp docker-compose.yml double@10.10.50.246:~/simuladores/
+scp docker-compose.prod.yml double@10.10.50.246:~/simuladores/
+scp deploy.sh double@10.10.50.246:~/simuladores/
+
+# Senha quando solicitado: D0ubl3T3l3c0m
+```
+
+**Ou usar o script automatizado:**
+
+```bash
+# Deploy remoto automatizado
+./deploy.sh deploy-remote double@10.10.50.246 simuladores-app.tar.gz
+```
+
+#### Passo 5: Conectar ao Servidor via SSH
+
+```bash
+# Conectar ao servidor
+ssh double@10.10.50.246
+# Senha: D0ubl3T3l3c0m
+
+# Verificar conexão
+whoami
+# Deve retornar: double
+
+pwd
+# Deve retornar: /home/double
+```
+
+#### Passo 6: Preparar Ambiente no Servidor
+
+```bash
+# Criar pasta do projeto (se não existir)
+mkdir -p ~/simuladores
+cd ~/simuladores
+
+# Verificar se a imagem foi transferida
+ls -lh ~/simuladores-app.tar.gz
+
+# Carregar imagem Docker
+docker load < ~/simuladores-app.tar.gz
+# Ou se usar Podman:
+podman load < ~/simuladores-app.tar.gz
+
+# Verificar imagem carregada
+docker images | grep simuladores
+# Ou:
+podman images | grep simuladores
+```
+
+#### Passo 7: Executar Instalação no Servidor
+
+```bash
+# Entrar na pasta do projeto
+cd ~/simuladores
+
+# Dar permissão de execução ao script
+chmod +x deploy.sh
+
+# Executar instalação
+./deploy.sh install-on-server
+
+# O script irá:
+# 1. Verificar se Docker/Podman está instalado
+# 2. Criar volumes para dados persistentes
+# 3. Iniciar containers (app, db, nginx)
+# 4. Executar migrations do banco
+# 5. Executar seed (dados iniciais)
+# 6. Verificar saúde dos containers
+```
+
+**Se precisar de sudo:**
+
+```bash
+# Executar com sudo (senha: D0ubl3T3l3c0m)
+sudo ./deploy.sh install-on-server
+```
+
+#### Passo 8: Verificar Instalação
+
+```bash
+# Verificar containers rodando
+docker ps
+# Ou:
+podman ps
+
+# Verificar logs da aplicação
+docker logs simuladores-app
+# Ou:
+podman logs simuladores-app
+
+# Verificar logs do banco
+docker logs simuladores-db
+
+# Testar conexão
+curl http://localhost:3009
+# Deve retornar HTML da aplicação
+```
+
+#### Passo 9: Acessar Aplicação
+
+```
+URL: http://10.10.50.246:3009
+
+Credenciais padrão:
+- Email: admin@sistema.com
+- Senha: admin123
+```
+
+---
+
+### 🔧 Comandos Úteis no Servidor
+
+#### Gerenciar Aplicação
+
+```bash
+# Ver logs em tempo real
+./deploy.sh logs
+
+# Parar aplicação
+./deploy.sh stop
+
+# Reiniciar aplicação
+./deploy.sh restart
+
+# Ver status dos containers
+./deploy.sh status
+```
+
+#### Backup e Restore
+
+```bash
+# Fazer backup do banco de dados
+./deploy.sh backup prod
+
+# Restaurar backup
+./deploy.sh restore prod backup_2024-11-28.sql
+
+# Listar backups
+ls -lh backups/
+```
+
+#### Atualizar Aplicação
+
+```bash
+# 1. No PC local: construir nova imagem
+docker build -t simuladores-app:latest .
+docker save simuladores-app:latest | gzip > simuladores-app.tar.gz
+
+# 2. Transferir para servidor
+scp simuladores-app.tar.gz double@10.10.50.246:~/
+
+# 3. No servidor: carregar e reiniciar
+cd ~/simuladores
+docker load < ~/simuladores-app.tar.gz
+./deploy.sh restart
+```
+
+---
+
+### 🐛 Troubleshooting
+
+#### Problema: Porta já em uso
+
+```bash
+# Verificar portas em uso
+sudo netstat -tulpn | grep :3000
+sudo netstat -tulpn | grep :5432
+
+# Solução: Alterar portas em .env.production
+APP_PORT=3009
+DATABASE_EXTERNAL_PORT=5433
+```
+
+#### Problema: Permissão negada
+
+```bash
+# Adicionar usuário ao grupo docker
+sudo usermod -aG docker $USER
+
+# Relogar para aplicar mudanças
+exit
+ssh double@10.10.50.246
+```
+
+#### Problema: Container não inicia
+
+```bash
+# Ver logs detalhados
+docker logs simuladores-app --tail 100
+
+# Verificar configuração
+docker inspect simuladores-app
+
+# Reiniciar do zero
+./deploy.sh stop
+./deploy.sh clean
+./deploy.sh install-on-server
+```
+
+#### Problema: Banco de dados não conecta
+
+```bash
+# Verificar se o banco está rodando
+docker ps | grep simuladores-db
+
+# Testar conexão direta
+docker exec -it simuladores-db psql -U postgres -d simuladores_db
+
+# Verificar variáveis de ambiente
+docker exec simuladores-app env | grep DATABASE
+```
+
+---
+
+### 📋 Checklist de Deploy
+
+**Antes do Deploy:**
+- [ ] Código testado localmente
+- [ ] `.env.production` configurado com portas corretas
+- [ ] Chaves de segurança geradas (NEXTAUTH_SECRET, JWT_SECRET)
+- [ ] Backup do banco de dados atual (se houver)
+- [ ] Imagem Docker construída e testada
+
+**Durante o Deploy:**
+- [ ] Imagem transferida para o servidor
+- [ ] SSH conectado ao servidor
+- [ ] `./deploy.sh install-on-server` executado com sucesso
+- [ ] Containers iniciados corretamente
+- [ ] Migrations executadas
+- [ ] Seed executado (dados iniciais)
+
+**Após o Deploy:**
+- [ ] Aplicação acessível via navegador
+- [ ] Login funcionando
+- [ ] Calculadoras funcionando
+- [ ] Propostas sendo criadas/editadas
+- [ ] Backup automático configurado
+- [ ] Logs sendo monitorados
+
+---
+
+## 📦 Instalação e Configuração (Resumo)
 
 ### Pré-requisitos
 - Node.js 20+
