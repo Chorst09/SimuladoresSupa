@@ -231,9 +231,29 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
     console.log('Saving proposal:', proposal);
   };
 
-  const handleDelete = (id: string) => {
-    // Lógica para deletar uma proposta
-    console.log('Deleting proposal with id:', id);
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta proposta?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/proposals/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao excluir proposta');
+      }
+
+      // Atualizar lista de propostas removendo a excluída
+      setProposals(prev => prev.filter(p => p.id !== id));
+      
+      console.log('✅ Proposta excluída com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao excluir proposta:', error);
+      alert(error instanceof Error ? error.message : 'Erro ao excluir proposta');
+    }
   };
 
   const handleBackToTop = () => {

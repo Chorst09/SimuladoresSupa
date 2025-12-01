@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Phone, PhoneForwarded, Edit, Plus, Download, Trash2, ArrowLeft } from 'lucide-react';
+import { Phone, PhoneForwarded, Edit, Plus, Download, Trash2, ArrowLeft, Save } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ClientManagerForm } from './ClientManagerForm';
 
@@ -63,6 +63,7 @@ interface ProposalItem {
 interface Proposal {
     id: string;
     baseId: string;
+    base_id?: string;
     version: number;
     client: ClientData | string;
     accountManager: AccountManagerData;
@@ -74,6 +75,7 @@ interface Proposal {
     rawTotalSetup?: number;
     rawTotalMonthly?: number;
     createdAt: string;
+    createdBy?: string;
     userId: string;
     value?: number;
     contractPeriod?: string;
@@ -1164,64 +1166,127 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         const proposalVersion = hasDiscounts ? 2 : 1;
 
         try {
-            // Mapear propostas para o formato esperado pelo gerador
-            const proposalsWithBaseId = savedProposals.map((p: any) => ({
-                base_id: p.base_id || p.baseId || ''
-            }));
-            
-            // Gerar ID único para a proposta
-            const baseId = generateNextProposalId(proposalsWithBaseId, 'PABX', proposalVersion);
-            console.log('🆔 ID gerado para nova proposta PABX:', baseId);
+            // Se tiver uma proposta atual, atualiza (independente de ter descontos ou não)
+            if (currentProposal?.id) {
+                const proposalToUpdate = {
+                    id: currentProposal.id,
+                    title: `Proposta PABX/SIP - ${clientData.name}`,
+                    client: clientData.name,
+                    accountManager: accountManagerData,
+                    type: 'PABX',
+                    status: selectedStatus,
+                    value: finalTotalMonthly,
+                    totalMonthly: finalTotalMonthly,
+                    totalSetup: finalTotalSetup,
+                    contractPeriod: contractDuration,
+                    version: proposalVersion,
+                    updatedBy: currentUser.email || currentUser.id,
+                    updatedAt: new Date().toISOString(),
+                    // Manter dados originais importantes
+                    createdBy: (currentProposal as any).createdBy || currentUser.id,
+                    createdAt: (currentProposal as any).createdAt || new Date().toISOString(),
+                    baseId: currentProposal.baseId || currentProposal.base_id,
+                    // Atualizar dados editáveis
+                    clientData: clientData,
+                    products: proposalItems,
+                    baseTotalMonthly: rawTotalMonthly,
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    userId: currentUser.id,
+                    metadata: {
+                        rawTotalMonthly: rawTotalMonthly,
+                        rawTotalSetup: rawTotalSetup,
+                        distributorId: accountManagerData.distributorId || '',
+                        discountInfo: {
+                            applySalespersonDiscount: applySalespersonDiscount,
+                            appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                            salespersonDiscountFactor: salespersonDiscountFactor,
+                            directorDiscountFactor: directorDiscountFactor,
+                            hasDiscounts: hasDiscounts
+                        },
+                        changes: proposalChanges
+                    }
+                };
 
-            const proposalData = {
-                base_id: baseId,
-                title: `Proposta PABX/SIP - ${clientData.name}`,
-                client: clientData.name,
-                accountManager: accountManagerData, // Enviar objeto completo
-                type: 'PABX',
-                status: selectedStatus,
-                value: finalTotalMonthly,
-                totalMonthly: finalTotalMonthly,
-                totalSetup: finalTotalSetup,
-                contractPeriod: contractDuration,
-                version: proposalVersion,
-                clientData: clientData,
-                products: proposalItems, // Renomear items para products
-                metadata: {
-                    // Salvar informações adicionais em metadata
-                    rawTotalMonthly: rawTotalMonthly,
-                    rawTotalSetup: rawTotalSetup,
-                    distributorId: accountManagerData.distributorId || '',
-                    discountInfo: {
-                        applySalespersonDiscount: applySalespersonDiscount,
-                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                        salespersonDiscountFactor: salespersonDiscountFactor,
-                        directorDiscountFactor: directorDiscountFactor,
-                        hasDiscounts: hasDiscounts
+                const response = await fetch(`/api/proposals/${currentProposal.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`,
                     },
-                    changes: proposalChanges
+                    body: JSON.stringify(proposalToUpdate),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao atualizar proposta');
                 }
-            };
+                const result = await response.json();
+                const updatedProposal = result.data || result;
+                toast.success(`Proposta ${updatedProposal.base_id || updatedProposal.id} atualizada com sucesso!`);
+                setCurrentProposal(updatedProposal);
+                fetchProposals();
+            } else {
+                // Criar nova proposta
+                // Mapear propostas para o formato esperado pelo gerador
+                const proposalsWithBaseId = savedProposals.map((p: any) => ({
+                    base_id: p.base_id || p.baseId || ''
+                }));
+                
+                // Gerar ID único para a proposta
+                const baseId = generateNextProposalId(proposalsWithBaseId, 'PABX', proposalVersion);
+                console.log('🆔 ID gerado para nova proposta PABX:', baseId);
 
-            const response = await fetch('/api/proposals', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentUser.token}`,
-                },
-                body: JSON.stringify(proposalData)
-            });
+                const proposalData = {
+                    base_id: baseId,
+                    title: `Proposta PABX/SIP - ${clientData.name}`,
+                    client: clientData.name,
+                    accountManager: accountManagerData,
+                    type: 'PABX',
+                    status: selectedStatus,
+                    value: finalTotalMonthly,
+                    totalMonthly: finalTotalMonthly,
+                    totalSetup: finalTotalSetup,
+                    contractPeriod: contractDuration,
+                    version: proposalVersion,
+                    clientData: clientData,
+                    products: proposalItems,
+                    baseTotalMonthly: rawTotalMonthly,
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    metadata: {
+                        rawTotalMonthly: rawTotalMonthly,
+                        rawTotalSetup: rawTotalSetup,
+                        distributorId: accountManagerData.distributorId || '',
+                        discountInfo: {
+                            applySalespersonDiscount: applySalespersonDiscount,
+                            appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                            salespersonDiscountFactor: salespersonDiscountFactor,
+                            directorDiscountFactor: directorDiscountFactor,
+                            hasDiscounts: hasDiscounts
+                        },
+                        changes: proposalChanges
+                    }
+                };
 
-            if (response.ok) {
-                const savedProposal = await response.json();
-                alert(`Proposta ${savedProposal.baseId} salva com sucesso!`);
+                const response = await fetch('/api/proposals', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`,
+                    },
+                    body: JSON.stringify(proposalData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao salvar proposta');
+                }
+                const result = await response.json();
+                const savedProposal = result.data || result;
+                toast.success(`Proposta ${savedProposal.base_id || savedProposal.id} salva com sucesso!`);
+                setCurrentProposal(savedProposal);
                 fetchProposals();
                 clearForm();
                 setCurrentView('search');
-            } else {
-                const errorData = await response.json();
-                console.error('Erro ao salvar proposta:', errorData);
-                alert('Erro ao salvar proposta: ' + (errorData.error || 'Erro desconhecido'));
             }
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
@@ -1302,18 +1367,154 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     // Alias for backward compatibility
     const calculatePABXResult = useCallback(calculatePABX, [pabxModality, pabxExtensions, pabxIncludeSetup, pabxIncludeDevices, pabxDeviceQuantity, pabxIncludeAI, pabxAIPlan, pabxPremiumPlan, pabxPremiumSubPlan, pabxPremiumEquipment, contractDuration, pabxPrices, aiAgentPrices, getPriceRange, calculatePABX]);
 
-    // Função para salvar a proposta (usando apenas API)
+    /**
+     * Função para salvar proposta com duas opções:
+     * 1. Atualizar proposta existente (saveAsNewVersion = false)
+     * 2. Criar nova versão da proposta (saveAsNewVersion = true)
+     * 
+     * IMPORTANTE: Os descontos são sempre salvos no metadata da proposta
+     */
     const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
         if (!currentUser?.id) {
             alert('Usuário não autenticado');
             return;
         }
 
+        // Debug: Verificar parâmetros recebidos
+        console.log('🔍 handleSave PABX chamado com:', {
+            proposalId,
+            saveAsNewVersion,
+            currentProposalId: currentProposal?.id,
+            currentProposalBaseId: currentProposal?.baseId || currentProposal?.base_id
+        });
+
         try {
             setSaving(true);
 
-            // Usar a função saveProposal que já existe e funciona com API
-            await saveProposal();
+            // Calcular totais com e sem descontos
+            const rawTotalSetup = proposalItems.reduce((sum, item) => sum + item.setup, 0);
+            const rawTotalMonthly = proposalItems.reduce((sum, item) => sum + item.monthly, 0);
+            const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
+            const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
+            const finalTotalSetup = rawTotalSetup;
+            const finalTotalMonthly = rawTotalMonthly * salespersonDiscountFactor * directorDiscountFactor;
+            const hasDiscounts = applySalespersonDiscount || appliedDirectorDiscountPercentage > 0;
+
+            // IMPORTANTE: Verificar ATUALIZAR primeiro, depois NOVA VERSÃO
+            if (saveAsNewVersion === false && currentProposal?.id) {
+                // ATUALIZAR PROPOSTA EXISTENTE - Atualiza o mesmo registro no banco
+                console.log('🔄 Atualizando proposta PABX/SIP existente:', currentProposal.id);
+                console.log('📋 Dados da proposta atual:', {
+                    id: currentProposal.id,
+                    baseId: currentProposal.baseId || currentProposal.base_id,
+                    version: currentProposal.version
+                });
+                
+                const proposalToUpdate = {
+                    title: `Proposta PABX/SIP - ${clientData.name}`,
+                    client: clientData.name,
+                    accountManager: accountManagerData,
+                    status: selectedStatus,
+                    value: finalTotalMonthly,
+                    totalMonthly: finalTotalMonthly,
+                    totalSetup: finalTotalSetup,
+                    clientData: clientData,
+                    products: proposalItems,
+                    // Salvar descontos no metadata
+                    metadata: {
+                        baseTotalMonthly: rawTotalMonthly,
+                        baseTotalSetup: rawTotalSetup,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        distributorId: accountManagerData.distributorId || ''
+                    }
+                };
+
+                console.log('📤 Enviando atualização para API:', proposalToUpdate);
+
+                const response = await fetch(`/api/proposals/${currentProposal.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(proposalToUpdate),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const updatedProposal = result.data || result;
+                    console.log('✅ Proposta atualizada:', updatedProposal);
+                    alert('Proposta atualizada com sucesso!');
+                    setCurrentProposal(updatedProposal);
+                    setSavedProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+                    setHasChanged(false);
+                } else {
+                    throw new Error('Erro ao atualizar proposta');
+                }
+            } else if (saveAsNewVersion === true && currentProposal) {
+                // CRIAR NOVA VERSÃO - Sempre cria um novo registro no banco
+                console.log('📝 Criando nova versão da proposta PABX/SIP:', currentProposal.baseId || currentProposal.base_id);
+                
+                const baseIdToUse = currentProposal.baseId || currentProposal.base_id;
+                if (!baseIdToUse) {
+                    alert('Proposta atual não possui ID base válido');
+                    setSaving(false);
+                    return;
+                }
+                
+                const { generateNewVersion } = await import('@/lib/proposal-id-generator');
+                const proposalsWithBaseId = savedProposals.map((p: any) => ({
+                    base_id: p.base_id || p.baseId || ''
+                }));
+                const newBaseId = generateNewVersion(baseIdToUse, proposalsWithBaseId);
+                
+                const proposalData = {
+                    base_id: newBaseId,
+                    title: `Proposta PABX/SIP - ${clientData.name}`,
+                    client: clientData.name,
+                    accountManager: accountManagerData,
+                    type: 'PABX',
+                    status: selectedStatus,
+                    value: finalTotalMonthly,
+                    totalMonthly: finalTotalMonthly,
+                    totalSetup: finalTotalSetup,
+                    contractPeriod: contractDuration,
+                    version: parseInt(newBaseId.match(/_v(\d+)$/)?.[1] || '1'),
+                    clientData: clientData,
+                    products: proposalItems,
+                    // Salvar descontos e informações adicionais no metadata
+                    metadata: {
+                        baseTotalMonthly: rawTotalMonthly,
+                        baseTotalSetup: rawTotalSetup,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        distributorId: accountManagerData.distributorId || ''
+                    },
+                    date: new Date().toISOString(),
+                    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+                };
+
+                console.log('📤 Enviando nova versão para API:', proposalData);
+
+                const response = await fetch('/api/proposals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(proposalData),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const newProposal = result.data || result;
+                    console.log('✅ Nova versão criada:', newProposal);
+                    alert(`Nova versão criada com sucesso! ID: ${newProposal.base_id || newProposal.baseId}`);
+                    setCurrentProposal(newProposal);
+                    setSavedProposals(prev => [newProposal, ...prev]);
+                    setHasChanged(false);
+                } else {
+                    throw new Error('Erro ao criar nova versão');
+                }
+            } else {
+                // Criar nova proposta (primeira vez)
+                await saveProposal();
+            }
 
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
@@ -1331,11 +1532,10 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
         if (window.confirm('Tem certeza que deseja excluir esta proposta?')) {
             try {
-                const response = await fetch(`/api/proposals?id=${proposalId}`, {
+                const response = await fetch(`/api/proposals/${proposalId}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentUser.token}`,
                     },
                 });
 
@@ -2401,23 +2601,38 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                 </div>
 
                                 <div className="flex justify-end gap-4 mt-6">
-                                    {hasChanged && currentProposal?.id && (
+                                    {/* Botão "Salvar como Nova Versão" - Sempre cria uma nova versão da proposta */}
+                                    {currentProposal?.id && (
                                         <Button
                                             onClick={() => {
                                                 if (currentProposal.id) {
                                                     handleSave(currentProposal.id, true);
-                                                    setHasChanged(false);
                                                 }
                                             }}
                                             className="bg-blue-600 hover:bg-blue-700"
                                         >
+                                            <Plus className="h-4 w-4 mr-2" />
                                             Salvar como Nova Versão
                                         </Button>
                                     )}
-                                    <Button onClick={() => handleSave()} className="bg-green-600 hover:bg-green-700">
-                                        Salvar Proposta
+                                    {/* Botão "Atualizar/Salvar Proposta" - Atualiza a proposta existente ou cria nova */}
+                                    <Button 
+                                        onClick={() => {
+                                            if (currentProposal?.id) {
+                                                // Atualizar proposta existente
+                                                handleSave(currentProposal.id, false);
+                                            } else {
+                                                // Criar nova proposta
+                                                handleSave();
+                                            }
+                                        }} 
+                                        className="bg-green-600 hover:bg-green-700"
+                                    >
+                                        <Save className="h-4 w-4 mr-2" />
+                                        {currentProposal ? 'Atualizar Proposta' : 'Salvar Proposta'}
                                     </Button>
                                     <Button className="bg-blue-600 hover:bg-blue-700">
+                                        <Download className="h-4 w-4 mr-2" />
                                         Gerar PDF
                                     </Button>
                                     <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700" onClick={cancelAction}>

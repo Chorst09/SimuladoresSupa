@@ -112,8 +112,10 @@ interface Product {
 interface Proposal {
     id: string; // ID do documento no Firestore
     baseId: string;
+    base_id?: string;
     version: number;
     userId: string; // ID do usuário que criou a proposta
+    createdBy?: string; // Para compatibilidade com API
     client: ClientData | string; // Pode ser objeto ou string
     accountManager: AccountManagerData;
     products: Product[];
@@ -127,6 +129,7 @@ interface Proposal {
     items?: Product[];
     applySalespersonDiscount?: boolean;
     appliedDirectorDiscountPercentage?: number;
+    baseTotalMonthly?: number;
     expiryDate?: string;
     changes?: string;
     metadata?: {
@@ -1166,7 +1169,11 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 includeSetupFee: includeSetupFee,
                 contractPeriod: vmContractPeriod,
                 unitSetup: setupFee, // Valor unitário do setup
-                unitMonthly: vmFinalPrice // Valor unitário mensal
+                unitMonthly: vmFinalPrice, // Valor unitário mensal
+                applySalespersonDiscount,
+                appliedDirectorDiscountPercentage,
+                includeReferralPartner,
+                includeInfluencerPartner
             }
         };
         setAddedProducts([...addedProducts, newProduct]);
@@ -1390,10 +1397,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
         if (window.confirm('Tem certeza que deseja excluir esta proposta?')) {
             try {
-                const response = await fetch(`/api/proposals?id=${proposalId}`, {
+                const response = await fetch(`/api/proposals/${proposalId}`, {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${currentUser.token}`,
+                        'Content-Type': 'application/json',
                     },
                 });
 
@@ -1698,61 +1705,114 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
             const proposalVersion = getProposalVersion();
 
-            // Mapear propostas para o formato esperado pelo gerador
-            const proposalsWithBaseId = proposals.map((p: any) => ({
-                base_id: p.base_id || p.baseId || ''
-            }));
-            
-            // Gerar ID único para a proposta
-            const baseId = generateNextProposalId(proposalsWithBaseId, 'VM', proposalVersion);
-            console.log('🆔 ID gerado para nova proposta VM:', baseId);
+            // Se tiver uma proposta atual, atualiza (independente de ter descontos ou não)
+            if (currentProposal?.id) {
+                const proposalToUpdate = {
+                    id: currentProposal.id,
+                    title: `Proposta Máquinas Virtuais V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    client: clientData.companyName || clientData.name || 'Cliente não informado',
+                    accountManager: accountManagerData.name || 'Gerente não informado',
+                    value: finalTotalMonthly,
+                    type: 'VM',
+                    status: currentProposal.status || 'Rascunho',
+                    updatedBy: currentUser.email || currentUser.id,
+                    updatedAt: new Date().toISOString(),
+                    // Manter dados originais importantes
+                    createdBy: currentProposal.createdBy || currentProposal.userId || currentUser.id,
+                    createdAt: currentProposal.createdAt,
+                    baseId: currentProposal.baseId || currentProposal.base_id,
+                    version: proposalVersion,
+                    // Atualizar dados editáveis
+                    clientData: clientData,
+                    products: addedProducts,
+                    totalSetup: totalSetup,
+                    totalMonthly: finalTotalMonthly,
+                    contractPeriod: vmContractPeriod,
+                    baseTotalMonthly: baseTotalMonthly,
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    userId: currentUser.id,
+                    metadata: {
+                        accountManagerEmail: accountManagerData.email,
+                        accountManagerPhone: accountManagerData.phone,
+                        fullAccountManagerData: accountManagerData
+                    }
+                };
 
-            const proposalToSave = {
-                base_id: baseId,
-                title: `Proposta Máquinas Virtuais V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
-                client: clientData.companyName || clientData.name || 'Cliente não informado',
-                accountManager: accountManagerData.name || 'Gerente não informado',
-                value: finalTotalMonthly,
-                type: 'VM',
-                status: 'Rascunho',
-                createdBy: currentUser.email || currentUser.id,
-                createdAt: new Date().toISOString(),
-                version: proposalVersion,
-                // Store additional data as metadata
-                clientData: clientData,
-                products: addedProducts,
-                totalSetup: totalSetup,
-                totalMonthly: finalTotalMonthly,
-                contractPeriod: vmContractPeriod,
-                baseTotalMonthly: baseTotalMonthly,
-                applySalespersonDiscount: applySalespersonDiscount,
-                appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                userId: currentUser.id,
-                metadata: {
-                    accountManagerEmail: accountManagerData.email,
-                    accountManagerPhone: accountManagerData.phone,
-                    fullAccountManagerData: accountManagerData
+                const response = await fetch(`/api/proposals/${currentProposal.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(proposalToUpdate),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao atualizar proposta');
                 }
-            };
+                const result = await response.json();
+                const updatedProposal = result.data || result;
+                toast.success(`Proposta ${updatedProposal.base_id || updatedProposal.id} atualizada com sucesso!`);
+                setCurrentProposal(updatedProposal);
+            } else {
+                // Criar nova proposta
+                // Mapear propostas para o formato esperado pelo gerador
+                const proposalsWithBaseId = proposals.map((p: any) => ({
+                    base_id: p.base_id || p.baseId || ''
+                }));
+                
+                // Gerar ID único para a proposta
+                const baseId = generateNextProposalId(proposalsWithBaseId, 'VM', proposalVersion);
+                console.log('🆔 ID gerado para nova proposta VM:', baseId);
 
-            const response = await fetch('/api/proposals', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(proposalToSave),
-            });
+                // Preparar dados da proposta com descontos salvos no metadata
+                const proposalToSave = {
+                    base_id: baseId,
+                    title: `Proposta Máquinas Virtuais V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    client: clientData.companyName || clientData.name || 'Cliente não informado',
+                    accountManager: accountManagerData.name || 'Gerente não informado',
+                    value: finalTotalMonthly,
+                    type: 'VM',
+                    status: 'Rascunho',
+                    createdBy: currentUser.email || currentUser.id,
+                    createdAt: new Date().toISOString(),
+                    version: proposalVersion,
+                    // Dados principais da proposta
+                    clientData: clientData,
+                    products: addedProducts,
+                    totalSetup: totalSetup,
+                    totalMonthly: finalTotalMonthly,
+                    contractPeriod: vmContractPeriod,
+                    userId: currentUser.id,
+                    // Salvar descontos e informações adicionais no metadata
+                    metadata: {
+                        baseTotalMonthly: baseTotalMonthly,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        accountManagerEmail: accountManagerData.email,
+                        accountManagerPhone: accountManagerData.phone,
+                        fullAccountManagerData: accountManagerData
+                    }
+                };
 
-            if (response.ok) {
-                const savedProposal = await response.json();
-                alert(`Proposta ${savedProposal.baseId || savedProposal.id} salva com sucesso!`);
+                const response = await fetch('/api/proposals', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(proposalToSave),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao salvar proposta');
+                }
+                const result = await response.json();
+                const savedProposal = result.data || result;
+                toast.success(`Proposta ${savedProposal.base_id || savedProposal.id} salva com sucesso!`);
                 setCurrentProposal(savedProposal);
+                setProposals(prev => [savedProposal, ...prev]);
                 // Atualizar lista de propostas
                 fetchProposals();
-                // Limpar formulário após salvar
-                setViewMode('search');
-            } else {
-                throw new Error('Erro ao salvar proposta');
             }
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
@@ -1760,7 +1820,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         }
     };
 
-    // Função para salvar a proposta (usando apenas API)
+    /**
+     * Função para salvar proposta com duas opções:
+     * 1. Atualizar proposta existente (saveAsNewVersion = false)
+     * 2. Criar nova versão da proposta (saveAsNewVersion = true)
+     * 
+     * IMPORTANTE: Os descontos são sempre salvos no metadata da proposta
+     */
     const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
         if (!currentUser?.id) {
             alert('Usuário não autenticado');
@@ -1783,81 +1849,145 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
             return;
         }
 
+        // Debug: Verificar parâmetros recebidos
+        console.log('🔍 handleSave VM chamado com:', {
+            proposalId,
+            saveAsNewVersion,
+            currentProposalId: currentProposal?.id,
+            currentProposalBaseId: currentProposal?.baseId || currentProposal?.base_id
+        });
+
         try {
             setSaving(true);
 
-            // Calcular totais
+            // Calcular totais com e sem descontos
             const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
             const calculatedTotalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
             const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
 
-            // Determinar versão
-            let version = 1;
-            if (saveAsNewVersion && currentProposal) {
-                version = (currentProposal.version || 1) + 1;
-            } else if (currentProposal) {
-                version = currentProposal.version || 1;
-            }
-
-            // Preparar dados da proposta
-            const proposalData = {
-                title: `Proposta VM V${version} - ${clientData?.name || 'Cliente'}`,
-                client: clientData?.name || '',
-                type: 'VM',
-                value: finalTotalMonthly,
-                status: selectedStatus,
-                createdBy: currentUser.id,
-                accountManager: accountManagerData?.name || '',
-                date: new Date().toISOString().split('T')[0],
-                expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 dias
-                totalSetup: calculatedTotalSetup,
-                totalMonthly: finalTotalMonthly,
-                contractPeriod: vmContractPeriod,
-                version: version,
-                clientData: clientData,
-                products: addedProducts,
-                items: addedProducts,
-                // Dados adicionais para controle de versão
-                applySalespersonDiscount: applySalespersonDiscount,
-                appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                baseTotalMonthly: baseTotalMonthly,
-                changes: proposalChanges
-            };
-
-            let response;
-
-            if (saveAsNewVersion || !proposalId) {
-                // Criar nova proposta/versão
-                response = await fetch('/api/proposals', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(proposalData),
+            // IMPORTANTE: Verificar ATUALIZAR primeiro, depois NOVA VERSÃO
+            if (saveAsNewVersion === false && currentProposal?.id) {
+                // ATUALIZAR PROPOSTA EXISTENTE - Atualiza o mesmo registro no banco
+                console.log('🔄 Atualizando proposta VM existente:', currentProposal.id);
+                console.log('📋 Dados da proposta atual:', {
+                    id: currentProposal.id,
+                    baseId: currentProposal.baseId || currentProposal.base_id,
+                    version: currentProposal.version
                 });
-            } else {
-                // Atualizar proposta existente
-                response = await fetch(`/api/proposals?id=${proposalId}`, {
+                
+                const proposalToUpdate = {
+                    title: `Proposta VM - ${clientData?.name || 'Cliente'}`,
+                    client: clientData?.name || '',
+                    value: finalTotalMonthly,
+                    status: selectedStatus,
+                    accountManager: accountManagerData?.name || '',
+                    totalSetup: calculatedTotalSetup,
+                    totalMonthly: finalTotalMonthly,
+                    contractPeriod: vmContractPeriod,
+                    clientData: clientData,
+                    products: addedProducts,
+                    items: addedProducts,
+                    // Salvar descontos no metadata
+                    metadata: {
+                        baseTotalMonthly: baseTotalMonthly,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        changes: proposalChanges,
+                        accountManagerEmail: accountManagerData.email,
+                        accountManagerPhone: accountManagerData.phone
+                    }
+                };
+
+                console.log('📤 Enviando atualização para API:', proposalToUpdate);
+
+                const response = await fetch(`/api/proposals/${currentProposal.id}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(proposalToUpdate),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const updatedProposal = result.data || result;
+                    console.log('✅ Proposta atualizada:', updatedProposal);
+                    alert('Proposta atualizada com sucesso!');
+                    setCurrentProposal(updatedProposal);
+                    setProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+                    setHasChanged(false);
+                    fetchProposals();
+                } else {
+                    throw new Error('Erro ao atualizar proposta');
+                }
+            } else if (saveAsNewVersion === true && currentProposal) {
+                // CRIAR NOVA VERSÃO - Sempre cria um novo registro no banco
+                console.log('📝 Criando nova versão da proposta VM:', currentProposal.baseId || currentProposal.base_id);
+                
+                const baseIdToUse = currentProposal.baseId || currentProposal.base_id;
+                if (!baseIdToUse) {
+                    alert('Proposta atual não possui ID base válido');
+                    setSaving(false);
+                    return;
+                }
+                
+                const { generateNewVersion } = await import('@/lib/proposal-id-generator');
+                const proposalsWithBaseId = proposals.map((p: any) => ({
+                    base_id: p.base_id || p.baseId || ''
+                }));
+                const newBaseId = generateNewVersion(baseIdToUse, proposalsWithBaseId);
+                const version = parseInt(newBaseId.match(/_v(\d+)$/)?.[1] || '1');
+                
+                const proposalData = {
+                    base_id: newBaseId,
+                    title: `Proposta VM V${version} - ${clientData?.name || 'Cliente'}`,
+                    client: clientData?.name || '',
+                    type: 'VM',
+                    value: finalTotalMonthly,
+                    status: selectedStatus,
+                    createdBy: currentUser.id,
+                    accountManager: accountManagerData?.name || '',
+                    date: new Date().toISOString().split('T')[0],
+                    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    totalSetup: calculatedTotalSetup,
+                    totalMonthly: finalTotalMonthly,
+                    contractPeriod: vmContractPeriod,
+                    version: version,
+                    clientData: clientData,
+                    products: addedProducts,
+                    items: addedProducts,
+                    // Salvar descontos no metadata
+                    metadata: {
+                        baseTotalMonthly: baseTotalMonthly,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        changes: proposalChanges,
+                        accountManagerEmail: accountManagerData.email,
+                        accountManagerPhone: accountManagerData.phone
+                    }
+                };
+
+                console.log('📤 Enviando nova versão para API:', proposalData);
+
+                const response = await fetch('/api/proposals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(proposalData),
                 });
-            }
 
-            if (response.ok) {
-                const savedProposal = await response.json();
-                const actionText = saveAsNewVersion ? 'Nova versão criada' : 'Proposta salva';
-                alert(`${actionText} com sucesso! ID: ${savedProposal.baseId || savedProposal.id}`);
-                setCurrentProposal(savedProposal);
-                setHasChanged(false);
-                // Atualizar lista de propostas
-                fetchProposals();
+                if (response.ok) {
+                    const result = await response.json();
+                    const newProposal = result.data || result;
+                    console.log('✅ Nova versão criada:', newProposal);
+                    alert(`Nova versão criada com sucesso! ID: ${newProposal.base_id || newProposal.baseId}`);
+                    setCurrentProposal(newProposal);
+                    setProposals(prev => [newProposal, ...prev]);
+                    setHasChanged(false);
+                    fetchProposals();
+                } else {
+                    throw new Error('Erro ao criar nova versão');
+                }
             } else {
-                const errorData = await response.json();
-                console.error('Erro ao salvar proposta:', errorData);
-                alert('Erro ao salvar proposta: ' + (errorData.error || 'Erro desconhecido'));
+                // Criar nova proposta (primeira vez)
+                await saveProposal();
             }
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
@@ -4340,25 +4470,42 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                 </div>
 
                                 <div className="flex justify-end gap-4 mt-8">
-                                    {hasChanged && currentProposal?.id && (
+                                    {/* Botão "Salvar como Nova Versão" - Sempre cria uma nova versão da proposta */}
+                                    {currentProposal?.id && (
                                         <Button
                                             onClick={() => {
                                                 if (currentProposal.id) {
                                                     handleSave(currentProposal.id, true);
-                                                    setHasChanged(false);
                                                 }
                                             }}
                                             className="bg-blue-600 hover:bg-blue-700"
                                             disabled={addedProducts.length === 0}
                                         >
+                                            <Plus className="h-4 w-4 mr-2" />
                                             Salvar como Nova Versão
                                         </Button>
                                     )}
-                                    <Button onClick={saveProposal} className="bg-green-600 hover:bg-green-700" disabled={addedProducts.length === 0}>
+                                    {/* Botão "Atualizar/Salvar Proposta" - Atualiza a proposta existente ou cria nova */}
+                                    <Button 
+                                        onClick={() => {
+                                            if (currentProposal?.id) {
+                                                // Atualizar proposta existente
+                                                handleSave(currentProposal.id, false);
+                                            } else {
+                                                // Criar nova proposta
+                                                saveProposal();
+                                            }
+                                        }} 
+                                        className="bg-green-600 hover:bg-green-700" 
+                                        disabled={addedProducts.length === 0}
+                                    >
                                         <Save className="h-4 w-4 mr-2" />
-                                        Salvar Proposta
+                                        {currentProposal ? 'Atualizar Proposta' : 'Salvar Proposta'}
                                     </Button>
-                                    <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700" disabled={addedProducts.length === 0}><Download className="h-4 w-4 mr-2" />Gerar PDF</Button>
+                                    <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700" disabled={addedProducts.length === 0}>
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Gerar PDF
+                                    </Button>
                                     <Button variant="outline" onClick={() => setViewMode('search')}>Cancelar</Button>
                                 </div>
                             </>
@@ -4389,7 +4536,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                         <div className="print-totals">
                             <h3>Total Geral</h3>
                             <p><strong>Total Instalação:</strong> {formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0))}</p>
-                            <p><strong>Total Mensal:</strong> {formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</p>
+                            <p><strong>Total Mensal {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)))}</p>
                         </div>
                     </>
                 )}

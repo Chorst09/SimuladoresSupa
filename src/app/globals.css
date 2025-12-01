@@ -84,6 +84,20 @@
   background: hsl(var(--primary));
 }
 
+/* Estilos para botões na visualização de proposta - força cores corretas */
+.proposal-view button[type="button"] {
+  color: inherit !important;
+  background-color: inherit !important;
+}
+
+.proposal-view button[type="button"] span {
+  color: inherit !important;
+}
+
+.proposal-view button[type="button"] svg {
+  color: inherit !important;
+}
+
 /* Estilos específicos para impressão da proposta comercial */
 @media print {
   .no-print {

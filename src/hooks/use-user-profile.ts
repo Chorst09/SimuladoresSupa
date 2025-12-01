@@ -171,14 +171,14 @@ export function useUserProfile(): UseUserProfileResult {
   }, [authLoading, user, fetchProfile]);
 
   // Computed properties baseadas no role
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'director'; // Director também é admin
+  const isAdmin = profile?.role === 'admin';
   const isDirector = profile?.role === 'director';
   const isUser = profile?.role === 'user';
 
   // Permissões baseadas no role
-  const canAccessCommissions = isAdmin; // Admin e Director podem ver comissões
-  const canAccessPricing = isAdmin; // Admin e Director podem ver tabelas de preços
-  const canAccessDRE = isAdmin; // Admin e Director podem ver DRE
+  const canAccessCommissions = isAdmin || isDirector; // Admin e Director podem ver comissões
+  const canAccessPricing = isAdmin || isDirector; // Admin e Director podem ver tabelas de preços
+  const canAccessDRE = isAdmin || isDirector; // Admin e Director podem ver DRE
   const canViewAllProposals = isAdmin || isDirector; // Admin e Diretor podem ver todas as propostas
 
   return {

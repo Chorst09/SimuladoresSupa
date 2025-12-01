@@ -77,19 +77,40 @@ export async function GET(request: NextRequest) {
     ])
 
     // Transformar para camelCase para compatibilidade com frontend
-    const proposals = proposalsRaw.map(p => ({
-      ...p,
-      baseId: p.base_id,
-      totalSetup: p.total_setup,
-      totalMonthly: p.total_monthly,
-      contractPeriod: p.contract_period,
-      expiryDate: p.expiry_date,
-      createdAt: p.created_at,
-      updatedAt: p.updated_at,
-      clientData: p.client_data,
-      accountManager: p.account_manager,
-      itemsData: p.items_data
-    }))
+    const proposals = proposalsRaw.map(p => {
+      // Garantir que products seja um array (parse se for string)
+      let products = p.products
+      if (typeof products === 'string') {
+        try {
+          products = JSON.parse(products)
+        } catch (e) {
+          products = []
+        }
+      }
+      
+      // Extrair descontos do metadata  
+      const metadata = p.metadata as any || {}
+      
+      return {
+        ...p,
+        baseId: p.base_id,
+        totalSetup: p.total_setup,
+        totalMonthly: p.total_monthly,
+        contractPeriod: p.contract_period,
+        expiryDate: p.expiry_date,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+        clientData: p.client_data,
+        accountManager: p.account_manager,
+        itemsData: p.items_data,
+        products: Array.isArray(products) ? products : [],
+        // Incluir descontos do metadata
+        applySalespersonDiscount: metadata.applySalespersonDiscount || false,
+        appliedDirectorDiscountPercentage: metadata.appliedDirectorDiscountPercentage || 0,
+        baseTotalMonthly: metadata.baseTotalMonthly || p.total_monthly,
+        changes: metadata.changes || null
+      }
+    })
 
     return NextResponse.json({
       success: true,
@@ -123,6 +144,9 @@ export async function POST(request: NextRequest) {
       title: body.title,
       hasAccountManager: !!body.accountManager,
       accountManagerType: typeof body.accountManager,
+      applySalespersonDiscount: body.applySalespersonDiscount,
+      appliedDirectorDiscountPercentage: body.appliedDirectorDiscountPercentage,
+      baseTotalMonthly: body.baseTotalMonthly,
       fields: Object.keys(body)
     })
     
@@ -179,6 +203,17 @@ export async function POST(request: NextRequest) {
       console.log('🆔 Novo base_id gerado:', finalBaseId)
     }
 
+    // Construir metadata com descontos
+    const metadataToSave = {
+      ...(metadata || {}),
+      applySalespersonDiscount: body.applySalespersonDiscount || false,
+      appliedDirectorDiscountPercentage: body.appliedDirectorDiscountPercentage || 0,
+      baseTotalMonthly: body.baseTotalMonthly || total_monthly || totalMonthly || 0,
+      changes: body.changes || null
+    }
+    
+    console.log('💾 Salvando metadata:', metadataToSave)
+
     const dataToCreate = {
       base_id: finalBaseId,
       title,
@@ -192,15 +227,13 @@ export async function POST(request: NextRequest) {
       contract_period: contract_period || contractPeriod || 12,
       date: date ? new Date(date) : new Date(),
       expiry_date: expiry_date || expiryDate ? new Date(expiry_date || expiryDate) : null,
-        version: version || 1,
-        products: products || [],
-        items_data: items_data || itemsData || [],
-        client_data: client_data || clientData || null,
-        metadata: metadata || {}
-      }
+      version: version || 1,
+      products: products || [],
+      items_data: items_data || itemsData || [],
+      client_data: client_data || clientData || null,
+      metadata: metadataToSave
+    }
     
-    console.log('💾 Dados que serão salvos no Prisma:', JSON.stringify(dataToCreate, null, 2))
-
     const proposal = await prisma.proposal.create({
       data: dataToCreate,
       include: {
@@ -217,12 +250,6 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-    })
-
-    console.log('✅ Proposta salva no banco:', {
-      id: proposal.id,
-      base_id: proposal.base_id,
-      title: proposal.title
     })
 
     return NextResponse.json({

@@ -54,21 +54,94 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const profile = await prisma.profile.update({
-      where: { id },
-      data: {
-        role: body.role,
-        full_name: body.full_name,
-        updated_at: new Date()
+    console.log('🔄 Atualizando perfil:', { id, body });
+
+    // Validar dados
+    if (!body.role || !body.full_name) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Role e nome completo são obrigatórios'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Atualizar profile e user_compat em uma transação
+    const result = await prisma.$transaction(async (tx) => {
+      // Verificar se o perfil existe
+      const existingProfile = await tx.profile.findUnique({
+        where: { id }
+      });
+
+      if (!existingProfile) {
+        throw new Error('Perfil não encontrado');
       }
+
+      console.log('📊 Perfil atual:', existingProfile);
+
+      // Atualizar profile
+      const profile = await tx.profile.update({
+        where: { id },
+        data: {
+          role: body.role,
+          full_name: body.full_name,
+          updated_at: new Date()
+        }
+      });
+
+      console.log('✅ Profile atualizado:', profile);
+
+      // Atualizar user_compat (tabela users no schema public)
+      const userCompat = await tx.userCompat.update({
+        where: { id },
+        data: {
+          role: body.role,
+          updated_at: new Date()
+        }
+      });
+
+      console.log('✅ UserCompat atualizado:', userCompat);
+
+      return profile;
+    });
+
+    console.log('✅ Perfil atualizado com sucesso:', result);
+
+    return NextResponse.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar profile:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro interno do servidor'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    // Delete user from auth.users (cascade will delete profile and user_compat)
+    await prisma.user.delete({
+      where: { id }
     });
 
     return NextResponse.json({
       success: true,
-      data: profile
+      message: 'Usuário excluído com sucesso'
     });
   } catch (error) {
-    console.error('Erro ao atualizar profile:', error);
+    console.error('Erro ao excluir usuário:', error);
     return NextResponse.json(
       {
         success: false,

@@ -107,3 +107,37 @@ export function generateNextProposalId(
   const nextNumber = getNextProposalNumber(existingProposals, type);
   return generateProposalId(type, nextNumber, version);
 }
+
+/**
+ * Gera uma nova versão de uma proposta existente
+ * @param currentBaseId ID base atual (ex: Prop_Inter_Fibra_001_v1)
+ * @param existingProposals Lista de propostas existentes
+ * @returns Novo ID com versão incrementada
+ */
+export function generateNewVersion(
+  currentBaseId: string,
+  existingProposals: Array<{ base_id: string }>
+): string {
+  const parsed = parseProposalId(currentBaseId);
+  
+  if (!parsed) {
+    throw new Error('ID de proposta inválido');
+  }
+
+  // Encontrar a maior versão existente para este base_id (sem a versão)
+  const baseIdWithoutVersion = currentBaseId.replace(/_v\d+$/, '');
+  const sameBaseProposals = existingProposals.filter(p => 
+    p.base_id.startsWith(baseIdWithoutVersion)
+  );
+
+  const versions = sameBaseProposals
+    .map(p => parseProposalId(p.base_id))
+    .filter(p => p !== null)
+    .map(p => p!.version);
+
+  const maxVersion = versions.length > 0 ? Math.max(...versions) : parsed.version;
+  const newVersion = maxVersion + 1;
+
+  // Reconstruir o ID com a nova versão
+  return `${baseIdWithoutVersion}_v${newVersion}`;
+}

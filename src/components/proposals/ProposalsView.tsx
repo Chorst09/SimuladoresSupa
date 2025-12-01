@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit, Trash2, PlusCircle, FileDown, User, Calendar, DollarSign, FileText, Briefcase, Calculator, ArrowLeft } from 'lucide-react';
+import { Edit, Trash2, User, Calendar, DollarSign, FileText, Briefcase, Calculator, ArrowLeft, Printer } from 'lucide-react';
 import type { Proposal, Partner } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -234,13 +234,12 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
         <div className="flex items-center space-x-4">
           {onBackToTop && (
             <Button 
-              variant="outline" 
               onClick={onBackToTop}
-              className="flex items-center shrink-0 bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50"
+              className="flex items-center shrink-0 bg-blue-600 border-2 border-blue-500 text-white hover:bg-blue-700 hover:border-blue-600 font-medium shadow-md"
               aria-label="Voltar para as calculadoras"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Voltar</span>
+              <ArrowLeft className="h-4 w-4 mr-2 text-white" />
+              <span className="text-white">Voltar</span>
             </Button>
           )}
           <div className="flex items-center gap-4">
@@ -420,6 +419,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
                   <TableHead className="text-slate-300">Gerente de Conta</TableHead>
                   <TableHead className="text-slate-300">Produto</TableHead>
                   <TableHead className="text-slate-300">Valor</TableHead>
+                  <TableHead className="text-slate-300">Descontos</TableHead>
                   <TableHead className="text-slate-300">Status</TableHead>
                   <TableHead className="text-slate-300">Data de Criação</TableHead>
                   <TableHead className="text-slate-300">Validade</TableHead>
@@ -427,64 +427,97 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProposals.map((proposal) => (
-                  <TableRow key={proposal.id} className="border-slate-700 hover:bg-slate-800/30 transition-colors">
-                    <TableCell className="font-medium text-white">{proposal.title}</TableCell>
-                    <TableCell className="text-slate-300">{typeof proposal.client === 'string' ? proposal.client : proposal.client?.name || 'N/A'}</TableCell>
-                    <TableCell className="text-slate-300">{typeof proposal.accountManager === 'string' ? proposal.accountManager : proposal.accountManager?.name || 'N/A'}</TableCell>
-                    <TableCell className="text-slate-300">{getProductName(proposal.type)}</TableCell>
-                    <TableCell className="text-slate-300">{formatCurrency(proposal.value || 0)}</TableCell>
-                    <TableCell>
-                      <Badge className={`${getStatusColor(proposal.status)} border-0`}>
-                        {proposal.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-slate-300">{formatDate(proposal.date)}</TableCell>
-                    <TableCell className="text-slate-300">{formatDate(proposal.expiryDate)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewCommercialProposal(proposal)}
-                          className="flex items-center text-cyan-400 hover:text-cyan-300 hover:bg-slate-700/50"
-                        >
-                          <FileText className="h-4 w-4 mr-1" />
-                          <span>Ver</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleNavigateToCalculator(proposal)}
-                          className="flex items-center text-blue-400 hover:text-blue-300 hover:bg-slate-700/50"
-                        >
-                          <Calculator className="h-4 w-4 mr-1" />
-                          <span>Calcular</span>
-                        </Button>
-                        {(user?.role === 'admin' || proposal.createdBy === user?.id) && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(proposal)}
-                              className="text-yellow-400 hover:text-yellow-300 hover:bg-slate-700/50"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDelete(proposal.id)}
-                              className="text-red-400 hover:text-red-300 hover:bg-slate-700/50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
+                {filteredProposals.map((proposal) => {
+                  // Verificar se há descontos nos produtos
+                  const hasDiscounts = proposal.products?.some((p: any) => 
+                    p.details?.applySalespersonDiscount || p.details?.appliedDirectorDiscountPercentage > 0
+                  );
+                  
+                  // Coletar informações de descontos
+                  const discounts: string[] = [];
+                  if (proposal.products) {
+                    proposal.products.forEach((p: any) => {
+                      if (p.details?.applySalespersonDiscount) {
+                        discounts.push('Vendedor: 5%');
+                      }
+                      if (p.details?.appliedDirectorDiscountPercentage > 0) {
+                        discounts.push(`Diretoria: ${p.details.appliedDirectorDiscountPercentage}%`);
+                      }
+                    });
+                  }
+                  
+                  return (
+                    <TableRow key={proposal.id} className="border-slate-700 hover:bg-slate-800/30 transition-colors">
+                      <TableCell className="font-medium text-white">{proposal.title}</TableCell>
+                      <TableCell className="text-slate-300">{typeof proposal.client === 'string' ? proposal.client : proposal.client?.name || 'N/A'}</TableCell>
+                      <TableCell className="text-slate-300">{typeof proposal.accountManager === 'string' ? proposal.accountManager : proposal.accountManager?.name || 'N/A'}</TableCell>
+                      <TableCell className="text-slate-300">{getProductName(proposal.type)}</TableCell>
+                      <TableCell className="text-slate-300">{formatCurrency(proposal.value || 0)}</TableCell>
+                      <TableCell className="text-slate-300">
+                        {hasDiscounts ? (
+                          <div className="flex flex-col gap-1">
+                            {discounts.map((discount, idx) => (
+                              <Badge key={idx} className="bg-green-600/20 text-green-300 border-green-500/30 text-xs">
+                                {discount}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-xs">Sem descontos</span>
                         )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${getStatusColor(proposal.status)} border-0`}>
+                          {proposal.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-slate-300">{formatDate(proposal.date)}</TableCell>
+                      <TableCell className="text-slate-300">{formatDate(proposal.expiryDate)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewCommercialProposal(proposal)}
+                            className="flex items-center text-cyan-400 hover:text-cyan-300 hover:bg-slate-700/50"
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            <span>Ver</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleNavigateToCalculator(proposal)}
+                            className="flex items-center text-blue-400 hover:text-blue-300 hover:bg-slate-700/50"
+                          >
+                            <Calculator className="h-4 w-4 mr-1" />
+                            <span>Calcular</span>
+                          </Button>
+                          {(user?.role === 'admin' || proposal.createdBy === user?.id) && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEdit(proposal)}
+                                className="text-yellow-400 hover:text-yellow-300 hover:bg-slate-700/50"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onDelete(proposal.id)}
+                                className="text-red-400 hover:text-red-300 hover:bg-slate-700/50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -544,7 +577,7 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo da Proposta Comercial */}
+      {/* Diálogo da Proposta Comercial - SEM BOTÕES DENTRO */}
       <Dialog open={showCommercialProposal} onOpenChange={setShowCommercialProposal}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -553,6 +586,81 @@ const ProposalsView: React.FC<ProposalsViewProps> = ({ proposals, partners, onSa
           <CommercialProposalView partners={partners} proposal={selectedProposal} />
         </DialogContent>
       </Dialog>
+      
+      {/* Botões de ação FORA do Dialog - Posicionados absolutamente */}
+      {showCommercialProposal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: '80px',
+            right: '60px',
+            zIndex: 9999,
+            display: 'flex',
+            gap: '0.5rem'
+          }}
+          className="no-print"
+        >
+          <button 
+            onClick={() => window.print()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              borderRadius: '0.375rem',
+              border: '1px solid #d1d5db',
+              backgroundColor: '#ffffff',
+              color: '#374151',
+              cursor: 'pointer',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f3f4f6';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#ffffff';
+            }}
+          >
+            <Printer style={{ width: '16px', height: '16px', color: '#374151' }} />
+            <span style={{ color: '#374151' }}>Imprimir</span>
+          </button>
+          <button 
+            onClick={async () => {
+              const downloadBtn = document.querySelector('[data-download-pdf]') as HTMLButtonElement;
+              if (downloadBtn) downloadBtn.click();
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              borderRadius: '0.375rem',
+              border: 'none',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              cursor: 'pointer',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#1d4ed8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#2563eb';
+            }}
+          >
+            <FileText style={{ width: '16px', height: '16px', color: '#ffffff' }} />
+            <span style={{ color: '#ffffff' }}>Download PDF</span>
+          </button>
+        </div>
+      )}
 
       {/* Diálogo da Proposta Técnica */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>

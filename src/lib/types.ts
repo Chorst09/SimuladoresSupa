@@ -93,7 +93,7 @@ export interface Proposal {
   };
 }
 
-export type UserRole = 'admin' | 'director' | 'user' | 'diretor' | 'pending';
+export type UserRole = 'admin' | 'director' | 'user' | 'pending';
 
 export interface UserProfile {
   id: string;

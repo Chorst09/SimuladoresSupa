@@ -1080,9 +1080,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
             const proposalVersion = getProposalVersion();
 
-            // Se tiver uma proposta atual E não há descontos (V1), atualiza. 
-            // Se há descontos (V2/V3), sempre cria uma nova proposta
-            if (currentProposal?.id && proposalVersion === 1) {
+            // Se tiver uma proposta atual, atualiza (independente de ter descontos ou não)
+            if (currentProposal?.id) {
                 const proposalToUpdate = {
                     id: currentProposal.id,
                     title: `Proposta INTERNET MAN FIBRA V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
@@ -1109,11 +1108,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     userId: user.id
                 };
 
-                const response = await fetch(`/api/proposals?id=${currentProposal.id}`, {
+                const response = await fetch(`/api/proposals/${currentProposal.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${user.id}`,
                     },
                     body: JSON.stringify(proposalToUpdate),
                 });
@@ -1193,8 +1191,109 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }
 
         try {
-            // Usar a função saveProposal existente
-            await saveProposal();
+            const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+            const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
+            const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
+
+            // IMPORTANTE: Verificar ATUALIZAR primeiro, depois NOVA VERSÃO
+            if (saveAsNewVersion === false && currentProposal?.id) {
+                // ATUALIZAR PROPOSTA EXISTENTE
+                console.log('🔄 Atualizando proposta Internet MAN existente:', currentProposal.id);
+                
+                const proposalToUpdate = {
+                    title: `Proposta Internet MAN Fibra - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    client: clientData.companyName || clientData.name || 'Cliente não informado',
+                    value: finalTotalMonthly,
+                    status: selectedStatus,
+                    clientData: clientData,
+                    accountManager: accountManagerData,
+                    products: addedProducts,
+                    totalSetup: totalSetup,
+                    totalMonthly: finalTotalMonthly,
+                    // Salvar descontos no metadata
+                    metadata: {
+                        baseTotalMonthly: baseTotalMonthly,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        changes: proposalChanges
+                    }
+                };
+
+                const response = await fetch(`/api/proposals/${currentProposal.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(proposalToUpdate),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const updatedProposal = result.data || result;
+                    console.log('✅ Proposta atualizada:', updatedProposal);
+                    alert('Proposta atualizada com sucesso!');
+                    setCurrentProposal(updatedProposal);
+                    setProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+                } else {
+                    throw new Error('Erro ao atualizar proposta');
+                }
+            } else if (saveAsNewVersion === true && currentProposal) {
+                // CRIAR NOVA VERSÃO
+                console.log('📝 Criando nova versão da proposta Internet MAN');
+                
+                const baseIdToUse = currentProposal.baseId || (currentProposal as any).base_id;
+                if (!baseIdToUse) {
+                    alert('Proposta atual não possui ID base válido');
+                    return;
+                }
+                
+                const { generateNewVersion } = await import('@/lib/proposal-id-generator');
+                const proposalsWithBaseId = proposals.map((p: any) => ({
+                    base_id: p.base_id || p.baseId || ''
+                }));
+                const newBaseId = generateNewVersion(baseIdToUse, proposalsWithBaseId);
+                
+                const proposalToSave = {
+                    base_id: newBaseId,
+                    title: `Proposta Internet MAN Fibra - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    client: clientData.companyName || clientData.name || 'Cliente não informado',
+                    value: finalTotalMonthly,
+                    type: 'INTERNET_MAN_FIBRA',
+                    status: selectedStatus,
+                    date: new Date().toISOString(),
+                    expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    version: parseInt(newBaseId.match(/_v(\d+)$/)?.[1] || '1'),
+                    clientData: clientData,
+                    accountManager: accountManagerData,
+                    products: addedProducts,
+                    totalSetup: totalSetup,
+                    totalMonthly: finalTotalMonthly,
+                    // Salvar descontos no metadata
+                    metadata: {
+                        baseTotalMonthly: baseTotalMonthly,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        changes: proposalChanges
+                    }
+                };
+
+                const response = await fetch('/api/proposals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(proposalToSave),
+                });
+
+                if (response.ok) {
+                    const newProposal = await response.json();
+                    const proposalData = newProposal.data || newProposal;
+                    alert(`Nova versão criada com sucesso! ID: ${proposalData.baseId || proposalData.base_id}`);
+                    setCurrentProposal(proposalData);
+                    setProposals(prev => [proposalData, ...prev]);
+                } else {
+                    throw new Error('Erro ao criar nova versão');
+                }
+            } else {
+                // Criar nova proposta (primeira vez)
+                await saveProposal();
+            }
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
             alert('Erro ao salvar proposta. Tente novamente.');
@@ -1352,10 +1451,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
         if (window.confirm('Tem certeza que deseja excluir esta proposta? Esta ação não pode ser desfeita.')) {
             try {
-                const response = await fetch(`/api/proposals?id=${id}`, {
+                const response = await fetch(`/api/proposals/${id}`, {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${user.id}`,
+                        'Content-Type': 'application/json',
                     },
                 });
 
@@ -2148,13 +2247,13 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0))}</span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span>Total Mensal:</span>
-                                                        <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</span>
+                                                        <span>Total Mensal {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</span>
+                                                        <span className="font-medium">{formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)))}</span>
                                                     </div>
 
                                                     <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-700">
-                                                        <span>Total Anual:</span>
-                                                        <span>{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly * 12, 0))}</span>
+                                                        <span>Total Anual {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</span>
+                                                        <span>{formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) * 12)}</span>
                                                     </div>
 
                                                     {/* Payback Information */}

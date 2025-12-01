@@ -23,3 +23,21 @@ yarn-error.log*
 # Arquivos de IDEs
 .vscode
 .idea
+.kiro
+.idx
+
+# Docker images exportadas (deploy)
+*.tar
+*.tar.gz
+simuladores-app.tar*
+simuladores-postgres.tar*
+simuladores.tar.gz
+
+# Backups
+backups/
+*.sql
+
+# Scripts temporários
+install-remote.sh
+install-on-server.sh
+limpar-servidor.sh

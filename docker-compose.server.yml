@@ -1,15 +1,12 @@
 # ==========================================
-# DOCKER COMPOSE - PRODUÇÃO
+# DOCKER COMPOSE - SERVIDOR (SEM BUILD)
+# Usa imagens já carregadas localmente
 # ==========================================
 
 services:
   # Banco de dados PostgreSQL (Produção)
   db:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: postgres
-    image: simuladores-postgres:prod
+    image: localhost/simuladores-postgres:prod
     container_name: simuladores_db_prod
     restart: always
     env_file:
@@ -19,13 +16,11 @@ services:
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "${DATABASE_EXTERNAL_PORT:-5433}:5432"
     volumes:
       - simuladores_postgres_prod_data:/var/lib/postgresql/data
-      # Backup automático (opcional)
       - ./backups:/backups
-    # Não expor porta em produção (apenas interno)
-    # ports:
-    #   - "5432:5432"
     networks:
       - app-network
     healthcheck:
@@ -34,7 +29,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-    # Limites de recursos para produção
     deploy:
       resources:
         limits:
@@ -46,11 +40,7 @@ services:
 
   # Aplicação Next.js (Produção)
   app:
-    build: 
-      context: .
-      dockerfile: Dockerfile
-      target: production
-    image: simuladores-app:prod
+    image: localhost/simuladores-app:prod
     container_name: simuladores_app_prod
     restart: always
     env_file:
@@ -80,7 +70,6 @@ services:
       timeout: 15s
       retries: 3
       start_period: 120s
-    # Limites de recursos para produção
     deploy:
       resources:
         limits:
@@ -105,8 +94,6 @@ services:
       - app
     networks:
       - app-network
-    profiles:
-      - nginx
 
   # PgAdmin (Produção - apenas com profile admin)
   pgadmin:
@@ -127,7 +114,6 @@ services:
       - app-network
     profiles:
       - admin
-    # Limites de recursos
     deploy:
       resources:
         limits:
@@ -143,3 +129,4 @@ networks:
   app-network:
     name: simuladores_network_prod
     driver: bridge
+    external: true

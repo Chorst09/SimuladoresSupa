@@ -57,6 +57,10 @@ export interface Product {
     description: string;
     setup: number;
     monthly: number;
+    monthlyOriginal?: number; // Valor original antes dos descontos
+    salespersonDiscount?: number; // Valor do desconto vendedor em R$
+    directorDiscount?: number; // Valor do desconto diretoria em R$
+    totalDiscount?: number; // Total de descontos em R$
     details: {
         speed?: number;
         contractTerm?: number;
@@ -894,9 +898,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
             const proposalVersion = getProposalVersion();
 
-            // Se tiver uma proposta atual E não há descontos (V1), atualiza. 
-            // Se há descontos (V2/V3), sempre cria uma nova proposta
-            if (currentProposal?.id && proposalVersion === 1) {
+            // Se tiver uma proposta atual, atualiza (independente de ter descontos ou não)
+            if (currentProposal?.id) {
                 const proposalToUpdate = {
                     id: currentProposal.id,
                     title: `Proposta Internet Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
@@ -923,11 +926,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     userId: user.id
                 };
 
-                const response = await fetch(`/api/proposals?id=${currentProposal.id}`, {
+                const response = await fetch(`/api/proposals/${currentProposal.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${user.token}`,
                     },
                     body: JSON.stringify(proposalToUpdate),
                 });
@@ -955,6 +957,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 console.log('🆔 ID gerado para nova proposta:', baseId);
                 console.log('📝 Versão:', proposalVersion);
                 
+                // Preparar dados da proposta com descontos salvos no metadata
                 const proposalToSave = {
                     base_id: baseId,
                     title: `Proposta Internet Fibra V${proposalVersion} - ${clientData.companyName || clientData.name || 'Cliente'}`,
@@ -965,17 +968,20 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     createdBy: user.email || user.id,
                     createdAt: new Date().toISOString(),
                     version: proposalVersion,
-                    // Store additional data as metadata
+                    // Dados principais da proposta
                     clientData: clientData,
                     accountManager: accountManagerData,
                     products: addedProducts,
                     totalSetup: totalSetup,
                     totalMonthly: finalTotalMonthly,
-                    baseTotalMonthly: baseTotalMonthly,
-                    applySalespersonDiscount: applySalespersonDiscount,
-                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
                     userId: user.id,
-                    changes: proposalChanges
+                    // Salvar descontos e informações adicionais no metadata
+                    metadata: {
+                        baseTotalMonthly: baseTotalMonthly,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        changes: proposalChanges
+                    }
                 };
 
                 console.log('📤 Enviando proposta para API:', proposalToSave);
@@ -1012,16 +1018,148 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         }
     };
 
-    // Função para salvar proposta (compatível com botão "Salvar como Nova Versão")
+    /**
+     * Função para salvar proposta com duas opções:
+     * 1. Atualizar proposta existente (saveAsNewVersion = false)
+     * 2. Criar nova versão da proposta (saveAsNewVersion = true)
+     * 
+     * IMPORTANTE: Os descontos são sempre salvos no metadata da proposta
+     */
     const handleSave = async (proposalId?: string, saveAsNewVersion: boolean = false) => {
         if (!user?.id) {
             alert('Usuário não autenticado');
             return;
         }
 
+        // Debug: Verificar parâmetros recebidos
+        console.log('🔍 handleSave chamado com:', {
+            proposalId,
+            saveAsNewVersion,
+            currentProposalId: currentProposal?.id,
+            currentProposalBaseId: currentProposal?.baseId || currentProposal?.base_id
+        });
+
         try {
-            // Usar a função saveProposal existente
-            await saveProposal();
+            // Calcular valores base e finais
+            const baseTotalMonthly = addedProducts.reduce((sum, p) => sum + p.monthly, 0);
+            const totalSetup = addedProducts.reduce((sum, p) => sum + p.setup, 0);
+            const finalTotalMonthly = applyDiscounts(baseTotalMonthly);
+
+            // IMPORTANTE: Verificar a ordem das condições
+            // 1. Se saveAsNewVersion = true E tem proposta atual → Criar nova versão
+            // 2. Se saveAsNewVersion = false E tem proposta atual → Atualizar
+            // 3. Se não tem proposta atual → Criar nova
+            
+            if (saveAsNewVersion === true && currentProposal) {
+                // CRIAR NOVA VERSÃO - Sempre cria um novo registro no banco
+                console.log('📝 Criando nova versão da proposta:', currentProposal.baseId || currentProposal.base_id);
+                
+                const baseIdToUse = currentProposal.baseId || currentProposal.base_id;
+                if (!baseIdToUse) {
+                    alert('Proposta atual não possui ID base válido');
+                    return;
+                }
+                
+                const { generateNewVersion } = await import('@/lib/proposal-id-generator');
+                const proposalsWithBaseId = proposals.map((p: any) => ({
+                    base_id: p.base_id || p.baseId || ''
+                }));
+                const newBaseId = generateNewVersion(baseIdToUse, proposalsWithBaseId);
+                
+                const proposalToSave = {
+                    base_id: newBaseId,
+                    title: `Proposta Internet Fibra - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    client: clientData.companyName || clientData.name || 'Cliente não informado',
+                    value: finalTotalMonthly,
+                    type: 'FIBER',
+                    status: selectedStatus,
+                    date: new Date().toISOString(),
+                    expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    version: parseInt(newBaseId.match(/_v(\d+)$/)?.[1] || '1'),
+                    clientData: clientData,
+                    accountManager: accountManagerData,
+                    products: addedProducts,
+                    totalSetup: totalSetup,
+                    totalMonthly: finalTotalMonthly,
+                    // Salvar descontos no metadata
+                    metadata: {
+                        baseTotalMonthly: baseTotalMonthly,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        changes: proposalChanges
+                    }
+                };
+
+                console.log('📤 Enviando nova versão para API:', proposalToSave);
+
+                const response = await fetch('/api/proposals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(proposalToSave),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const newProposal = result.data || result;
+                    console.log('✅ Nova versão criada:', newProposal);
+                    alert(`Nova versão criada com sucesso! ID: ${newProposal.base_id || newProposal.baseId}`);
+                    setCurrentProposal(newProposal);
+                    setProposals(prev => [newProposal, ...prev]);
+                    setHasChanged(false);
+                } else {
+                    throw new Error('Erro ao criar nova versão');
+                }
+            } else if (saveAsNewVersion === false && currentProposal?.id) {
+                // ATUALIZAR PROPOSTA EXISTENTE - Atualiza o mesmo registro no banco
+                console.log('🔄 Atualizando proposta existente:', currentProposal.id);
+                console.log('📋 Dados da proposta atual:', {
+                    id: currentProposal.id,
+                    baseId: currentProposal.baseId || currentProposal.base_id,
+                    version: currentProposal.version
+                });
+                
+                const proposalToUpdate = {
+                    title: `Proposta Internet Fibra - ${clientData.companyName || clientData.name || 'Cliente'}`,
+                    client: clientData.companyName || clientData.name || 'Cliente não informado',
+                    value: finalTotalMonthly,
+                    status: selectedStatus,
+                    clientData: clientData,
+                    accountManager: accountManagerData,
+                    products: addedProducts,
+                    totalSetup: totalSetup,
+                    totalMonthly: finalTotalMonthly,
+                    // Salvar descontos no metadata
+                    metadata: {
+                        baseTotalMonthly: baseTotalMonthly,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        changes: proposalChanges
+                    }
+                };
+
+                console.log('📤 Enviando atualização para API:', proposalToUpdate);
+
+                const response = await fetch(`/api/proposals/${currentProposal.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(proposalToUpdate),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const updatedProposal = result.data || result;
+                    console.log('✅ Proposta atualizada:', updatedProposal);
+                    alert('Proposta atualizada com sucesso!');
+                    setCurrentProposal(updatedProposal);
+                    setProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+                    setHasChanged(false);
+                } else {
+                    throw new Error('Erro ao atualizar proposta');
+                }
+            } else {
+                // Criar nova proposta (primeira vez)
+                await saveProposal();
+            }
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
             alert('Erro ao salvar proposta. Tente novamente.');
@@ -1157,11 +1295,29 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 }
                 if (firstProduct.details.contractTerm) setContractTerm(firstProduct.details.contractTerm);
                 if (firstProduct.details.includeInstallation !== undefined) setIncludeInstallation(firstProduct.details.includeInstallation);
-                if (firstProduct.details.applySalespersonDiscount !== undefined) setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
-                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
                 if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
             }
         }
+
+        // IMPORTANTE: Carregar descontos do METADATA da proposta (não dos product.details)
+        const metadata = (proposal as any).metadata || {};
+        if (metadata.applySalespersonDiscount !== undefined) {
+            setApplySalespersonDiscount(metadata.applySalespersonDiscount);
+        } else if ((proposal as any).applySalespersonDiscount !== undefined) {
+            setApplySalespersonDiscount((proposal as any).applySalespersonDiscount);
+        }
+        
+        if (metadata.appliedDirectorDiscountPercentage !== undefined) {
+            setAppliedDirectorDiscountPercentage(metadata.appliedDirectorDiscountPercentage);
+            setDirectorDiscountPercentage(metadata.appliedDirectorDiscountPercentage);
+        } else if ((proposal as any).appliedDirectorDiscountPercentage !== undefined) {
+            setAppliedDirectorDiscountPercentage((proposal as any).appliedDirectorDiscountPercentage);
+            setDirectorDiscountPercentage((proposal as any).appliedDirectorDiscountPercentage);
+        }
+
+        // Load status and changes
+        setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
+        setProposalChanges(metadata.changes || (proposal as any).changes || '');
 
         setViewMode('calculator');
     };
@@ -1179,10 +1335,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
         if (window.confirm('Tem certeza que deseja excluir esta proposta? Esta ação não pode ser desfeita.')) {
             try {
-                const response = await fetch(`/api/proposals?id=${id}`, {
+                const response = await fetch(`/api/proposals/${id}`, {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${user.token}`,
+                        'Content-Type': 'application/json',
                     },
                 });
 
@@ -1416,23 +1572,30 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     </CardContent>
                 </Card>
             ) : viewMode === 'proposal-summary' && currentProposal ? (
-                <Card className="bg-white border-gray-300 text-black print:shadow-none proposal-view">
-                    <CardHeader className="print:pb-2">
-                        <div className="flex justify-between items-start mb-4 print:mb-2">
-                            <div>
+                <>
+                    {/* Botões de ação FORA do Card */}
+                    <div className="flex justify-end gap-2 mb-4 no-print">
+                        <button 
+                            onClick={() => setViewMode('search')}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                        >
+                            ← Voltar
+                        </button>
+                        <button 
+                            onClick={handlePrint}
+                            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                        >
+                            📄 Imprimir PDF
+                        </button>
+                    </div>
+                    
+                    <Card className="bg-white border-gray-300 text-black print:shadow-none proposal-view">
+                        <CardHeader className="print:pb-2">
+                            <div className="mb-4 print:mb-2">
                                 <h1 className="text-2xl font-bold text-gray-900">Proposta Comercial</h1>
                                 <p className="text-gray-600">Internet via Fibra Óptica</p>
                             </div>
-                            <div className="flex gap-2 no-print">
-                                <Button variant="outline" onClick={() => setViewMode('search')}>
-                                    <ArrowLeft className="h-4 w-4 mr-2" />Voltar
-                                </Button>
-                                <Button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700">
-                                    <Download className="h-4 w-4 mr-2" />Imprimir PDF
-                                </Button>
-                            </div>
-                        </div>
-                    </CardHeader>
+                        </CardHeader>
                     <CardContent className="space-y-6 print:space-y-4">
                         {/* Dados do Cliente, Projeto e Gerente */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:gap-4">
@@ -1607,6 +1770,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                         )}
                     </CardContent>
                 </Card>
+                </>
             ) : (
                 <>
                     <div className="mb-6">
@@ -1895,7 +2059,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
                                                 {/* Controles de Desconto */}
                                                 <div className="space-y-4 p-4 bg-slate-800 rounded-lg">
-                                                    {(user?.role !== 'diretor' && user?.role !== 'admin') && (
+                                                    {(user?.role !== 'director' && user?.role !== 'admin') && (
                                                         <div className="flex items-center space-x-2">
                                                             <Checkbox
                                                                 id="salesperson-discount-toggle"
@@ -1905,7 +2069,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                             <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                                         </div>
                                                     )}
-                                                    {(user?.role === 'diretor' || user?.role === 'admin') && (
+                                                    {(user?.role === 'director' || user?.role === 'admin') && (
                                                         <div className="space-y-2">
                                                             <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
                                                             <div className="flex items-center space-x-2">
@@ -1957,13 +2121,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.setup, 0))}</span>
                                                     </div>
                                                     <div className="flex justify-between">
-                                                        <span>Total Mensal:</span>
-                                                        <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</span>
+                                                        <span>Total Mensal {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</span>
+                                                        <span className="font-medium">{formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)))}</span>
                                                     </div>
 
                                                     <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-700">
-                                                        <span>Total Anual:</span>
-                                                        <span>{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly * 12, 0))}</span>
+                                                        <span>Total Anual {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</span>
+                                                        <span>{formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) * 12)}</span>
                                                     </div>
 
                                                     {/* Payback Information */}
@@ -1993,20 +2157,33 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     <Button variant="outline" onClick={clearForm} className="border-slate-600 text-slate-300 hover:bg-slate-700">
                                                         Limpar Tudo
                                                     </Button>
-                                                    {hasChanged && currentProposal?.id && (
+                                                    {/* Botão "Salvar como Nova Versão" - Sempre cria uma nova versão da proposta */}
+                                                    {currentProposal?.id && (
                                                         <Button
                                                             onClick={() => {
                                                                 if (currentProposal.id) {
                                                                     handleSave(currentProposal.id, true);
-                                                                    setHasChanged(false);
                                                                 }
                                                             }}
                                                             className="bg-blue-600 hover:bg-blue-700"
                                                         >
+                                                            <Plus className="h-4 w-4 mr-2" />
                                                             Salvar como Nova Versão
                                                         </Button>
                                                     )}
-                                                    <Button onClick={saveProposal} className="bg-green-600 hover:bg-green-700">
+                                                    {/* Botão "Atualizar/Salvar Proposta" - Atualiza a proposta existente ou cria nova */}
+                                                    <Button 
+                                                        onClick={() => {
+                                                            if (currentProposal?.id) {
+                                                                // Atualizar proposta existente
+                                                                handleSave(currentProposal.id, false);
+                                                            } else {
+                                                                // Criar nova proposta
+                                                                saveProposal();
+                                                            }
+                                                        }} 
+                                                        className="bg-green-600 hover:bg-green-700"
+                                                    >
                                                         <Save className="h-4 w-4 mr-2" />
                                                         {currentProposal ? 'Atualizar Proposta' : 'Salvar Proposta'}
                                                     </Button>

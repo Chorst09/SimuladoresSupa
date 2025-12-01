@@ -49,3 +49,19 @@ firestore-debug.log
 .idx/*
 .vscode/*
 /src/generated/prisma
+
+# Docker images exportadas (deploy)
+*.tar
+*.tar.gz
+simuladores-app.tar*
+simuladores-postgres.tar*
+simuladores.tar.gz
+
+# Backups
+/backups/*.sql
+/backups/*.tar.gz
+
+# Scripts temporários de instalação
+install-remote.sh
+install-on-server.sh
+limpar-servidor.sh

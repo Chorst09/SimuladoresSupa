@@ -10,9 +10,10 @@ export async function POST() {
     // Remover cookie de autenticação
     response.cookies.set('auth-token', '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Permitir HTTP em produção
       sameSite: 'lax',
-      maxAge: 0 // Expira imediatamente
+      maxAge: 0, // Expira imediatamente
+      path: '/'
     })
 
     return response

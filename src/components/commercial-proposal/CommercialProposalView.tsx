@@ -9,14 +9,40 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Check, Download, Printer } from 'lucide-react';
 
 interface CommercialProposalViewProps {
-  partners: any[];
+  partners?: any[];
   proposal?: any;
 }
 
-const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partners, proposal }) => {
-  console.log('\n\n=========== DEBUG PROPOSAL OBJECT ===========');
-  console.log(JSON.stringify(proposal, null, 2));
-  console.log('===========================================\n\n');
+/**
+ * CommercialProposalView
+ * 
+ * Componente para visualização e exportação de propostas comerciais.
+ * 
+ * Funcionalidades:
+ * - Visualização profissional em 2 páginas (Capa + Detalhes)
+ * - Exportação para PDF com layout completo
+ * - Exibição detalhada de descontos aplicados
+ * - Cálculo automático de totais com descontos
+ * - Suporte a múltiplas estruturas de dados (camelCase e snake_case)
+ * 
+ * Estrutura de Descontos:
+ * - applySalespersonDiscount: boolean (desconto vendedor 5%)
+ * - appliedDirectorDiscountPercentage: number (desconto diretoria 0-100%)
+ * - baseTotalMonthly: number (valor original sem descontos)
+ * - totalMonthly: number (valor final com descontos)
+ */
+const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ proposal }) => {
+  // Debug: verificar se os descontos estão chegando corretamente
+  console.log('🔍 Proposta recebida:', {
+    id: proposal?.id,
+    baseId: proposal?.baseId,
+    applySalespersonDiscount: proposal?.applySalespersonDiscount,
+    appliedDirectorDiscountPercentage: proposal?.appliedDirectorDiscountPercentage,
+    baseTotalMonthly: proposal?.baseTotalMonthly,
+    totalMonthly: proposal?.totalMonthly,
+    metadata: proposal?.metadata
+  });
+
   const [proposalData, setProposalData] = useState({
     // Suporte para múltiplas estruturas de dados:
     // 1. Calculadoras salvam: clientData (objeto) e accountManagerData (objeto)
@@ -46,9 +72,57 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
     window.print();
   };
 
-  const handleDownload = () => {
-    // Implementar download da proposta
-    console.log('Download da proposta');
+  const handleDownload = async () => {
+    try {
+      // Importar dinamicamente jsPDF e html2canvas
+      const jsPDF = (await import('jspdf')).default;
+      const html2canvas = (await import('html2canvas')).default;
+
+      // Ocultar botões antes de capturar
+      const noPrintElements = document.querySelectorAll('.no-print');
+      noPrintElements.forEach(el => {
+        (el as HTMLElement).style.display = 'none';
+      });
+
+      // Capturar todas as páginas da proposta
+      const pages = document.querySelectorAll('.proposal-page');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i] as HTMLElement;
+        
+        // Capturar a página como imagem
+        const canvas = await html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 210; // A4 width in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        // Adicionar nova página se não for a primeira
+        if (i > 0) {
+          pdf.addPage();
+        }
+
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      }
+
+      // Salvar o PDF
+      const fileName = `Proposta_Comercial_${proposalData.clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+
+      // Restaurar visibilidade dos botões
+      noPrintElements.forEach(el => {
+        (el as HTMLElement).style.display = '';
+      });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF. Por favor, tente novamente.');
+    }
   };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,28 +148,40 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center no-print">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Proposta Comercial</h2>
-          <p className="text-muted-foreground">
-            Gere propostas comerciais personalizadas
-          </p>
+    <>
+      <style jsx global>{`
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          .proposal-page {
+            page-break-after: always;
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
+      <div className="space-y-6">
+
+      {/* Botão oculto para download - acionado externamente */}
+      <button 
+        data-download-pdf 
+        onClick={handleDownload}
+        className="hidden"
+        aria-hidden="true"
+      />
+
+      {/* Formulário de edição (opcional) */}
+      {showForm && (
+        <div className="mb-6 no-print">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowForm(false)}
+            className="mb-4"
+          >
+            Ocultar Formulário
+          </Button>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowForm(!showForm)}>
-            {showForm ? 'Ocultar Formulário' : 'Editar Dados'}
-          </Button>
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
-            Imprimir
-          </Button>
-          <Button onClick={handleDownload}>
-            <Download className="h-4 w-4 mr-2" />
-            Download
-          </Button>
-        </div>
-      </div>
+      )}
 
       {showForm && (
         <Card className="no-print">
@@ -326,6 +412,27 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
                 </div>
                 <span className="text-lg font-semibold">{proposalData.productType}</span>
               </div>
+              
+              {/* Descontos Aplicados - Resumo */}
+              {(proposal?.applySalespersonDiscount || proposal?.appliedDirectorDiscountPercentage > 0) && (
+                <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                  <div className="text-sm font-semibold mb-2 text-blue-100">Descontos Especiais:</div>
+                  <div className="space-y-1">
+                    {proposal.applySalespersonDiscount && (
+                      <div className="flex items-center space-x-2 text-sm">
+                        <Check className="w-4 h-4 text-green-300" />
+                        <span>Desconto Vendedor: 5%</span>
+                      </div>
+                    )}
+                    {proposal.appliedDirectorDiscountPercentage > 0 && (
+                      <div className="flex items-center space-x-2 text-sm">
+                        <Check className="w-4 h-4 text-green-300" />
+                        <span>Desconto Diretoria: {proposal.appliedDirectorDiscountPercentage}%</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Linha divisória */}
@@ -516,23 +623,265 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
           {/* Produtos e Serviços */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Produtos e Serviços</h3>
-            <table className="w-full border-collapse border border-gray-300">
+            <table className="w-full border-collapse border border-gray-300 text-sm">
               <thead>
                 <tr className="bg-gray-50">
                   <th className="border border-gray-300 px-4 py-2 text-left">Descrição</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Setup</th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Mensal</th>
+                  <th className="border border-gray-300 px-4 py-2 text-left">Descontos</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td className="border border-gray-300 px-4 py-2">{proposalData.productType}</td>
-                  <td className="border border-gray-300 px-4 py-2">-</td>
-                  <td className="border border-gray-300 px-4 py-2">-</td>
-                </tr>
+                {proposal?.products && Array.isArray(proposal.products) && proposal.products.length > 0 ? (
+                  proposal.products.map((product: any, index: number) => {
+                    // Descontos são globais da proposta, não por produto
+                    const hasDiscounts = proposal.applySalespersonDiscount || proposal.appliedDirectorDiscountPercentage > 0;
+                    let discountText = '';
+                    if (proposal.applySalespersonDiscount && proposal.appliedDirectorDiscountPercentage > 0) {
+                      discountText = `Vendedor: 5%\nDiretoria: ${proposal.appliedDirectorDiscountPercentage}%`;
+                    } else if (proposal.applySalespersonDiscount) {
+                      discountText = 'Vendedor: 5%';
+                    } else if (proposal.appliedDirectorDiscountPercentage > 0) {
+                      discountText = `Diretoria: ${proposal.appliedDirectorDiscountPercentage}%`;
+                    }
+                    
+                    return (
+                      <tr key={index}>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {product.description || proposalData.productType}
+                          {product.details?.speed && ` - ${product.details.speed} Mbps`}
+                          {product.details?.contractTerm && ` (${product.details.contractTerm} meses)`}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {product.setup ? `R$ ${product.setup.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2">
+                          {product.monthly ? `R$ ${product.monthly.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                        </td>
+                        <td className="border border-gray-300 px-4 py-2 whitespace-pre-line">
+                          {hasDiscounts ? (
+                            <span className="text-green-700 font-medium">{discountText}</span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="border border-gray-300 px-4 py-2 text-center text-gray-500">
+                      {!proposal?.products ? (
+                        <div className="py-4">
+                          <p className="font-semibold text-red-600">⚠️ Nenhum produto encontrado nesta proposta</p>
+                          <p className="text-sm mt-2">Os produtos podem não ter sido salvos corretamente.</p>
+                        </div>
+                      ) : (
+                        <div className="py-4">
+                          <p>Nenhum produto adicionado</p>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
+
+          {/* Descontos Aplicados */}
+          {(proposal?.applySalespersonDiscount || proposal?.appliedDirectorDiscountPercentage > 0) && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Descontos Aplicados</h3>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                {proposal.applySalespersonDiscount && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">
+                      <strong>Desconto do Vendedor</strong>
+                    </span>
+                    <span className="text-green-700 font-semibold">5%</span>
+                  </div>
+                )}
+                {proposal.appliedDirectorDiscountPercentage > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">
+                      <strong>Desconto da Diretoria</strong>
+                    </span>
+                    <span className="text-green-700 font-semibold">
+                      {proposal.appliedDirectorDiscountPercentage}%
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Resumo Financeiro Detalhado */}
+          {proposal?.products && proposal.products.length > 0 && (() => {
+            // Calcular total de setup (não recebe descontos)
+            const totalSetup = proposal.products.reduce((sum: number, p: any) => sum + (p.setup || 0), 0);
+            
+            // Valor mensal final (já com descontos aplicados)
+            const totalMensalFinal = proposal.totalMonthly || proposal.products.reduce((sum: number, p: any) => sum + (p.monthly || 0), 0);
+            
+            /**
+             * Recuperar valor mensal original (sem descontos)
+             * 
+             * Prioridade:
+             * 1. Usar baseTotalMonthly do metadata (mais confiável)
+             * 2. Se não disponível e houver descontos, reverter cálculo
+             * 3. Se não houver descontos, usar valor final
+             */
+            let totalMensalSemDescontos = proposal.baseTotalMonthly || totalMensalFinal;
+            
+            // Verificar se há descontos aplicados
+            const hasDiscounts = proposal.applySalespersonDiscount || proposal.appliedDirectorDiscountPercentage > 0;
+            
+            // Se não tiver baseTotalMonthly mas tiver descontos, reverter o cálculo
+            if (hasDiscounts && !proposal.baseTotalMonthly) {
+              totalMensalSemDescontos = totalMensalFinal;
+              
+              // Reverter desconto da diretoria (aplicado por último)
+              if (proposal.appliedDirectorDiscountPercentage > 0) {
+                totalMensalSemDescontos = totalMensalSemDescontos / (1 - proposal.appliedDirectorDiscountPercentage / 100);
+              }
+              
+              // Reverter desconto do vendedor (aplicado primeiro)
+              if (proposal.applySalespersonDiscount) {
+                totalMensalSemDescontos = totalMensalSemDescontos / 0.95;
+              }
+            }
+            
+            // Calcular total de descontos e percentual
+            const totalDescontos = totalMensalSemDescontos - totalMensalFinal;
+            const percentualDesconto = totalMensalSemDescontos > 0 ? (totalDescontos / totalMensalSemDescontos * 100) : 0;
+            
+            return (
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro Detalhado</h3>
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-300 rounded-lg p-5">
+                  <table className="w-full">
+                    <tbody>
+                      {/* Setup */}
+                      <tr className="border-b-2 border-gray-300">
+                        <td className="py-3 text-sm font-bold text-gray-800">Total Setup (Instalação):</td>
+                        <td className="py-3 text-sm text-right font-bold text-gray-900">
+                          R$ {totalSetup.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                      
+                      {/* Valor Mensal Original */}
+                      {hasDiscounts && (
+                        <tr className="border-b border-gray-200">
+                          <td className="py-2 text-sm text-gray-600">Valor Mensal (sem descontos):</td>
+                          <td className="py-2 text-sm text-right text-gray-700 line-through">
+                            R$ {totalMensalSemDescontos.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      )}
+                      
+                      {/* Descontos Detalhados */}
+                      {hasDiscounts && (
+                        <>
+                          <tr className="bg-green-50 border-b border-green-200">
+                            <td className="py-2 text-sm font-semibold text-green-800" colSpan={2}>
+                              Descontos Aplicados:
+                            </td>
+                          </tr>
+                          
+                          {/* Desconto Vendedor */}
+                          {proposal.applySalespersonDiscount && (() => {
+                            const descontoVendedor = totalMensalSemDescontos * 0.05;
+                            
+                            return (
+                              <tr className="border-b border-gray-100">
+                                <td className="py-1 text-xs text-gray-700 pl-4">
+                                  • Desconto Vendedor (5%)
+                                </td>
+                                <td className="py-1 text-xs text-right text-green-700 font-medium">
+                                  -R$ {descontoVendedor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                          
+                          {/* Desconto Diretoria */}
+                          {proposal.appliedDirectorDiscountPercentage > 0 && (() => {
+                            // Calcular sobre o valor já com desconto vendedor (se aplicável)
+                            const valorBase = proposal.applySalespersonDiscount 
+                              ? totalMensalSemDescontos * 0.95 
+                              : totalMensalSemDescontos;
+                            const descontoDiretoria = valorBase * (proposal.appliedDirectorDiscountPercentage / 100);
+                            
+                            return (
+                              <tr className="border-b border-gray-100">
+                                <td className="py-1 text-xs text-gray-700 pl-4">
+                                  • Desconto Diretoria ({proposal.appliedDirectorDiscountPercentage}%)
+                                </td>
+                                <td className="py-1 text-xs text-right text-green-700 font-medium">
+                                  -R$ {descontoDiretoria.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                          
+                          {/* Total de Descontos */}
+                          <tr className="bg-green-100 border-b-2 border-green-300">
+                            <td className="py-2 text-sm font-bold text-green-800">Total de Descontos ({percentualDesconto.toFixed(1)}%):</td>
+                            <td className="py-2 text-sm text-right font-bold text-green-700">
+                              -R$ {totalDescontos.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        </>
+                      )}
+                      
+                      {/* Valor Final */}
+                      <tr className="bg-blue-50 border-b-2 border-blue-300">
+                        <td className="py-3 text-base font-bold text-blue-900">
+                          Valor Mensal Final {hasDiscounts ? '(com descontos)' : ''}:
+                        </td>
+                        <td className="py-3 text-base text-right font-bold text-blue-900">
+                          R$ {totalMensalFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    {proposal.products.some((p: any) => p.details?.contractTerm) && (
+                      <tr>
+                        <td className="py-2 text-sm font-medium text-gray-700">Prazo Contratual:</td>
+                        <td className="py-2 text-sm text-right font-semibold text-gray-900">
+                          {proposal.products[0].details.contractTerm} meses
+                        </td>
+                      </tr>
+                    )}
+                    {proposal.baseId && (
+                      <tr>
+                        <td className="py-2 text-sm font-medium text-gray-700">ID da Proposta:</td>
+                        <td className="py-2 text-sm text-right font-semibold text-gray-900">
+                          {proposal.baseId}
+                        </td>
+                      </tr>
+                    )}
+                    {proposal.version && (
+                      <tr>
+                        <td className="py-2 text-sm font-medium text-gray-700">Versão:</td>
+                        <td className="py-2 text-sm text-right font-semibold text-gray-900">
+                          {proposal.version}
+                        </td>
+                      </tr>
+                    )}
+                    {proposal.date && (
+                      <tr>
+                        <td className="py-2 text-sm font-medium text-gray-700">Data da Proposta:</td>
+                        <td className="py-2 text-sm text-right font-semibold text-gray-900">
+                          {new Date(proposal.date).toLocaleDateString('pt-BR')}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            );
+          })()}
 
           {/* Rodapé */}
           <div className="absolute bottom-12 left-12 right-12">
@@ -551,19 +900,10 @@ const CommercialProposalView: React.FC<CommercialProposalViewProps> = ({ partner
         </div>
       </div>
 
-      {/* Controles de Navegação */}
-      <div className="flex justify-center space-x-4 mt-6 no-print">
-        <Button variant="outline" disabled>
-          Página Anterior
-        </Button>
-        <span className="flex items-center px-4 py-2 bg-gray-100 rounded">
-          Página 1 de 2
-        </span>
-        <Button variant="outline" disabled>
-          Próxima Página
-        </Button>
-      </div>
+      {/* Controles de Navegação - Removidos pois não são necessários para visualização em tela */}
+      {/* A impressão e exportação PDF já geram o documento completo com todas as páginas */}
     </div>
+    </>
   );
 };
 

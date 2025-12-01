@@ -41,6 +41,8 @@ export default function UserManagement() {
   const [newUserName, setNewUserName] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>('user');
   const [addUserError, setAddUserError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAdmin) {
@@ -63,7 +65,9 @@ export default function UserManagement() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
       });
 
@@ -137,6 +141,7 @@ export default function UserManagement() {
     }
 
     try {
+      setIsSaving(true);
       console.log('🔄 Criando usuário via API signup...');
 
       const response = await fetch('/api/auth/signup', {
@@ -187,6 +192,8 @@ export default function UserManagement() {
       }
 
       alert(`❌ Erro: ${description}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -194,34 +201,78 @@ export default function UserManagement() {
     if (!editingUser) return;
 
     try {
-      // TODO: Implementar atualização via API REST
-      console.log('Atualizando usuário via API:', editingUser);
+      setIsSaving(true);
+      console.log('🔄 Atualizando usuário via API:', editingUser);
 
-      alert('Sucesso: Usuário atualizado com sucesso!');
+      const response = await fetch(`/api/profiles/${editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          full_name: editingUser.full_name,
+          role: editingUser.role
+        })
+      });
+
+      const result = await response.json();
+
+      console.log('📊 Resposta da API de atualização:', result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao atualizar usuário');
+      }
+
+      console.log('✅ Usuário atualizado no servidor:', result.data);
 
       setIsEditDialogOpen(false);
       setEditingUser(null);
-      loadUsers();
+      
+      // Reload users
+      console.log('🔄 Recarregando lista de usuários...');
+      await loadUsers();
+      console.log('✅ Lista recarregada');
+      
+      alert('✅ Usuário atualizado com sucesso!');
     } catch (error: any) {
-      console.error('Erro ao atualizar usuário:', error);
+      console.error('❌ Erro ao atualizar usuário:', error);
       alert(`Erro: ${error?.message || 'Não foi possível atualizar o usuário.'}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDeleteUser = async (userId: string, userEmail: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o usuário ${userEmail}?`)) {
+    if (!confirm(`Tem certeza que deseja excluir o usuário ${userEmail}?\n\nEsta ação não pode ser desfeita.`)) {
       return;
     }
 
     try {
-      // TODO: Implementar exclusão via API REST
-      console.log('Excluindo usuário via API:', userId);
+      setDeletingUserId(userId);
+      console.log('🗑️ Excluindo usuário via API:', userId);
 
-      alert('Sucesso: Usuário excluído com sucesso!');
-      loadUsers();
+      const response = await fetch(`/api/profiles/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao excluir usuário');
+      }
+
+      alert('✅ Usuário excluído com sucesso!');
+      
+      // Reload users
+      await loadUsers();
     } catch (error: any) {
-      console.error('Erro ao excluir usuário:', error);
+      console.error('❌ Erro ao excluir usuário:', error);
       alert(`Erro: ${error?.message || 'Não foi possível excluir o usuário.'}`);
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -280,25 +331,29 @@ export default function UserManagement() {
                     value={newUserEmail}
                     onChange={(e) => setNewUserEmail(e.target.value)}
                     placeholder="usuario@exemplo.com"
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="password">Senha</Label>
+                  <Label htmlFor="password">Senha (mínimo 6 caracteres)</Label>
                   <Input
                     id="password"
                     type="password"
                     value={newUserPassword}
                     onChange={(e) => setNewUserPassword(e.target.value)}
-                    placeholder="Senha do usuário"
+                    placeholder="Mínimo 6 caracteres"
+                    minLength={6}
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="name">Nome (Opcional)</Label>
+                  <Label htmlFor="name">Nome Completo</Label>
                   <Input
                     id="name"
                     value={newUserName}
                     onChange={(e) => setNewUserName(e.target.value)}
-                    placeholder="Nome do usuário"
+                    placeholder="Nome completo do usuário"
+                    required
                   />
                 </div>
                 <div>
@@ -315,11 +370,18 @@ export default function UserManagement() {
                   </Select>
                 </div>
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSaving}>
                     Cancelar
                   </Button>
-                  <Button onClick={handleAddUser}>
-                    Criar Usuário
+                  <Button onClick={handleAddUser} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Criando...
+                      </>
+                    ) : (
+                      'Criar Usuário'
+                    )}
                   </Button>
                 </div>
               </div>
@@ -484,8 +546,13 @@ A aplicação usa a tabela "profiles" para mostrar os usuários.
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteUser(user.id, user.email)}
+                          disabled={deletingUserId === user.id}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          {deletingUserId === user.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
                         </Button>
                       )}
                     </div>
@@ -545,11 +612,18 @@ A aplicação usa a tabela "profiles" para mostrar os usuários.
                 </Select>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>
                   Cancelar
                 </Button>
-                <Button onClick={handleEditUser}>
-                  Salvar Alterações
+                <Button onClick={handleEditUser} disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Alterações'
+                  )}
                 </Button>
               </div>
             </div>

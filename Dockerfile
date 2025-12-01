@@ -6,7 +6,7 @@
 # ==================================
 # STAGE 0: POSTGRES (PostgreSQL customizado)
 # ==================================
-FROM postgres:16-alpine AS postgres
+FROM docker.io/library/postgres:16-alpine AS postgres
 
 # Instalar extensões necessárias
 RUN apk add --no-cache postgresql-contrib
@@ -33,7 +33,7 @@ EXPOSE 5432
 # ==================================
 # STAGE 1: BASE (Dependências do sistema)
 # ==================================
-FROM node:20-slim AS base
+FROM docker.io/library/node:20-slim AS base
 
 # Instalar dependências do sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -50,8 +50,14 @@ RUN groupadd --gid 1001 nodejs \
 # Definir diretório de trabalho
 WORKDIR /app
 
+# Configurar variável de ambiente para Prisma (necessário antes de copiar)
+ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
+
 # Copiar arquivos de dependências
 COPY package.json package-lock.json ./
+
+# Copiar schema do Prisma (necessário para postinstall)
+COPY prisma ./prisma
 
 # ==================================
 # STAGE 2: DEPENDENCIES (Instalação de dependências)
@@ -69,17 +75,18 @@ FROM dependencies AS development
 # Variáveis de ambiente para desenvolvimento
 ENV NODE_ENV=development
 ENV PORT=3000
+ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
 
 # Copiar código fonte com permissões corretas
 COPY --chown=nodejs:nodejs . .
 
-# Gerar cliente Prisma
-RUN npx prisma generate
+# Gerar Prisma Client como root (antes de trocar de usuário)
+RUN PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1 npx prisma generate || echo "Prisma generate falhou, será tentado no runtime"
 
 # Criar diretórios necessários para o Next.js com permissões corretas
 RUN mkdir -p .next && \
     touch next-env.d.ts && \
-    chown -R nodejs:nodejs .next next-env.d.ts
+    chown -R nodejs:nodejs .next next-env.d.ts node_modules
 
 # Usuário não-root
 USER nodejs
@@ -91,8 +98,8 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:${PORT:-3000}/api/health || exit 1
 
-# Comando para desenvolvimento (com hot reload)
-CMD ["dumb-init", "npm", "run", "dev"]
+# Comando para desenvolvimento (com hot reload e inicialização do DB)
+CMD ["dumb-init", "sh", "-c", "echo '🔧 Inicializando banco de dados...' && npx prisma db push && (npm run db:seed || echo '⚠️  Seed já executado ou falhou') && echo '🚀 Iniciando aplicação...' && npm run dev"]
 
 # ==================================
 # STAGE 4: BUILDER (Build para produção)
@@ -102,12 +109,16 @@ FROM dependencies AS builder
 # Copiar código fonte
 COPY . .
 
+# Gerar Prisma Client
+ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
+RUN npx prisma generate || echo "Prisma generate falhou, será tentado no runtime"
+
 # Build da aplicação
 ENV NODE_ENV=production
 RUN npm run build
 
-# Limpar dependências de desenvolvimento
-RUN npm ci --only=production && npm cache clean --force
+# NÃO remover dev dependencies - necessárias para Prisma migrations em produção
+# RUN npm ci --only=production && npm cache clean --force
 
 # ==================================
 # STAGE 5: PRODUCTION (Imagem final de produção)
@@ -117,15 +128,16 @@ FROM base AS production
 # Variáveis de ambiente para produção
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
 
-# Copiar apenas arquivos necessários do builder
+# Copiar tudo do builder (incluindo node_modules completo)
 COPY --from=builder --chown=nodejs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nodejs:nodejs /app/public ./public
 COPY --from=builder --chown=nodejs:nodejs /app/.next/static ./.next/static
-
-# Copiar scripts necessários
-COPY --chown=nodejs:nodejs scripts/wait-for-db.sh ./wait-for-db.sh
-RUN chmod +x ./wait-for-db.sh
+COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nodejs:nodejs /app/package-lock.json ./package-lock.json
 
 # Usuário não-root
 USER nodejs
@@ -138,4 +150,4 @@ HEALTHCHECK --interval=60s --timeout=15s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:${PORT:-3000}/api/health || exit 1
 
 # Comando de execução para produção
-CMD ["dumb-init", "./wait-for-db.sh", "node", "server.js"]
+CMD ["dumb-init", "sh", "-c", "echo '🔧 Inicializando banco...' && npx prisma db push && (npx prisma db seed || echo '⚠️ Seed falhou') && echo '🚀 Iniciando app...' && node server.js"]

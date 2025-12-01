@@ -2,20 +2,20 @@
 
 Sistema completo de calculadoras e simuladores para precificação de serviços de TI, com gestão de propostas comerciais e sistema de comissões.
 
-## � Índicoe
+## 📋 Índice
 
 - [Funcionalidades](#-funcionalidades-principais)
 - [Tecnologias](#️-tecnologias)
 - [Instalação](#-instalação-e-configuração)
 - [Configuração](#-configuração-do-ambiente)
+- [Variáveis de Ambiente](#-variáveis-de-ambiente)
 - [Docker](#-docker)
 - [Banco de Dados](#️-banco-de-dados)
 - [Deploy](#-deploy-e-configuração)
-- [Deploy Vercel](#-deploy-no-vercel)
-- [Migração Docker para Produção](#-migração-docker-para-produção)
-- [Atualização de Calculadores](#-atualização-de-calculadores)
+- [Deploy Produção](#-deploy-em-produção)
+- [Deploy Não-Root](#-deploy-com-usuário-não-root)
+- [Guia Rápido](#-guia-rápido-de-deploy)
 - [Perfis de Usuário](#-perfis-de-usuário)
-- [Testes](#-testes)
 - [Troubleshooting](#-troubleshooting)
 
 ## 🚀 Funcionalidades Principais
@@ -29,23 +29,38 @@ Sistema completo de calculadoras e simuladores para precificação de serviços 
 - **Dupla (Fibra + Rádio)** - Redundância de conectividade
 
 ### Gestão Comercial
-- **Propostas Comerciais** - Geração e gestão de propostas
-- **Sistema de Comissões** - Cálculo automático de comissões
-- **DRE (Demonstrativo de Resultado)** - Análise financeira
-- **Gestão de Oportunidades** - CRM integrado
-- **Análise de Editais** - Ferramenta para licitações
-- **Filtro por Gerente de Contas** - Filtrar propostas por gerente
+- **Propostas Comerciais** - Geração e gestão de propostas com versionamento
+  - Criação de propostas a partir das calculadoras
+  - Atualização de propostas existentes
+  - Criação de novas versões (mantém histórico)
+  - Visualização profissional com layout personalizado
+  - Exportação para PDF com todas as informações
+  - Sistema de descontos integrado (Vendedor 5% + Diretoria até 100%)
+  - Controle de status (Rascunho, Enviada, Aprovada, etc.)
+  - Filtros por gerente de contas e busca textual
+- **Sistema de Comissões** - Cálculo automático de comissões por prazo contratual
+  - Comissões diferenciadas por período (12, 24, 36, 48, 60 meses)
+  - Suporte a vendedores diretos e canais (Indicador, Influenciador)
+  - Tabelas editáveis de comissão
+  - Cálculo automático de payback
+- **DRE (Demonstrativo de Resultado)** - Análise financeira detalhada
+  - Projeção de receitas e custos
+  - Análise de margem e lucratividade
+  - Comparação entre diferentes prazos contratuais
+- **Gestão de Oportunidades** - CRM integrado com pipeline de vendas
+- **Análise de Editais** - Ferramenta para análise de licitações
+- **Filtro por Gerente de Contas** - Segmentação de propostas por responsável
 
 ### Administração
 - **Gestão de Usuários** - Controle de acesso por perfis
 - **Relatórios** - Dashboard com métricas e KPIs
 - **Configurações** - Parâmetros do sistema
 
-## �️I Tecnologias
+## 🛠️ Tecnologias
 
 - **Frontend**: Next.js 15, React 18, TypeScript
 - **Styling**: Tailwind CSS, Radix UI
-- **Banco de Dados**: PostgreSQL com Prisma ORM
+- **Banco de Dados**: PostgreSQL com Prisma ORM 7.0
 - **Autenticação**: Sistema próprio com JWT
 - **Containerização**: Docker/Podman + Compose
 - **Testes**: Jest, Testing Library
@@ -73,11 +88,11 @@ git clone <repositorio>
 cd simuladores
 
 # 2. Configurar ambiente
-cp .env.example .env
-# Editar .env com suas configurações
+cp .env.example .env.development
+# Editar .env.development com suas configurações
 
 # 3. Executar com Docker
-docker-compose up -d
+./deploy.sh dev
 
 # 4. Acessar aplicação
 # http://localhost:3000
@@ -90,15 +105,164 @@ docker-compose up -d
 npm install
 
 # 2. Configurar banco PostgreSQL
-docker-compose up -d db
+docker compose up -d db
 
 # 3. Executar aplicação
 npm run dev
 ```
 
+## 💼 Sistema de Propostas e Descontos
+
+### Fluxo de Trabalho com Propostas
+
+1. **Criar Proposta**
+   - Preencher dados do cliente e gerente de contas
+   - Adicionar produtos usando as calculadoras
+   - Aplicar descontos (se autorizado)
+   - Salvar proposta (gera ID único: `Prop_IF_001_v1`)
+
+2. **Atualizar Proposta**
+   - Modificar produtos, preços ou descontos
+   - Clicar em "Atualizar Proposta" (mantém mesmo ID)
+   - Alterações são salvas na mesma proposta
+
+3. **Criar Nova Versão**
+   - Modificar proposta existente
+   - Clicar em "Salvar como Nova Versão"
+   - Cria novo registro com ID incrementado (`Prop_IF_001_v2`)
+   - Mantém histórico completo de versões
+
+### Sistema de Descontos
+
+#### Desconto Vendedor (5%)
+- **Quem pode aplicar:** Vendedores, Gerentes, Diretores, Admins
+- **Valor fixo:** 5% sobre o valor mensal
+- **Aplicação:** Checkbox "Aplicar Desconto Vendedor"
+- **Cálculo:** Aplicado antes do desconto da diretoria
+
+#### Desconto Diretoria (0-100%)
+- **Quem pode aplicar:** Apenas Diretores e Admins
+- **Valor variável:** De 0% até 100%
+- **Aplicação:** Campo numérico "Desconto Diretor (%)"
+- **Cálculo:** Aplicado após o desconto do vendedor
+
+#### Cálculo de Descontos (Ordem de Aplicação)
+
+```
+Valor Base Mensal: R$ 1.000,00
+
+1. Desconto Vendedor (5%):
+   R$ 1.000,00 × 0.95 = R$ 950,00
+
+2. Desconto Diretoria (10%):
+   R$ 950,00 × 0.90 = R$ 855,00
+
+Valor Final: R$ 855,00
+Desconto Total: R$ 145,00 (14,5%)
+```
+
+### Visualização de Propostas
+
+#### Proposta Comercial (Layout Profissional)
+- **Página 1:** Capa com logo, cliente, produto e descontos
+- **Página 2:** Detalhes técnicos, produtos, valores e resumo financeiro
+- **Exportação PDF:** Documento completo com todas as páginas
+- **Impressão:** Layout otimizado para impressão
+
+#### Informações Exibidas
+- ✅ Dados do cliente e projeto
+- ✅ Gerente de contas responsável
+- ✅ Lista de produtos com descrição detalhada
+- ✅ Valores de setup e mensalidade
+- ✅ Descontos aplicados (detalhados)
+- ✅ Resumo financeiro com totais
+- ✅ ID da proposta e versão
+- ✅ Data de criação e validade
+
+### IDs de Propostas
+
+Cada tipo de calculadora gera IDs únicos:
+
+| Calculadora | Formato do ID | Exemplo |
+|-------------|---------------|---------|
+| PABX/SIP | `Prop_PABX_001_v1` | `Prop_PABX_023_v2` |
+| Máquinas Virtuais | `Prop_MV_001_v1` | `Prop_MV_015_v1` |
+| Internet Fibra | `Prop_IF_001_v1` | `Prop_IF_042_v3` |
+| Internet Rádio | `Prop_IR_001_v1` | `Prop_IR_008_v1` |
+| Double Fibra/Rádio | `Prop_DFR_001_v1` | `Prop_DFR_012_v2` |
+| Internet MAN | `Prop_IM_001_v1` | `Prop_IM_005_v1` |
+
+### Armazenamento de Descontos
+
+Os descontos são salvos no campo `metadata` da proposta:
+
+```json
+{
+  "metadata": {
+    "baseTotalMonthly": 1000.00,
+    "applySalespersonDiscount": true,
+    "appliedDirectorDiscountPercentage": 10,
+    "changes": "Ajuste de preço conforme negociação"
+  }
+}
+```
+
+Isso garante que:
+- ✅ Descontos são preservados entre atualizações
+- ✅ Histórico de alterações é mantido
+- ✅ Valores originais podem ser recuperados
+- ✅ Auditoria completa de modificações
+
 ## 🔧 Configuração do Ambiente
 
-### Variáveis de Ambiente (.env)
+### 🎯 Primeiro Deploy - O Que é Criado Automaticamente
+
+No primeiro deploy, o sistema executa automaticamente:
+
+1. **Migração do Banco de Dados** (`prisma db push`)
+   - Cria todas as tabelas necessárias
+   - Configura relacionamentos e índices
+
+2. **Seed de Dados Iniciais** (`npm run db:seed`)
+   - Usuários de teste
+   - Tabelas de comissão
+   - Produtos básicos
+   - Configurações do sistema
+   - Cliente e oportunidade de exemplo
+   - Parceiros de exemplo
+
+### 👤 Usuários de Teste (Criados Automaticamente)
+
+| Perfil | Email | Senha | Permissões |
+|--------|-------|-------|------------|
+| **Admin** | `admin@sistema.com` | `admin123` | Acesso total ao sistema |
+| **Diretor** | `diretor@sistema.com` | `diretor123` | Gestão comercial e relatórios |
+| **Gerente** | `gerente@sistema.com` | `gerente123` | Gestão de equipe e propostas |
+| **Vendedor** | `vendedor@sistema.com` | `vendedor123` | Criação de propostas |
+| **Usuário** | `usuario@sistema.com` | `usuario123` | Acesso básico |
+
+⚠️ **IMPORTANTE:** Altere estas credenciais em produção!
+
+### 📊 Dados Iniciais Criados
+
+- **Tabelas de Comissão:** Configuradas com valores padrão
+- **Produtos:** 15+ produtos básicos (PABX, Fibra, Rádio, VMs)
+- **Cliente Exemplo:** "Empresa Exemplo Ltda"
+- **Oportunidade Exemplo:** "OPP-2024-001"
+- **Parceiros:** 3 parceiros de exemplo
+- **Configurações:** Sistema pré-configurado
+
+## 📋 Variáveis de Ambiente
+
+### Arquivos de Ambiente
+
+| Arquivo | Uso | Quando é Carregado |
+|---------|-----|-------------------|
+| **`.env.development`** | ✅ Desenvolvimento | `./deploy.sh dev` |
+| **`.env.production`** | ✅ Produção | `./deploy.sh prod` |
+| **`.env.example`** | 📝 Template | Referência para criar novos |
+
+### Variáveis Obrigatórias
 
 ```env
 # Application
@@ -110,11 +274,9 @@ NEXTAUTH_URL=http://localhost:3000
 APP_PORT=3000              # Porta da aplicação
 PGADMIN_PORT=8080          # Porta do PgAdmin
 DATABASE_EXTERNAL_PORT=5432 # Porta externa do PostgreSQL
-NGINX_HTTP_PORT=80         # Porta HTTP do Nginx (produção)
-NGINX_HTTPS_PORT=443       # Porta HTTPS do Nginx (produção)
 
 # Database
-DATABASE_URL=postgresql://postgres:postgres_password@localhost:5432/simuladores_db
+DATABASE_URL=postgresql://postgres:postgres_password@db:5432/simuladores_db
 DATABASE_HOST=db
 DATABASE_USER=postgres
 DATABASE_PASSWORD=your_password
@@ -130,16 +292,44 @@ JWT_SECRET=your_jwt_secret_here
 
 # Email (Resend)
 RESEND_API_KEY=your_resend_api_key
+
+# Debug & Features
+DEBUG=true
+LOG_LEVEL=debug
+ENABLE_DEBUG_ROUTES=true
+ENABLE_TEST_DATA=true
 ```
 
-### Usuário Admin Padrão
+### Gerar Senhas Fortes (Produção)
 
-```
-Email: admin@sistema.com
-Senha: admin123
+```bash
+# NEXTAUTH_SECRET
+openssl rand -base64 32
+
+# JWT_SECRET  
+openssl rand -base64 32
+
+# DATABASE_PASSWORD
+openssl rand -base64 24
+
+# PGADMIN_DEFAULT_PASSWORD
+openssl rand -base64 16
 ```
 
-⚠️ **Altere estas credenciais em produção!**
+### Tabela Completa de Variáveis
+
+| Variável | Obrigatória | Desenvolvimento | Produção | Descrição |
+|----------|-------------|-----------------|----------|-----------|
+| `NODE_ENV` | ✅ | `development` | `production` | Ambiente de execução |
+| `PORT` | ✅ | `3000` | `3000` | Porta interna |
+| `NEXTAUTH_URL` | ✅ | `http://localhost:3000` | `https://dominio.com` | URL base |
+| `APP_PORT` | ✅ | `3000` | `3000` | Porta externa |
+| `DATABASE_URL` | ✅ | String conexão | String conexão | URL Prisma |
+| `DATABASE_PASSWORD` | ✅ | `dev_password_123` | **SENHA FORTE** | Senha DB |
+| `NEXTAUTH_SECRET` | ✅ | `dev_secret...` | **GERAR** | Secret NextAuth |
+| `JWT_SECRET` | ✅ | `dev_jwt...` | **GERAR** | Secret JWT |
+| `RESEND_API_KEY` | ✅ | `re_dev...` | `re_prod...` | API Resend |
+| `DEBUG` | ✅ | `true` | `false` | Debug mode |
 
 ## 🐳 Docker
 
@@ -147,38 +337,41 @@ Senha: admin123
 
 ```bash
 # Aplicação + Banco
-docker-compose up -d
-
-# Apenas banco (desenvolvimento local)
-docker-compose up -d db
+./deploy.sh dev
 
 # Com PgAdmin (administração)
-docker-compose --profile admin up -d
+./deploy.sh dev --admin
+
+# Produção
+./deploy.sh prod
 ```
 
 ### Acessos
 
-- **Aplicação**: http://localhost:${APP_PORT} (configurável via .env)
-- **PgAdmin**: http://localhost:${PGADMIN_PORT} (configurável via .env)
-- **PostgreSQL**: localhost:${DATABASE_EXTERNAL_PORT} (configurável via .env)
+- **Aplicação**: http://localhost:${APP_PORT}
+- **PgAdmin**: http://localhost:${PGADMIN_PORT}
+- **PostgreSQL**: localhost:${DATABASE_EXTERNAL_PORT}
 
 ### Comandos Úteis
 
 ```bash
 # Ver logs
-docker-compose logs -f app
+./deploy.sh logs
+
+# Ver status
+./deploy.sh status
 
 # Backup do banco
-docker-compose exec db pg_dump -U postgres simuladores_db > backup.sql
+./deploy.sh backup dev
 
 # Restaurar backup
-docker-compose exec -T db psql -U postgres simuladores_db < backup.sql
+./deploy.sh restore --file backup.sql dev
 
 # Parar tudo
-docker-compose down
+./deploy.sh stop
 
-# Rebuild
-docker-compose build app && docker-compose up -d app
+# Limpeza completa
+./deploy.sh clean --force
 ```
 
 ## 🗄️ Banco de Dados
@@ -192,16 +385,11 @@ docker-compose build app && docker-compose up -d app
 - **oportunidades** - Gestão de oportunidades
 - **commission_*** - Tabelas de comissões
 
-### Banco de Dados PostgreSQL
-
-O sistema usa PostgreSQL com Prisma ORM. O banco é criado automaticamente do zero:
+### Comandos do Banco
 
 ```bash
-# Deploy completo do zero (desenvolvimento)
+# Deploy completo do zero
 ./scripts/deploy-fresh.sh
-
-# Ou apenas configurar o banco
-./scripts/setup-database.sh
 
 # Comandos individuais
 npm run db:push     # Criar/atualizar estrutura
@@ -212,8 +400,6 @@ npm run db:studio   # Abrir Prisma Studio
 ## 🚀 Deploy e Configuração
 
 ### Script Unificado de Deploy
-
-O projeto inclui um script `deploy.sh` que centraliza todas as operações:
 
 ```bash
 # Ver ajuda completa
@@ -243,137 +429,247 @@ O projeto inclui um script `deploy.sh` que centraliza todas as operações:
 ./deploy.sh status                 # Status dos serviços
 ```
 
-## 🌐 Deploy no Vercel
+## 🚀 Deploy em Produção
 
-### Opções de Banco de Dados para Produção
+### ⚡ Deploy Rápido (3 Comandos)
 
-#### Opção 1: Vercel Postgres (Recomendado - Mais Simples)
-✅ Integração nativa com Vercel  
-✅ Configuração automática  
-✅ Plano gratuito disponível
+```bash
+# 1. Instalar sshpass (uma vez)
+sudo apt install sshpass
 
-**Como configurar:**
-1. Acesse seu projeto no Vercel
-2. Vá em **Storage** > **Create Database**
-3. Escolha **Postgres**
-4. Clique em **Continue** e depois **Create**
-5. As variáveis de ambiente serão configuradas automaticamente!
+# 2. Configurar .env.production (senhas e secrets)
+nano .env.production
+# Alterar: NEXTAUTH_URL, senhas, secrets, etc.
 
-#### Opção 2: Supabase (Mais Recursos)
-✅ Plano gratuito: 500 MB de armazenamento  
-✅ Interface de administração  
-✅ Backups automáticos
+# 3. Deploy! (vai perguntar portas interativamente)
+# Como root:
+./deploy.sh deploy-remote root@seu-servidor.com image
 
-**Como configurar:**
-1. Crie uma conta em: https://supabase.com
-2. Crie um novo projeto
-3. Vá em **Settings** > **Database**
-4. Copie a **Connection string** (Transaction Mode - porta 6543)
+# Como usuário comum (recomendado - usa sudo automaticamente):
+./deploy.sh deploy-remote usuario@seu-servidor.com image
 
-#### Opção 3: Neon (Serverless)
-✅ Serverless (escala automaticamente)  
-✅ Plano gratuito: 512 MB
+# Durante o deploy, o script vai:
+# - Perguntar senha do servidor
+# - Verificar portas em uso no servidor
+# - Perguntar se deseja alterar portas
+# - Fazer build e enviar imagens
+# - Instalar no servidor
+```
 
-**Como configurar:**
-1. Crie uma conta em: https://neon.tech
-2. Crie um novo projeto
-3. Copie a connection string
+> **💡 Novo:** Agora suporta usuários não-root automaticamente! Veja [Deploy Não-Root](#-deploy-com-usuário-não-root)
 
-### Configurar Variáveis de Ambiente no Vercel
+### 📋 Checklist Antes do Deploy
 
-1. Acesse: https://vercel.com/seu-usuario/seu-projeto/settings/environment-variables
+- [ ] `sshpass` instalado
+- [ ] `.env.production` configurado (sem CHANGE_THIS)
+- [ ] Servidor acessível
+- [ ] SSH funcionando
+- [ ] Portas serão configuradas durante o deploy (interativo)
 
-2. Adicione as variáveis:
+### 🖥️ Requisitos do Servidor
 
-```env
-DATABASE_URL=sua-connection-string-aqui
-NEXTAUTH_SECRET=sua-secret-key-aleatoria
-NEXTAUTH_URL=https://seu-projeto.vercel.app
+**Mínimo:**
+- CPU: 2 cores
+- RAM: 4GB
+- Disco: 20GB
+- SO: Linux (Ubuntu 20.04+, Debian 11+)
+- Docker: 20.10+
+
+**Recomendado:**
+- CPU: 4 cores
+- RAM: 8GB
+- Disco: 50GB SSD
+
+### Instalar Docker no Servidor
+
+```bash
+# Ubuntu/Debian
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# Instalar Docker Compose Plugin (recomendado)
+sudo apt update
+sudo apt install docker-compose-plugin
+
+# Verificar
+docker --version
+docker compose version
+```
+
+### 🔥 Firewall e Portas
+
+```bash
+# Ubuntu/Debian (UFW)
+sudo ufw allow 22/tcp    # SSH
+sudo ufw allow 3009/tcp  # Aplicação (ajuste conforme APP_PORT configurado)
+sudo ufw enable
+
+# Verificar portas em uso no servidor
+ss -tuln | grep LISTEN
+# ou
+netstat -tuln | grep LISTEN
+
+# Verificar se a porta está acessível externamente
+curl http://IP-DO-SERVIDOR:3009/api/health
+```
+
+### 🔐 Configuração do .env.production
+
+```bash
+# Application
 NODE_ENV=production
+NEXTAUTH_URL=https://seu-dominio.com  # ← Alterar!
+
+# Database
+DATABASE_PASSWORD=SENHA_FORTE  # ← Gerar senha forte!
+
+# Security - GERAR COM: openssl rand -base64 32
+NEXTAUTH_SECRET=GERAR_AQUI  # ← Gerar!
+JWT_SECRET=GERAR_AQUI  # ← Gerar!
+
+# Email
+RESEND_API_KEY=re_sua_chave_aqui  # ← Configurar!
+
+# Debug
+DEBUG=false
+ENABLE_DEBUG_ROUTES=false
+ENABLE_TEST_DATA=false
 ```
 
-### Migrar Schema para Produção
+### 📊 Comandos Úteis Pós-Deploy
 
 ```bash
-# 1. Criar arquivo .env.production
-echo 'DATABASE_URL="sua-connection-string-aqui"' > .env.production
+# Ver status no servidor
+ssh root@servidor 'docker ps'
 
-# 2. Sincronizar schema
-npx dotenv -e .env.production -- npx prisma db push
+# Ver logs
+ssh root@servidor 'docker logs -f simuladores_app_prod'
 
-# 3. Gerar Prisma Client
-npx prisma generate
+# Reiniciar aplicação
+ssh root@servidor 'docker restart simuladores_app_prod'
+
+# Fazer backup
+ssh root@servidor 'cd /root/simuladores && ./deploy.sh backup prod'
+
+# Health check
+curl http://IP-DO-SERVIDOR:3000/api/health
 ```
 
-### Fazer Redeploy no Vercel
-
-1. Vá em **Deployments**
-2. Clique em **Redeploy** no último deployment
-3. **Desmarque** "Use existing Build Cache"
-4. Clique em **Redeploy**
-
-### Troubleshooting Vercel
-
-**Erro: "Can't reach database server"**
-- ✅ Verifique se `DATABASE_URL` está configurada no Vercel
-- ✅ Verifique se a connection string está correta
-- ✅ Adicione `?sslmode=require` no final da URL
-
-**Erro: "Too many connections"**
-- ✅ Use connection pooling (porta 6543 no Supabase)
-- ✅ Adicione `?pgbouncer=true` na connection string
-
-## 🐳 Migração Docker para Produção
-
-### Situação
-- **Desenvolvimento:** PostgreSQL rodando no Docker (localhost:5432)
-- **Produção:** Vercel precisa de banco hospedado na nuvem
-
-### Solução Rápida
-
-1. **Criar banco no Vercel:**
-   - Acesse: https://vercel.com/dashboard
-   - Selecione seu projeto
-   - Vá em **Storage** > **Create Database**
-   - Escolha **Postgres** > **Continue** > **Create**
-   - ✅ Variáveis configuradas automaticamente!
-
-2. **Migrar schema:**
-   ```bash
-   # Criar .env.production com a connection string do Vercel
-   echo 'DATABASE_URL="sua-connection-string-vercel"' > .env.production
-   
-   # Migrar schema
-   npx dotenv -e .env.production -- npx prisma db push
-   ```
-
-3. **Redeploy no Vercel:**
-   - Vá em **Deployments**
-   - Clique em **Redeploy**
-   - Desmarque "Use existing Build Cache"
-   - Clique em **Redeploy**
-
-### Exportar/Importar Dados do Docker
+### 🔄 Atualizar Aplicação
 
 ```bash
-# 1. Exportar dados do Docker
-docker exec simuladores_db pg_dump -U postgres -d simuladores_db --clean --if-exists > backup.sql
+# Rebuild completo
+./deploy.sh deploy-remote root@servidor.com image
 
-# 2. Importar para produção
-psql "sua-connection-string-producao" < backup.sql
+# Ou no servidor
+ssh root@servidor
+cd /root/simuladores
+./deploy.sh stop
+./deploy.sh clean --force
+# (enviar novas imagens)
+docker load -i simuladores-app.tar
+./deploy.sh prod
 ```
 
-### Comandos Úteis
+### 💾 Backup e Restore
 
 ```bash
-# Testar conexão com banco de produção
-npx dotenv -e .env.production -- npx prisma db pull
+# Fazer backup
+ssh root@servidor 'cd /root/simuladores && ./deploy.sh backup prod'
 
-# Ver dados no Prisma Studio
-npx dotenv -e .env.production -- npx prisma studio
+# Baixar backup
+scp root@servidor:/root/simuladores/backups/backup_prod_*.sql ./
 
-# Backup do banco de produção
-pg_dump "sua-connection-string" > backup-producao.sql
+# Restaurar backup
+./deploy.sh restore --file backup_prod_20231118_120000.sql prod
+```
+
+### 🔒 Checklist de Segurança
+
+- [ ] Todas as senhas alteradas no .env.production
+- [ ] NEXTAUTH_SECRET e JWT_SECRET gerados (32+ chars)
+- [ ] DATABASE_PASSWORD forte (24+ chars)
+- [ ] DEBUG=false
+- [ ] ENABLE_DEBUG_ROUTES=false
+- [ ] ENABLE_TEST_DATA=false
+- [ ] Firewall configurado
+- [ ] SSH com chave (não senha)
+- [ ] Backup automático configurado
+
+## 🔐 Deploy com Usuário Não-Root
+
+O script agora suporta **automaticamente** deploy com usuários não-root, usando `sudo` quando necessário.
+
+### 🎯 Vantagens
+
+- ✅ **Mais seguro** - Não expõe credenciais root
+- ✅ **Automático** - Detecta e usa sudo automaticamente
+- ✅ **Flexível** - Funciona com qualquer usuário
+- ✅ **Sem configuração** - Nenhuma mudança necessária
+
+### 🚀 Como Usar
+
+```bash
+# Deploy com usuário comum (recomendado)
+./deploy.sh deploy-remote usuario@servidor.com image
+
+# Deploy com root (funciona também)
+./deploy.sh deploy-remote root@servidor.com image
+```
+
+### 📁 Diferenças
+
+| Aspecto | Root | Usuário Comum |
+|---------|------|---------------|
+| **Diretório** | `/root/simuladores` | `/home/usuario/simuladores` |
+| **Comandos** | Direto | Com `sudo` |
+| **Segurança** | ⚠️ Menos seguro | ✅ Mais seguro |
+
+### 🔧 Preparar Servidor
+
+```bash
+# 1. Criar usuário (se necessário)
+sudo adduser deploy
+
+# 2. Adicionar permissões
+sudo usermod -aG sudo deploy
+sudo usermod -aG docker deploy
+
+# 3. Testar permissões (recomendado)
+chmod +x test-server-permissions.sh
+./test-server-permissions.sh usuario@servidor
+```
+
+
+## 🚀 Guia Rápido de Deploy
+
+### Tempo Estimado
+
+- **Primeira vez:** ~15 minutos
+  - Build: 3 min
+  - Upload: 5-10 min
+  - Instalação: 2 min
+
+- **Próximas vezes:** ~10 minutos
+
+### Após o Deploy
+
+```bash
+# 1. Verificar se está rodando
+curl http://IP-SERVIDOR:3000/api/health
+
+# 2. Acessar no navegador
+http://IP-SERVIDOR:3000
+
+# 3. Fazer login
+# Email: admin@sistema.com
+# Senha: admin123
+# (ou use qualquer um dos usuários de teste listados acima)
+
+# 4. Fazer backup
+ssh root@servidor 'cd /root/simuladores && ./deploy.sh backup prod'
 ```
 
 ## 🔄 Atualização de Calculadores
@@ -405,19 +701,6 @@ const proposalToSave = {
 };
 ```
 
-### Tipos Disponíveis
-
-```typescript
-type ProposalType = 
-  | 'PABX'           // Prop_Pabx_Sip_001_v1
-  | 'VM'             // Prop_MV_001_v1
-  | 'FIBER'          // Prop_Inter_Fibra_001_v1
-  | 'RADIO'          // Prop_Inter_Radio_001_v1
-  | 'DOUBLE'         // Prop_Inter_Double_001_v1
-  | 'INTERNET_MAN_FIBRA'  // Prop_Inter_Man_001_v1
-  | 'MANRADIO';      // Prop_InterMan_Radio_001_v1
-```
-
 ## 👥 Perfis de Usuário
 
 ### Tipos de Acesso
@@ -438,22 +721,6 @@ type ProposalType =
 | Usuários | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Relatórios | ✅ | ✅ | ✅ | ❌ | ❌ |
 
-## 🧪 Testes
-
-```bash
-# Executar todos os testes
-npm test
-
-# Testes em modo watch
-npm run test:watch
-
-# Coverage
-npm run test:coverage
-
-# Testes específicos
-npm run test:commission
-```
-
 ## 🔍 Troubleshooting
 
 ### Problemas Comuns
@@ -471,9 +738,8 @@ docker exec simuladores_db_dev pg_isready -U postgres -d simuladores_dev
 **Porta já em uso:**
 ```bash
 # Alterar portas no arquivo .env
-APP_PORT=3001              # Aplicação na porta 3001
-PGADMIN_PORT=8081          # PgAdmin na porta 8081
-DATABASE_EXTERNAL_PORT=5433 # PostgreSQL na porta 5433
+APP_PORT=3001
+DATABASE_EXTERNAL_PORT=5433
 
 # Ou parar serviços conflitantes
 ./deploy.sh stop
@@ -483,19 +749,32 @@ DATABASE_EXTERNAL_PORT=5433 # PostgreSQL na porta 5433
 ```bash
 # Verificar se migration executou
 ./deploy.sh logs
+
 # Verificar tabelas criadas
 docker exec -it simuladores_db_dev psql -U postgres -d simuladores_dev -c "\dt"
 ```
 
-**Erro de base_id duplicado:**
-- ✅ Sistema agora verifica IDs únicos automaticamente
-- ✅ Busca todas as propostas para evitar duplicatas
-- ✅ Retry automático com ID alternativo
+**Erro: "sshpass não está instalado"**
+```bash
+sudo apt install sshpass
+```
 
-**Filtro por gerente não funciona:**
-- ✅ Certifique-se de que o campo `accountManager` está sendo salvo
-- ✅ Clique em "Aplicar Filtro" após selecionar o gerente
-- ✅ Verifique os logs do console para debug
+**Erro: "Senha incorreta ou conexão falhou"**
+```bash
+# Teste manual
+ssh root@servidor
+
+# Se funcionar, tente o deploy novamente
+```
+
+**Erro: "Variáveis não configuradas"**
+```bash
+# Verificar .env.production
+grep CHANGE_THIS .env.production
+
+# Se encontrar, edite e remova todos
+nano .env.production
+```
 
 ### Health Check
 
@@ -504,7 +783,7 @@ docker exec -it simuladores_db_dev psql -U postgres -d simuladores_dev -c "\dt"
 ./deploy.sh status
 
 # Health check manual
-curl http://localhost:3000/api/health
+curl http://localhost:3009/api/health
 ```
 
 ## 📁 Estrutura do Projeto
@@ -519,26 +798,251 @@ curl http://localhost:3000/api/health
 │   ├── hooks/              # Custom hooks
 │   ├── lib/                # Utilitários e configurações
 │   └── styles/             # Estilos globais
-├── database/
-│   └── init/               # Scripts PostgreSQL
-│       ├── 01-migration.sql    # Migração completa
-│       └── 02-seeds.sql        # Dados iniciais
+├── prisma/                 # Prisma ORM
+│   ├── schema.prisma       # Schema do banco
+│   └── seed.ts             # Seed de dados
 ├── scripts/                # Scripts utilitários
 │   ├── deploy.sh           # Script unificado de deploy
-│   ├── check-env.js        # Verificar variáveis de ambiente
-│   └── setup-database.sh   # Configurar banco
-└── prisma/                 # Prisma ORM
-    ├── schema.prisma       # Schema do banco
-    └── seed.ts             # Seed de dados
+│   └── check-env.js        # Verificar variáveis de ambiente
+└── docker-compose.*.yml    # Configurações Docker
 ```
 
-## 🤝 Contribuição
+## ✅ Melhorias Recentes
 
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
+### Sistema de Descontos (Nov 2024)
+- ✅ **Descontos aplicados corretamente**: Vendedor (5%) e Diretor (variável) agora debitam do total mensal
+- ✅ **Exibição de descontos**: Resumo financeiro mostra descontos aplicados em todas as calculadoras
+- ✅ **Descontos apenas no mensal**: Setup não recebe desconto (conforme regra de negócio)
+- ✅ **Label indicativo**: Total Mensal mostra "(com desconto)" quando aplicável
+
+### Permissionamento e Usuários
+- ✅ **Permissões corrigidas**: Admin, Director e User com acessos corretos
+- ✅ **Salvamento de perfil**: Edição de usuários funciona corretamente
+- ✅ **Roles padronizados**: Uso consistente de 'admin', 'director', 'user'
+- ✅ **Gestão de usuários**: Criar, editar e excluir funcionando
+
+### Sistema de Propostas
+- ✅ **Correção de IDs duplicados**: Sistema verifica e gera IDs únicos automaticamente
+- ✅ **Filtro por gerente de contas**: Filtrar propostas por gerente com botão "Aplicar Filtro"
+- ✅ **Coluna Produto**: Substituída coluna "Distribuidor" por "Produto" com nomes amigáveis
+- ✅ **Campo account_manager**: Salvo corretamente no banco de dados
+- ✅ **Exibição de dados**: Cliente, gerente e data exibidos corretamente
+
+### Deploy e Infraestrutura
+- ✅ **Configuração de portas**: Deploy pergunta portas interativamente
+- ✅ **Link .env**: Criado automaticamente no servidor (.env → .env.production)
+- ✅ **Acesso HTTP direto**: Sem dependência de Nginx/SSL
+- ✅ **Proxy reverso opcional**: Documentação para Apache se necessário
+
+### API e Banco de Dados
+- ✅ **API otimizada**: Retorna todos os campos necessários
+- ✅ **Transformação camelCase**: Conversão automática de snake_case para camelCase
+- ✅ **Busca sem paginação**: Parâmetro `all=true` para buscar todas as propostas
+- ✅ **Retry automático**: Tentativa com ID alternativo em caso de duplicata
+
+### Documentação
+- ✅ **README consolidado**: Toda documentação em um único arquivo
+- ✅ **Guias de deploy**: Instruções completas para produção
+- ✅ **Script de verificação**: `npm run check-env` para validar configuração
+
+## 💻 Boas Práticas de Desenvolvimento
+
+### Trabalhando com Propostas
+
+#### Criar Nova Proposta
+```typescript
+// 1. Preencher dados do cliente e gerente
+// 2. Adicionar produtos usando calculadoras
+// 3. Aplicar descontos (se autorizado)
+// 4. Clicar em "Salvar Proposta"
+// Resultado: Nova proposta com ID único (ex: Prop_IF_001_v1)
+```
+
+#### Atualizar Proposta Existente
+```typescript
+// 1. Modificar produtos, preços ou descontos
+// 2. Clicar em "Atualizar Proposta"
+// Resultado: Mesma proposta atualizada (mantém ID)
+// ⚠️ IMPORTANTE: Não cria nova versão, apenas atualiza
+```
+
+#### Criar Nova Versão
+```typescript
+// 1. Modificar proposta existente
+// 2. Clicar em "Salvar como Nova Versão"
+// Resultado: Nova proposta com ID incrementado (ex: Prop_IF_001_v2)
+// ✅ Mantém histórico completo de versões
+```
+
+### Sistema de Descontos
+
+#### Aplicação de Descontos
+```typescript
+// Ordem de aplicação (IMPORTANTE):
+// 1. Desconto Vendedor (5%) - aplicado primeiro
+// 2. Desconto Diretoria (0-100%) - aplicado depois
+
+// Exemplo de cálculo:
+const baseValue = 1000.00;
+const withSalesperson = baseValue * 0.95;        // R$ 950,00
+const withDirector = withSalesperson * 0.90;     // R$ 855,00 (10% diretor)
+```
+
+#### Armazenamento de Descontos
+```typescript
+// Sempre salvar no metadata da proposta:
+metadata: {
+  baseTotalMonthly: 1000.00,                    // Valor original
+  applySalespersonDiscount: true,               // Desconto vendedor ativo
+  appliedDirectorDiscountPercentage: 10,        // Percentual diretor
+  changes: "Descrição das alterações"           // Histórico
+}
+```
+
+### Estrutura de Código
+
+#### Calculadoras
+- Cada calculadora é um componente independente
+- Usa hooks customizados para lógica de negócio
+- Salva propostas via API `/api/proposals`
+- Mantém estado local com React hooks
+
+#### API Routes
+- Seguem padrão REST (GET, POST, PUT, DELETE)
+- Retornam sempre `{ success: boolean, data?: any, error?: string }`
+- Suportam camelCase e snake_case nos campos
+- Logs detalhados para debug
+
+#### Banco de Dados
+- Usa Prisma ORM com dual schema (auth, public)
+- Sempre usar `prisma db push` (não migrations)
+- Seed deve ser atualizado com novos dados
+- Metadata em JSONB para flexibilidade
+
+### Convenções de Código
+
+#### Nomenclatura
+```typescript
+// Componentes: PascalCase
+InternetFibraCalculator.tsx
+
+// Funções: camelCase
+const calculatePayback = () => {}
+
+// Constantes: UPPER_SNAKE_CASE
+const MAX_PAYBACK_MONTHS = 14;
+
+// Tipos/Interfaces: PascalCase
+interface ProposalData {}
+```
+
+#### Comentários
+```typescript
+// ✅ BOM: Comentários explicativos
+/**
+ * Calcula o payback considerando descontos aplicados.
+ * 
+ * @param installationFee - Taxa de instalação
+ * @param monthlyRevenue - Receita mensal
+ * @returns Número de meses para payback
+ */
+
+// ❌ RUIM: Comentários óbvios
+// Incrementa contador
+counter++;
+```
+
+#### Logs
+```typescript
+// ✅ BOM: Logs informativos com emojis
+console.log('📝 Criando nova versão da proposta:', proposalId);
+console.log('✅ Proposta salva com sucesso:', result);
+console.error('❌ Erro ao salvar proposta:', error);
+
+// ❌ RUIM: Logs genéricos
+console.log('salvando');
+console.log('erro');
+```
+
+### Testes (Quando Solicitado)
+
+```bash
+# Executar testes
+npm test
+
+# Testes com coverage
+npm run test:coverage
+
+# Testes específicos
+npm test -- InternetFibraCalculator
+```
+
+⚠️ **IMPORTANTE:** Não criar testes automaticamente. Apenas quando explicitamente solicitado pelo usuário.
+
+### Documentação
+
+#### README.md
+- **Única fonte de verdade** para documentação
+- Não criar arquivos separados (CHANGELOG.md, CONTRIBUTING.md, etc.)
+- Atualizar sempre que adicionar features
+
+#### Código
+- Comentários em português (idioma do projeto)
+- Documentar lógica complexa de negócio
+- Explicar decisões não óbvias
+
+### Deploy
+
+#### Script Unificado
+- **deploy.sh** é o único script de deploy
+- Não criar scripts separados (build.sh, backup.sh, etc.)
+- Adicionar funcionalidades ao deploy.sh se necessário
+
+#### Ambientes
+```bash
+# Desenvolvimento - Iteração rápida
+./deploy.sh dev
+
+# Testes - Ambiente isolado
+./deploy.sh test
+
+# Produção - Deploy final
+./deploy.sh deploy-remote user@server image
+```
+
+### Segurança
+
+#### Senhas e Secrets
+```bash
+# ✅ BOM: Gerar senhas fortes
+openssl rand -base64 32
+
+# ❌ RUIM: Senhas fracas
+password123
+admin
+```
+
+#### Variáveis de Ambiente
+```bash
+# ✅ BOM: Usar variáveis de ambiente
+const secret = process.env.JWT_SECRET;
+
+# ❌ RUIM: Hardcoded
+const secret = "my-secret-key";
+```
+
+### Performance
+
+#### Otimizações
+- Usar `useMemo` para cálculos pesados
+- Usar `useCallback` para funções em props
+- Usar `memo` para componentes que não mudam frequentemente
+- Debounce em inputs de busca
+
+#### Banco de Dados
+- Usar índices em campos de busca frequente
+- Limitar resultados com paginação
+- Usar `select` para buscar apenas campos necessários
 
 ## 📄 Licença
 
@@ -550,24 +1054,267 @@ Para suporte técnico ou dúvidas sobre o sistema, entre em contato com a equipe
 
 ---
 
-## ✅ Melhorias Recentes
-
-### Sistema de Propostas
-- ✅ **Correção de IDs duplicados**: Sistema verifica e gera IDs únicos automaticamente
-- ✅ **Filtro por gerente de contas**: Filtrar propostas por gerente com botão "Aplicar Filtro"
-- ✅ **Coluna Produto**: Substituída coluna "Distribuidor" por "Produto" com nomes amigáveis
-- ✅ **Campo account_manager**: Salvo corretamente no banco de dados
-- ✅ **Exibição de dados**: Cliente, gerente e data exibidos corretamente
-
-### API e Banco de Dados
-- ✅ **API otimizada**: Retorna todos os campos necessários (client, account_manager, version)
-- ✅ **Transformação camelCase**: Conversão automática de snake_case para camelCase
-- ✅ **Busca sem paginação**: Parâmetro `all=true` para buscar todas as propostas
-- ✅ **Retry automático**: Tentativa com ID alternativo em caso de duplicata
-
-### Documentação
-- ✅ **README consolidado**: Toda documentação em um único arquivo
-- ✅ **Guias de deploy**: Instruções completas para Vercel e produção
-- ✅ **Script de verificação**: `npm run check-env` para validar configuração
-
 **Sistema desenvolvido para otimização de processos comerciais e precificação de serviços de TI.**
+
+
+## 🌐 Acesso HTTP e HTTPS (Opcional)
+
+### Acesso Direto (Padrão)
+
+Por padrão, a aplicação é acessível diretamente via HTTP na porta configurada:
+
+```bash
+# Exemplo com porta 3009
+http://IP-DO-SERVIDOR:3009
+http://simulador-dre.doubletelecom.com.br:3009
+```
+
+### Proxy Reverso com Apache (Opcional)
+
+Se você quiser acesso sem porta (HTTP na 80 e HTTPS na 443), configure um proxy reverso:
+
+#### Instalar Apache
+
+```bash
+sudo apt update
+sudo apt install apache2
+sudo a2enmod proxy proxy_http ssl rewrite headers
+```
+
+#### Configurar Site
+
+```bash
+# Criar configuração
+sudo nano /etc/apache2/sites-available/simulador-dre.conf
+```
+
+```apache
+<VirtualHost *:80>
+    ServerName simulador-dre.doubletelecom.com.br
+    
+    # Proxy para aplicação
+    ProxyPreserveHost On
+    ProxyPass / http://127.0.0.1:3009/
+    ProxyPassReverse / http://127.0.0.1:3009/
+    
+    # Headers
+    RequestHeader set X-Forwarded-Proto "http"
+    RequestHeader set X-Forwarded-Port "80"
+    
+    # Logs
+    ErrorLog ${APACHE_LOG_DIR}/simulador-dre-error.log
+    CustomLog ${APACHE_LOG_DIR}/simulador-dre-access.log combined
+</VirtualHost>
+
+# HTTPS (se tiver certificado SSL)
+<VirtualHost *:443>
+    ServerName simulador-dre.doubletelecom.com.br
+    
+    # SSL (ajuste os caminhos dos certificados)
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/certs/simulador-dre.crt
+    SSLCertificateKeyFile /etc/ssl/private/simulador-dre.key
+    
+    # Proxy para aplicação
+    ProxyPreserveHost On
+    ProxyPass / http://127.0.0.1:3009/
+    ProxyPassReverse / http://127.0.0.1:3009/
+    
+    # Headers
+    RequestHeader set X-Forwarded-Proto "https"
+    RequestHeader set X-Forwarded-Port "443"
+    
+    # Logs
+    ErrorLog ${APACHE_LOG_DIR}/simulador-dre-ssl-error.log
+    CustomLog ${APACHE_LOG_DIR}/simulador-dre-ssl-access.log combined
+</VirtualHost>
+```
+
+#### Ativar Site
+
+```bash
+# Ativar configuração
+sudo a2ensite simulador-dre.conf
+
+# Testar configuração
+sudo apache2ctl configtest
+
+# Recarregar Apache
+sudo systemctl reload apache2
+
+# Verificar status
+sudo systemctl status apache2
+```
+
+#### Certificado SSL com Let's Encrypt (Opcional)
+
+```bash
+# Instalar Certbot
+sudo apt install certbot python3-certbot-apache
+
+# Obter certificado
+sudo certbot --apache -d simulador-dre.doubletelecom.com.br
+
+# Renovação automática já está configurada
+```
+
+### Alternativa: Cloudflare
+
+Se não quiser gerenciar SSL localmente, use Cloudflare:
+
+1. Adicione seu domínio no Cloudflare
+2. Configure DNS para apontar para seu servidor
+3. Ative "Proxy" (nuvem laranja)
+4. Cloudflare fornece SSL automaticamente
+5. Configure "SSL/TLS" como "Flexible" ou "Full"
+
+## 🔥 Deploy Limpo no Servidor
+
+### Quando Usar
+
+Use este procedimento quando precisar:
+- Reconstruir tudo do zero
+- Aplicar correções críticas
+- Resolver problemas de banco de dados
+- Limpar ambiente completamente
+
+### ⚠️ IMPORTANTE
+
+Este processo **apaga todos os dados**. Faça backup antes!
+
+### Passo a Passo
+
+#### 1. Backup e Limpeza no Servidor
+
+```bash
+# Conectar no servidor
+ssh double@10.10.50.246
+
+# Navegar até o diretório
+cd simuladores
+
+# Fazer backup
+sudo ./deploy.sh backup prod
+
+# Copiar backup para local seguro
+cp backups/backup_prod_*.sql ~/backup_antes_deploy_limpo.sql
+
+# Limpeza COMPLETA (apaga tudo)
+sudo ./deploy.sh clean-server --hard
+# Confirme digitando: DELETE
+
+# Verificar limpeza
+docker ps -a
+docker images
+docker volume ls
+
+# Sair
+exit
+```
+
+#### 2. Build e Deploy (Máquina Local)
+
+```bash
+# Verificar .env.production
+cat .env.production | grep -E "NEXTAUTH_URL|DATABASE_PASSWORD"
+
+# Build das imagens (2-3 min)
+ENVIRONMENT=prod ./deploy.sh build --no-cache
+
+# Deploy remoto (5-10 min)
+./deploy.sh deploy-remote double@10.10.50.246 image
+```
+
+#### 3. Instalação no Servidor
+
+```bash
+# Conectar novamente
+ssh double@10.10.50.246
+cd simuladores
+
+# Instalar (cria banco, usuários, etc)
+sudo ./deploy.sh install-on-server
+# Responda: y para carregar imagens, y para parar containers
+
+# Verificar
+docker ps
+curl http://localhost:3009/api/health
+
+# Ver logs
+docker logs simuladores_app_prod --tail=50
+```
+
+#### 4. Verificar Acesso
+
+```bash
+# Verificar porta configurada
+grep APP_PORT .env.production
+
+# Testar acesso direto
+curl http://localhost:3009/api/health
+
+# Verificar firewall
+sudo ufw status
+```
+
+#### 5. Teste Final
+
+```bash
+# Abrir navegador (ajuste a porta conforme configurado)
+firefox http://IP-DO-SERVIDOR:3009
+
+# Ou se tiver DNS configurado:
+firefox http://simulador-dre.doubletelecom.com.br:3009
+
+# Login: admin@sistema.com / admin123
+
+# Testar:
+# - Criar usuário
+# - Editar usuário
+# - Recarregar página (F5)
+# - Verificar se alterações persistiram
+```
+
+### Troubleshooting Deploy Limpo
+
+**Imagens não encontradas:**
+```bash
+docker images | grep simuladores
+# Se vazio, refazer deploy remoto
+```
+
+**Container não inicia:**
+```bash
+docker logs simuladores_app_prod
+docker exec simuladores_app_prod env | grep DATABASE_URL
+```
+
+**Banco não conecta:**
+```bash
+docker exec simuladores_db_prod pg_isready -U postgres
+```
+
+**Usuários não salvam:**
+```bash
+# Ver logs
+docker logs simuladores_app_prod --tail=100 | grep -i "user\|profile"
+
+# Verificar tabelas
+docker exec simuladores_db_prod psql -U postgres -d simuladores_prod -c "\dt public.*"
+```
+
+### Comandos Úteis Pós-Deploy
+
+```bash
+# Logs em tempo real
+ssh double@10.10.50.246 'docker logs -f simuladores_app_prod'
+
+# Reiniciar
+ssh double@10.10.50.246 'docker restart simuladores_app_prod'
+
+# Backup
+ssh double@10.10.50.246 'cd simuladores && sudo ./deploy.sh backup prod'
+
+# Status
+ssh double@10.10.50.246 'docker ps'
+```
