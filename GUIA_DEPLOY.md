@@ -357,10 +357,10 @@ pede confirmações interativas que precisam de resposta do usuário.
 
 
 ## Conteúdo do .env.production
-
+```
 # ==========================================
 # AMBIENTE DE PRODUÇÃO
-# ⚠️ ALTERE TODAS AS SENHAS E SECRETS ANTES DE USAR!
+# ⚠️ EXEMPLO DE .env.production!
 # ==========================================
 
 # Application
@@ -407,4 +407,4 @@ LOG_LEVEL=error
 
 # Features
 ENABLE_DEBUG_ROUTES=false
-ENABLE_TEST_DATA=false
+ENABLE_TEST_DATA=false```
