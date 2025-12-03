@@ -3094,60 +3094,25 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                                         <TableRow key={plan.speed} className="border-slate-800">
                                                             <TableCell className="font-medium">{plan.description}</TableCell>
                                                             <TableCell>
-                                                                <Input
-                                                                    type="text"
-                                                                    value={(plan.price12 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    onChange={(e) => handlePriceChange(index, 'price12', e.target.value)}
-                                                                    className="text-right bg-slate-800 border-slate-700"
-                                                                />
+                                                                <Input type="number" step="0.01" value={plan.price12 || ''} onChange={(e) => handlePriceChange(index, 'price12', e.target.value)} placeholder="0.00" className="text-right bg-slate-800 border-slate-700" />
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input
-                                                                    type="text"
-                                                                    value={(plan.price24 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    onChange={(e) => handlePriceChange(index, 'price24', e.target.value)}
-                                                                    className="text-right bg-slate-800 border-slate-700"
-                                                                />
+                                                                <Input type="number" step="0.01" value={plan.price24 || ''} onChange={(e) => handlePriceChange(index, 'price24', e.target.value)} placeholder="0.00" className="text-right bg-slate-800 border-slate-700" />
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input
-                                                                    type="text"
-                                                                    value={(plan.price36 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    onChange={(e) => handlePriceChange(index, 'price36', e.target.value)}
-                                                                    className="text-right bg-slate-800 border-slate-700"
-                                                                />
+                                                                <Input type="number" step="0.01" value={plan.price36 || ''} onChange={(e) => handlePriceChange(index, 'price36', e.target.value)} placeholder="0.00" className="text-right bg-slate-800 border-slate-700" />
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input
-                                                                    type="text"
-                                                                    value={(plan.price48 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    onChange={(e) => handlePriceChange(index, 'price48', e.target.value)}
-                                                                    className="text-right bg-slate-800 border-slate-700"
-                                                                />
+                                                                <Input type="number" step="0.01" value={plan.price48 || ''} onChange={(e) => handlePriceChange(index, 'price48', e.target.value)} placeholder="0.00" className="text-right bg-slate-800 border-slate-700" />
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input
-                                                                    type="text"
-                                                                    value={(plan.price60 || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    onChange={(e) => handlePriceChange(index, 'price60', e.target.value)}
-                                                                    className="text-right bg-slate-800 border-slate-700"
-                                                                />
+                                                                <Input type="number" step="0.01" value={plan.price60 || ''} onChange={(e) => handlePriceChange(index, 'price60', e.target.value)} placeholder="0.00" className="text-right bg-slate-800 border-slate-700" />
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input
-                                                                    type="text"
-                                                                    value={(plan.installationCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    onChange={(e) => handlePriceChange(index, 'installationCost', e.target.value)}
-                                                                    className="text-right bg-slate-800 border-slate-700"
-                                                                />
+                                                                <Input type="number" step="0.01" value={plan.installationCost || ''} onChange={(e) => handlePriceChange(index, 'installationCost', e.target.value)} placeholder="0.00" className="text-right bg-slate-800 border-slate-700" />
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input
-                                                                    type="text"
-                                                                    value={(plan.radioCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    onChange={(e) => handlePriceChange(index, 'radioCost', e.target.value)}
-                                                                    className="text-right bg-slate-800 border-slate-700"
-                                                                />
+                                                                <Input type="number" step="0.01" value={plan.radioCost || ''} onChange={(e) => handlePriceChange(index, 'radioCost', e.target.value)} placeholder="0.00" className="text-right bg-slate-800 border-slate-700" />
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
