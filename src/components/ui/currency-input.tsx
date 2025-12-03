@@ -42,14 +42,24 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       // Permitir apenas números, vírgula e ponto
       const cleaned = input.replace(/[^\d,\.]/g, '');
       
-      // Limitar a uma vírgula ou ponto
+      // Se estiver vazio, limpar
+      if (!cleaned) {
+        setDisplayValue('');
+        onChange(0);
+        return;
+      }
+      
+      // Separar parte inteira e decimal
       const parts = cleaned.split(/[,\.]/);
-      let formatted = parts[0];
+      let formatted = parts[0]; // Parte inteira (sem limite de dígitos)
       
       if (parts.length > 1) {
         // Pegar apenas os primeiros 2 dígitos decimais
         const decimals = parts[1].substring(0, 2);
         formatted = `${parts[0]},${decimals}`;
+      } else if (cleaned.includes(',') || cleaned.includes('.')) {
+        // Se terminou com vírgula ou ponto, manter
+        formatted = `${parts[0]},`;
       }
       
       setDisplayValue(formatted);
