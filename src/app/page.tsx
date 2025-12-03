@@ -85,8 +85,8 @@ export default function App() {
                 { id: 'calculator-internet-man-radio', label: 'Internet Man Radio', icon: <Wifi className="h-4 w-4" /> },
             ]
         },
-        // Gestão de Oportunidades - apenas para admin e director
-        ...(user?.role === 'admin' || user?.role === 'director' ? [{
+        // Gestão de Oportunidades - apenas para admin e diretor
+        ...(user?.role === 'admin' || user?.role === 'diretor' ? [{
             id: 'gestao-oportunidades',
             label: 'Gestão de Oportunidades',
             icon: <Briefcase className="h-4 w-4" />

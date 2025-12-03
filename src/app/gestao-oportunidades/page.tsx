@@ -9,7 +9,7 @@ export const metadata = {
 export default function GestaoOportunidadesPage() {
   return (
     <AccessControl
-      allowedRoles={['admin', 'director']}
+      allowedRoles={['admin', 'diretor']}
       fallbackMessage="O sistema de Gestão de Oportunidades de Parceiros é restrito a Administradores e Diretores."
     >
       <GestaoOportunidadesParceiros />
