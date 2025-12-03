@@ -1884,9 +1884,9 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                     <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
                                                     <Input
                                                         id="previousMonthlyFee"
-                                                        type="number"
+                                                        type="number" step="0.01"
                                                         value={previousMonthlyFee}
-                                                        onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
+                                                        onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value) || 0)}
                                                         placeholder="0.00"
                                                         className="bg-slate-800"
                                                     />
@@ -1928,9 +1928,9 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                 <Label htmlFor="lastMileCost">Custo (Last Mile)</Label>
                                                 <Input
                                                     id="lastMileCost"
-                                                    type="number"
+                                                    type="number" step="0.01"
                                                     value={lastMileCost}
-                                                    onChange={(e) => setLastMileCost(parseFloat(e.target.value))}
+                                                    onChange={(e) => setLastMileCost(parseFloat(e.target.value) || 0)}
                                                     placeholder="0.00"
                                                     className="bg-slate-800"
                                                 />
@@ -2140,7 +2140,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                             <Label htmlFor="director-discount" className="text-slate-300">Desconto Diretor (%)</Label>
                                                             <Input
                                                                 id="director-discount"
-                                                                type="number"
+                                                                type="number" step="0.01"
                                                                 value={directorDiscountPercentage}
                                                                 onChange={(e) => {
                                                                     const value = Number(e.target.value);
@@ -2662,7 +2662,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                 <Label htmlFor="pis-rate">Simples Nacional (%)</Label>
                                                 <Input
                                                     id="pis-rate"
-                                                    type="number"
+                                                    type="number" step="0.01"
                                                     step="0.01"
                                                     value={taxRates.simplesNacional.toFixed(2)}
                                                     onChange={(e) => {
@@ -2676,7 +2676,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                 <Label htmlFor="banda-rate">Banda (%)</Label>
                                                 <Input
                                                     id="banda-rate"
-                                                    type="number"
+                                                    type="number" step="0.01"
                                                     step="0.01"
                                                     value={taxRates.banda.toFixed(2)}
                                                     onChange={(e) => {
@@ -2690,7 +2690,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                 <Label htmlFor="custo-desp-rate">Custo/Desp (%)</Label>
                                                 <Input
                                                     id="custo-desp-rate"
-                                                    type="number"
+                                                    type="number" step="0.01"
                                                     step="0.01"
                                                     value={taxRates.custoDesp.toFixed(2)}
                                                     onChange={(e) => {

@@ -2503,8 +2503,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 </div>
                                                                 <Input
                                                                     type="number"
+                                                                    step="1"
                                                                     value={vmCpuCores}
-                                                                    onChange={(e) => setVmCpuCores(Number(e.target.value))}
+                                                                    onChange={(e) => setVmCpuCores(parseFloat(e.target.value) || 0)}
                                                                     className="bg-slate-900/70 border-blue-500/50 text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
                                                                     min="1"
                                                                     max="64"
@@ -2519,8 +2520,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 </div>
                                                                 <Input
                                                                     type="number"
+                                                                    step="1"
                                                                     value={vmRamGb}
-                                                                    onChange={(e) => setVmRamGb(Number(e.target.value))}
+                                                                    onChange={(e) => setVmRamGb(parseFloat(e.target.value) || 0)}
                                                                     className="bg-slate-900/70 border-purple-500/50 text-white focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20"
                                                                     min="1"
                                                                     max="512"
@@ -2554,8 +2556,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                     <Label className="text-sm text-green-200 mb-2 block font-medium">Tamanho (GB)</Label>
                                                                     <Input
                                                                         type="number"
+                                                                        step="1"
                                                                         value={vmStorageSize}
-                                                                        onChange={(e) => setVmStorageSize(Number(e.target.value))}
+                                                                        onChange={(e) => setVmStorageSize(parseFloat(e.target.value) || 0)}
                                                                         className="bg-slate-900/70 border-green-500/50 text-white focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
                                                                         min="10"
                                                                         max="10000"
@@ -2623,8 +2626,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                 </Label>
                                                                 <Input
                                                                     type="number"
+                                                                    step="1"
                                                                     value={vmBackupSize}
-                                                                    onChange={(e) => setVmBackupSize(Number(e.target.value))}
+                                                                    onChange={(e) => setVmBackupSize(parseFloat(e.target.value) || 0)}
                                                                     className="bg-slate-900/50 border-slate-600 text-white focus:border-cyan-400"
                                                                     placeholder="0"
                                                                     min="0"
@@ -2856,8 +2860,9 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                                         <Input
                                                                             id="director-discount"
                                                                             type="number"
+                                                                            step="0.01"
                                                                             value={directorDiscountPercentage}
-                                                                            onChange={(e) => setDirectorDiscountPercentage(Number(e.target.value))}
+                                                                            onChange={(e) => setDirectorDiscountPercentage(parseFloat(e.target.value) || 0)}
                                                                             placeholder="0-100"
                                                                             min="0"
                                                                             max="100"

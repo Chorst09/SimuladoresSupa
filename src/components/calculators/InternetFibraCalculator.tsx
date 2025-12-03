@@ -1981,8 +1981,9 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     <Input
                                                         id="previousMonthlyFee"
                                                         type="number"
+                                                        step="0.01"
                                                         value={previousMonthlyFee}
-                                                        onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
+                                                        onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value) || 0)}
                                                         placeholder="0.00"
                                                         className="bg-slate-800"
                                                     />
@@ -2025,8 +2026,9 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                 <Input
                                                     id="lastMileCost"
                                                     type="number"
+                                                    step="0.01"
                                                     value={lastMileCost}
-                                                    onChange={(e) => setLastMileCost(parseFloat(e.target.value))}
+                                                    onChange={(e) => setLastMileCost(parseFloat(e.target.value) || 0)}
                                                     placeholder="0.00"
                                                     className="bg-slate-800"
                                                 />
