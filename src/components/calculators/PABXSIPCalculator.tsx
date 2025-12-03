@@ -1158,34 +1158,74 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
         setProposalItems(items);
 
-        // 🔥 CORREÇÃO: Carregar descontos dos produtos (firstProduct.details)
+        // 🔥 CORREÇÃO: Carregar descontos de múltiplas fontes (com prioridade)
         console.log('🔍 PABXSIP editProposal - Carregando descontos');
-        if (items && items.length > 0) {
-            const firstItem = items[0];
-            if (firstItem && (firstItem as any).details) {
-                const details = (firstItem as any).details;
-                console.log('📦 Detalhes do primeiro item:', details);
-                
-                if (details.applySalespersonDiscount !== undefined) {
-                    console.log('✅ applySalespersonDiscount:', details.applySalespersonDiscount);
-                    setApplySalespersonDiscount(details.applySalespersonDiscount);
-                }
-                if (details.appliedDirectorDiscountPercentage !== undefined) {
-                    console.log('✅ appliedDirectorDiscountPercentage:', details.appliedDirectorDiscountPercentage);
-                    setAppliedDirectorDiscountPercentage(details.appliedDirectorDiscountPercentage);
+        console.log('📋 Proposta completa:', proposal);
+        
+        // Buscar descontos em ordem de prioridade:
+        // 1. Root da proposta
+        // 2. Metadata
+        // 3. DiscountInfo
+        // 4. Detalhes dos produtos
+        
+        let applySalesperson = false;
+        let appliedDirector = 0;
+        
+        // Prioridade 1: Root
+        if (proposal.applySalespersonDiscount !== undefined) {
+            applySalesperson = proposal.applySalespersonDiscount;
+            console.log('✅ Desconto vendedor do ROOT:', applySalesperson);
+        }
+        if (proposal.appliedDirectorDiscountPercentage !== undefined) {
+            appliedDirector = proposal.appliedDirectorDiscountPercentage;
+            console.log('✅ Desconto diretor do ROOT:', appliedDirector);
+        }
+        
+        // Prioridade 2: Metadata (se não encontrou no root)
+        if (!applySalesperson && proposal.metadata?.applySalespersonDiscount !== undefined) {
+            applySalesperson = proposal.metadata.applySalespersonDiscount;
+            console.log('✅ Desconto vendedor do METADATA:', applySalesperson);
+        }
+        if (appliedDirector === 0 && proposal.metadata?.appliedDirectorDiscountPercentage !== undefined) {
+            appliedDirector = proposal.metadata.appliedDirectorDiscountPercentage;
+            console.log('✅ Desconto diretor do METADATA:', appliedDirector);
+        }
+        
+        // Prioridade 3: DiscountInfo (se não encontrou ainda)
+        if (!applySalesperson && proposal.discountInfo?.applySalespersonDiscount !== undefined) {
+            applySalesperson = proposal.discountInfo.applySalespersonDiscount;
+            console.log('✅ Desconto vendedor do DISCOUNTINFO:', applySalesperson);
+        }
+        if (appliedDirector === 0 && proposal.discountInfo?.appliedDirectorDiscountPercentage !== undefined) {
+            appliedDirector = proposal.discountInfo.appliedDirectorDiscountPercentage;
+            console.log('✅ Desconto diretor do DISCOUNTINFO:', appliedDirector);
+        }
+        
+        // Prioridade 4: Detalhes dos produtos (última opção)
+        if (!applySalesperson || appliedDirector === 0) {
+            if (items && items.length > 0) {
+                const firstItem = items[0];
+                if (firstItem && (firstItem as any).details) {
+                    const details = (firstItem as any).details;
+                    console.log('📦 Detalhes do primeiro item:', details);
+                    
+                    if (!applySalesperson && details.applySalespersonDiscount !== undefined) {
+                        applySalesperson = details.applySalespersonDiscount;
+                        console.log('✅ Desconto vendedor dos DETALHES:', applySalesperson);
+                    }
+                    if (appliedDirector === 0 && details.appliedDirectorDiscountPercentage !== undefined) {
+                        appliedDirector = details.appliedDirectorDiscountPercentage;
+                        console.log('✅ Desconto diretor dos DETALHES:', appliedDirector);
+                    }
                 }
             }
         }
         
-        // FALLBACK: Restore discount settings if they exist in discountInfo
-        if (proposal.discountInfo) {
-            if (proposal.discountInfo.applySalespersonDiscount !== undefined) {
-                setApplySalespersonDiscount(proposal.discountInfo.applySalespersonDiscount);
-            }
-            if (proposal.discountInfo.appliedDirectorDiscountPercentage !== undefined) {
-                setAppliedDirectorDiscountPercentage(proposal.discountInfo.appliedDirectorDiscountPercentage);
-            }
-        }
+        // Aplicar os descontos encontrados
+        console.log('🎯 Descontos finais a aplicar:', { applySalesperson, appliedDirector });
+        setApplySalespersonDiscount(applySalesperson);
+        setAppliedDirectorDiscountPercentage(appliedDirector);
+        setDirectorDiscountPercentage(appliedDirector); // Também atualizar o campo de input
 
         // Restore contract duration if it exists
         if (proposal.contractPeriod) {

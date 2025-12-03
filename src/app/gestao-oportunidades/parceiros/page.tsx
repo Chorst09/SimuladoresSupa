@@ -6,7 +6,7 @@ export const metadata = {
   description: 'Sistema para gestão de oportunidades de parceiros como Dell, Lenovo, HP, etc.',
 };
 
-export default function GestaoOportunidadesPage() {
+export default function GestaoOportunidadesParceiroPage() {
   return (
     <AccessControl
       allowedRoles={['admin', 'director']}

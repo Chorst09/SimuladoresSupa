@@ -48,6 +48,14 @@ Sistema completo de calculadoras e simuladores para precificação de serviços 
   - Análise de margem e lucratividade
   - Comparação entre diferentes prazos contratuais
 - **Gestão de Oportunidades** - CRM integrado com pipeline de vendas
+- **Gestão de Oportunidades de Parceiros** - Sistema completo para gerenciar oportunidades de Dell, Lenovo, HP, Cisco, etc.
+  - Cadastro de oportunidades com dados completos (cliente, contato, produto, valor)
+  - Controle de status (Aguardando Aprovação, Aprovado, Negado, Expirado)
+  - Filtros por fabricante, status e gerente de contas
+  - Histórico completo de mudanças de status
+  - Sistema de permissões (Usuário vê apenas suas oportunidades, Admin/Diretor vê todas)
+  - Indicador visual de oportunidades expiradas
+  - API REST completa com autenticação
 - **Análise de Editais** - Ferramenta para análise de licitações
 - **Filtro por Gerente de Contas** - Segmentação de propostas por responsável
 
@@ -1494,6 +1502,287 @@ const secret = "my-secret-key";
 - Usar índices em campos de busca frequente
 - Limitar resultados com paginação
 - Usar `select` para buscar apenas campos necessários
+
+## 📦 Gestão de Oportunidades de Parceiros
+
+Sistema completo para gerenciar oportunidades criadas em parceiros como Dell, Lenovo, HP, Cisco, Microsoft, VMware, etc.
+
+### 🚀 Acesso Rápido
+
+**URL:** `/gestao-oportunidades/parceiros`
+
+**Permissões:**
+- **Usuário**: Vê e edita apenas suas oportunidades
+- **Administrador/Diretor**: Acesso total a todas as oportunidades
+
+### ✨ Funcionalidades
+
+#### Campos Principais
+- **Fabricante**: Dell, Lenovo, HP, Cisco, Microsoft, VMware, Outro
+- **Nº Oportunidade**: ID único externo do parceiro
+- **Cliente**: Nome da empresa
+- **Contato**: Nome, email e telefone
+- **Produto**: Descrição detalhada
+- **Valor**: Valor monetário
+- **Gerente de Contas**: Responsável pela oportunidade
+- **Data de Expiração**: Prazo limite
+- **Status**: Aguardando Aprovação, Aprovado, Negado, Expirado
+
+#### Máquina de Estados
+
+```
+Aguardando Aprovação → Aprovado
+                     ↓
+                   Negado
+                     ↓
+                  Expirado
+```
+
+#### Filtros Disponíveis
+- Por Fabricante (Dell, Lenovo, HP, etc.)
+- Por Status (Aguardando, Aprovado, Negado, Expirado)
+- Por Gerente de Contas (lista dinâmica)
+
+### 🔐 Sistema de Permissões
+
+| Ação | Usuário | Administrador | Diretor |
+|------|---------|---------------|---------|
+| Ver próprias oportunidades | ✅ | ✅ | ✅ |
+| Ver todas oportunidades | ❌ | ✅ | ✅ |
+| Criar oportunidade | ✅ | ✅ | ✅ |
+| Editar própria oportunidade | ✅ | ✅ | ✅ |
+| Editar qualquer oportunidade | ❌ | ✅ | ✅ |
+| Excluir própria oportunidade | ✅ | ✅ | ✅ |
+| Excluir qualquer oportunidade | ❌ | ✅ | ✅ |
+
+### 🔌 API Endpoints
+
+#### GET /api/oportunidades-parceiro
+Lista oportunidades (respeitando permissões do usuário).
+
+**Query Parameters:**
+- `fabricante` - Filtrar por fabricante
+- `status` - Filtrar por status
+- `gerenteContas` - Filtrar por gerente
+
+**Exemplo:**
+```bash
+curl http://localhost:3000/api/oportunidades-parceiro?fabricante=Dell&status=aprovado
+```
+
+#### POST /api/oportunidades-parceiro
+Cria nova oportunidade.
+
+**Body:**
+```json
+{
+  "nome_fabricante": "Dell",
+  "numero_oportunidade_ext": "DELL-2024-001",
+  "cliente_nome": "Empresa XYZ",
+  "contato_nome": "João Silva",
+  "contato_email": "joao@empresa.com",
+  "produto_descricao": "Servidores Dell R750",
+  "valor": 150000.00,
+  "gerente_contas": "Maria Santos",
+  "data_expiracao": "2024-12-31"
+}
+```
+
+#### PATCH /api/oportunidades-parceiro/[id]
+Atualiza oportunidade (apenas se tiver permissão).
+
+**Body:**
+```json
+{
+  "status": "aprovado",
+  "observacoes": "Aprovado pela diretoria"
+}
+```
+
+#### DELETE /api/oportunidades-parceiro/[id]
+Exclui oportunidade (apenas se tiver permissão).
+
+### 📊 Interface do Usuário
+
+#### Listagem de Oportunidades
+- Cards com informações principais
+- Badges coloridos para status:
+  - 🟡 **Amarelo**: Aguardando Aprovação
+  - 🟢 **Verde**: Aprovado
+  - 🔴 **Vermelho**: Expirado
+  - ⚫ **Cinza**: Negado
+- Grid de 5 colunas: Cliente, Contato, Gerente, Valor, Expiração
+- Indicador visual para oportunidades expiradas
+
+#### Detalhes da Oportunidade
+- Visualização completa de todos os dados
+- Atualização de status (se tiver permissão)
+- Histórico de mudanças com usuário e data
+- Mensagem de permissão negada quando aplicável
+
+### 🔄 Fluxo de Trabalho
+
+1. **Criação**: Usuário cria oportunidade (status: Aguardando Aprovação)
+2. **Análise**: Equipe analisa a oportunidade
+3. **Decisão**: Status atualizado para Aprovado/Negado
+4. **Expiração**: Sistema marca como Expirado após data limite
+5. **Histórico**: Todas as mudanças são registradas
+
+### 📁 Estrutura de Arquivos
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   └── oportunidades-parceiro/
+│   │       ├── route.ts              # GET (listar) e POST (criar)
+│   │       └── [id]/
+│   │           └── route.ts          # PATCH (atualizar) e DELETE (excluir)
+│   └── gestao-oportunidades/
+│       └── parceiros/
+│           └── page.tsx              # Página principal
+└── components/
+    └── gestao-oportunidades/
+        ├── GestaoOportunidadesParceiros.tsx    # Componente principal
+        └── OportunidadeParceiroModal.tsx       # Modal de criação/edição
+
+prisma/
+└── schema.prisma                     # Modelos OportunidadeParceiro e Histórico
+
+scripts/
+└── migrate-oportunidades-parceiro.sh # Script de migração
+```
+
+### 🗄️ Modelo de Dados
+
+#### OportunidadeParceiro
+```prisma
+model OportunidadeParceiro {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()"))
+  nome_fabricante         String
+  numero_oportunidade_ext String   @unique
+  cliente_nome            String
+  contato_nome            String
+  contato_email           String
+  contato_telefone        String?
+  produto_descricao       String
+  valor                   Decimal
+  status                  String   @default("aguardando_aprovacao")
+  gerente_contas          String?
+  data_criacao            DateTime @default(now())
+  data_expiracao          DateTime
+  observacoes             String?
+  created_by              String?
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+  
+  creator   User?
+  historico OportunidadeParceiroHistorico[]
+}
+```
+
+#### OportunidadeParceiroHistorico
+```prisma
+model OportunidadeParceiroHistorico {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()"))
+  oportunidade_parceiro_id String
+  status_anterior          String?
+  status_novo              String
+  observacoes              String?
+  usuario_id               String
+  created_at               DateTime @default(now())
+  
+  oportunidade_parceiro OportunidadeParceiro
+  usuario               User
+}
+```
+
+### 🚀 Instalação
+
+```bash
+# 1. Aplicar migrações
+./scripts/migrate-oportunidades-parceiro.sh
+
+# Ou manualmente:
+export DATABASE_URL="postgresql://postgres:password@localhost:5432/simuladores_dev"
+npx prisma db push
+npx prisma generate
+
+# 2. Reiniciar servidor
+npm run dev
+
+# 3. Acessar
+# http://localhost:3000/gestao-oportunidades/parceiros
+```
+
+### 🧪 Testes
+
+```bash
+# Criar oportunidade
+curl -X POST http://localhost:3000/api/oportunidades-parceiro \
+  -H "Content-Type: application/json" \
+  -d '{
+    "nome_fabricante": "Dell",
+    "numero_oportunidade_ext": "DELL-2024-001",
+    "cliente_nome": "Empresa XYZ",
+    "contato_nome": "João Silva",
+    "contato_email": "joao@empresa.com",
+    "produto_descricao": "Servidores Dell R750",
+    "valor": 150000.00,
+    "gerente_contas": "Maria Santos",
+    "data_expiracao": "2024-12-31"
+  }'
+
+# Listar oportunidades (respeitando permissões)
+curl http://localhost:3000/api/oportunidades-parceiro
+
+# Filtrar por fabricante
+curl http://localhost:3000/api/oportunidades-parceiro?fabricante=Dell
+
+# Atualizar status
+curl -X PATCH http://localhost:3000/api/oportunidades-parceiro/{id} \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "aprovado",
+    "observacoes": "Aprovado pela diretoria"
+  }'
+```
+
+### 🐛 Troubleshooting
+
+**Erro: "Não autenticado"**
+- Faça login novamente no sistema
+
+**Erro: "Sem permissão para editar esta oportunidade"**
+- Você só pode editar suas próprias oportunidades (exceto Admin/Diretor)
+
+**Erro: "Número de oportunidade já existe"**
+- Use um número único para cada oportunidade
+
+**Tabelas não encontradas**
+- Execute: `npx prisma db push`
+
+**Filtros não funcionam**
+- Verifique os parâmetros: `fabricante`, `status`, `gerenteContas`
+
+### 💡 Dicas de Uso
+
+1. **Organize por Fabricante**: Use os filtros para focar em um parceiro
+2. **Monitore Expirações**: Oportunidades expiradas são marcadas em vermelho
+3. **Use Observações**: Adicione contexto nas mudanças de status
+4. **Verifique o Histórico**: Todas as mudanças são auditadas
+5. **Atribua Gerentes**: Use o campo gerente de contas para organização
+
+### 📈 Melhorias Futuras
+
+- [ ] Notificações automáticas de expiração
+- [ ] Dashboard com métricas por fabricante
+- [ ] Exportação de relatórios em PDF/Excel
+- [ ] Integração com APIs dos parceiros
+- [ ] Workflow de aprovação multi-nível
+- [ ] Anexos de documentos
+
+---
 
 ## 📄 Licença
 

@@ -46,11 +46,13 @@ model User {
   calculations              Calculation[]
   product_configs           ProductConfig[]
   user_sessions             UserSession[]
-  workflow_requests         ApprovalWorkflow[]      @relation("WorkflowRequester")
-  workflow_approvals        ApprovalWorkflow[]      @relation("WorkflowApprover")
-  approval_steps            ApprovalStep[]          @relation("StepApprover")
-  integrations              Integration[]           @relation("IntegrationCreator")
-  oportunidade_historico    OportunidadeHistorico[]
+  workflow_requests                ApprovalWorkflow[]                @relation("WorkflowRequester")
+  workflow_approvals               ApprovalWorkflow[]                @relation("WorkflowApprover")
+  approval_steps                   ApprovalStep[]                    @relation("StepApprover")
+  integrations                     Integration[]                     @relation("IntegrationCreator")
+  oportunidade_historico           OportunidadeHistorico[]
+  created_oportunidades_parceiro   OportunidadeParceiro[]            @relation("OportunidadeParceiroCreatedBy")
+  oportunidade_parceiro_historico  OportunidadeParceiroHistorico[]
 
   @@map("users")
   @@schema("auth")
@@ -187,6 +189,55 @@ model Oportunidade {
   historico    OportunidadeHistorico[]
 
   @@map("oportunidades")
+  @@schema("public")
+}
+
+// Tabela para oportunidades de parceiros (Dell, Lenovo, etc.)
+model OportunidadeParceiro {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome_fabricante         String   @db.VarChar(100) // Dell, Lenovo, HP, etc
+  numero_oportunidade_ext String   @unique // ID único externo do parceiro
+  cliente_nome            String
+  contato_nome            String
+  contato_email           String
+  contato_telefone        String?
+  produto_descricao       String
+  valor                   Decimal  @db.Decimal(15, 2)
+  status                  String   @default("aguardando_aprovacao") @db.VarChar(50) // aguardando_aprovacao, aprovado, expirado, negado
+  gerente_contas          String?  @db.VarChar(255) // Nome do gerente de contas
+  data_criacao            DateTime @default(now()) @db.Date
+  data_expiracao          DateTime @db.Date
+  observacoes             String?
+  created_by              String?  @db.Uuid
+  created_at              DateTime @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relacionamentos
+  creator   User?                           @relation("OportunidadeParceiroCreatedBy", fields: [created_by], references: [id])
+  historico OportunidadeParceiroHistorico[]
+
+  @@index([nome_fabricante, status])
+  @@index([data_expiracao])
+  @@index([gerente_contas])
+  @@map("oportunidades_parceiro")
+  @@schema("public")
+}
+
+// Histórico de mudanças de status das oportunidades de parceiro
+model OportunidadeParceiroHistorico {
+  id                        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  oportunidade_parceiro_id  String   @db.Uuid
+  status_anterior           String?  @db.VarChar(50)
+  status_novo               String   @db.VarChar(50)
+  observacoes               String?
+  usuario_id                String   @db.Uuid
+  created_at                DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relacionamentos
+  oportunidade_parceiro OportunidadeParceiro @relation(fields: [oportunidade_parceiro_id], references: [id], onDelete: Cascade)
+  usuario               User                 @relation(fields: [usuario_id], references: [id])
+
+  @@map("oportunidade_parceiro_historico")
   @@schema("public")
 }
 

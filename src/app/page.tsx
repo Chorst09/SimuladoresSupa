@@ -18,7 +18,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 
 // Lazy load dos componentes pesados
 const DashboardView = lazy(() => import('@/components/dashboard/DashboardView'));
-const GestaoOportunidades = lazy(() => import('@/components/gestao-oportunidades/GestaoOportunidades'));
+const GestaoOportunidades = lazy(() => import('@/components/gestao-oportunidades/GestaoOportunidadesParceiros'));
 const PABXSIPCalculator = lazy(() => import('@/components/calculators/PABXSIPCalculator'));
 const MaquinasVirtuaisCalculator = lazy(() => import('@/components/calculators/MaquinasVirtuaisCalculator'));
 const InternetFibraCalculator = lazy(() => import('@/components/calculators/InternetFibraCalculator'));
