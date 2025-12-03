@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
       role: user.profile?.role || user.user_compat?.role || 'user',
       created_at: user.created_at.toISOString(),
       updated_at: user.updated_at.toISOString(),
-      password_changed: user.password_changed !== null
+      password_changed: user.password_changed !== null,
+      account_status: user.account_status || 'approved' // default para usuários antigos
     }));
 
     return NextResponse.json({

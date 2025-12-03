@@ -39,6 +39,7 @@ export const authService = {
     encrypted_password: string;
     full_name: string;
     role: string;
+    created_by_admin?: boolean;
   }) {
     return await prisma.$transaction(async (tx: any) => {
       // Criar usuário
@@ -47,7 +48,9 @@ export const authService = {
           email: userData.email,
           encrypted_password: userData.encrypted_password,
           email_confirmed_at: new Date(),
-          role: 'authenticated'
+          role: 'authenticated',
+          account_status: userData.created_by_admin ? 'approved' : 'pending',
+          password_changed: userData.created_by_admin ? null : new Date() // null = precisa trocar senha
         }
       });
 

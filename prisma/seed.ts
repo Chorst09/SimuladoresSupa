@@ -19,6 +19,8 @@ async function main() {
       email_confirmed_at: new Date(),
       is_super_admin: true,
       role: 'admin',
+      account_status: 'approved',
+      password_changed: new Date(),
       raw_app_meta_data: { provider: 'email' },
       raw_user_meta_data: { full_name: 'Administrador' },
       profile: {
@@ -78,6 +80,8 @@ async function main() {
         encrypted_password: hashedPassword,
         email_confirmed_at: new Date(),
         role: userData.role,
+        account_status: 'approved',
+        password_changed: new Date(),
         raw_app_meta_data: { provider: 'email' },
         raw_user_meta_data: { full_name: userData.full_name },
         profile: {

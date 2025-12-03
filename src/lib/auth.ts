@@ -10,6 +10,7 @@ export interface User {
   email: string;
   role: string;
   full_name?: string;
+  passwordChanged?: boolean;
 }
 
 export interface AuthResult {
@@ -74,6 +75,17 @@ export async function signIn(email: string, password: string): Promise<AuthResul
 
     console.log('✅ Usuário encontrado:', user.email);
 
+    // Verificar se a conta foi aprovada
+    if (user.account_status === 'pending') {
+      console.log('⏳ Conta aguardando aprovação:', email);
+      return { user: null, error: 'Sua conta está aguardando aprovação do administrador' };
+    }
+
+    if (user.account_status === 'rejected') {
+      console.log('❌ Conta rejeitada:', email);
+      return { user: null, error: 'Sua conta foi rejeitada pelo administrador' };
+    }
+
     if (!user.encrypted_password) {
       console.log('❌ Senha não configurada para:', email);
       return { user: null, error: 'Senha não configurada' };
@@ -93,7 +105,8 @@ export async function signIn(email: string, password: string): Promise<AuthResul
       id: user.id,
       email: user.email,
       role: user.profile?.role || 'user',
-      full_name: user.profile?.full_name
+      full_name: user.profile?.full_name,
+      passwordChanged: user.password_changed !== null
     };
 
     return { user: userData, error: null };

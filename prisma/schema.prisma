@@ -28,6 +28,7 @@ model User {
   is_super_admin     Boolean   @default(false)
   role               String    @default("authenticated") @db.VarChar(255)
   password_changed   DateTime? @db.Timestamptz(6)
+  account_status     String    @default("pending") @db.VarChar(20) // 'pending', 'approved', 'rejected'
 
   // Relacionamentos
   profile                   Profile?

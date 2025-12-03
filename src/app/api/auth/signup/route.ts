@@ -46,27 +46,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Gerar token JWT
-    const token = generateToken(result.user)
-
-    const response = NextResponse.json({
+    // Não fazer login automático - usuário precisa aguardar aprovação
+    return NextResponse.json({
       success: true,
+      message: 'Cadastro realizado com sucesso! Aguarde a aprovação do administrador para fazer login.',
       data: {
-        user: result.user,
-        session: { access_token: token }
+        user: {
+          email: result.user.email,
+          full_name: result.user.full_name
+        }
       }
     })
-
-    // Definir cookie com o token
-    response.cookies.set('auth-token', token, {
-      httpOnly: true,
-      secure: false, // Permitir HTTP em produção
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 dias
-      path: '/'
-    })
-
-    return response
   } catch (error) {
     console.error('Signup API error:', error)
     return NextResponse.json(
