@@ -32,12 +32,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Atualizar status da conta
+    // Buscar o usuário atual para verificar o role
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuário não encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Atualizar status da conta e role se necessário
+    const updateData: any = {
+      account_status: action === 'approve' ? 'approved' : 'rejected'
+    };
+
+    // Se estiver aprovando e o role for 'pending', mudar para 'user'
+    if (action === 'approve' && user.profile?.role === 'pending') {
+      // Atualizar o role no profile
+      await prisma.profile.update({
+        where: { user_id: userId },
+        data: { role: 'user' }
+      });
+    }
+
+    // Se estiver rejeitando, manter como 'pending' ou mudar para 'rejected'
+    if (action === 'reject' && user.profile?.role === 'pending') {
+      await prisma.profile.update({
+        where: { user_id: userId },
+        data: { role: 'pending' } // Manter como pending para poder aprovar depois
+      });
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: {
-        account_status: action === 'approve' ? 'approved' : 'rejected'
-      },
+      data: updateData,
       include: {
         profile: true
       }

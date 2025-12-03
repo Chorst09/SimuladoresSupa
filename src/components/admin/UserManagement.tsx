@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useUserProfile, UserRole } from '@/hooks/use-user-profile';
 import { Users, UserPlus, Shield, Trash2, Edit, Crown, User, Briefcase, UserCheck, UserX, Loader2 } from 'lucide-react';
 
-// Extended UserProfile interface to include password_changed
+// Extended UserProfile interface to include password_changed and account_status
 interface ExtendedUserProfile {
   id: string;
   email: string;
@@ -23,6 +23,7 @@ interface ExtendedUserProfile {
   created_at?: string;
   updated_at?: string;
   password_changed?: boolean;
+  account_status?: 'pending' | 'approved' | 'rejected';
 }
 
 export default function UserManagement() {
@@ -99,7 +100,8 @@ export default function UserManagement() {
         role: user.role as UserRole | 'pending' | 'seller',
         created_at: user.created_at || new Date().toISOString(),
         updated_at: user.updated_at || new Date().toISOString(),
-        password_changed: user.password_changed !== false
+        password_changed: user.password_changed !== false,
+        account_status: user.account_status || 'approved' // default para usuários antigos
       }));
 
       setUsers(mappedUsers);
@@ -282,6 +284,78 @@ export default function UserManagement() {
     } catch (error: any) {
       console.error('❌ Erro ao resetar senha:', error);
       alert(`Erro: ${error?.message || 'Não foi possível resetar a senha.'}`);
+    }
+  };
+
+  const handleApproveUser = async (userId: string, userEmail: string) => {
+    if (!confirm(`Aprovar o usuário ${userEmail}?`)) {
+      return;
+    }
+
+    try {
+      console.log('✅ Aprovando usuário via API:', userId);
+
+      const response = await fetch('/api/users/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          action: 'approve'
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao aprovar usuário');
+      }
+
+      console.log('✅ Usuário aprovado:', result);
+      alert('✅ Usuário aprovado com sucesso!');
+      
+      // Reload users
+      await loadUsers();
+    } catch (error: any) {
+      console.error('❌ Erro ao aprovar usuário:', error);
+      alert(`Erro: ${error?.message || 'Não foi possível aprovar o usuário.'}`);
+    }
+  };
+
+  const handleSuspendUser = async (userId: string, userEmail: string) => {
+    if (!confirm(`Suspender o usuário ${userEmail}?\n\nO usuário não poderá mais fazer login.`)) {
+      return;
+    }
+
+    try {
+      console.log('🚫 Suspendendo usuário via API:', userId);
+
+      const response = await fetch('/api/users/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          action: 'reject'
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao suspender usuário');
+      }
+
+      console.log('✅ Usuário suspenso:', result);
+      alert('✅ Usuário suspenso com sucesso!');
+      
+      // Reload users
+      await loadUsers();
+    } catch (error: any) {
+      console.error('❌ Erro ao suspender usuário:', error);
+      alert(`Erro: ${error?.message || 'Não foi possível suspender o usuário.'}`);
     }
   };
 
@@ -541,30 +615,53 @@ A aplicação usa a tabela "profiles" para mostrar os usuários.
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
                 <TableHead>Nome</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Função</TableHead>
-                <TableHead>Data de Criação</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Criado em</TableHead>
+                <TableHead>Senha Alterada</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.email}</TableCell>
-                  <TableCell>{user.full_name || '-'}</TableCell>
+                  <TableCell className="font-medium">{user.full_name || '-'}</TableCell>
+                  <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <div className="flex items-center">
                       {user.role === 'admin' ? (
                         <Shield className="h-4 w-4 mr-1 text-orange-500" />
                       ) : user.role === 'director' ? (
                         <Crown className="h-4 w-4 mr-1 text-purple-500" />
+                      ) : user.role === 'seller' ? (
+                        <Briefcase className="h-4 w-4 mr-1 text-green-500" />
+                      ) : user.role === 'pending' ? (
+                        <User className="h-4 w-4 mr-1 text-gray-400" />
                       ) : (
                         <User className="h-4 w-4 mr-1 text-blue-500" />
                       )}
                       {user.role === 'admin' ? 'Administrador' :
-                        user.role === 'director' ? 'Diretor' : 'Usuário'}
+                        user.role === 'director' ? 'Diretor' :
+                        user.role === 'seller' ? 'Vendedor' :
+                        user.role === 'pending' ? 'Pendente' : 'Usuário'}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {user.account_status === 'pending' || user.role === 'pending' ? (
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+                        Aguardando Aprovação
+                      </Badge>
+                    ) : user.account_status === 'rejected' ? (
+                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
+                        Rejeitado
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                        Ativo
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     {user.created_at ?
@@ -573,27 +670,73 @@ A aplicação usa a tabela "profiles" para mostrar os usuários.
                     }
                   </TableCell>
                   <TableCell>
+                    {user.password_changed ? (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                        Sim
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
+                        Não
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditingUser(user);
-                          setIsEditDialogOpen(true);
-                        }}
-                        title="Editar usuário"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleResetPassword(user.id, user.email)}
-                        title="Resetar senha"
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        🔑
-                      </Button>
+                      {(user.account_status === 'pending' || user.role === 'pending') && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleApproveUser(user.id, user.email)}
+                            title="Aprovar usuário"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                          >
+                            <UserCheck className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSuspendUser(user.id, user.email)}
+                            title="Rejeitar usuário"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {user.account_status !== 'pending' && user.role !== 'pending' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingUser(user);
+                              setIsEditDialogOpen(true);
+                            }}
+                            title="Editar usuário"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResetPassword(user.id, user.email)}
+                            title="Resetar senha"
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            🔑
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSuspendUser(user.id, user.email)}
+                            title="Suspender usuário"
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                       {user.email !== currentUser?.email && (
                         <Button
                           variant="outline"
