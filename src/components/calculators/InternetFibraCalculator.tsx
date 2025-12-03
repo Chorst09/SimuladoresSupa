@@ -1905,7 +1905,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     </div>
 
                     <Tabs defaultValue="calculator" className="w-full">
-                        <TabsList className={`grid w-full ${user?.role === 'admin' ? 'grid-cols-5' : 'grid-cols-1'} bg-slate-800`}>
+                        <TabsList className={`grid w-full ${user?.role === 'admin' ? 'grid-cols-5' : 'grid-cols-2'} bg-slate-800`}>
                             <TabsTrigger value="calculator">Calculadora</TabsTrigger>
                             {user?.role === 'admin' && (
                                 <TabsTrigger value="prices">Tabela de Preços</TabsTrigger>
@@ -1916,6 +1916,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                             {user?.role === 'admin' && (
                                 <TabsTrigger value="dre">DRE</TabsTrigger>
                             )}
+                            <TabsTrigger value="proposal">Proposta</TabsTrigger>
 
                         </TabsList>
                         <TabsContent value="calculator" key={`calculator-${componentKey}`}>
