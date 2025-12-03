@@ -279,7 +279,6 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     // Estados do produto
     const [addedProducts, setAddedProducts] = useState<Product[]>([]);
     const [fibraPlans, setFibraPlans] = useState<FibraPlan[]>([]);
-    const [editingValues, setEditingValues] = useState<{[key: string]: string}>({});
     const [selectedStatus, setSelectedStatus] = useState<string>('Aguardando Aprovação do Cliente');
     const [proposalChanges, setProposalChanges] = useState<string>('');
 
@@ -550,56 +549,27 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     };
 
-    const handlePriceFocus = (index: number, field: keyof Omit<FibraPlan, 'description' | 'baseCost' | 'speed'>, plan: FibraPlan) => {
-        const key = `${index}-${field}`;
-        // Inicializa o valor de edição com o valor atual do plano
-        const value = (plan as any)[field];
-        setEditingValues(prev => ({ ...prev, [key]: value ? String(value) : '' }));
-    };
-
     const handlePriceChange = (index: number, field: keyof Omit<FibraPlan, 'description' | 'baseCost' | 'speed'>, value: string) => {
-        const key = `${index}-${field}`;
+        const newPlans = [...fibraPlans];
+        
+        // Se o valor está vazio, define como 0
+        if (value === '' || value === '0') {
+            (newPlans[index] as any)[field] = 0;
+            setFibraPlans(newPlans);
+            return;
+        }
+        
         // Remove tudo exceto números, vírgula e ponto
         const cleaned = value.replace(/[^0-9,.]/g, "");
         
-        // Armazena o valor como string durante a edição
-        setEditingValues(prev => ({ ...prev, [key]: cleaned }));
-    };
-
-    const handlePriceBlur = (index: number, field: keyof Omit<FibraPlan, 'description' | 'baseCost' | 'speed'>) => {
-        const key = `${index}-${field}`;
-        const value = editingValues[key];
+        // Substitui vírgula por ponto para conversão
+        const numericValue = parseFloat(cleaned.replace(",", "."));
         
-        if (value !== undefined) {
-            const newPlans = [...fibraPlans];
-            // Substitui vírgula por ponto para conversão
-            const numericValue = parseFloat(value.replace(",", "."));
-            
-            if (value === '' || value === '0') {
-                (newPlans[index] as any)[field] = 0;
-            } else if (!isNaN(numericValue)) {
-                (newPlans[index] as any)[field] = numericValue;
-            }
+        // Só atualiza se for um número válido
+        if (!isNaN(numericValue)) {
+            (newPlans[index] as any)[field] = numericValue;
             setFibraPlans(newPlans);
-            
-            // Remove o valor temporário
-            setEditingValues(prev => {
-                const newValues = { ...prev };
-                delete newValues[key];
-                return newValues;
-            });
         }
-    };
-
-    const getPriceValue = (index: number, field: keyof Omit<FibraPlan, 'description' | 'baseCost' | 'speed'>, plan: FibraPlan): string => {
-        const key = `${index}-${field}`;
-        // Se está editando, retorna o valor temporário
-        if (editingValues[key] !== undefined) {
-            return editingValues[key];
-        }
-        // Senão, retorna o valor do plano
-        const value = (plan as any)[field];
-        return value ? String(value) : '';
     };
 
     const handleCustoFibraChange = (value: string) => {
@@ -3007,61 +2977,51 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                             <TableCell className="font-medium">{plan.description}</TableCell>
                                                             <TableCell>
                                                                 <Input
-                                                                    type="text"
-                                                                    inputMode="decimal"
-                                                                    value={getPriceValue(index, 'price12', plan)}
-                                                                    onFocus={() => handlePriceFocus(index, 'price12', plan)}
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={plan.price12 || ''}
                                                                     onChange={(e) => handlePriceChange(index, 'price12', e.target.value)}
-                                                                    onBlur={() => handlePriceBlur(index, 'price12')}
-                                                                    placeholder="0,00"
+                                                                    placeholder="0.00"
                                                                     className="text-right bg-slate-800 border-slate-700"
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
                                                                 <Input
-                                                                    type="text"
-                                                                    inputMode="decimal"
-                                                                    value={getPriceValue(index, 'price24', plan)}
-                                                                    onFocus={() => handlePriceFocus(index, 'price24', plan)}
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={plan.price24 || ''}
                                                                     onChange={(e) => handlePriceChange(index, 'price24', e.target.value)}
-                                                                    onBlur={() => handlePriceBlur(index, 'price24')}
-                                                                    placeholder="0,00"
+                                                                    placeholder="0.00"
                                                                     className="text-right bg-slate-800 border-slate-700"
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
                                                                 <Input
-                                                                    type="text"
-                                                                    inputMode="decimal"
-                                                                    value={getPriceValue(index, 'price36', plan)}
-                                                                    onFocus={() => handlePriceFocus(index, 'price36', plan)}
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={plan.price36 || ''}
                                                                     onChange={(e) => handlePriceChange(index, 'price36', e.target.value)}
-                                                                    onBlur={() => handlePriceBlur(index, 'price36')}
-                                                                    placeholder="0,00"
+                                                                    placeholder="0.00"
                                                                     className="text-right bg-slate-800 border-slate-700"
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
                                                                 <Input
-                                                                    type="text"
-                                                                    inputMode="decimal"
-                                                                    value={getPriceValue(index, 'price48', plan)}
-                                                                    onFocus={() => handlePriceFocus(index, 'price48', plan)}
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={plan.price48 || ''}
                                                                     onChange={(e) => handlePriceChange(index, 'price48', e.target.value)}
-                                                                    onBlur={() => handlePriceBlur(index, 'price48')}
-                                                                    placeholder="0,00"
+                                                                    placeholder="0.00"
                                                                     className="text-right bg-slate-800 border-slate-700"
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
                                                                 <Input
-                                                                    type="text"
-                                                                    inputMode="decimal"
-                                                                    value={getPriceValue(index, 'price60', plan)}
-                                                                    onFocus={() => handlePriceFocus(index, 'price60', plan)}
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={plan.price60 || ''}
                                                                     onChange={(e) => handlePriceChange(index, 'price60', e.target.value)}
-                                                                    onBlur={() => handlePriceBlur(index, 'price60')}
-                                                                    placeholder="0,00"
+                                                                    placeholder="0.00"
                                                                     className="text-right bg-slate-800 border-slate-700"
                                                                 />
                                                             </TableCell>
