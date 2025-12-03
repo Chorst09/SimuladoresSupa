@@ -3027,17 +3027,21 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                             </TableCell>
                                                             <TableCell>
                                                                 <Input
-                                                                    type="text"
-                                                                    value={(plan.installationCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={plan.installationCost || ''}
                                                                     onChange={(e) => handlePriceChange(index, 'installationCost', e.target.value)}
+                                                                    placeholder="0.00"
                                                                     className="text-right bg-slate-800 border-slate-700"
                                                                 />
                                                             </TableCell>
                                                             <TableCell>
                                                                 <Input
-                                                                    type="text"
-                                                                    value={(plan.fiberCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    value={plan.fiberCost || ''}
                                                                     onChange={(e) => handlePriceChange(index, 'fiberCost', e.target.value)}
+                                                                    placeholder="0.00"
                                                                     className="text-right bg-slate-800 border-slate-700"
                                                                 />
                                                             </TableCell>
