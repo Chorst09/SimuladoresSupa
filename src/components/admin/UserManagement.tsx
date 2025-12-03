@@ -242,6 +242,49 @@ export default function UserManagement() {
     }
   };
 
+  const handleResetPassword = async (userId: string, userEmail: string) => {
+    const newPassword = prompt(`Digite a nova senha temporária para ${userEmail}:\n\n(Mínimo 6 caracteres. O usuário deverá trocar a senha no próximo login)`);
+    
+    if (!newPassword) {
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    try {
+      console.log('🔑 Resetando senha via API:', userId);
+
+      const response = await fetch('/api/users/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          newPassword
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao resetar senha');
+      }
+
+      console.log('✅ Senha resetada:', result);
+      alert('✅ Senha resetada com sucesso!\n\nO usuário deverá trocar a senha no próximo login.');
+      
+      // Reload users
+      await loadUsers();
+    } catch (error: any) {
+      console.error('❌ Erro ao resetar senha:', error);
+      alert(`Erro: ${error?.message || 'Não foi possível resetar a senha.'}`);
+    }
+  };
+
   const handleDeleteUser = async (userId: string, userEmail: string) => {
     if (!confirm(`Tem certeza que deseja excluir o usuário ${userEmail}?\n\nEsta ação não pode ser desfeita.`)) {
       return;
@@ -538,8 +581,18 @@ A aplicação usa a tabela "profiles" para mostrar os usuários.
                           setEditingUser(user);
                           setIsEditDialogOpen(true);
                         }}
+                        title="Editar usuário"
                       >
                         <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResetPassword(user.id, user.email)}
+                        title="Resetar senha"
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        🔑
                       </Button>
                       {user.email !== currentUser?.email && (
                         <Button
@@ -547,6 +600,7 @@ A aplicação usa a tabela "profiles" para mostrar os usuários.
                           size="sm"
                           onClick={() => handleDeleteUser(user.id, user.email)}
                           disabled={deletingUserId === user.id}
+                          title="Excluir usuário"
                         >
                           {deletingUserId === user.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />

@@ -46,3 +46,65 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { email, password, full_name, role } = body;
+
+    console.log('👤 Criando usuário pelo admin:', email);
+
+    if (!email || !password || !full_name || !role) {
+      return NextResponse.json(
+        { success: false, error: 'Todos os campos são obrigatórios' },
+        { status: 400 }
+      );
+    }
+
+    // Importar authService
+    const { authService } = await import('@/lib/database');
+    const bcrypt = await import('bcryptjs');
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Criar usuário com status aprovado e senha temporária
+    const user = await authService.createUser({
+      email,
+      encrypted_password: hashedPassword,
+      full_name,
+      role,
+      created_by_admin: true
+    });
+
+    console.log('✅ Usuário criado com sucesso:', user.id);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Usuário criado com sucesso',
+      user: {
+        id: user.id,
+        email: email,
+        full_name: full_name,
+        role: role
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erro ao criar usuário:', error);
+    
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { success: false, error: 'Email já está em uso' },
+        { status: 409 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || 'Erro ao criar usuário'
+      },
+      { status: 500 }
+    );
+  }
+}
