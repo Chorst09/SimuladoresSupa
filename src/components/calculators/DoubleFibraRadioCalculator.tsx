@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -1996,14 +1997,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
-                                                    <Input
-                                                        id="previousMonthlyFee"
-                                                        type="number" step="0.01"
-                                                        value={previousMonthlyFee}
-                                                        onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value) || 0)}
-                                                        placeholder="0.00"
-                                                        className="bg-slate-800"
-                                                    />
+                                                    <CurrencyInput id="previousMonthlyFee" value={previousMonthlyFee} onChange={setPreviousMonthlyFee} placeholder="0,00" className="bg-slate-800" />
                                                 </div>
                                                 {previousMonthlyFee > 0 && result && (
                                                     <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
@@ -2040,14 +2034,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                         {createLastMile && (
                                             <div className="space-y-2">
                                                 <Label htmlFor="lastMileCost">Custo (Last Mile)</Label>
-                                                <Input
-                                                    id="lastMileCost"
-                                                    type="number" step="0.01"
-                                                    value={lastMileCost}
-                                                    onChange={(e) => setLastMileCost(parseFloat(e.target.value) || 0)}
-                                                    placeholder="0.00"
-                                                    className="bg-slate-800"
-                                                />
+                                                <CurrencyInput id="lastMileCost" value={lastMileCost} onChange={setLastMileCost} placeholder="0,00" className="bg-slate-800" />
                                             </div>
                                         )}
                                         <div className="space-y-2">
