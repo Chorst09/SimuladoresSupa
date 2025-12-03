@@ -298,6 +298,30 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
         }
     }, [currentUser?.id, fetchProposals]);
 
+    // 🔥 CORREÇÃO: useEffect para carregar descontos quando editar proposta
+    useEffect(() => {
+        if (currentProposal && addedProducts.length > 0) {
+            console.log('🔍 MaquinasVirtuais - Carregando descontos da proposta:', currentProposal);
+            const firstProduct = addedProducts[0];
+            
+            if (firstProduct?.details) {
+                console.log('📦 Detalhes do produto:', firstProduct.details);
+                
+                // Carregar desconto do vendedor
+                if (firstProduct.details.applySalespersonDiscount !== undefined) {
+                    console.log('✅ Carregando applySalespersonDiscount:', firstProduct.details.applySalespersonDiscount);
+                    setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
+                }
+                
+                // Carregar desconto do diretor
+                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
+                    console.log('✅ Carregando appliedDirectorDiscountPercentage:', firstProduct.details.appliedDirectorDiscountPercentage);
+                    setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                }
+            }
+        }
+    }, [currentProposal, addedProducts]);
+
     useEffect(() => {
         if (!currentUser?.id) return;
 
@@ -1295,10 +1319,21 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                 if (firstProduct.details.additionalIp !== undefined) setVmAdditionalIp(firstProduct.details.additionalIp);
                 if (firstProduct.details.snapshot !== undefined) setVmSnapshot(firstProduct.details.snapshot);
                 if (firstProduct.details.vpnSiteToSite !== undefined) setVmVpnSiteToSite(firstProduct.details.vpnSiteToSite);
+                
+                // 🔥 CORREÇÃO: Carregar descontos dos produtos (firstProduct.details)
+                console.log('🔍 MaquinasVirtuais editProposal - Carregando descontos');
+                if (firstProduct.details.applySalespersonDiscount !== undefined) {
+                    console.log('✅ applySalespersonDiscount:', firstProduct.details.applySalespersonDiscount);
+                    setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
+                }
+                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
+                    console.log('✅ appliedDirectorDiscountPercentage:', firstProduct.details.appliedDirectorDiscountPercentage);
+                    setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                }
             }
         }
 
-        // Load discount settings if available
+        // FALLBACK: Load discount settings if available in proposal root
         if (proposal.applySalespersonDiscount !== undefined) {
             setApplySalespersonDiscount(proposal.applySalespersonDiscount);
         }
@@ -1875,6 +1910,18 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     version: currentProposal.version
                 });
                 
+                // 🔥 CORREÇÃO: Atualizar produtos com descontos atuais ANTES de salvar
+                console.log('🔄 Atualizando produtos com descontos atuais...');
+                const updatedProducts = addedProducts.map(product => ({
+                    ...product,
+                    details: {
+                        ...product.details,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage
+                    }
+                }));
+                console.log('✅ Produtos atualizados:', updatedProducts);
+                
                 const proposalToUpdate = {
                     title: `Proposta VM - ${clientData?.name || 'Cliente'}`,
                     client: clientData?.name || '',
@@ -1885,8 +1932,11 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     totalMonthly: finalTotalMonthly,
                     contractPeriod: vmContractPeriod,
                     clientData: clientData,
-                    products: addedProducts,
-                    items: addedProducts,
+                    products: updatedProducts, // 🔥 Usar produtos atualizados
+                    items: updatedProducts, // 🔥 Usar produtos atualizados
+                    applySalespersonDiscount: applySalespersonDiscount, // 🔥 Salvar no root também
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage, // 🔥 Salvar no root também
+                    baseTotalMonthly: baseTotalMonthly, // 🔥 Salvar no root também
                     // Salvar descontos no metadata
                     metadata: {
                         baseTotalMonthly: baseTotalMonthly,
@@ -1912,15 +1962,26 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     console.log('✅ Proposta atualizada:', updatedProposal);
                     alert('Proposta atualizada com sucesso!');
                     setCurrentProposal(updatedProposal);
-                    setProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+                    await fetchProposals(); // 🔥 Recarregar propostas
                     setHasChanged(false);
-                    fetchProposals();
                 } else {
                     throw new Error('Erro ao atualizar proposta');
                 }
             } else if (saveAsNewVersion === true && currentProposal) {
                 // CRIAR NOVA VERSÃO - Sempre cria um novo registro no banco
                 console.log('📝 Criando nova versão da proposta VM:', currentProposal.baseId || currentProposal.base_id);
+                
+                // 🔥 CORREÇÃO: Atualizar produtos com descontos atuais ANTES de salvar
+                console.log('🔄 Atualizando produtos com descontos atuais...');
+                const updatedProducts = addedProducts.map(product => ({
+                    ...product,
+                    details: {
+                        ...product.details,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage
+                    }
+                }));
+                console.log('✅ Produtos atualizados:', updatedProducts);
                 
                 const baseIdToUse = currentProposal.baseId || currentProposal.base_id;
                 if (!baseIdToUse) {
@@ -1952,8 +2013,11 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     contractPeriod: vmContractPeriod,
                     version: version,
                     clientData: clientData,
-                    products: addedProducts,
-                    items: addedProducts,
+                    products: updatedProducts, // 🔥 Usar produtos atualizados
+                    items: updatedProducts, // 🔥 Usar produtos atualizados
+                    applySalespersonDiscount: applySalespersonDiscount, // 🔥 Salvar no root também
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage, // 🔥 Salvar no root também
+                    baseTotalMonthly: baseTotalMonthly, // 🔥 Salvar no root também
                     // Salvar descontos no metadata
                     metadata: {
                         baseTotalMonthly: baseTotalMonthly,
@@ -1979,9 +2043,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     console.log('✅ Nova versão criada:', newProposal);
                     alert(`Nova versão criada com sucesso! ID: ${newProposal.base_id || newProposal.baseId}`);
                     setCurrentProposal(newProposal);
-                    setProposals(prev => [newProposal, ...prev]);
+                    await fetchProposals(); // 🔥 Recarregar propostas
                     setHasChanged(false);
-                    fetchProposals();
                 } else {
                     throw new Error('Erro ao criar nova versão');
                 }
@@ -2104,9 +2167,87 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                             </Table>
                         </div>
 
+                        {/* Histórico de Descontos Aplicados - Logo após produtos */}
+                        {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
+                            <div className="border-t pt-4 print:pt-2">
+                                <div className="p-4 bg-orange-50 border border-orange-300 rounded">
+                                    <h4 className="font-semibold text-orange-800 mb-3 flex items-center">
+                                        📋 Histórico de Descontos Aplicados
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <p className="mb-2"><strong>Versão:</strong> <span className="text-orange-600 font-semibold">v{currentProposal.version || 1}</span></p>
+                                            {currentProposal.applySalespersonDiscount && (
+                                                <p className="mb-2"><strong>Desconto Vendedor:</strong> <span className="text-orange-600 font-semibold">5%</span></p>
+                                            )}
+                                            {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                                <p className="mb-2"><strong>Desconto Diretor:</strong> <span className="text-orange-600 font-semibold">{currentProposal.appliedDirectorDiscountPercentage}%</span></p>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <p><strong>Data de Criação:</strong></p>
+                                            <p className="text-orange-600 font-semibold">
+                                                {(() => {
+                                                    try {
+                                                        const date = currentProposal.createdAt;
+                                                        if (!date) return 'N/A';
+                                                        if (typeof date === 'string') {
+                                                            return new Date(date).toLocaleDateString('pt-BR');
+                                                        }
+                                                        if (date.toDate && typeof date.toDate === 'function') {
+                                                            return date.toDate().toLocaleDateString('pt-BR');
+                                                        }
+                                                        return new Date(date).toLocaleDateString('pt-BR');
+                                                    } catch (e) {
+                                                        return 'N/A';
+                                                    }
+                                                })()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Resumo Financeiro */}
                         <div className="border-t pt-4 print:pt-2">
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
+                            
+                            {/* Descontos Aplicados - Valores detalhados */}
+                            {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
+                                <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded">
+                                    <h4 className="font-semibold text-amber-800 mb-3 flex items-center">
+                                        💰 Descontos Aplicados
+                                    </h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span><strong>Valor Original (Mensal):</strong></span>
+                                            <span className="font-semibold">{formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</span>
+                                        </div>
+                                        
+                                        {currentProposal.applySalespersonDiscount && (
+                                            <div className="flex justify-between text-orange-700">
+                                                <span><strong>Desconto Vendedor (5%):</strong></span>
+                                                <span className="font-semibold">-{formatCurrency(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05))}</span>
+                                            </div>
+                                        )}
+
+                                        {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                            <div className="flex justify-between text-orange-700">
+                                                <span><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage}%) - Apenas Mensal:</strong></span>
+                                                <span className="font-semibold">-{formatCurrency((((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage || 0) / 100)))}</span>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="pt-2 mt-2 border-t border-amber-300">
+                                            <div className="flex justify-between font-semibold">
+                                                <span>Valor Final (Mensal com desconto):</span>
+                                                <span className="text-green-700">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                 <div>
                                     <p><strong>Total Setup:</strong> {formatCurrency(currentProposal.totalSetup)}</p>

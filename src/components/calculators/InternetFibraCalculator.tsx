@@ -498,6 +498,42 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         fetchProposals();
     }, [fetchProposals]);
 
+    // 🔥 CORREÇÃO: useEffect para carregar descontos quando editar proposta
+    useEffect(() => {
+        if (currentProposal && addedProducts.length > 0) {
+            console.log('🔍 InternetFibra - Carregando descontos da proposta:', currentProposal);
+            const firstProduct = addedProducts[0];
+            
+            if (firstProduct?.details) {
+                console.log('📦 Detalhes do produto:', firstProduct.details);
+                
+                // Carregar desconto do vendedor
+                if (firstProduct.details.applySalespersonDiscount !== undefined) {
+                    console.log('✅ Carregando applySalespersonDiscount:', firstProduct.details.applySalespersonDiscount);
+                    setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
+                }
+                
+                // Carregar desconto do diretor
+                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
+                    console.log('✅ Carregando appliedDirectorDiscountPercentage:', firstProduct.details.appliedDirectorDiscountPercentage);
+                    setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                }
+
+                // Carregar parceiro indicador
+                if (firstProduct.details.includeReferralPartner !== undefined) {
+                    console.log('✅ Carregando includeReferralPartner:', firstProduct.details.includeReferralPartner);
+                    setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
+                }
+
+                // Carregar parceiro influenciador
+                if (firstProduct.details.includeInfluencerPartner !== undefined) {
+                    console.log('✅ Carregando includeInfluencerPartner:', firstProduct.details.includeInfluencerPartner);
+                    setIncludeInfluencerPartner(firstProduct.details.includeInfluencerPartner);
+                }
+            }
+        }
+    }, [currentProposal, addedProducts]);
+
     // Removed debug useEffect to prevent unnecessary re-renders
 
     // Funções
@@ -832,7 +868,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 fiberCost: result.fiberCost,
                 applySalespersonDiscount,
                 appliedDirectorDiscountPercentage,
-                includeReferralPartner
+                includeReferralPartner,
+                includeInfluencerPartner
             }
         };
 
@@ -1009,8 +1046,9 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 }
             }
 
-            fetchProposals();
-            clearForm();
+            await fetchProposals();
+            // Não limpar o formulário imediatamente para permitir edição
+            // clearForm();
             setViewMode('search');
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
@@ -1054,6 +1092,20 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 // CRIAR NOVA VERSÃO - Sempre cria um novo registro no banco
                 console.log('📝 Criando nova versão da proposta:', currentProposal.baseId || currentProposal.base_id);
                 
+                // 🔥 CORREÇÃO: Atualizar produtos com descontos atuais ANTES de salvar
+                console.log('🔄 Atualizando produtos com descontos atuais...');
+                const updatedProducts = addedProducts.map(product => ({
+                    ...product,
+                    details: {
+                        ...product.details,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        includeReferralPartner: includeReferralPartner,
+                        includeInfluencerPartner: includeInfluencerPartner
+                    }
+                }));
+                console.log('✅ Produtos atualizados:', updatedProducts);
+                
                 const baseIdToUse = currentProposal.baseId || currentProposal.base_id;
                 if (!baseIdToUse) {
                     alert('Proposta atual não possui ID base válido');
@@ -1078,16 +1130,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     version: parseInt(newBaseId.match(/_v(\d+)$/)?.[1] || '1'),
                     clientData: clientData,
                     accountManager: accountManagerData,
-                    products: addedProducts,
+                    products: updatedProducts,
                     totalSetup: totalSetup,
                     totalMonthly: finalTotalMonthly,
-                    // Salvar descontos no metadata
-                    metadata: {
-                        baseTotalMonthly: baseTotalMonthly,
-                        applySalespersonDiscount: applySalespersonDiscount,
-                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                        changes: proposalChanges
-                    }
+                    baseTotalMonthly: baseTotalMonthly,
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    changes: proposalChanges
                 };
 
                 console.log('📤 Enviando nova versão para API:', proposalToSave);
@@ -1104,7 +1153,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     console.log('✅ Nova versão criada:', newProposal);
                     alert(`Nova versão criada com sucesso! ID: ${newProposal.base_id || newProposal.baseId}`);
                     setCurrentProposal(newProposal);
-                    setProposals(prev => [newProposal, ...prev]);
+                    await fetchProposals(); // 🔥 Recarregar propostas
                     setHasChanged(false);
                 } else {
                     throw new Error('Erro ao criar nova versão');
@@ -1296,10 +1345,26 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 if (firstProduct.details.contractTerm) setContractTerm(firstProduct.details.contractTerm);
                 if (firstProduct.details.includeInstallation !== undefined) setIncludeInstallation(firstProduct.details.includeInstallation);
                 if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
+                
+                // 🔥 CORREÇÃO: Carregar descontos na função editProposal
+                console.log('🔍 InternetFibra editProposal - Carregando descontos');
+                if (firstProduct.details.applySalespersonDiscount !== undefined) {
+                    console.log('✅ applySalespersonDiscount:', firstProduct.details.applySalespersonDiscount);
+                    setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
+                }
+                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
+                    console.log('✅ appliedDirectorDiscountPercentage:', firstProduct.details.appliedDirectorDiscountPercentage);
+                    setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                    setDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                }
+                if (firstProduct.details.includeInfluencerPartner !== undefined) {
+                    console.log('✅ includeInfluencerPartner:', firstProduct.details.includeInfluencerPartner);
+                    setIncludeInfluencerPartner(firstProduct.details.includeInfluencerPartner);
+                }
             }
         }
 
-        // IMPORTANTE: Carregar descontos do METADATA da proposta (não dos product.details)
+        // IMPORTANTE: Carregar descontos do METADATA da proposta (não dos product.details) - FALLBACK
         const metadata = (proposal as any).metadata || {};
         if (metadata.applySalespersonDiscount !== undefined) {
             setApplySalespersonDiscount(metadata.applySalespersonDiscount);
@@ -1677,40 +1742,80 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                             </Table>
                         </div>
 
+                        {/* Histórico de Descontos Aplicados - Logo após produtos */}
+                        {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
+                            <div className="border-t pt-4 print:pt-2">
+                                <div className="p-4 bg-orange-50 border border-orange-300 rounded">
+                                    <h4 className="font-semibold text-orange-800 mb-3 flex items-center">
+                                        📋 Histórico de Descontos Aplicados
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <p className="mb-2"><strong>Versão:</strong> <span className="text-orange-600 font-semibold">v{currentProposal.version || 1}</span></p>
+                                            {currentProposal.applySalespersonDiscount && (
+                                                <p className="mb-2"><strong>Desconto Vendedor:</strong> <span className="text-orange-600 font-semibold">5%</span></p>
+                                            )}
+                                            {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                                <p className="mb-2"><strong>Desconto Diretor:</strong> <span className="text-orange-600 font-semibold">{currentProposal.appliedDirectorDiscountPercentage}%</span></p>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <p><strong>Data de Criação:</strong></p>
+                                            <p className="text-orange-600 font-semibold">{new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Resumo Financeiro */}
                         <div className="border-t pt-4 print:pt-2">
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
-                            {/* Show discount breakdown if discounts were applied */}
+                            {/* Descontos Aplicados - Valores detalhados */}
                             {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
-                                <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
-                                    <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
-                                    <div className="text-sm space-y-1">
-                                        <p><strong>Valores Originais:</strong></p>
-                                        <p className="ml-4">Setup: {formatCurrency(currentProposal.totalSetup || 0)}</p>
-                                        <p className="ml-4">Mensal: {formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</p>
-
+                                <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded">
+                                    <h4 className="font-semibold text-amber-800 mb-3 flex items-center">
+                                        💰 Descontos Aplicados
+                                    </h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span><strong>Valor Original (Mensal):</strong></span>
+                                            <span className="font-semibold">{formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</span>
+                                        </div>
+                                        
                                         {currentProposal.applySalespersonDiscount && (
-                                            <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
+                                            <div className="flex justify-between text-orange-700">
+                                                <span><strong>Desconto Vendedor (5%):</strong></span>
+                                                <span className="font-semibold">-{formatCurrency(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05))}</span>
+                                            </div>
                                         )}
 
                                         {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
-                                            <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage || 0}%):</strong> -R$ {(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage || 0) / 100)).toFixed(2).replace('.', ',')}</p>
+                                            <div className="flex justify-between text-orange-700">
+                                                <span><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage}%) - Apenas Mensal:</strong></span>
+                                                <span className="font-semibold">-{formatCurrency((((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage || 0) / 100)))}</span>
+                                            </div>
                                         )}
+                                        
+                                        <div className="pt-2 mt-2 border-t border-amber-300">
+                                            <div className="flex justify-between font-semibold">
+                                                <span>Valor Final (Mensal com desconto):</span>
+                                                <span className="text-green-700">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p><strong>Total Setup {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalSetup)}</p>
-                                    <p><strong>Total Mensal {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal.totalMonthly)}</p>
+                            <div className="space-y-2 text-sm mb-4">
+                                <div className="flex justify-between">
+                                    <span><strong>Total de Instalação:</strong></span>
+                                    <span className="font-semibold">{formatCurrency(currentProposal.totalSetup || 0)}</span>
                                 </div>
-                                <div>
-                                    <p><strong>Data da Proposta:</strong> {new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</p>
-                                    <p><strong>ID da Proposta:</strong> {currentProposal.base_id || currentProposal.baseId || currentProposal.id}</p>
-                                    <p><strong>Versão:</strong> {currentProposal.version}</p>
-                                    <p><strong>Período do Contrato:</strong> {currentProposal.contractPeriod ? `${currentProposal.contractPeriod} meses` : 'N/A'}</p>
+                                <div className="flex justify-between">
+                                    <span><strong>Total Mensal (com desconto):</strong></span>
+                                    <span className="font-semibold">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
                                 </div>
                             </div>
                         </div>
@@ -2055,6 +2160,42 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         </div>
                                                     ))}
                                                 </div>
+                                                
+                                                {/* Histórico de Descontos Aplicados */}
+                                                {currentProposal && (currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
+                                                    <div className="p-4 bg-gradient-to-br from-orange-950/80 to-orange-900/60 border-2 border-orange-600 rounded-lg">
+                                                        <h4 className="font-semibold text-orange-400 mb-3 flex items-center text-base">
+                                                            📋 Histórico de Descontos Aplicados
+                                                        </h4>
+                                                        <div className="space-y-2 text-sm">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-200">Versão:</span>
+                                                                <span className="text-orange-400 font-bold">v{currentProposal.version || 1}</span>
+                                                            </div>
+                                                            
+                                                            {currentProposal.applySalespersonDiscount && (
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-slate-200">Desconto Vendedor:</span>
+                                                                    <span className="text-orange-400 font-bold">5%</span>
+                                                                </div>
+                                                            )}
+
+                                                            {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-slate-200">Desconto Diretor:</span>
+                                                                    <span className="text-orange-400 font-bold">{currentProposal.appliedDirectorDiscountPercentage}%</span>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            <Separator className="my-2 bg-orange-600/50" />
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-200">Data de Criação:</span>
+                                                                <span className="text-orange-400 font-semibold">{new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
                                                 <Separator className="my-4 bg-slate-700" />
 
                                                 {/* Controles de Desconto */}
@@ -2104,6 +2245,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
                                                 <Separator className="my-4 bg-slate-700" />
                                                 <div className="space-y-2">
+                                                    <div className="flex justify-between">
+                                                        <span>Valor Original (Mensal):</span>
+                                                        <span>{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</span>
+                                                    </div>
                                                     {applySalespersonDiscount && (
                                                         <div className="flex justify-between text-orange-400">
                                                             <span>Desconto Vendedor (5%):</span>

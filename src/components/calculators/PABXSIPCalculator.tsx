@@ -58,6 +58,11 @@ interface ProposalItem {
     description: string;
     setup: number;
     monthly: number;
+    details?: {
+        applySalespersonDiscount?: boolean;
+        appliedDirectorDiscountPercentage?: number;
+        [key: string]: any;
+    };
 }
 
 interface Proposal {
@@ -66,7 +71,7 @@ interface Proposal {
     base_id?: string;
     version: number;
     client: ClientData | string;
-    accountManager: AccountManagerData;
+    accountManager: AccountManagerData | string;
     items: ProposalItem[];
     products?: any[]; // Para compatibilidade com dados antigos
     clientData?: ClientData; // Para compatibilidade com dados antigos
@@ -74,17 +79,25 @@ interface Proposal {
     totalMonthly: number;
     rawTotalSetup?: number;
     rawTotalMonthly?: number;
-    createdAt: string;
+    baseTotalMonthly?: number;
+    createdAt: string | any;
     createdBy?: string;
     userId: string;
     value?: number;
     contractPeriod?: string;
+    applySalespersonDiscount?: boolean;
+    appliedDirectorDiscountPercentage?: number;
     discountInfo?: {
         applySalespersonDiscount: boolean;
         appliedDirectorDiscountPercentage: number;
         salespersonDiscountFactor: number;
         directorDiscountFactor: number;
         hasDiscounts: boolean;
+    };
+    metadata?: {
+        accountManagerEmail?: string;
+        accountManagerPhone?: string;
+        [key: string]: any;
     };
     status?: string;
     changes?: string;
@@ -960,7 +973,14 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             id: generateUniqueId(),
             description: description,
             setup: pabxResult.setup,
-            monthly: pabxResult.totalMonthly
+            monthly: pabxResult.totalMonthly,
+            details: {
+                applySalespersonDiscount,
+                appliedDirectorDiscountPercentage,
+                pabxModality,
+                pabxExtensions,
+                contractDuration
+            }
         };
 
         setProposalItems(prev => [...prev, newItem]);
@@ -974,7 +994,13 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             id: generateUniqueId(),
             description: sipPlan,
             setup: sipResult.setup,
-            monthly: sipResult.monthly
+            monthly: sipResult.monthly,
+            details: {
+                applySalespersonDiscount,
+                appliedDirectorDiscountPercentage,
+                sipPlan,
+                contractDuration
+            }
         };
 
         setProposalItems(prev => [...prev, newItem]);
@@ -1017,43 +1043,61 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     };
 
     const viewProposal = (proposal: Proposal) => {
+        console.log('🔍 PABX viewProposal - Proposta recebida:', proposal);
+        
         setCurrentProposal(proposal);
 
         // Handle client data - check if it's an object or string
         if (typeof proposal.client === 'object' && proposal.client !== null) {
+            console.log('✅ Cliente é objeto:', proposal.client);
             setClientData(proposal.client);
         } else if (typeof proposal.client === 'string') {
+            console.log('⚠️ Cliente é string:', proposal.client);
             setClientData({
                 name: proposal.client,
-                contact: '',
-                projectName: '',
-                email: '',
-                phone: ''
+                contact: proposal.clientData?.contact || '',
+                projectName: proposal.clientData?.projectName || '',
+                email: proposal.clientData?.email || '',
+                phone: proposal.clientData?.phone || ''
             });
         } else if (proposal.clientData) {
+            console.log('✅ Usando clientData:', proposal.clientData);
             setClientData(proposal.clientData);
         }
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            console.log('✅ Account Manager:', proposal.accountManager);
+            if (typeof proposal.accountManager === 'string') {
+                setAccountManagerData({
+                    name: proposal.accountManager,
+                    email: proposal.metadata?.accountManagerEmail || '',
+                    phone: proposal.metadata?.accountManagerPhone || ''
+                });
+            } else {
+                setAccountManagerData(proposal.accountManager);
+            }
         }
 
         // Handle items/products - check multiple possible locations
         let items: ProposalItem[] = [];
         if (proposal.items && Array.isArray(proposal.items)) {
+            console.log('✅ Usando items:', proposal.items);
             items = proposal.items;
         } else if (proposal.products && Array.isArray(proposal.products)) {
+            console.log('✅ Convertendo products para items:', proposal.products);
             // Convert products to items format if needed
             items = proposal.products.map((product: any) => ({
                 id: product.id || `item-${Date.now()}`,
                 description: product.description || 'PABX SIP',
                 setup: product.setup || 0,
                 monthly: product.monthly || 0,
-                quantity: product.quantity || 1
+                quantity: product.quantity || 1,
+                details: product.details
             }));
         }
 
+        console.log('📦 Items finais:', items);
         setProposalItems(items);
 
         // Load status and changes
@@ -1083,7 +1127,15 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
         // Handle account manager data
         if (proposal.accountManager) {
-            setAccountManagerData(proposal.accountManager);
+            if (typeof proposal.accountManager === 'string') {
+                setAccountManagerData({
+                    name: proposal.accountManager,
+                    email: proposal.metadata?.accountManagerEmail || '',
+                    phone: proposal.metadata?.accountManagerPhone || ''
+                });
+            } else {
+                setAccountManagerData(proposal.accountManager);
+            }
         }
 
         console.log("Proposal items from Firebase in editProposal:", proposal.items);
@@ -1106,14 +1158,33 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
         setProposalItems(items);
 
-        // Restore discount settings if they exist
+        // 🔥 CORREÇÃO: Carregar descontos dos produtos (firstProduct.details)
+        console.log('🔍 PABXSIP editProposal - Carregando descontos');
+        if (items && items.length > 0) {
+            const firstItem = items[0];
+            if (firstItem && (firstItem as any).details) {
+                const details = (firstItem as any).details;
+                console.log('📦 Detalhes do primeiro item:', details);
+                
+                if (details.applySalespersonDiscount !== undefined) {
+                    console.log('✅ applySalespersonDiscount:', details.applySalespersonDiscount);
+                    setApplySalespersonDiscount(details.applySalespersonDiscount);
+                }
+                if (details.appliedDirectorDiscountPercentage !== undefined) {
+                    console.log('✅ appliedDirectorDiscountPercentage:', details.appliedDirectorDiscountPercentage);
+                    setAppliedDirectorDiscountPercentage(details.appliedDirectorDiscountPercentage);
+                }
+            }
+        }
+        
+        // FALLBACK: Restore discount settings if they exist in discountInfo
         if (proposal.discountInfo) {
-            setApplySalespersonDiscount(proposal.discountInfo.applySalespersonDiscount || false);
-            setAppliedDirectorDiscountPercentage(proposal.discountInfo.appliedDirectorDiscountPercentage || 0);
-        } else {
-            // Reset discount settings if no discount info exists
-            setApplySalespersonDiscount(false);
-            setAppliedDirectorDiscountPercentage(0);
+            if (proposal.discountInfo.applySalespersonDiscount !== undefined) {
+                setApplySalespersonDiscount(proposal.discountInfo.applySalespersonDiscount);
+            }
+            if (proposal.discountInfo.appliedDirectorDiscountPercentage !== undefined) {
+                setAppliedDirectorDiscountPercentage(proposal.discountInfo.appliedDirectorDiscountPercentage);
+            }
         }
 
         // Restore contract duration if it exists
@@ -1189,6 +1260,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     // Atualizar dados editáveis
                     clientData: clientData,
                     products: proposalItems,
+                    items: proposalItems, // 🔥 Adicionar items também
                     baseTotalMonthly: rawTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
@@ -1250,6 +1322,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     version: proposalVersion,
                     clientData: clientData,
                     products: proposalItems,
+                    items: proposalItems, // 🔥 Adicionar items também
                     baseTotalMonthly: rawTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
@@ -1343,6 +1416,31 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         fetchProposals();
     }, [fetchProposals]);
 
+    // 🔥 CORREÇÃO: useEffect para carregar descontos quando editar proposta
+    useEffect(() => {
+        if (currentProposal && proposalItems.length > 0) {
+            console.log('🔍 PABXSIP - Carregando descontos da proposta:', currentProposal);
+            const firstItem = proposalItems[0];
+            
+            if (firstItem && (firstItem as any).details) {
+                const details = (firstItem as any).details;
+                console.log('📦 Detalhes do primeiro item:', details);
+                
+                // Carregar desconto do vendedor
+                if (details.applySalespersonDiscount !== undefined) {
+                    console.log('✅ Carregando applySalespersonDiscount:', details.applySalespersonDiscount);
+                    setApplySalespersonDiscount(details.applySalespersonDiscount);
+                }
+                
+                // Carregar desconto do diretor
+                if (details.appliedDirectorDiscountPercentage !== undefined) {
+                    console.log('✅ Carregando appliedDirectorDiscountPercentage:', details.appliedDirectorDiscountPercentage);
+                    setAppliedDirectorDiscountPercentage(details.appliedDirectorDiscountPercentage);
+                }
+            }
+        }
+    }, [currentProposal, proposalItems]);
+
     // Efeito para calcular a margem líquida estimada a partir do markup
     useEffect(() => {
         if (markup >= 0) {
@@ -1420,7 +1518,12 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     totalSetup: finalTotalSetup,
                     clientData: clientData,
                     products: proposalItems,
-                    // Salvar descontos no metadata
+                    items: proposalItems, // 🔥 Adicionar items também
+                    // 🔥 Salvar descontos no root da proposta
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    baseTotalMonthly: rawTotalMonthly,
+                    // Salvar descontos no metadata também
                     metadata: {
                         baseTotalMonthly: rawTotalMonthly,
                         baseTotalSetup: rawTotalSetup,
@@ -1480,7 +1583,12 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     version: parseInt(newBaseId.match(/_v(\d+)$/)?.[1] || '1'),
                     clientData: clientData,
                     products: proposalItems,
-                    // Salvar descontos e informações adicionais no metadata
+                    items: proposalItems, // 🔥 Adicionar items também
+                    // 🔥 Salvar descontos no root da proposta
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    baseTotalMonthly: rawTotalMonthly,
+                    // Salvar descontos e informações adicionais no metadata também
                     metadata: {
                         baseTotalMonthly: rawTotalMonthly,
                         baseTotalSetup: rawTotalSetup,
@@ -1874,15 +1982,16 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {currentProposal.items?.map((item, index) => (
+                                {(currentProposal.items || currentProposal.products || proposalItems || []).map((item, index) => (
                                     <TableRow key={index}>
                                         <TableCell>{item.description}</TableCell>
                                         <TableCell>{formatCurrency(item.setup)}</TableCell>
                                         <TableCell>{formatCurrency(item.monthly)}</TableCell>
                                     </TableRow>
-                                )) || (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="text-center text-gray-500">
+                                ))}
+                                {(!currentProposal.items && !currentProposal.products && (!proposalItems || proposalItems.length === 0)) && (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center text-gray-500">
                                                 Nenhum item encontrado
                                             </TableCell>
                                         </TableRow>
@@ -1891,29 +2000,129 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                         </Table>
                     </div>
 
+                    {/* Histórico de Descontos Aplicados - Logo após produtos */}
+                    {(() => {
+                        // 🔥 Buscar descontos de múltiplas fontes (root, metadata, discountInfo, products)
+                        const applySalesperson = currentProposal.applySalespersonDiscount 
+                            || currentProposal.metadata?.applySalespersonDiscount 
+                            || currentProposal.discountInfo?.applySalespersonDiscount
+                            || (currentProposal.items?.[0] as any)?.details?.applySalespersonDiscount
+                            || (currentProposal.products?.[0] as any)?.details?.applySalespersonDiscount
+                            || false;
+                        
+                        const appliedDirector = currentProposal.appliedDirectorDiscountPercentage 
+                            || currentProposal.metadata?.appliedDirectorDiscountPercentage 
+                            || currentProposal.discountInfo?.appliedDirectorDiscountPercentage
+                            || (currentProposal.items?.[0] as any)?.details?.appliedDirectorDiscountPercentage
+                            || (currentProposal.products?.[0] as any)?.details?.appliedDirectorDiscountPercentage
+                            || 0;
+                        
+                        console.log('🔍 Descontos encontrados:', { applySalesperson, appliedDirector });
+                        
+                        return (applySalesperson || appliedDirector > 0) && (
+                            <div className="border-t pt-4 print:pt-2">
+                                <div className="p-4 bg-orange-50 border border-orange-300 rounded">
+                                    <h4 className="font-semibold text-orange-800 mb-3 flex items-center">
+                                        📋 Histórico de Descontos Aplicados
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <p className="mb-2"><strong>Versão:</strong> <span className="text-orange-600 font-semibold">v{currentProposal.version || 1}</span></p>
+                                            {applySalesperson && (
+                                                <p className="mb-2"><strong>Desconto Vendedor:</strong> <span className="text-orange-600 font-semibold">5%</span></p>
+                                            )}
+                                            {appliedDirector > 0 && (
+                                                <p className="mb-2"><strong>Desconto Diretor:</strong> <span className="text-orange-600 font-semibold">{appliedDirector}%</span></p>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <p><strong>Data de Criação:</strong></p>
+                                            <p className="text-orange-600 font-semibold">
+                                                {(() => {
+                                                    try {
+                                                        const date = currentProposal.createdAt;
+                                                        if (!date) return 'N/A';
+                                                        if (typeof date === 'string') {
+                                                            return new Date(date).toLocaleDateString('pt-BR');
+                                                        }
+                                                        if (date.toDate && typeof date.toDate === 'function') {
+                                                            return date.toDate().toLocaleDateString('pt-BR');
+                                                        }
+                                                        return new Date(date).toLocaleDateString('pt-BR');
+                                                    } catch (e) {
+                                                        return 'N/A';
+                                                    }
+                                                })()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
                     {/* Resumo Financeiro */}
                     <div className="border-t pt-4 print:pt-2">
                         <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
-                        {/* Show discount breakdown if discounts were applied */}
-                        {currentProposal.discountInfo?.hasDiscounts && (
-                            <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
-                                <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
-                                <div className="text-sm space-y-1">
-                                    <p><strong>Valores Originais:</strong></p>
-                                    <p className="ml-4">Setup: {formatCurrency(currentProposal.rawTotalSetup || 0)}</p>
-                                    <p className="ml-4">Mensal: {formatCurrency(currentProposal.rawTotalMonthly || 0)}</p>
+                        {/* Descontos Aplicados - Valores detalhados */}
+                        {(() => {
+                            // 🔥 Buscar descontos de múltiplas fontes
+                            const applySalesperson = currentProposal.applySalespersonDiscount 
+                                || currentProposal.metadata?.applySalespersonDiscount 
+                                || currentProposal.discountInfo?.applySalespersonDiscount
+                                || (currentProposal.items?.[0] as any)?.details?.applySalespersonDiscount
+                                || (currentProposal.products?.[0] as any)?.details?.applySalespersonDiscount
+                                || false;
+                            
+                            const appliedDirector = currentProposal.appliedDirectorDiscountPercentage 
+                                || currentProposal.metadata?.appliedDirectorDiscountPercentage 
+                                || currentProposal.discountInfo?.appliedDirectorDiscountPercentage
+                                || (currentProposal.items?.[0] as any)?.details?.appliedDirectorDiscountPercentage
+                                || (currentProposal.products?.[0] as any)?.details?.appliedDirectorDiscountPercentage
+                                || 0;
+                            
+                            const baseTotalMonthly = currentProposal.baseTotalMonthly 
+                                || currentProposal.metadata?.baseTotalMonthly 
+                                || currentProposal.metadata?.rawTotalMonthly
+                                || currentProposal.totalMonthly 
+                                || 0;
+                            
+                            return (applySalesperson || appliedDirector > 0) && (
+                                <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded">
+                                    <h4 className="font-semibold text-amber-800 mb-3 flex items-center">
+                                        💰 Descontos Aplicados
+                                    </h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span><strong>Valor Original (Mensal):</strong></span>
+                                            <span className="font-semibold">{formatCurrency(baseTotalMonthly)}</span>
+                                        </div>
+                                        
+                                        {applySalesperson && (
+                                            <div className="flex justify-between text-orange-700">
+                                                <span><strong>Desconto Vendedor (5%):</strong></span>
+                                                <span className="font-semibold">-{formatCurrency(baseTotalMonthly * 0.05)}</span>
+                                            </div>
+                                        )}
 
-                                    {currentProposal.discountInfo.applySalespersonDiscount && (
-                                        <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {((currentProposal.rawTotalMonthly || 0) * 0.05).toFixed(2).replace('.', ',')}</p>
-                                    )}
-
-                                    {currentProposal.discountInfo.appliedDirectorDiscountPercentage > 0 && (
-                                        <p className="text-orange-600"><strong>Desconto Diretor ({currentProposal.discountInfo.appliedDirectorDiscountPercentage}%):</strong> -R$ {(((currentProposal.rawTotalMonthly || 0) * (currentProposal.discountInfo.applySalespersonDiscount ? 0.95 : 1)) * (currentProposal.discountInfo.appliedDirectorDiscountPercentage / 100)).toFixed(2).replace('.', ',')}</p>
-                                    )}
+                                        {appliedDirector > 0 && (
+                                            <div className="flex justify-between text-orange-700">
+                                                <span><strong>Desconto Diretor ({appliedDirector}%) - Apenas Mensal:</strong></span>
+                                                <span className="font-semibold">-{formatCurrency((baseTotalMonthly * (applySalesperson ? 0.95 : 1)) * (appliedDirector / 100))}</span>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="pt-2 mt-2 border-t border-amber-300">
+                                            <div className="flex justify-between font-semibold">
+                                                <span>Valor Final (Mensal com desconto):</span>
+                                                <span className="text-green-700">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                             <div>
@@ -2555,49 +2764,80 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                     </TableBody>
                                 </Table>
 
-                                {/* Controles de Desconto */}
-                                <div className="space-y-4 p-4 bg-slate-800 rounded-lg mt-4">
-                                    {(currentUser?.role !== 'director' && currentUser?.role !== 'admin') && (
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="salesperson-discount-toggle"
-                                                checked={applySalespersonDiscount}
-                                                onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
-                                            />
-                                            <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
-                                        </div>
-                                    )}
-                                    {(currentUser?.role === 'director' || currentUser?.role === 'admin') && (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="director-discount">Desconto Diretor (%)</Label>
-                                            <div className="flex items-center space-x-2">
-                                                <Input
-                                                    id="director-discount"
-                                                    type="number"
-                                                    value={directorDiscountPercentage}
-                                                    onChange={(e) => {
-                                                        const value = Number(e.target.value);
-                                                        setDirectorDiscountPercentage(value);
-                                                        setAppliedDirectorDiscountPercentage(value);
-                                                    }}
-                                                    placeholder="0-100"
-                                                    min="0"
-                                                    max="100"
-                                                    className="bg-slate-700 border-slate-600 text-white"
-                                                />
+                                {/* Histórico de Descontos Aplicados */}
+                                {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) && (
+                                    <div className="p-4 bg-gradient-to-br from-amber-900/40 to-orange-900/40 border-2 border-orange-500/60 rounded-lg shadow-lg mt-4">
+                                        <h4 className="font-semibold text-orange-300 mb-3 flex items-center text-base">
+                                            📋 Histórico de Descontos Aplicados
+                                        </h4>
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-200">Versão:</span>
+                                                <span className="text-orange-300 font-bold">v{currentProposal?.version || 1}</span>
+                                            </div>
+                                            
+                                            {applySalespersonDiscount && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-200">Desconto Vendedor:</span>
+                                                    <span className="text-orange-300 font-bold">5%</span>
+                                                </div>
+                                            )}
+
+                                            {appliedDirectorDiscountPercentage > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-200">Desconto Diretor:</span>
+                                                    <span className="text-orange-300 font-bold">{appliedDirectorDiscountPercentage}%</span>
+                                                </div>
+                                            )}
+                                            
+                                            <Separator className="my-2 bg-orange-500/30" />
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-200">Data de Criação:</span>
+                                                <span className="text-orange-300 font-semibold">
+                                                    {currentProposal?.createdAt 
+                                                        ? new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')
+                                                        : new Date().toLocaleDateString('pt-BR')
+                                                    }
+                                                </span>
                                             </div>
                                         </div>
-                                    )}
-                                    {currentUser?.role === 'admin' && (
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="admin-salesperson-discount-toggle"
-                                                checked={applySalespersonDiscount}
-                                                onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
+                                    </div>
+                                )}
+
+                                <Separator className="my-4 bg-slate-700" />
+
+                                {/* Controles de Desconto - Conforme Print */}
+                                <div className="space-y-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                                    {/* Campo Desconto Diretor - Sempre visível para Director e Admin */}
+                                    {(currentUser?.role === 'director' || currentUser?.role === 'admin') && (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="director-discount" className="text-slate-300">Desconto Diretor (%)</Label>
+                                            <Input
+                                                id="director-discount"
+                                                type="number"
+                                                value={directorDiscountPercentage}
+                                                onChange={(e) => {
+                                                    const value = Number(e.target.value);
+                                                    setDirectorDiscountPercentage(value);
+                                                    setAppliedDirectorDiscountPercentage(value);
+                                                }}
+                                                placeholder="0-100"
+                                                min="0"
+                                                max="100"
+                                                className="bg-slate-700 border-slate-600 text-white"
                                             />
-                                            <Label htmlFor="admin-salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                         </div>
                                     )}
+                                    
+                                    {/* Checkbox Desconto Vendedor */}
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="salesperson-discount-toggle"
+                                            checked={applySalespersonDiscount}
+                                            onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
+                                        />
+                                        <Label htmlFor="salesperson-discount-toggle" className="text-slate-300">Aplicar Desconto Vendedor (5%)</Label>
+                                    </div>
                                 </div>
 
                                 <div className="flex justify-end gap-4 mt-6">

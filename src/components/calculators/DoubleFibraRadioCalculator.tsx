@@ -566,6 +566,42 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         };
     }, [fetchProposals]); // Dependência em fetchProposals para buscar propostas quando o componente monta
 
+    // 🔥 CORREÇÃO: useEffect para carregar descontos quando editar proposta
+    useEffect(() => {
+        if (currentProposal && addedProducts.length > 0) {
+            console.log('🔍 DoubleFibraRadio - Carregando descontos da proposta:', currentProposal);
+            const firstProduct = addedProducts[0];
+            
+            if (firstProduct?.details) {
+                console.log('📦 Detalhes do produto:', firstProduct.details);
+                
+                // Carregar desconto do vendedor
+                if (firstProduct.details.applySalespersonDiscount !== undefined) {
+                    console.log('✅ Carregando applySalespersonDiscount:', firstProduct.details.applySalespersonDiscount);
+                    setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
+                }
+                
+                // Carregar desconto do diretor
+                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
+                    console.log('✅ Carregando appliedDirectorDiscountPercentage:', firstProduct.details.appliedDirectorDiscountPercentage);
+                    setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                }
+
+                // Carregar parceiro indicador
+                if (firstProduct.details.includeReferralPartner !== undefined) {
+                    console.log('✅ Carregando includeReferralPartner:', firstProduct.details.includeReferralPartner);
+                    setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
+                }
+
+                // Carregar parceiro influenciador
+                if (firstProduct.details.includeInfluencerPartner !== undefined) {
+                    console.log('✅ Carregando includeInfluencerPartner:', firstProduct.details.includeInfluencerPartner);
+                    setIncludeInfluencerPartner(firstProduct.details.includeInfluencerPartner);
+                }
+            }
+        }
+    }, [currentProposal, addedProducts]);
+
     // Removed debug useEffect to prevent unnecessary re-renders
 
     // Funções
@@ -893,7 +929,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 doubleFiberRadioCost: result.doubleFiberRadioCost,
                 applySalespersonDiscount,
                 appliedDirectorDiscountPercentage,
-                includeReferralPartner
+                includeReferralPartner,
+                includeInfluencerPartner
             }
         };
 
@@ -1053,8 +1090,9 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 }
             }
 
-            fetchProposals();
-            clearForm();
+            await fetchProposals();
+            // Não limpar o formulário imediatamente para permitir edição
+            // clearForm();
             setViewMode('search');
         } catch (error) {
             console.error('Erro ao salvar proposta:', error);
@@ -1118,6 +1156,20 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 // CRIAR NOVA VERSÃO
                 console.log('📝 Criando nova versão da proposta Double Fibra/Rádio');
                 
+                // 🔥 CORREÇÃO: Atualizar produtos com descontos atuais ANTES de salvar
+                console.log('🔄 Atualizando produtos com descontos atuais...');
+                const updatedProducts = addedProducts.map(product => ({
+                    ...product,
+                    details: {
+                        ...product.details,
+                        applySalespersonDiscount: applySalespersonDiscount,
+                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        includeReferralPartner: includeReferralPartner,
+                        includeInfluencerPartner: includeInfluencerPartner
+                    }
+                }));
+                console.log('✅ Produtos atualizados:', updatedProducts);
+                
                 const baseIdToUse = currentProposal.baseId || (currentProposal as any).base_id;
                 if (!baseIdToUse) {
                     alert('Proposta atual não possui ID base válido');
@@ -1142,16 +1194,13 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                     version: parseInt(newBaseId.match(/_v(\d+)$/)?.[1] || '1'),
                     clientData: clientData,
                     accountManager: accountManagerData,
-                    products: addedProducts,
+                    products: updatedProducts,
                     totalSetup: totalSetup,
                     totalMonthly: finalTotalMonthly,
-                    // Salvar descontos no metadata
-                    metadata: {
-                        baseTotalMonthly: baseTotalMonthly,
-                        applySalespersonDiscount: applySalespersonDiscount,
-                        appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                        changes: proposalChanges
-                    }
+                    baseTotalMonthly: baseTotalMonthly,
+                    applySalespersonDiscount: applySalespersonDiscount,
+                    appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    changes: proposalChanges
                 };
 
                 const response = await fetch('/api/proposals', {
@@ -1165,7 +1214,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                     const proposalData = newProposal.data || newProposal;
                     alert(`Nova versão criada com sucesso! ID: ${proposalData.baseId || proposalData.base_id}`);
                     setCurrentProposal(proposalData);
-                    setProposals(prev => [proposalData, ...prev]);
+                    await fetchProposals(); // 🔥 Recarregar propostas
                 } else {
                     throw new Error('Erro ao criar nova versão');
                 }
@@ -1318,9 +1367,25 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 }
                 if (firstProduct.details.contractTerm) setContractTerm(firstProduct.details.contractTerm);
                 if (firstProduct.details.includeInstallation !== undefined) setIncludeInstallation(firstProduct.details.includeInstallation);
-                if (firstProduct.details.applySalespersonDiscount !== undefined) setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
-                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
-                if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
+                
+                // 🔥 CORREÇÃO: Carregar descontos na função editProposal
+                console.log('🔍 DoubleFibraRadio editProposal - Carregando descontos');
+                if (firstProduct.details.applySalespersonDiscount !== undefined) {
+                    console.log('✅ applySalespersonDiscount:', firstProduct.details.applySalespersonDiscount);
+                    setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
+                }
+                if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
+                    console.log('✅ appliedDirectorDiscountPercentage:', firstProduct.details.appliedDirectorDiscountPercentage);
+                    setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
+                }
+                if (firstProduct.details.includeReferralPartner !== undefined) {
+                    console.log('✅ includeReferralPartner:', firstProduct.details.includeReferralPartner);
+                    setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
+                }
+                if (firstProduct.details.includeInfluencerPartner !== undefined) {
+                    console.log('✅ includeInfluencerPartner:', firstProduct.details.includeInfluencerPartner);
+                    setIncludeInfluencerPartner(firstProduct.details.includeInfluencerPartner);
+                }
             }
         }
 
@@ -1675,40 +1740,96 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                             </Table>
                         </div>
 
+                        {/* Histórico de Descontos Aplicados - Logo após produtos */}
+                        {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
+                            <div className="border-t pt-4 print:pt-2">
+                                <div className="p-4 bg-orange-50 border border-orange-300 rounded">
+                                    <h4 className="font-semibold text-orange-800 mb-3 flex items-center">
+                                        📋 Histórico de Descontos Aplicados
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <p className="mb-2"><strong>Versão:</strong> <span className="text-orange-600 font-semibold">v{currentProposal.version || 1}</span></p>
+                                            {currentProposal.applySalespersonDiscount && (
+                                                <p className="mb-2"><strong>Desconto Vendedor:</strong> <span className="text-orange-600 font-semibold">5%</span></p>
+                                            )}
+                                            {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                                <p className="mb-2"><strong>Desconto Diretor:</strong> <span className="text-orange-600 font-semibold">{currentProposal.appliedDirectorDiscountPercentage}%</span></p>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <p><strong>Data de Criação:</strong></p>
+                                            <p className="text-orange-600 font-semibold">
+                                                {(() => {
+                                                    try {
+                                                        const date = currentProposal.createdAt;
+                                                        if (!date) return 'N/A';
+                                                        if (typeof date === 'string') {
+                                                            return new Date(date).toLocaleDateString('pt-BR');
+                                                        }
+                                                        if (date.toDate && typeof date.toDate === 'function') {
+                                                            return date.toDate().toLocaleDateString('pt-BR');
+                                                        }
+                                                        return new Date(date).toLocaleDateString('pt-BR');
+                                                    } catch (e) {
+                                                        return 'N/A';
+                                                    }
+                                                })()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Resumo Financeiro */}
                         <div className="border-t pt-4 print:pt-2">
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
-                            {/* Show discount breakdown if discounts were applied */}
-                            {(currentProposal?.details?.applySalespersonDiscount || (currentProposal?.details?.appliedDirectorDiscountPercentage || 0) > 0) && (
-                                <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded">
-                                    <h4 className="font-semibold text-orange-800 mb-2">Descontos Aplicados</h4>
-                                    <div className="text-sm space-y-1">
-                                        <p><strong>Valores Originais:</strong></p>
-                                        <p className="ml-4">Setup: {formatCurrency(currentProposal?.totalSetup || 0)}</p>
-                                        <p className="ml-4">Mensal: {formatCurrency(currentProposal?.baseTotalMonthly || currentProposal?.totalMonthly || 0)}</p>
-
-                                        {currentProposal?.details?.applySalespersonDiscount && (
-                                            <p className="text-orange-600"><strong>Desconto Vendedor (5%):</strong> -R$ {(((currentProposal?.baseTotalMonthly || currentProposal?.totalMonthly || 0) * 0.05) || 0).toFixed(2).replace('.', ',')}</p>
+                            {/* Descontos Aplicados - Valores detalhados */}
+                            {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
+                                <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded">
+                                    <h4 className="font-semibold text-amber-800 mb-3 flex items-center">
+                                        💰 Descontos Aplicados
+                                    </h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span><strong>Valor Original (Mensal):</strong></span>
+                                            <span className="font-semibold">{formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</span>
+                                        </div>
+                                        
+                                        {currentProposal.applySalespersonDiscount && (
+                                            <div className="flex justify-between text-orange-700">
+                                                <span><strong>Desconto Vendedor (5%):</strong></span>
+                                                <span className="font-semibold">-{formatCurrency(((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * 0.05))}</span>
+                                            </div>
                                         )}
 
-                                        {(currentProposal?.details?.appliedDirectorDiscountPercentage || 0) > 0 && (
-                                            <p className="text-orange-600"><strong>Desconto Director {(currentProposal?.details?.appliedDirectorDiscountPercentage || 0)}%):</strong> -R$ {((((currentProposal?.baseTotalMonthly || currentProposal?.totalMonthly || 0) * (currentProposal?.details?.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal?.details?.appliedDirectorDiscountPercentage || 0) / 100)) || 0).toFixed(2).replace('.', ',')}</p>
+                                        {(currentProposal.appliedDirectorDiscountPercentage || 0) > 0 && (
+                                            <div className="flex justify-between text-orange-700">
+                                                <span><strong>Desconto Diretor ({currentProposal.appliedDirectorDiscountPercentage}%) - Apenas Mensal:</strong></span>
+                                                <span className="font-semibold">-{formatCurrency((((currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0) * (currentProposal.applySalespersonDiscount ? 0.95 : 1)) * ((currentProposal.appliedDirectorDiscountPercentage || 0) / 100)))}</span>
+                                            </div>
                                         )}
+                                        
+                                        <div className="pt-2 mt-2 border-t border-amber-300">
+                                            <div className="flex justify-between font-semibold">
+                                                <span>Valor Final (Mensal com desconto):</span>
+                                                <span className="text-green-700">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p><strong>Total Setup {(currentProposal?.details?.applySalespersonDiscount || (currentProposal?.details?.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal?.totalSetup || 0)}</p>
-                                    <p><strong>Total Mensal {(currentProposal?.details?.applySalespersonDiscount || (currentProposal?.details?.appliedDirectorDiscountPercentage || 0) > 0) ? '(com desconto)' : ''}:</strong> {formatCurrency(currentProposal?.totalMonthly || 0)}</p>
+                            <div className="space-y-2 text-sm mb-4">
+                                <div className="flex justify-between">
+                                    <span><strong>Total de Instalação:</strong></span>
+                                    <span className="font-semibold">{formatCurrency(currentProposal?.totalSetup || 0)}</span>
                                 </div>
-                                <div>
-                                    <p><strong>Data da Proposta:</strong> {new Date(currentProposal?.createdAt || new Date()).toLocaleDateString('pt-BR')}</p>
-                                    <p><strong>ID da Proposta:</strong> {currentProposal?.baseId || currentProposal?.id}</p>
-                                    <p><strong>Versão:</strong> {currentProposal?.version}</p>
-                                    <p><strong>Período do Contrato:</strong> {currentProposal?.contractPeriod ? `${currentProposal.contractPeriod} meses` : 'N/A'}</p>
+                                <div className="flex justify-between">
+                                    <span><strong>Total Mensal (com desconto):</strong></span>
+                                    <span className="font-semibold">{formatCurrency(currentProposal?.totalMonthly || 0)}</span>
                                 </div>
                             </div>
                         </div>
@@ -2081,52 +2202,89 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                         </div>
                                                     ))}
                                                 </div>
-                                                <Separator className="my-4 bg-slate-700" />
+                                                
+                                                {/* Histórico de Descontos Aplicados */}
+                                                {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) && (
+                                                    <div className="p-4 bg-gradient-to-br from-amber-900/40 to-orange-900/40 border-2 border-orange-500/60 rounded-lg shadow-lg">
+                                                        <h4 className="font-semibold text-orange-300 mb-3 flex items-center text-base">
+                                                            📋 Histórico de Descontos Aplicados
+                                                        </h4>
+                                                        <div className="space-y-2 text-sm">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-200">Versão:</span>
+                                                                <span className="text-orange-300 font-bold">v{currentProposal?.version || 1}</span>
+                                                            </div>
+                                                            
+                                                            {applySalespersonDiscount && (
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-slate-200">Desconto Vendedor:</span>
+                                                                    <span className="text-orange-300 font-bold">5%</span>
+                                                                </div>
+                                                            )}
 
-                                                {/* Controles de Desconto */}
-                                                <div className="space-y-4 p-4 bg-slate-800 rounded-lg">
-                                                    {(user?.role !== 'director' && user?.role !== 'admin') && (
-                                                        <div className="flex items-center space-x-2">
-                                                            <Checkbox
-                                                                id="salesperson-discount-toggle"
-                                                                checked={applySalespersonDiscount}
-                                                                onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
-                                                            />
-                                                            <Label htmlFor="salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
-                                                        </div>
-                                                    )}
-                                                    {user?.role === 'director' && (
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="director-discount-percentage">Desconto de Diretoria (%)</Label>
-                                                            <div className="flex items-center space-x-2">
-                                                                <Input
-                                                                    id="director-discount-percentage"
-                                                                    type="number"
-                                                                    placeholder="0-100"
-                                                                    value={directorDiscountPercentage}
-                                                                    onChange={(e) => setDirectorDiscountPercentage(Number(e.target.value))}
-                                                                    className="flex-1 bg-slate-800"
-                                                                    min="0"
-                                                                    max="100"
-                                                                />
-                                                                <span className="text-sm text-gray-400">%</span>
+                                                            {appliedDirectorDiscountPercentage > 0 && (
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-slate-200">Desconto Diretor:</span>
+                                                                    <span className="text-orange-300 font-bold">{appliedDirectorDiscountPercentage}%</span>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            <Separator className="my-2 bg-orange-500/30" />
+                                                            <div className="flex justify-between">
+                                                                <span className="text-slate-200">Data de Criação:</span>
+                                                                <span className="text-orange-300 font-semibold">
+                                                                    {currentProposal?.createdAt 
+                                                                        ? new Date(currentProposal.createdAt).toLocaleDateString('pt-BR')
+                                                                        : new Date().toLocaleDateString('pt-BR')
+                                                                    }
+                                                                </span>
                                                             </div>
                                                         </div>
-                                                    )}
-                                                    {user?.role === 'admin' && (
-                                                        <div className="flex items-center space-x-2">
-                                                            <Checkbox
-                                                                id="admin-salesperson-discount-toggle"
-                                                                checked={applySalespersonDiscount}
-                                                                onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
+                                                    </div>
+                                                )}
+                                                
+                                                <Separator className="my-4 bg-slate-700" />
+
+                                                {/* Controles de Desconto - Conforme Print */}
+                                                <div className="space-y-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                    {/* Campo Desconto Diretor - Sempre visível para Director e Admin */}
+                                                    {(user?.role && (user.role === 'director' || user.role === 'admin')) && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="director-discount-percentage" className="text-slate-300">Desconto Diretor (%)</Label>
+                                                            <Input
+                                                                id="director-discount-percentage"
+                                                                type="number"
+                                                                value={directorDiscountPercentage}
+                                                                onChange={(e) => {
+                                                                    const value = Number(e.target.value);
+                                                                    setDirectorDiscountPercentage(value);
+                                                                    setAppliedDirectorDiscountPercentage(value);
+                                                                }}
+                                                                placeholder="0-100"
+                                                                min="0"
+                                                                max="100"
+                                                                className="bg-slate-700 border-slate-600 text-white"
                                                             />
-                                                            <Label htmlFor="admin-salesperson-discount-toggle">Aplicar Desconto Vendedor (5%)</Label>
                                                         </div>
                                                     )}
+                                                    
+                                                    {/* Checkbox Desconto Vendedor */}
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="salesperson-discount-toggle"
+                                                            checked={applySalespersonDiscount}
+                                                            onCheckedChange={(checked) => setApplySalespersonDiscount(!!checked)}
+                                                        />
+                                                        <Label htmlFor="salesperson-discount-toggle" className="text-slate-300">Aplicar Desconto Vendedor (5%)</Label>
+                                                    </div>
                                                 </div>
 
                                                 <Separator className="my-4 bg-slate-700" />
                                                 <div className="space-y-2">
+                                                    <div className="flex justify-between">
+                                                        <span>Valor Original (Mensal):</span>
+                                                        <span>{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</span>
+                                                    </div>
                                                     {applySalespersonDiscount && (
                                                         <div className="flex justify-between text-orange-400">
                                                             <span>Desconto Vendedor (5%):</span>
@@ -2135,7 +2293,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                     )}
                                                     {appliedDirectorDiscountPercentage > 0 && (
                                                         <div className="flex justify-between text-orange-400">
-                                                            <span>Desconto Director ({appliedDirectorDiscountPercentage}%) - Apenas Mensal:</span>
+                                                            <span>Desconto Diretor ({appliedDirectorDiscountPercentage}%) - Apenas Mensal:</span>
                                                             <span>-{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0) * (applySalespersonDiscount ? 0.95 : 1) * (appliedDirectorDiscountPercentage / 100))}</span>
                                                         </div>
                                                     )}
