@@ -1034,6 +1034,9 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                     alert('Proposta atualizada com sucesso!');
                     setCurrentProposal(updatedProposal);
                     setProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+                    
+                    // 🔥 Redirecionar para tela de buscar propostas
+                    setViewMode('search');
                 } else {
                     throw new Error('Erro ao atualizar proposta');
                 }
@@ -1109,6 +1112,9 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                     
                     // Recarregar todas as propostas para garantir dados atualizados
                     await fetchProposals();
+                    
+                    // 🔥 Redirecionar para tela de buscar propostas
+                    setViewMode('search');
                 } else {
                     throw new Error('Erro ao criar nova versão');
                 }

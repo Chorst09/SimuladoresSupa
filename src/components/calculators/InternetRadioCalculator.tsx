@@ -1088,6 +1088,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     alert('Proposta atualizada com sucesso!');
                     setCurrentProposal(updatedProposal);
                     setProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+                    setViewMode('search'); // 🔥 Redirecionar para buscar propostas
                 } else {
                     throw new Error('Erro ao atualizar proposta');
                 }
@@ -1162,6 +1163,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     
                     // Recarregar todas as propostas para garantir dados atualizados
                     await fetchProposals();
+                    setViewMode('search'); // 🔥 Redirecionar para buscar propostas
                 } else {
                     throw new Error('Erro ao criar nova versão');
                 }

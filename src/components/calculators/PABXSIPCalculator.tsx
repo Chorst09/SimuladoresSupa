@@ -1548,6 +1548,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     alert('Proposta atualizada com sucesso!');
                     setCurrentProposal(updatedProposal);
                     setSavedProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+                    setCurrentView('search'); // 🔥 Redirecionar para buscar propostas
                     setHasChanged(false);
                 } else {
                     throw new Error('Erro ao atualizar proposta');
@@ -1615,6 +1616,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     alert(`Nova versão criada com sucesso! ID: ${newProposal.base_id || newProposal.baseId}`);
                     setCurrentProposal(newProposal);
                     setSavedProposals(prev => [newProposal, ...prev]);
+                    setCurrentView('search'); // 🔥 Redirecionar para buscar propostas
                     setHasChanged(false);
                 } else {
                     throw new Error('Erro ao criar nova versão');

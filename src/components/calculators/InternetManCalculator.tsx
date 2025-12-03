@@ -1270,6 +1270,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     alert('Proposta atualizada com sucesso!');
                     setCurrentProposal(updatedProposal);
                     setProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+                    setViewMode('search'); // 🔥 Redirecionar para buscar propostas
                 } else {
                     throw new Error('Erro ao atualizar proposta');
                 }
@@ -1336,6 +1337,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     alert(`Nova versão criada com sucesso! ID: ${proposalData.baseId || proposalData.base_id}`);
                     setCurrentProposal(proposalData);
                     await fetchProposals(); // 🔥 Recarregar propostas
+                    setViewMode('search'); // 🔥 Redirecionar para buscar propostas
                 } else {
                     throw new Error('Erro ao criar nova versão');
                 }

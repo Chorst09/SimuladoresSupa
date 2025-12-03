@@ -1154,6 +1154,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     alert(`Nova versão criada com sucesso! ID: ${newProposal.base_id || newProposal.baseId}`);
                     setCurrentProposal(newProposal);
                     await fetchProposals(); // 🔥 Recarregar propostas
+                    setViewMode('search'); // 🔥 Redirecionar para buscar propostas
                     setHasChanged(false);
                 } else {
                     throw new Error('Erro ao criar nova versão');
@@ -1201,6 +1202,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     alert('Proposta atualizada com sucesso!');
                     setCurrentProposal(updatedProposal);
                     setProposals(prev => prev.map(p => p.id === updatedProposal.id ? updatedProposal : p));
+                    setViewMode('search'); // 🔥 Redirecionar para buscar propostas
                     setHasChanged(false);
                 } else {
                     throw new Error('Erro ao atualizar proposta');

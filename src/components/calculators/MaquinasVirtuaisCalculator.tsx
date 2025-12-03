@@ -1963,6 +1963,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     alert('Proposta atualizada com sucesso!');
                     setCurrentProposal(updatedProposal);
                     await fetchProposals(); // 🔥 Recarregar propostas
+                    setViewMode('search'); // 🔥 Redirecionar para buscar propostas
                     setHasChanged(false);
                 } else {
                     throw new Error('Erro ao atualizar proposta');
@@ -2044,6 +2045,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                     alert(`Nova versão criada com sucesso! ID: ${newProposal.base_id || newProposal.baseId}`);
                     setCurrentProposal(newProposal);
                     await fetchProposals(); // 🔥 Recarregar propostas
+                    setViewMode('search'); // 🔥 Redirecionar para buscar propostas
                     setHasChanged(false);
                 } else {
                     throw new Error('Erro ao criar nova versão');
