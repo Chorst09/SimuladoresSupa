@@ -550,6 +550,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     };
 
+    const handlePriceFocus = (index: number, field: keyof Omit<FibraPlan, 'description' | 'baseCost' | 'speed'>, plan: FibraPlan) => {
+        const key = `${index}-${field}`;
+        // Inicializa o valor de edição com o valor atual do plano
+        const value = (plan as any)[field];
+        setEditingValues(prev => ({ ...prev, [key]: value ? String(value) : '' }));
+    };
+
     const handlePriceChange = (index: number, field: keyof Omit<FibraPlan, 'description' | 'baseCost' | 'speed'>, value: string) => {
         const key = `${index}-${field}`;
         // Remove tudo exceto números, vírgula e ponto
@@ -574,6 +581,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 (newPlans[index] as any)[field] = numericValue;
             }
             setFibraPlans(newPlans);
+            
+            // Remove o valor temporário
+            setEditingValues(prev => {
+                const newValues = { ...prev };
+                delete newValues[key];
+                return newValues;
+            });
         }
     };
 
@@ -2996,6 +3010,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                                     type="text"
                                                                     inputMode="decimal"
                                                                     value={getPriceValue(index, 'price12', plan)}
+                                                                    onFocus={() => handlePriceFocus(index, 'price12', plan)}
                                                                     onChange={(e) => handlePriceChange(index, 'price12', e.target.value)}
                                                                     onBlur={() => handlePriceBlur(index, 'price12')}
                                                                     placeholder="0,00"
@@ -3007,6 +3022,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                                     type="text"
                                                                     inputMode="decimal"
                                                                     value={getPriceValue(index, 'price24', plan)}
+                                                                    onFocus={() => handlePriceFocus(index, 'price24', plan)}
                                                                     onChange={(e) => handlePriceChange(index, 'price24', e.target.value)}
                                                                     onBlur={() => handlePriceBlur(index, 'price24')}
                                                                     placeholder="0,00"
@@ -3018,6 +3034,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                                     type="text"
                                                                     inputMode="decimal"
                                                                     value={getPriceValue(index, 'price36', plan)}
+                                                                    onFocus={() => handlePriceFocus(index, 'price36', plan)}
                                                                     onChange={(e) => handlePriceChange(index, 'price36', e.target.value)}
                                                                     onBlur={() => handlePriceBlur(index, 'price36')}
                                                                     placeholder="0,00"
@@ -3029,6 +3046,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                                     type="text"
                                                                     inputMode="decimal"
                                                                     value={getPriceValue(index, 'price48', plan)}
+                                                                    onFocus={() => handlePriceFocus(index, 'price48', plan)}
                                                                     onChange={(e) => handlePriceChange(index, 'price48', e.target.value)}
                                                                     onBlur={() => handlePriceBlur(index, 'price48')}
                                                                     placeholder="0,00"
@@ -3040,6 +3058,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                                     type="text"
                                                                     inputMode="decimal"
                                                                     value={getPriceValue(index, 'price60', plan)}
+                                                                    onFocus={() => handlePriceFocus(index, 'price60', plan)}
                                                                     onChange={(e) => handlePriceChange(index, 'price60', e.target.value)}
                                                                     onBlur={() => handlePriceBlur(index, 'price60')}
                                                                     placeholder="0,00"
