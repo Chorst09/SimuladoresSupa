@@ -3,6 +3,13 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 
+interface Produto {
+  descricao: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+}
+
 interface OportunidadeParceiroModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -26,15 +33,42 @@ export default function OportunidadeParceiroModal({
     contato_nome: oportunidade?.contato_nome || '',
     contato_email: oportunidade?.contato_email || '',
     contato_telefone: oportunidade?.contato_telefone || '',
-    produto_descricao: oportunidade?.produto_descricao || '',
-    produto_quantidade: oportunidade?.produto_quantidade || '',
-    produto_valor_unitario: oportunidade?.produto_valor_unitario || '',
-    valor: oportunidade?.valor || '',
     gerente_contas: oportunidade?.gerente_contas || '',
     data_expiracao: oportunidade?.data_expiracao || '',
     observacoes: oportunidade?.observacoes || '',
   });
+  
+  const [produtos, setProdutos] = useState<Produto[]>([
+    { descricao: '', quantidade: 1, valor_unitario: 0, valor_total: 0 }
+  ]);
+  
   const [loading, setLoading] = useState(false);
+  
+  const calcularValorTotal = () => {
+    return produtos.reduce((sum, p) => sum + p.valor_total, 0);
+  };
+  
+  const adicionarProduto = () => {
+    setProdutos([...produtos, { descricao: '', quantidade: 1, valor_unitario: 0, valor_total: 0 }]);
+  };
+  
+  const removerProduto = (index: number) => {
+    if (produtos.length > 1) {
+      setProdutos(produtos.filter((_, i) => i !== index));
+    }
+  };
+  
+  const atualizarProduto = (index: number, campo: keyof Produto, valor: any) => {
+    const novosProdutos = [...produtos];
+    novosProdutos[index] = { ...novosProdutos[index], [campo]: valor };
+    
+    // Recalcular valor total do produto
+    if (campo === 'quantidade' || campo === 'valor_unitario') {
+      novosProdutos[index].valor_total = novosProdutos[index].quantidade * novosProdutos[index].valor_unitario;
+    }
+    
+    setProdutos(novosProdutos);
+  };
 
   if (!isOpen) return null;
 
@@ -47,13 +81,19 @@ export default function OportunidadeParceiroModal({
         ? `/api/oportunidades-parceiro/${oportunidade.id}`
         : '/api/oportunidades-parceiro';
       
+      // Criar descrição consolidada dos produtos
+      const produto_descricao = produtos
+        .map(p => `${p.descricao} (${p.quantidade}x)`)
+        .join('; ');
+      
       const response = await fetch(url, {
         method: oportunidade ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          valor: parseFloat(formData.valor.toString()),
-          created_by: user?.id, // Adiciona o ID do usuário criador
+          produto_descricao,
+          valor: calcularValorTotal(),
+          created_by: user?.id,
         }),
       });
 
@@ -192,81 +232,96 @@ export default function OportunidadeParceiroModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                Descrição do Produto *
-              </label>
-              <input
-                required
-                type="text"
-                placeholder="Ex: Servidores Dell PowerEdge R750"
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.produto_descricao}
-                onChange={(e) =>
-                  setFormData({ ...formData, produto_descricao: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Quantidade *
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Produtos *
                 </label>
-                <input
-                  required
-                  type="number"
-                  min="1"
-                  step="1"
-                  placeholder="5"
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={formData.produto_quantidade}
-                  onChange={(e) => {
-                    const qtd = parseFloat(e.target.value) || 0;
-                    const valorUnit = parseFloat(formData.produto_valor_unitario.toString()) || 0;
-                    setFormData({ 
-                      ...formData, 
-                      produto_quantidade: e.target.value,
-                      valor: (qtd * valorUnit).toString()
-                    });
-                  }}
-                />
+                <button
+                  type="button"
+                  onClick={adicionarProduto}
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                >
+                  + Adicionar Produto
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Valor Unitário (R$) *
-                </label>
-                <input
-                  required
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="30000.00"
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={formData.produto_valor_unitario}
-                  onChange={(e) => {
-                    const qtd = parseFloat(formData.produto_quantidade.toString()) || 0;
-                    const valorUnit = parseFloat(e.target.value) || 0;
-                    setFormData({ 
-                      ...formData, 
-                      produto_valor_unitario: e.target.value,
-                      valor: (qtd * valorUnit).toString()
-                    });
-                  }}
-                />
+              
+              <div className="space-y-3">
+                {produtos.map((produto, index) => (
+                  <div key={index} className="border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/50">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Produto {index + 1}
+                      </span>
+                      {produtos.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removerProduto(index)}
+                          className="text-red-600 hover:text-red-700 dark:text-red-400 text-sm"
+                        >
+                          Remover
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <input
+                        required
+                        type="text"
+                        placeholder="Descrição do produto"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        value={produto.descricao}
+                        onChange={(e) => atualizarProduto(index, 'descricao', e.target.value)}
+                      />
+                      
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <input
+                            required
+                            type="number"
+                            min="1"
+                            step="1"
+                            placeholder="Qtde"
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            value={produto.quantidade || ''}
+                            onChange={(e) => atualizarProduto(index, 'quantidade', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div>
+                          <input
+                            required
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="Valor Unit."
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            value={produto.valor_unitario || ''}
+                            onChange={(e) => atualizarProduto(index, 'valor_unitario', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            disabled
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white cursor-not-allowed text-sm"
+                            value={`R$ ${produto.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                            readOnly
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Valor Total (R$)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  disabled
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white cursor-not-allowed"
-                  value={formData.valor}
-                  readOnly
-                />
+              
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Valor Total da Oportunidade:
+                  </span>
+                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    R$ {calcularValorTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
               </div>
             </div>
 
