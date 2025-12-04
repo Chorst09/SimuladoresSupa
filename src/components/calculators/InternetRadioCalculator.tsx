@@ -1915,16 +1915,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label htmlFor="fiber-cost">Custo Rádio</Label>
-                                                    <Input
-                                                        type="text"
-                                                        id="fiber-cost"
-                                                        value={formatCurrency(result?.radioCost)}
-                                                        onChange={(e) => {
-                                                            handleCustoRadioChange(e.target.value);
-                                                            setHasChanged(true);
-                                                        }}
-                                                        className="bg-slate-800"
-                                                    />
+                                                    <Input type="number" step="0.01" id="fiber-cost" value={result?.radioCost || ''} onChange={(e) => { handleCustoRadioChange(parseFloat(e.target.value) || 0); setHasChanged(true); }} placeholder="0.00" className="bg-slate-800" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <div className="flex items-center space-x-2">
@@ -2114,16 +2105,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label htmlFor="fiber-cost">Custo Rádio</Label>
-                                                    <Input
-                                                        type="text"
-                                                        id="fiber-cost"
-                                                        value={formatCurrency(result?.radioCost)}
-                                                        onChange={(e) => {
-                                                            handleCustoRadioChange(e.target.value);
-                                                            setHasChanged(true);
-                                                        }}
-                                                        className="bg-slate-800"
-                                                    />
+                                                    <Input type="number" step="0.01" id="fiber-cost" value={result?.radioCost || ''} onChange={(e) => { handleCustoRadioChange(parseFloat(e.target.value) || 0); setHasChanged(true); }} placeholder="0.00" className="bg-slate-800" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <div className="flex items-center space-x-2">
