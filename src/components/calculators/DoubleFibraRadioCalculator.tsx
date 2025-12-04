@@ -626,12 +626,11 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         }
     };
 
-    const handleCustoDoubleFiberRadioChange = (value: string) => {
-        const numericValue = parseFloat(value.replace(/[^0-9,.]+/g, "").replace(",", "."));
-        if (!isNaN(numericValue) && selectedSpeed) {
+    const handleCustoDoubleFiberRadioChange = (value: number) => {
+        if (selectedSpeed) {
             const updatedPlans = doubleFiberRadioPlans.map(plan =>
                 plan.speed === selectedSpeed
-                    ? { ...plan, doubleFiberRadioCost: numericValue }
+                    ? { ...plan, doubleFiberRadioCost: value }
                     : plan
             );
             setDoubleFiberRadioPlans(updatedPlans);
@@ -1972,14 +1971,14 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="fiber-cost">Custo Fibra/Radio</Label>
-                                            <Input
-                                                type="text"
+                                            <CurrencyInput
                                                 id="fiber-cost"
-                                                value={formatCurrency(result?.doubleFiberRadioCost)}
-                                                onChange={(e) => {
-                                                    handleCustoDoubleFiberRadioChange(e.target.value);
+                                                value={result?.doubleFiberRadioCost || 0}
+                                                onChange={(value) => {
+                                                    handleCustoDoubleFiberRadioChange(value);
                                                     setHasChanged(true);
                                                 }}
+                                                placeholder="0,00"
                                                 className="bg-slate-800"
                                             />
                                         </div>
