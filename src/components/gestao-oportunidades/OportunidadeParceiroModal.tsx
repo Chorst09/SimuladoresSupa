@@ -27,6 +27,8 @@ export default function OportunidadeParceiroModal({
     contato_email: oportunidade?.contato_email || '',
     contato_telefone: oportunidade?.contato_telefone || '',
     produto_descricao: oportunidade?.produto_descricao || '',
+    produto_quantidade: oportunidade?.produto_quantidade || '',
+    produto_valor_unitario: oportunidade?.produto_valor_unitario || '',
     valor: oportunidade?.valor || '',
     gerente_contas: oportunidade?.gerente_contas || '',
     data_expiracao: oportunidade?.data_expiracao || '',
@@ -92,21 +94,22 @@ export default function OportunidadeParceiroModal({
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
                   Fabricante *
                 </label>
-                <select
+                <input
                   required
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  type="text"
+                  list="fabricantes-list"
+                  placeholder="Ex: Dell, Lenovo, HP..."
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   value={formData.nome_fabricante}
                   onChange={(e) =>
                     setFormData({ ...formData, nome_fabricante: e.target.value })
                   }
-                >
-                  <option value="">Selecione o fabricante</option>
+                />
+                <datalist id="fabricantes-list">
                   {FABRICANTES.map((fab) => (
-                    <option key={fab} value={fab}>
-                      {fab}
-                    </option>
+                    <option key={fab} value={fab} />
                   ))}
-                </select>
+                </datalist>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
@@ -195,13 +198,76 @@ export default function OportunidadeParceiroModal({
               <input
                 required
                 type="text"
-                placeholder="Ex: Servidores Dell PowerEdge R750 - 5 unidades"
+                placeholder="Ex: Servidores Dell PowerEdge R750"
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.produto_descricao}
                 onChange={(e) =>
                   setFormData({ ...formData, produto_descricao: e.target.value })
                 }
               />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                  Quantidade *
+                </label>
+                <input
+                  required
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="5"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formData.produto_quantidade}
+                  onChange={(e) => {
+                    const qtd = parseFloat(e.target.value) || 0;
+                    const valorUnit = parseFloat(formData.produto_valor_unitario.toString()) || 0;
+                    setFormData({ 
+                      ...formData, 
+                      produto_quantidade: e.target.value,
+                      valor: (qtd * valorUnit).toString()
+                    });
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                  Valor Unitário (R$) *
+                </label>
+                <input
+                  required
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="30000.00"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formData.produto_valor_unitario}
+                  onChange={(e) => {
+                    const qtd = parseFloat(formData.produto_quantidade.toString()) || 0;
+                    const valorUnit = parseFloat(e.target.value) || 0;
+                    setFormData({ 
+                      ...formData, 
+                      produto_valor_unitario: e.target.value,
+                      valor: (qtd * valorUnit).toString()
+                    });
+                  }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                  Valor Total (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  disabled
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white cursor-not-allowed"
+                  value={formData.valor}
+                  readOnly
+                />
+              </div>
             </div>
 
             <div>
@@ -219,38 +285,19 @@ export default function OportunidadeParceiroModal({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Valor (R$) *
-                </label>
-                <input
-                  required
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="150000.00"
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={formData.valor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, valor: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                  Data de Expiração *
-                </label>
-                <input
-                  required
-                  type="date"
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={formData.data_expiracao}
-                  onChange={(e) =>
-                    setFormData({ ...formData, data_expiracao: e.target.value })
-                  }
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                Data de Expiração *
+              </label>
+              <input
+                required
+                type="date"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.data_expiracao}
+                onChange={(e) =>
+                  setFormData({ ...formData, data_expiracao: e.target.value })
+                }
+              />
             </div>
 
             <div>
