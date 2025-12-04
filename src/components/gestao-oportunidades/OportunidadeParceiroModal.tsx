@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 
 interface OportunidadeParceiroModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export default function OportunidadeParceiroModal({
   onSuccess,
   oportunidade,
 }: OportunidadeParceiroModalProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     nome_fabricante: oportunidade?.nome_fabricante || '',
     numero_oportunidade_ext: oportunidade?.numero_oportunidade_ext || '',
@@ -49,6 +51,7 @@ export default function OportunidadeParceiroModal({
         body: JSON.stringify({
           ...formData,
           valor: parseFloat(formData.valor.toString()),
+          created_by: user?.id, // Adiciona o ID do usuário criador
         }),
       });
 
