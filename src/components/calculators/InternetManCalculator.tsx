@@ -702,12 +702,11 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         }
     };
 
-    const handleCustoManChange = (value: string) => {
-        const numericValue = parseFloat(value.replace(/[^0-9,.]+/g, "").replace(",", "."));
-        if (!isNaN(numericValue) && selectedSpeed) {
+    const handleCustoManChange = (value: number) => {
+        if (selectedSpeed) {
             const updatedPlans = manPlans.map(plan =>
                 plan.speed === selectedSpeed
-                    ? { ...plan, cost: numericValue }
+                    ? { ...plan, cost: value }
                     : plan
             );
             setManPlans(updatedPlans);
@@ -2045,13 +2044,15 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                         <div className="space-y-2">
                                             <Label htmlFor="fiber-cost">Custo Man</Label>
                                             <Input
-                                                type="text"
+                                                type="number"
+                                                step="0.01"
                                                 id="fiber-cost"
-                                                value={formatCurrency(result?.cost)}
+                                                value={result?.cost || ''}
                                                 onChange={(e) => {
-                                                    handleCustoManChange(e.target.value);
+                                                    handleCustoManChange(parseFloat(e.target.value) || 0);
                                                     setHasChanged(true);
                                                 }}
+                                                placeholder="0.00"
                                                 className="bg-slate-800"
                                             />
                                         </div>

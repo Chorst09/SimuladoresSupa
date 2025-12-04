@@ -572,12 +572,11 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         }
     };
 
-    const handleCustoFibraChange = (value: string) => {
-        const numericValue = parseFloat(value.replace(/[^0-9,.]+/g, "").replace(",", "."));
-        if (!isNaN(numericValue) && selectedSpeed) {
+    const handleCustoFibraChange = (value: number) => {
+        if (selectedSpeed) {
             const updatedPlans = fibraPlans.map(plan =>
                 plan.speed === selectedSpeed
-                    ? { ...plan, fiberCost: numericValue }
+                    ? { ...plan, fiberCost: value }
                     : plan
             );
             setFibraPlans(updatedPlans);
@@ -1969,13 +1968,15 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                         <div className="space-y-2">
                                             <Label htmlFor="fiber-cost">Custo Fibra</Label>
                                             <Input
-                                                type="text"
+                                                type="number"
+                                                step="0.01"
                                                 id="fiber-cost"
-                                                value={formatCurrency(result?.fiberCost)}
+                                                value={result?.fiberCost || ''}
                                                 onChange={(e) => {
-                                                    handleCustoFibraChange(e.target.value);
+                                                    handleCustoFibraChange(parseFloat(e.target.value) || 0);
                                                     setHasChanged(true);
                                                 }}
+                                                placeholder="0.00"
                                                 className="bg-slate-800"
                                             />
                                         </div>

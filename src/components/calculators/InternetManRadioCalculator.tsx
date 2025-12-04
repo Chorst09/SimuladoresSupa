@@ -502,12 +502,11 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
         }
     };
 
-    const handleCustoRadioChange = (value: string) => {
-        const numericValue = parseFloat(value.replace(/[^0-9,.]+/g, "").replace(",", "."));
-        if (!isNaN(numericValue) && selectedSpeed) {
+    const handleCustoRadioChange = (value: number) => {
+        if (selectedSpeed) {
             const updatedPlans = radioPlans.map(plan =>
                 plan.speed === selectedSpeed
-                    ? { ...plan, radioCost: numericValue }
+                    ? { ...plan, radioCost: value }
                     : plan
             );
             setRadioPlans(updatedPlans);

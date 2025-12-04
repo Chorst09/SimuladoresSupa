@@ -1971,14 +1971,16 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="fiber-cost">Custo Fibra/Radio</Label>
-                                            <CurrencyInput
+                                            <Input
+                                                type="number"
+                                                step="0.01"
                                                 id="fiber-cost"
-                                                value={result?.doubleFiberRadioCost || 0}
-                                                onChange={(value) => {
-                                                    handleCustoDoubleFiberRadioChange(value);
+                                                value={result?.doubleFiberRadioCost || ''}
+                                                onChange={(e) => {
+                                                    handleCustoDoubleFiberRadioChange(parseFloat(e.target.value) || 0);
                                                     setHasChanged(true);
                                                 }}
-                                                placeholder="0,00"
+                                                placeholder="0.00"
                                                 className="bg-slate-800"
                                             />
                                         </div>
