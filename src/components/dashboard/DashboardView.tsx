@@ -6,7 +6,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { Proposal, Partner } from '@/lib/types';
 import ProposalsView from '@/components/proposals/ProposalsView';
 import StatCard from './StatCard';
-import { Phone, Server, Wifi, Radio, Calculator, ChevronRight } from 'lucide-react';
+import { Phone, Server, Wifi, Radio, Calculator, ChevronRight, TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface CalculatorCardProps {
   title: string;
@@ -398,6 +399,91 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
             value={countProposalsByType.manRadio.toString()} 
             subtext="Este mês" 
           />
+        </div>
+
+        {/* Gráficos */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Gráfico de Barras - Propostas por Tipo */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl border border-slate-700/50 p-6">
+            <div className="flex items-center mb-4">
+              <TrendingUp className="w-6 h-6 text-blue-400 mr-2" />
+              <h3 className="text-xl font-bold text-white">Propostas por Tipo</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={[
+                { name: 'PABX/SIP', value: countProposalsByType.pabx, fill: '#3b82f6' },
+                { name: 'Máq. Virtuais', value: countProposalsByType.maquinasVirtuais, fill: '#a855f7' },
+                { name: 'Internet Fibra', value: countProposalsByType.fibra, fill: '#22c55e' },
+                { name: 'Double Fibra/Radio', value: countProposalsByType.doubleFibraRadio, fill: '#ef4444' },
+                { name: 'MAN Fibra', value: countProposalsByType.man, fill: '#06b6d4' },
+                { name: 'MAN Radio', value: countProposalsByType.manRadio, fill: '#f97316' },
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="name" stroke="#9ca3af" angle={-45} textAnchor="end" height={80} />
+                <YAxis stroke="#9ca3af" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px' }}
+                  labelStyle={{ color: '#f1f5f9' }}
+                />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {[
+                    { name: 'PABX/SIP', value: countProposalsByType.pabx, fill: '#3b82f6' },
+                    { name: 'Máq. Virtuais', value: countProposalsByType.maquinasVirtuais, fill: '#a855f7' },
+                    { name: 'Internet Fibra', value: countProposalsByType.fibra, fill: '#22c55e' },
+                    { name: 'Double Fibra/Radio', value: countProposalsByType.doubleFibraRadio, fill: '#ef4444' },
+                    { name: 'MAN Fibra', value: countProposalsByType.man, fill: '#06b6d4' },
+                    { name: 'MAN Radio', value: countProposalsByType.manRadio, fill: '#f97316' },
+                  ].map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Gráfico de Pizza - Distribuição */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl border border-slate-700/50 p-6">
+            <div className="flex items-center mb-4">
+              <PieChartIcon className="w-6 h-6 text-purple-400 mr-2" />
+              <h3 className="text-xl font-bold text-white">Distribuição de Propostas</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'PABX/SIP', value: countProposalsByType.pabx, fill: '#3b82f6' },
+                    { name: 'Máq. Virtuais', value: countProposalsByType.maquinasVirtuais, fill: '#a855f7' },
+                    { name: 'Internet Fibra', value: countProposalsByType.fibra, fill: '#22c55e' },
+                    { name: 'Double Fibra/Radio', value: countProposalsByType.doubleFibraRadio, fill: '#ef4444' },
+                    { name: 'MAN Fibra', value: countProposalsByType.man, fill: '#06b6d4' },
+                    { name: 'MAN Radio', value: countProposalsByType.manRadio, fill: '#f97316' },
+                  ].filter(item => item.value > 0)}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {[
+                    { name: 'PABX/SIP', value: countProposalsByType.pabx, fill: '#3b82f6' },
+                    { name: 'Máq. Virtuais', value: countProposalsByType.maquinasVirtuais, fill: '#a855f7' },
+                    { name: 'Internet Fibra', value: countProposalsByType.fibra, fill: '#22c55e' },
+                    { name: 'Double Fibra/Radio', value: countProposalsByType.doubleFibraRadio, fill: '#ef4444' },
+                    { name: 'MAN Fibra', value: countProposalsByType.man, fill: '#06b6d4' },
+                    { name: 'MAN Radio', value: countProposalsByType.manRadio, fill: '#f97316' },
+                  ].filter(item => item.value > 0).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px' }}
+                  labelStyle={{ color: '#f1f5f9' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
       
