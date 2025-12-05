@@ -958,6 +958,10 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                 };
 
                 console.log('📤 Enviando proposta nova:', JSON.stringify(proposalToSave, null, 2));
+                console.log('🔍 Dados de cliente existente:', {
+                    isExistingClient: proposalToSave.isExistingClient,
+                    previousMonthlyFee: proposalToSave.previousMonthlyFee
+                });
 
                 const response = await fetch('/api/proposals', {
                     method: 'POST',
@@ -1166,6 +1170,26 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
         });
         console.log('👁️ TODOS OS CAMPOS:', Object.keys(proposal));
         console.log('👁️ METADATA:', (proposal as any).metadata);
+        console.log('👁️ isExistingClient:', proposal.isExistingClient);
+        console.log('👁️ previousMonthlyFee:', proposal.previousMonthlyFee);
+        
+        // Verificar se os dados estão no metadata
+        const metadata = (proposal as any).metadata;
+        if (metadata) {
+            console.log('👁️ Dados no metadata:', {
+                isExistingClient: metadata.isExistingClient,
+                previousMonthlyFee: metadata.previousMonthlyFee
+            });
+            
+            // Se os dados estiverem no metadata, mover para o nível principal
+            if (metadata.isExistingClient !== undefined) {
+                proposal.isExistingClient = metadata.isExistingClient;
+            }
+            if (metadata.previousMonthlyFee !== undefined) {
+                proposal.previousMonthlyFee = metadata.previousMonthlyFee;
+            }
+        }
+        
         setCurrentProposal(proposal);
 
         // Handle client data - check if it's an object or string
@@ -1752,6 +1776,17 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
 
                             {/* Resumo de Valores - Layout conforme print */}
                             <div className="space-y-3 mb-4 p-4 bg-slate-800 rounded-lg text-white">
+                                {/* DEBUG - Remover depois */}
+                                {(() => {
+                                    console.log('🔍 DEBUG Visualização:', {
+                                        isExistingClient: currentProposal.isExistingClient,
+                                        previousMonthlyFee: currentProposal.previousMonthlyFee,
+                                        totalMonthly: currentProposal.totalMonthly,
+                                        metadata: (currentProposal as any).metadata
+                                    });
+                                    return null;
+                                })()}
+                                
                                 {/* Valor Original do Cliente (se for cliente existente) */}
                                 {currentProposal.isExistingClient && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
                                     <>
