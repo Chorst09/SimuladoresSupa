@@ -209,6 +209,7 @@ model OportunidadeParceiro {
   data_criacao            DateTime @default(now()) @db.Date
   data_expiracao          DateTime @db.Date
   observacoes             String?
+  acompanhamentos         Json     @default("[]") // Array de {data: string, descricao: string}
   created_by              String?  @db.Uuid
   created_at              DateTime @default(now()) @db.Timestamptz(6)
   updated_at              DateTime @default(now()) @updatedAt @db.Timestamptz(6)

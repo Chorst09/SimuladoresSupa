@@ -66,6 +66,7 @@ export async function PATCH(
     if (body.gerente_contas !== undefined) dataToUpdate.gerente_contas = body.gerente_contas;
     if (body.data_expiracao !== undefined) dataToUpdate.data_expiracao = new Date(body.data_expiracao);
     if (body.observacoes !== undefined) dataToUpdate.observacoes = body.observacoes;
+    if (body.acompanhamentos !== undefined) dataToUpdate.acompanhamentos = body.acompanhamentos;
 
     console.log('💾 Dados que serão salvos:', JSON.stringify(dataToUpdate, null, 2));
 

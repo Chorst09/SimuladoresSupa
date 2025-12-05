@@ -10,6 +10,11 @@ interface Produto {
   valor_total: number;
 }
 
+interface Acompanhamento {
+  data: string;
+  descricao: string;
+}
+
 interface OportunidadeParceiroModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,6 +46,15 @@ export default function OportunidadeParceiroModal({
   const [produtos, setProdutos] = useState<Produto[]>([
     { descricao: '', quantidade: 1, valor_unitario: 0, valor_total: 0 }
   ]);
+  
+  const [acompanhamentos, setAcompanhamentos] = useState<Acompanhamento[]>(
+    oportunidade?.acompanhamentos || []
+  );
+  
+  const [novoAcompanhamento, setNovoAcompanhamento] = useState({
+    data: new Date().toISOString().split('T')[0],
+    descricao: ''
+  });
   
   const [loading, setLoading] = useState(false);
   
@@ -105,6 +119,23 @@ export default function OportunidadeParceiroModal({
     
     setProdutos(novosProdutos);
   };
+  
+  const adicionarAcompanhamento = () => {
+    if (!novoAcompanhamento.descricao.trim()) {
+      alert('Por favor, preencha a descrição do acompanhamento');
+      return;
+    }
+    
+    setAcompanhamentos([...acompanhamentos, { ...novoAcompanhamento }]);
+    setNovoAcompanhamento({
+      data: new Date().toISOString().split('T')[0],
+      descricao: ''
+    });
+  };
+  
+  const removerAcompanhamento = (index: number) => {
+    setAcompanhamentos(acompanhamentos.filter((_, i) => i !== index));
+  };
 
   if (!isOpen) return null;
 
@@ -129,11 +160,13 @@ export default function OportunidadeParceiroModal({
         produto_descricao,
         valor: valorTotal,
         created_by: user?.id,
+        acompanhamentos: acompanhamentos,
       };
       
       console.log('📤 Enviando dados:', payload);
       console.log('🔢 Valor total calculado:', valorTotal);
       console.log('📦 Produtos:', produtos);
+      console.log('📋 Acompanhamentos:', acompanhamentos);
       
       const response = await fetch(url, {
         method: oportunidade ? 'PATCH' : 'POST',
@@ -415,6 +448,83 @@ export default function OportunidadeParceiroModal({
                   setFormData({ ...formData, observacoes: e.target.value })
                 }
               />
+            </div>
+
+            {/* Acompanhamentos */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Acompanhamentos
+                </label>
+              </div>
+              
+              {/* Lista de acompanhamentos existentes */}
+              {acompanhamentos.length > 0 && (
+                <div className="mb-4 space-y-2 max-h-60 overflow-y-auto">
+                  {acompanhamentos.map((acomp, index) => (
+                    <div key={index} className="border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/50">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                          {new Date(acomp.data).toLocaleDateString('pt-BR')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removerAcompanhamento(index)}
+                          className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                        {acomp.descricao}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Formulário para novo acompanhamento */}
+              <div className="border border-blue-300 dark:border-blue-600 rounded-lg p-3 bg-blue-50 dark:bg-blue-900/20">
+                <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3">
+                  Adicionar Novo Acompanhamento
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">
+                      Data
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={novoAcompanhamento.data}
+                      onChange={(e) =>
+                        setNovoAcompanhamento({ ...novoAcompanhamento, data: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">
+                      Descrição
+                    </label>
+                    <textarea
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={3}
+                      placeholder="Descreva o acompanhamento..."
+                      value={novoAcompanhamento.descricao}
+                      onChange={(e) =>
+                        setNovoAcompanhamento({ ...novoAcompanhamento, descricao: e.target.value })
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={adicionarAcompanhamento}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors text-sm"
+                  >
+                    + Adicionar Acompanhamento
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">

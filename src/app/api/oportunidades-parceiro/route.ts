@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
       gerente_contas,
       data_expiracao,
       observacoes,
+      acompanhamentos,
       created_by,
     } = body;
 
@@ -125,6 +126,7 @@ export async function POST(request: NextRequest) {
     if (contato_telefone) dataToCreate.contato_telefone = contato_telefone;
     if (gerente_contas) dataToCreate.gerente_contas = gerente_contas;
     if (observacoes) dataToCreate.observacoes = observacoes;
+    if (acompanhamentos) dataToCreate.acompanhamentos = acompanhamentos;
     if (created_by) dataToCreate.created_by = created_by;
 
     console.log('💾 Tentando criar com dados:', dataToCreate);
