@@ -158,34 +158,26 @@ const calculatePayback = (
     if (monthlyRevenue <= 0) return contractTerm;
 
     // CORREÇÃO: Retornar valores específicos calculados para Internet Fibra
-    console.log(`InternetFibra calculatePayback chamado com contractTerm: ${contractTerm}`);
-
     // Converter para número para garantir comparação correta
     const term = Number(contractTerm);
 
     if (term === 12) {
-        console.log('InternetFibra: Retornando 6 meses para contrato de 12 meses');
         return 6;  // 12 meses = 6 meses de payback
     }
     if (term === 24) {
-        console.log('InternetFibra: Retornando 10 meses para contrato de 24 meses');
         return 10; // 24 meses = 10 meses de payback
     }
     if (term === 36) {
-        console.log('InternetFibra: Retornando 13 meses para contrato de 36 meses');
         return 13; // 36 meses = 13 meses de payback
     }
     if (term === 48) {
-        console.log('InternetFibra: Retornando 13 meses para contrato de 48 meses');
         return 13; // 48 meses = 13 meses de payback
     }
     if (term === 60) {
-        console.log('InternetFibra: Retornando 14 meses para contrato de 60 meses');
         return 14; // 60 meses = 14 meses de payback
     }
 
     // Para outros prazos, usar cálculo real
-    console.log('InternetFibra: Usando cálculo real para prazo não padrão:', term);
 
     // Aplicar descontos no valor mensal
     const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
@@ -219,12 +211,10 @@ const calculatePayback = (
 
         // Quando o saldo acumulado fica positivo, o payback foi atingido
         if (cumulativeBalance >= 0) {
-            console.log(`InternetFibra CÁLCULO REAL: Retornando payback de ${month} meses`);
             return month;
         }
     }
 
-    console.log(`InternetFibra CÁLCULO REAL: Não conseguiu recuperar, retornando ${contractTerm}`);
     return contractTerm; // Se não conseguir recuperar no prazo
 };
 
@@ -411,7 +401,6 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
         if (temParceiros) {
             monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
-            console.log('Acréscimo de 20% aplicado no result.monthlyPrice - InternetFibra:', monthlyPrice);
         }
 
         return {
@@ -504,33 +493,26 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     // 🔥 CORREÇÃO: useEffect para carregar descontos quando editar proposta
     useEffect(() => {
         if (currentProposal && addedProducts.length > 0) {
-            console.log('🔍 InternetFibra - Carregando descontos da proposta:', currentProposal);
             const firstProduct = addedProducts[0];
             
             if (firstProduct?.details) {
-                console.log('📦 Detalhes do produto:', firstProduct.details);
-                
                 // Carregar desconto do vendedor
                 if (firstProduct.details.applySalespersonDiscount !== undefined) {
-                    console.log('✅ Carregando applySalespersonDiscount:', firstProduct.details.applySalespersonDiscount);
                     setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
                 }
                 
                 // Carregar desconto do diretor
                 if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
-                    console.log('✅ Carregando appliedDirectorDiscountPercentage:', firstProduct.details.appliedDirectorDiscountPercentage);
                     setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
                 }
 
                 // Carregar parceiro indicador
                 if (firstProduct.details.includeReferralPartner !== undefined) {
-                    console.log('✅ Carregando includeReferralPartner:', firstProduct.details.includeReferralPartner);
                     setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
                 }
 
                 // Carregar parceiro influenciador
                 if (firstProduct.details.includeInfluencerPartner !== undefined) {
-                    console.log('✅ Carregando includeInfluencerPartner:', firstProduct.details.includeInfluencerPartner);
                     setIncludeInfluencerPartner(firstProduct.details.includeInfluencerPartner);
                 }
             }
@@ -674,8 +656,6 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const baseParaComissao = isExistingClient
             ? (monthlyValue - previousMonthlyFee) // Diferença de valores
             : monthlyValue; // Valor total
-
-        console.log(`InternetFibra - Base para comissão: ${baseParaComissao} (isExistingClient: ${isExistingClient})`);
 
         // Calcular comissão do vendedor/canal
         // CORREÇÃO: Usar sempre o valor mensal total para comissões do vendedor/canal
@@ -1381,18 +1361,14 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 if (firstProduct.details.includeReferralPartner !== undefined) setIncludeReferralPartner(firstProduct.details.includeReferralPartner);
                 
                 // 🔥 CORREÇÃO: Carregar descontos na função editProposal
-                console.log('🔍 InternetFibra editProposal - Carregando descontos');
                 if (firstProduct.details.applySalespersonDiscount !== undefined) {
-                    console.log('✅ applySalespersonDiscount:', firstProduct.details.applySalespersonDiscount);
                     setApplySalespersonDiscount(firstProduct.details.applySalespersonDiscount);
                 }
                 if (firstProduct.details.appliedDirectorDiscountPercentage !== undefined) {
-                    console.log('✅ appliedDirectorDiscountPercentage:', firstProduct.details.appliedDirectorDiscountPercentage);
                     setAppliedDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
                     setDirectorDiscountPercentage(firstProduct.details.appliedDirectorDiscountPercentage);
                 }
                 if (firstProduct.details.includeInfluencerPartner !== undefined) {
-                    console.log('✅ includeInfluencerPartner:', firstProduct.details.includeInfluencerPartner);
                     setIncludeInfluencerPartner(firstProduct.details.includeInfluencerPartner);
                 }
             }
@@ -1412,6 +1388,19 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         } else if ((proposal as any).appliedDirectorDiscountPercentage !== undefined) {
             setAppliedDirectorDiscountPercentage((proposal as any).appliedDirectorDiscountPercentage);
             setDirectorDiscountPercentage((proposal as any).appliedDirectorDiscountPercentage);
+        }
+
+        // 🔥 CORREÇÃO: Carregar dados de cliente existente do METADATA
+        if (metadata.isExistingClient !== undefined) {
+            setIsExistingClient(metadata.isExistingClient);
+        } else if ((proposal as any).isExistingClient !== undefined) {
+            setIsExistingClient((proposal as any).isExistingClient);
+        }
+        
+        if (metadata.previousMonthlyFee !== undefined) {
+            setPreviousMonthlyFee(metadata.previousMonthlyFee);
+        } else if ((proposal as any).previousMonthlyFee !== undefined) {
+            setPreviousMonthlyFee((proposal as any).previousMonthlyFee);
         }
 
         // Load status and changes

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -1671,12 +1672,11 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                         {isExistingClient && (
                                             <div className="space-y-2">
                                                 <Label htmlFor="previousMonthlyFee">Mensalidade Anterior</Label>
-                                                <Input
+                                                <CurrencyInput
                                                     id="previousMonthlyFee"
-                                                    type="number"
                                                     value={previousMonthlyFee}
-                                                    onChange={(e) => setPreviousMonthlyFee(parseFloat(e.target.value))}
-                                                    placeholder="0.00"
+                                                    onChange={setPreviousMonthlyFee}
+                                                    placeholder="0,00"
                                                     className="bg-slate-800"
                                                 />
                                             </div>
@@ -1694,12 +1694,11 @@ const InternetOKv2Calculator: React.FC<InternetOKv2CalculatorProps> = ({ onBackT
                                         {createLastMile && (
                                             <div className="space-y-2">
                                                 <Label htmlFor="lastMileCost">Custo (Last Mile)</Label>
-                                                <Input
+                                                <CurrencyInput
                                                     id="lastMileCost"
-                                                    type="number"
                                                     value={lastMileCost}
-                                                    onChange={(e) => setLastMileCost(parseFloat(e.target.value))}
-                                                    placeholder="0.00"
+                                                    onChange={setLastMileCost}
+                                                    placeholder="0,00"
                                                     className="bg-slate-800"
                                                 />
                                             </div>
