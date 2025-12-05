@@ -1714,22 +1714,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                         <div className="border-t pt-4 print:pt-2">
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
-                            {/* Valor Original do Cliente (se for cliente existente) */}
-                            {currentProposal.isExistingClient && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
-                                <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-400 rounded-lg">
-                                    <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
-                                        💰 Valor Original do Cliente
-                                    </h4>
-                                    <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                            <span><strong>Mensalidade Atual do Cliente:</strong></span>
-                                            <span className="font-bold text-lg text-blue-700">{formatCurrency(currentProposal.previousMonthlyFee)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Descontos Aplicados - Valores detalhados */}
+                            {/* Descontos Aplicados - Valores detalhados (APENAS SE HOUVER DESCONTOS) */}
                             {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
                                 <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded">
                                     <h4 className="font-semibold text-amber-800 mb-3 flex items-center">
@@ -1765,52 +1750,71 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                 </div>
                             )}
 
-                            <div className="space-y-2 text-sm mb-4">
-                                <div className="flex justify-between">
-                                    <span><strong>Total de Instalação:</strong></span>
-                                    <span className="font-semibold">{formatCurrency(currentProposal.totalSetup || 0)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span><strong>Total Mensal (com desconto):</strong></span>
-                                    <span className="font-semibold">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
-                                </div>
-                            </div>
-
-                            {/* Diferença de Valor (se for cliente existente) */}
-                            {currentProposal.isExistingClient && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
-                                <div className={`mb-4 p-4 rounded-lg border-2 ${
-                                    (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
-                                        ? 'bg-red-50 border-red-400'
-                                        : 'bg-green-50 border-green-400'
-                                }`}>
-                                    <h4 className={`font-semibold mb-3 flex items-center ${
-                                        (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
-                                            ? 'text-red-800'
-                                            : 'text-green-800'
-                                    }`}>
-                                        📊 Diferença de Valor
-                                    </h4>
-                                    <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between items-center">
-                                            <span><strong>Variação na Mensalidade:</strong></span>
-                                            <span className={`font-bold text-xl ${
-                                                (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
-                                                    ? 'text-red-700'
-                                                    : 'text-green-700'
-                                            }`}>
-                                                {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '+' : ''}
-                                                {formatCurrency((currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee)}
+                            {/* Resumo de Valores - Layout conforme print */}
+                            <div className="space-y-3 mb-4 p-4 bg-slate-800 rounded-lg text-white">
+                                {/* Valor Original do Cliente (se for cliente existente) */}
+                                {currentProposal.isExistingClient && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
+                                    <>
+                                        <div className="flex justify-between items-center py-3 border-b border-slate-600">
+                                            <span className="text-base flex items-center">
+                                                <span className="mr-2">💰</span>
+                                                <strong>Valor Original do Cliente:</strong>
                                             </span>
+                                            <span className="font-bold text-2xl">{formatCurrency(currentProposal.previousMonthlyFee)}</span>
                                         </div>
-                                        <div className="text-center text-xs mt-2">
-                                            {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
-                                                ? '⬆️ Aumento na mensalidade'
-                                                : '⬇️ Economia na mensalidade'
-                                            }
-                                        </div>
-                                    </div>
+                                    </>
+                                )}
+                                
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-base"><strong>Valor Original (Mensal):</strong></span>
+                                    <span className="font-bold text-xl">{formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</span>
                                 </div>
-                            )}
+                                
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-base"><strong>Total de Instalação:</strong></span>
+                                    <span className="font-bold text-xl">{formatCurrency(currentProposal.totalSetup || 0)}</span>
+                                </div>
+                                
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-base"><strong>Total Mensal (com desconto):</strong></span>
+                                    <span className="font-bold text-xl">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                </div>
+
+                                {/* Diferença de Valor (se for cliente existente) */}
+                                {currentProposal.isExistingClient && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
+                                    <>
+                                        <div className={`mt-4 p-4 rounded-lg border-2 ${
+                                            (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                ? 'bg-red-900/30 border-red-500'
+                                                : 'bg-green-900/30 border-green-500'
+                                        }`}>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-base flex items-center">
+                                                    <span className="mr-2">📊</span>
+                                                    <strong>Diferença de Valor:</strong>
+                                                </span>
+                                                <span className={`font-bold text-3xl ${
+                                                    (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                        ? 'text-red-400'
+                                                        : 'text-green-400'
+                                                }`}>
+                                                    {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '+' : ''}
+                                                    {formatCurrency((currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee)}
+                                                </span>
+                                            </div>
+                                            <div className="text-center text-sm mt-2 flex items-center justify-center">
+                                                <span className="mr-2">
+                                                    {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '⬆️' : '⬇️'}
+                                                </span>
+                                                {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                    ? 'Aumento na mensalidade'
+                                                    : 'Economia na mensalidade'
+                                                }
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
                         {/* Payback Info se disponível */}
