@@ -439,6 +439,85 @@ async function main() {
 
   console.log('✅ Configurações de produto criadas')
 
+  // 5. Criar oportunidades de parceiro de exemplo
+  const oportunidadesExemplo = [
+    {
+      nome_fabricante: 'Dell',
+      numero_oportunidade_ext: 'DELL-2024-001',
+      cliente_nome: 'Empresa ABC Ltda',
+      contato_nome: 'João Silva',
+      contato_email: 'joao.silva@empresaabc.com',
+      contato_telefone: '(11) 98765-4321',
+      produto_descricao: 'Servidor PowerEdge R750 (2x); Switches Dell Networking (4x)',
+      valor: 85000.00,
+      status: 'aguardando_aprovacao',
+      gerente_contas: 'Maria Santos',
+      data_expiracao: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
+      observacoes: 'Cliente interessado em upgrade de infraestrutura',
+      acompanhamentos: [
+        {
+          data: new Date().toISOString().split('T')[0],
+          descricao: 'Primeira reunião realizada. Cliente demonstrou interesse.'
+        }
+      ],
+      created_by: adminUser.id
+    },
+    {
+      nome_fabricante: 'Lenovo',
+      numero_oportunidade_ext: 'LENOVO-2024-002',
+      cliente_nome: 'Tech Solutions SA',
+      contato_nome: 'Ana Costa',
+      contato_email: 'ana.costa@techsolutions.com',
+      contato_telefone: '(21) 99876-5432',
+      produto_descricao: 'ThinkSystem SR650 (1x); Storage (1x)',
+      valor: 45000.00,
+      status: 'aprovado',
+      gerente_contas: 'Carlos Oliveira',
+      data_expiracao: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), // 45 dias
+      observacoes: 'Proposta aprovada, aguardando assinatura do contrato',
+      acompanhamentos: [
+        {
+          data: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          descricao: 'Proposta enviada ao cliente'
+        },
+        {
+          data: new Date().toISOString().split('T')[0],
+          descricao: 'Cliente aprovou a proposta'
+        }
+      ],
+      created_by: adminUser.id
+    },
+    {
+      nome_fabricante: 'HP',
+      numero_oportunidade_ext: 'HP-2024-003',
+      cliente_nome: 'Indústria XYZ',
+      contato_nome: 'Pedro Almeida',
+      contato_email: 'pedro@industriaxyz.com',
+      produto_descricao: 'ProLiant DL380 Gen10 (3x)',
+      valor: 120000.00,
+      status: 'aguardando_aprovacao',
+      gerente_contas: 'Fernanda Lima',
+      data_expiracao: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 dias
+      observacoes: 'Grande oportunidade - cliente quer expandir datacenter',
+      acompanhamentos: [],
+      created_by: adminUser.id
+    }
+  ]
+
+  for (const oportunidade of oportunidadesExemplo) {
+    const existing = await prisma.oportunidadeParceiro.findFirst({
+      where: { numero_oportunidade_ext: oportunidade.numero_oportunidade_ext }
+    });
+
+    if (!existing) {
+      await prisma.oportunidadeParceiro.create({
+        data: oportunidade
+      });
+    }
+  }
+
+  console.log('✅ Oportunidades de parceiro de exemplo criadas')
+
   console.log('🎉 Seed concluído com sucesso!')
 }
 
