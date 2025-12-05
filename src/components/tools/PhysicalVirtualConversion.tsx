@@ -16,6 +16,10 @@ interface P2VResult {
   hypervisorReserve: number;
   efficiency: number;
   notes: string[];
+  numaWarning: boolean;
+  numaMessage: string;
+  conservativeRam: number;
+  optimalVcpus: number;
 }
 
 interface LicensingInfo {
@@ -32,6 +36,10 @@ const PhysicalVirtualConversion = () => {
   const [cpuFrequency, setCpuFrequency] = useState<number>(2.9);
   const [hasHyperThreading, setHasHyperThreading] = useState<boolean>(true);
   const [physicalRam, setPhysicalRam] = useState<number>(64);
+
+  // NEW: Utilization metrics
+  const [cpuUtilization, setCpuUtilization] = useState<number>(0); // 0 = unknown
+  const [ramUtilization, setRamUtilization] = useState<number>(0); // 0 = unknown
 
   // Virtualization platform
   const [hypervisor, setHypervisor] = useState<string>('vmware');
@@ -50,7 +58,11 @@ const PhysicalVirtualConversion = () => {
     ramOverhead: 0,
     hypervisorReserve: 0,
     efficiency: 0,
-    notes: []
+    notes: [],
+    numaWarning: false,
+    numaMessage: '',
+    conservativeRam: 0,
+    optimalVcpus: 0
   });
 
   const [licensing, setLicensing] = useState<LicensingInfo>({
@@ -92,58 +104,121 @@ const PhysicalVirtualConversion = () => {
     const efficiency = workloadEfficiency[workloadType as keyof typeof workloadEfficiency];
     const perfAdjustment = performanceAdjustments[performanceTarget as keyof typeof performanceAdjustments];
 
-    // Calculate CPU recommendation
+    // ===== MELHORIAS: vCPU com alinhamento NUMA =====
     const cpuOverheadPercent = overhead.cpu * 100;
-    const availableCpuAfterOverhead = totalLogicalCores * (1 - overhead.cpu);
-    const recommendedVcpus = Math.floor(availableCpuAfterOverhead * efficiency * perfAdjustment);
+    
+    // Calcular vCPUs baseado em núcleos físicos (ignorar HT para dimensionamento inicial)
+    const optimalVcpusBase = totalPhysicalCores; // 1 vCPU = 1 Core Físico
+    
+    // Se temos dados de utilização, usar isso
+    let recommendedVcpus;
+    if (cpuUtilization > 0) {
+      // Usar utilização real + margem de segurança (20%)
+      const utilizationFactor = (cpuUtilization / 100) * 1.2;
+      recommendedVcpus = Math.ceil(totalPhysicalCores * utilizationFactor);
+    } else {
+      // Sem dados de utilização, usar abordagem conservadora
+      recommendedVcpus = Math.floor(optimalVcpusBase * efficiency * perfAdjustment);
+    }
+    
+    // Alinhar vCPUs para múltiplos pares (melhor para NUMA)
+    const alignedVcpus = Math.ceil(recommendedVcpus / 2) * 2;
+    
+    // Sugestão ótima: múltiplo de cores por socket
+    const optimalVcpus = Math.min(alignedVcpus, totalPhysicalCores);
 
-    // Calculate RAM recommendation
+    // ===== MELHORIAS: RAM mais conservadora =====
     const ramOverheadPercent = overhead.ram * 100;
     const hypervisorReserveGb = overhead.reserve;
-    const availableRamAfterReserve = physicalRam - hypervisorReserveGb;
-    const availableRamAfterOverhead = availableRamAfterReserve * (1 - overhead.ram);
-    const recommendedRam = Math.floor(availableRamAfterOverhead * efficiency * perfAdjustment);
+    
+    // Abordagem conservadora: RAM Física - 4GB de reserva
+    const conservativeRam = Math.max(1, physicalRam - 4);
+    
+    // Se temos dados de utilização, usar isso
+    let recommendedRam;
+    if (ramUtilization > 0) {
+      // Usar utilização real + margem de segurança (30% para RAM)
+      const ramUsed = (physicalRam * ramUtilization) / 100;
+      recommendedRam = Math.ceil(ramUsed * 1.3);
+    } else {
+      // Sem dados de utilização, ser conservador
+      const availableRamAfterReserve = physicalRam - hypervisorReserveGb;
+      const availableRamAfterOverhead = availableRamAfterReserve * (1 - overhead.ram);
+      
+      // Aplicar eficiência apenas se não for banco de dados
+      if (workloadType === 'database') {
+        recommendedRam = Math.floor(conservativeRam * 0.9); // 90% da RAM conservadora
+      } else {
+        recommendedRam = Math.floor(availableRamAfterOverhead * efficiency * perfAdjustment);
+      }
+    }
+
+    // ===== ALERTA NUMA =====
+    let numaWarning = false;
+    let numaMessage = '';
+    
+    if (optimalVcpus > coresPerCpu) {
+      numaWarning = true;
+      numaMessage = `⚠️ Esta VM ocupará mais de um Socket físico (vNUMA). Configure vSocket = ${physicalCpus} e vCores = ${Math.ceil(optimalVcpus / physicalCpus)} no Hypervisor para melhor performance.`;
+    }
 
     // Generate recommendations and notes
     const notes = [];
 
     if (hypervisor === 'vmware') {
-      notes.push('VMware vSphere: Considera overhead de CPU (~5%) e RAM (~8%)');
-      notes.push('Reserva recomendada: 4GB para vCenter/ESXi');
+      notes.push('VMware vSphere: Overhead de CPU (~5%) e RAM (~8%)');
+      notes.push(`Reserva: ${hypervisorReserveGb}GB para vCenter/ESXi`);
     } else if (hypervisor === 'hyperv') {
-      notes.push('Hyper-V: Overhead menor de CPU (~3%) e RAM (~6%)');
-      notes.push('Reserva recomendada: 2GB para host Windows');
+      notes.push('Hyper-V: Overhead de CPU (~3%) e RAM (~6%)');
+      notes.push(`Reserva: ${hypervisorReserveGb}GB para host Windows`);
+    }
+
+    // Explicação da eficiência
+    if (cpuUtilization === 0 && ramUtilization === 0) {
+      notes.push(`⚠️ Sem dados de utilização: Cálculo baseado em ${(efficiency * 100).toFixed(0)}% de eficiência estimada`);
+      notes.push('💡 Recomendação: Adicione % de utilização atual para cálculo mais preciso');
+    } else {
+      notes.push('✓ Cálculo baseado em utilização real do servidor');
     }
 
     if (workloadType === 'database') {
-      notes.push('Workload de banco: Requer mais recursos dedicados');
+      notes.push('🗄️ Banco de Dados: Recursos dedicados, evite overcommit');
     } else if (workloadType === 'vdi') {
-      notes.push('VDI: Considera picos de uso e boot storms');
+      notes.push('🖥️ VDI: Considere picos de uso e boot storms');
     }
 
     if (performanceTarget === 'conservative') {
-      notes.push('Abordagem conservadora: Mais recursos para garantir performance');
+      notes.push('🛡️ Conservador: Máxima performance, menor consolidação');
     } else if (performanceTarget === 'aggressive') {
-      notes.push('Consolidação agressiva: Máximo aproveitamento de recursos');
+      notes.push('📊 Agressivo: Máxima consolidação, monitorar performance');
     }
 
     // CPU frequency consideration
     if (cpuFrequency < 2.0) {
-      notes.push('⚠️ CPU com frequência baixa - considere menos vCPUs');
+      notes.push('⚠️ CPU com frequência baixa (<2.0 GHz) - considere menos vCPUs');
     } else if (cpuFrequency > 3.5) {
-      notes.push('✓ CPU com alta frequência - boa para virtualização');
+      notes.push('✓ CPU com alta frequência (>3.5 GHz) - excelente para virtualização');
+    }
+
+    // NUMA alignment note
+    if (optimalVcpus <= coresPerCpu) {
+      notes.push(`✓ vCPUs alinhados: ${optimalVcpus} vCPUs cabem em 1 socket (NUMA otimizado)`);
     }
 
     setP2vResult({
-      recommendedVcpus: Math.max(1, recommendedVcpus),
+      recommendedVcpus: Math.max(1, optimalVcpus),
       recommendedRam: Math.max(1, recommendedRam),
       cpuOverhead: cpuOverheadPercent,
       ramOverhead: ramOverheadPercent,
       hypervisorReserve: hypervisorReserveGb,
       efficiency: efficiency * 100,
-      notes
+      notes,
+      numaWarning,
+      numaMessage,
+      conservativeRam,
+      optimalVcpus
     });
-  }, [physicalCpus, coresPerCpu, cpuFrequency, hasHyperThreading, physicalRam, hypervisor, workloadType, performanceTarget]);
+  }, [physicalCpus, coresPerCpu, cpuFrequency, hasHyperThreading, physicalRam, hypervisor, workloadType, performanceTarget, cpuUtilization, ramUtilization]);
 
   const calculateLicensing = useCallback(() => {
     const totalPhysicalCores = physicalCpus * coresPerCpu;
@@ -302,6 +377,55 @@ const PhysicalVirtualConversion = () => {
                   />
                 </div>
 
+                <Separator className="my-4" />
+
+                {/* NEW: Utilization Metrics */}
+                <div className="space-y-4 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Info className="h-4 w-4 text-amber-600" />
+                    <h4 className="font-semibold text-amber-800 dark:text-amber-200 text-sm">
+                      Utilização Atual (Opcional)
+                    </h4>
+                  </div>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+                    Para cálculo mais preciso, informe a utilização média do servidor físico
+                  </p>
+                  
+                  <div>
+                    <Label htmlFor="cpuUtilization" className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                      <Cpu className="h-3 w-3" />
+                      Utilização Média de CPU (%)
+                    </Label>
+                    <Input
+                      id="cpuUtilization"
+                      type="number"
+                      value={cpuUtilization || ''}
+                      onChange={(e) => setCpuUtilization(parseInt(e.target.value) || 0)}
+                      min="0"
+                      max="100"
+                      placeholder="Ex: 30 (deixe 0 se desconhecido)"
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="ramUtilization" className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                      <MemoryStick className="h-3 w-3" />
+                      Utilização Média de RAM (%)
+                    </Label>
+                    <Input
+                      id="ramUtilization"
+                      type="number"
+                      value={ramUtilization || ''}
+                      onChange={(e) => setRamUtilization(parseInt(e.target.value) || 0)}
+                      min="0"
+                      max="100"
+                      placeholder="Ex: 45 (deixe 0 se desconhecido)"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
                 {/* Physical Server Summary */}
                 <div className="mt-6 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                   <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Resumo Físico:</h4>
@@ -417,6 +541,11 @@ const PhysicalVirtualConversion = () => {
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       de {physicalRam} GB disponíveis
                     </p>
+                    {p2vResult.conservativeRam !== p2vResult.recommendedRam && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        💡 Conservador: {p2vResult.conservativeRam} GB
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -442,6 +571,23 @@ const PhysicalVirtualConversion = () => {
                 </div>
 
                 <Separator />
+
+                {/* NUMA Warning */}
+                {p2vResult.numaWarning && (
+                  <div className="p-3 bg-orange-100 dark:bg-orange-900 border-2 border-orange-500 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-semibold text-orange-800 dark:text-orange-200 text-sm mb-1">
+                          Alerta NUMA
+                        </h4>
+                        <p className="text-xs text-orange-700 dark:text-orange-300 leading-relaxed">
+                          {p2vResult.numaMessage}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Recommendations and Notes */}
                 <div className="space-y-2">

@@ -119,6 +119,8 @@ interface Proposal {
     selectedSpeed?: number;
     includeInstallation?: boolean;
     changes?: string;
+    isExistingClient?: boolean;
+    previousMonthlyFee?: number;
 }
 
 // Helper function to get monthly price based on contract term
@@ -1841,81 +1843,75 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                             )}
 
                             {/* Resumo de Valores - Layout conforme print */}
-                            <div className="space-y-3 mb-4 p-4 bg-slate-800 rounded-lg text-white">
-                                {/* DEBUG - Remover depois */}
-                                {(() => {
-                                    console.log('🔍 DEBUG Internet Fibra Visualização:', {
-                                        isExistingClient: currentProposal.isExistingClient,
-                                        previousMonthlyFee: currentProposal.previousMonthlyFee,
-                                        totalMonthly: currentProposal.totalMonthly,
-                                        metadata: (currentProposal as any).metadata
-                                    });
-                                    return null;
-                                })()}
-                                
-                                {/* Valor Original do Cliente (se for cliente existente) */}
-                                {(currentProposal.isExistingClient || currentProposal.previousMonthlyFee) && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
-                                    <>
-                                        <div className="flex justify-between items-center py-3 border-b border-slate-600">
-                                            <span className="text-base flex items-center">
-                                                <span className="mr-2">💰</span>
-                                                <strong>Valor Original do Cliente:</strong>
-                                            </span>
-                                            <span className="font-bold text-2xl">{formatCurrency(currentProposal.previousMonthlyFee)}</span>
-                                        </div>
-                                    </>
-                                )}
-                                
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="text-base"><strong>Valor Original (Mensal):</strong></span>
-                                    <span className="font-bold text-xl">{formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</span>
-                                </div>
-                                
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="text-base"><strong>Total de Instalação:</strong></span>
-                                    <span className="font-bold text-xl">{formatCurrency(currentProposal.totalSetup || 0)}</span>
-                                </div>
-                                
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="text-base"><strong>Total Mensal (com desconto):</strong></span>
-                                    <span className="font-bold text-xl">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
-                                </div>
+                            {(currentProposal.isExistingClient || currentProposal.previousMonthlyFee) && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 ? (
+                                <div className="space-y-3 mb-4 p-4 bg-slate-800 rounded-lg text-white">
+                                    {/* Valor Original do Cliente */}
+                                    <div className="flex justify-between items-center py-3 border-b border-slate-600">
+                                        <span className="text-base flex items-center">
+                                            <span className="mr-2">💰</span>
+                                            <strong>Valor Original do Cliente:</strong>
+                                        </span>
+                                        <span className="font-bold text-2xl">{formatCurrency(currentProposal.previousMonthlyFee)}</span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center py-2">
+                                        <span className="text-base"><strong>Valor Original (Mensal):</strong></span>
+                                        <span className="font-bold text-xl">{formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center py-2">
+                                        <span className="text-base"><strong>Total de Instalação:</strong></span>
+                                        <span className="font-bold text-xl">{formatCurrency(currentProposal.totalSetup || 0)}</span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-center py-2">
+                                        <span className="text-base"><strong>Total Mensal (com desconto):</strong></span>
+                                        <span className="font-bold text-xl">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                    </div>
 
-                                {/* Diferença de Valor (se for cliente existente) */}
-                                {(currentProposal.isExistingClient || currentProposal.previousMonthlyFee) && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
-                                    <>
-                                        <div className={`mt-4 p-4 rounded-lg border-2 ${
-                                            (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
-                                                ? 'bg-red-900/30 border-red-500'
-                                                : 'bg-green-900/30 border-green-500'
-                                        }`}>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-base flex items-center">
-                                                    <span className="mr-2">📊</span>
-                                                    <strong>Diferença de Valor:</strong>
-                                                </span>
-                                                <span className={`font-bold text-3xl ${
-                                                    (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
-                                                        ? 'text-red-400'
-                                                        : 'text-green-400'
-                                                }`}>
-                                                    {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '+' : ''}
-                                                    {formatCurrency((currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee)}
-                                                </span>
-                                            </div>
-                                            <div className="text-center text-sm mt-2 flex items-center justify-center">
-                                                <span className="mr-2">
-                                                    {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '⬆️' : '⬇️'}
-                                                </span>
-                                                {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
-                                                    ? 'Aumento na mensalidade'
-                                                    : 'Economia na mensalidade'
-                                                }
-                                            </div>
+                                    {/* Diferença de Valor */}
+                                    <div className={`mt-4 p-4 rounded-lg border-2 ${
+                                        (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                            ? 'bg-red-900/30 border-red-500'
+                                            : 'bg-green-900/30 border-green-500'
+                                    }`}>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-base flex items-center">
+                                                <span className="mr-2">📊</span>
+                                                <strong>Diferença de Valor:</strong>
+                                            </span>
+                                            <span className={`font-bold text-3xl ${
+                                                (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                    ? 'text-red-400'
+                                                    : 'text-green-400'
+                                            }`}>
+                                                {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '+' : ''}
+                                                {formatCurrency((currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee)}
+                                            </span>
                                         </div>
-                                    </>
-                                )}
-                            </div>
+                                        <div className="text-center text-sm mt-2 flex items-center justify-center">
+                                            <span className="mr-2">
+                                                {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '⬆️' : '⬇️'}
+                                            </span>
+                                            {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                ? 'Aumento na mensalidade'
+                                                : 'Economia na mensalidade'
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2 text-sm mb-4">
+                                    <div className="flex justify-between">
+                                        <span><strong>Total de Instalação:</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal.totalSetup || 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span><strong>Total Mensal (com desconto):</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Payback Info se disponível */}
