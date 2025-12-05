@@ -1183,7 +1183,9 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                         baseTotalMonthly: baseTotalMonthly,
                         applySalespersonDiscount: applySalespersonDiscount,
                         appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                        changes: proposalChanges
+                        changes: proposalChanges,
+                        isExistingClient: isExistingClient,
+                        previousMonthlyFee: previousMonthlyFee
                     }
                 };
 
