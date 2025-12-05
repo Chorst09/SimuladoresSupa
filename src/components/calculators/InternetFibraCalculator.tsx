@@ -1842,6 +1842,17 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
                             {/* Resumo de Valores - Layout conforme print */}
                             <div className="space-y-3 mb-4 p-4 bg-slate-800 rounded-lg text-white">
+                                {/* DEBUG - Remover depois */}
+                                {(() => {
+                                    console.log('🔍 DEBUG Internet Fibra Visualização:', {
+                                        isExistingClient: currentProposal.isExistingClient,
+                                        previousMonthlyFee: currentProposal.previousMonthlyFee,
+                                        totalMonthly: currentProposal.totalMonthly,
+                                        metadata: (currentProposal as any).metadata
+                                    });
+                                    return null;
+                                })()}
+                                
                                 {/* Valor Original do Cliente (se for cliente existente) */}
                                 {(currentProposal.isExistingClient || currentProposal.previousMonthlyFee) && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
                                     <>
