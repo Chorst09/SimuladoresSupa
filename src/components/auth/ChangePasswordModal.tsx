@@ -1,174 +1,126 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Lock, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
-  isFirstLogin?: boolean;
-  userEmail?: string;
+  userId: string;
 }
 
-export default function ChangePasswordModal({ 
-  isOpen, 
-  onClose, 
-  isFirstLogin = false,
-  userEmail 
-}: ChangePasswordModalProps) {
-  const [currentPassword, setCurrentPassword] = useState('');
+export default function ChangePasswordModal({ isOpen, onClose, userId }: ChangePasswordModalProps) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const validatePassword = (password: string): string | null => {
-    if (password.length < 8) {
-      return 'A senha deve ter pelo menos 8 caracteres';
-    }
-    if (!/(?=.*[a-z])/.test(password)) {
-      return 'A senha deve conter pelo menos uma letra minúscula';
-    }
-    if (!/(?=.*[A-Z])/.test(password)) {
-      return 'A senha deve conter pelo menos uma letra maiúscula';
-    }
-    if (!/(?=.*\d)/.test(password)) {
-      return 'A senha deve conter pelo menos um número';
-    }
-    return null;
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const handleChangePassword = async () => {
-    setError(null);
+    // Validações
+    if (!newPassword || !confirmPassword) {
+      toast({
+        title: 'Erro',
+        description: 'Todos os campos são obrigatórios',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: 'Erro',
+        description: 'A nova senha deve ter no mínimo 6 caracteres',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: 'Erro',
+        description: 'As senhas não coincidem',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Validações
-      if (!isFirstLogin && !currentPassword) {
-        throw new Error('Senha atual é obrigatória');
-      }
+      const response = await fetch('/api/users/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId,
+          newPassword
+        })
+      });
 
-      if (!newPassword) {
-        throw new Error('Nova senha é obrigatória');
-      }
+      const data = await response.json();
 
-      if (newPassword !== confirmPassword) {
-        throw new Error('As senhas não coincidem');
-      }
-
-      // Validar força da senha
-      const passwordError = validatePassword(newPassword);
-      if (passwordError) {
-        throw new Error(passwordError);
-      }
-
-      if (isFirstLogin) {
-        // Validar senha atual e alterar via API
-        const response = await fetch('/api/auth/change-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ 
-            currentPassword: userEmail && currentPassword ? currentPassword : undefined,
-            newPassword,
-            isFirstLogin
-          })
+      if (data.success) {
+        toast({
+          title: 'Sucesso',
+          description: 'Senha alterada com sucesso',
+          variant: 'default'
         });
         
-        const result = await response.json();
+        // Limpar campos
+        setNewPassword('');
+        setConfirmPassword('');
         
-        if (!response.ok) {
-          throw new Error(result.error || 'Erro ao alterar senha');
-        }
+        // Fechar modal
+        onClose();
+      } else {
+        toast({
+          title: 'Erro',
+          description: data.error || 'Erro ao alterar senha',
+          variant: 'destructive'
+        });
       }
-
-      alert('Senha alterada com sucesso!');
-      onClose();
-      
-      // Reset form
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      
-    } catch (error: any) {
+    } catch (error) {
       console.error('Erro ao alterar senha:', error);
-      setError(error.message || 'Erro ao alterar senha');
+      toast({
+        title: 'Erro',
+        description: 'Erro ao alterar senha',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleClose = () => {
-    if (!isFirstLogin) {
+    if (!loading) {
+      setNewPassword('');
+      setConfirmPassword('');
       onClose();
     }
-    // Se for primeiro login, não permitir fechar sem alterar a senha
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={isFirstLogin ? undefined : handleClose}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Lock className="h-5 w-5" />
-            {isFirstLogin ? 'Alterar Senha - Primeiro Acesso' : 'Alterar Senha'}
-          </DialogTitle>
+          <DialogTitle>Alterar Senha</DialogTitle>
+          <DialogDescription>
+            Escolha uma nova senha para sua conta.
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          {isFirstLogin && (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Por segurança, você deve alterar sua senha no primeiro acesso.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="current-password">
-                {isFirstLogin ? 'Senha Temporária' : 'Senha Atual'}
-              </Label>
-              <div className="relative">
-                <Input
-                  id="current-password"
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder={isFirstLogin ? 'Digite a senha temporária' : 'Digite sua senha atual'}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                >
-                  {showCurrentPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            <div>
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
               <Label htmlFor="new-password">Nova Senha</Label>
               <div className="relative">
                 <Input
@@ -176,28 +128,20 @@ export default function ChangePasswordModal({
                   type={showNewPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Digite sua nova senha"
+                  disabled={loading}
+                  className="pr-10"
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showNewPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Mínimo 8 caracteres, com maiúscula, minúscula e número
-              </p>
+              <p className="text-xs text-muted-foreground">Mínimo de 6 caracteres</p>
             </div>
-
-            <div>
+            <div className="grid gap-2">
               <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
               <div className="relative">
                 <Input
@@ -205,39 +149,29 @@ export default function ChangePasswordModal({
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirme sua nova senha"
+                  disabled={loading}
+                  className="pr-10"
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
           </div>
-
-          <div className="flex justify-end space-x-2">
-            {!isFirstLogin && (
-              <Button variant="outline" onClick={handleClose} disabled={loading}>
-                Cancelar
-              </Button>
-            )}
-            <Button 
-              onClick={handleChangePassword} 
-              disabled={loading || !currentPassword || !newPassword || !confirmPassword}
-            >
-              {loading ? 'Alterando...' : 'Alterar Senha'}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={loading}>
+              Cancelar
             </Button>
-          </div>
-        </div>
+            <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Alterar Senha
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

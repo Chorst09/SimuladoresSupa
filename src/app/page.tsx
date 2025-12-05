@@ -8,13 +8,22 @@ import { useAdmin } from "@/hooks/use-admin";
 import {
     Loader2, LogOut, User, Briefcase, BarChart, Calculator,
     Server, Phone, Wifi, CheckSquare, BarChart3, ClipboardList,
-    ChevronDown, Moon, Sun, Users, Shield, MapPin
+    ChevronDown, Moon, Sun, Users, Shield, MapPin, KeyRound
 } from 'lucide-react';
 
 // Importe seus componentes de UI
 import { Button } from "@/components/ui/button";
 // import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Unused imports
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import ChangePasswordModal from '@/components/auth/ChangePasswordModal';
 
 // Lazy load dos componentes pesados
 const DashboardView = lazy(() => import('@/components/dashboard/DashboardView'));
@@ -48,6 +57,7 @@ export default function App() {
     const [mounted, setMounted] = useState(false);
 
     const [activeTab, setActiveTab] = useState('dashboard');
+    const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -394,13 +404,30 @@ export default function App() {
                             {currentNavItem.parentLabel && <p className="text-sm text-muted-foreground">{currentNavItem.label}</p>}
                         </div>
                         {user && (
-                            <div className="flex items-center space-x-4">
-                                <div className="text-right">
-                                    <p className="text-sm font-medium text-foreground">{user.email}</p>
-                                    <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
-                                </div>
-                                <User className="h-8 w-8 text-primary" />
-                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button className="flex items-center space-x-4 hover:opacity-80 transition-opacity cursor-pointer">
+                                        <div className="text-right">
+                                            <p className="text-sm font-medium text-foreground">{user.email}</p>
+                                            <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                                        </div>
+                                        <User className="h-8 w-8 text-primary" />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                    <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => setIsChangePasswordModalOpen(true)}>
+                                        <KeyRound className="mr-2 h-4 w-4" />
+                                        <span>Alterar Senha</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={logout} className="text-red-600">
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        <span>Sair</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         )}
                     </header>
 
@@ -411,6 +438,15 @@ export default function App() {
 
                 </main>
             </div>
+
+            {/* Modal de Alteração de Senha */}
+            {user && (
+                <ChangePasswordModal
+                    isOpen={isChangePasswordModalOpen}
+                    onClose={() => setIsChangePasswordModalOpen(false)}
+                    userId={user.id}
+                />
+            )}
         </div>
     );
 }
