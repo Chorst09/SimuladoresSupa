@@ -1031,7 +1031,9 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                         baseTotalMonthly: baseTotalMonthly,
                         applySalespersonDiscount: applySalespersonDiscount,
                         appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
-                        changes: proposalChanges
+                        changes: proposalChanges,
+                        isExistingClient: isExistingClient,
+                        previousMonthlyFee: previousMonthlyFee
                     }
                 };
 
@@ -1150,6 +1152,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    isExistingClient: isExistingClient,
+                    previousMonthlyFee: previousMonthlyFee,
                     changes: proposalChanges
                 };
 
@@ -1251,6 +1255,18 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     };
 
     const viewProposal = (proposal: Proposal) => {
+        // Verificar se os dados estão no metadata
+        const metadata = (proposal as any).metadata;
+        if (metadata) {
+            // Se os dados estiverem no metadata, mover para o nível principal
+            if (metadata.isExistingClient !== undefined) {
+                proposal.isExistingClient = metadata.isExistingClient;
+            }
+            if (metadata.previousMonthlyFee !== undefined) {
+                proposal.previousMonthlyFee = metadata.previousMonthlyFee;
+            }
+        }
+        
         setCurrentProposal(proposal);
 
         // Handle client data - check if it's an object or string
@@ -1824,15 +1840,70 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 </div>
                             )}
 
-                            <div className="space-y-2 text-sm mb-4">
-                                <div className="flex justify-between">
-                                    <span><strong>Total de Instalação:</strong></span>
-                                    <span className="font-semibold">{formatCurrency(currentProposal.totalSetup || 0)}</span>
+                            {/* Resumo de Valores - Layout conforme print */}
+                            <div className="space-y-3 mb-4 p-4 bg-slate-800 rounded-lg text-white">
+                                {/* Valor Original do Cliente (se for cliente existente) */}
+                                {(currentProposal.isExistingClient || currentProposal.previousMonthlyFee) && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
+                                    <>
+                                        <div className="flex justify-between items-center py-3 border-b border-slate-600">
+                                            <span className="text-base flex items-center">
+                                                <span className="mr-2">💰</span>
+                                                <strong>Valor Original do Cliente:</strong>
+                                            </span>
+                                            <span className="font-bold text-2xl">{formatCurrency(currentProposal.previousMonthlyFee)}</span>
+                                        </div>
+                                    </>
+                                )}
+                                
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-base"><strong>Valor Original (Mensal):</strong></span>
+                                    <span className="font-bold text-xl">{formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span><strong>Total Mensal (com desconto):</strong></span>
-                                    <span className="font-semibold">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-base"><strong>Total de Instalação:</strong></span>
+                                    <span className="font-bold text-xl">{formatCurrency(currentProposal.totalSetup || 0)}</span>
                                 </div>
+                                
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-base"><strong>Total Mensal (com desconto):</strong></span>
+                                    <span className="font-bold text-xl">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                </div>
+
+                                {/* Diferença de Valor (se for cliente existente) */}
+                                {(currentProposal.isExistingClient || currentProposal.previousMonthlyFee) && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
+                                    <>
+                                        <div className={`mt-4 p-4 rounded-lg border-2 ${
+                                            (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                ? 'bg-red-900/30 border-red-500'
+                                                : 'bg-green-900/30 border-green-500'
+                                        }`}>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-base flex items-center">
+                                                    <span className="mr-2">📊</span>
+                                                    <strong>Diferença de Valor:</strong>
+                                                </span>
+                                                <span className={`font-bold text-3xl ${
+                                                    (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                        ? 'text-red-400'
+                                                        : 'text-green-400'
+                                                }`}>
+                                                    {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '+' : ''}
+                                                    {formatCurrency((currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee)}
+                                                </span>
+                                            </div>
+                                            <div className="text-center text-sm mt-2 flex items-center justify-center">
+                                                <span className="mr-2">
+                                                    {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '⬆️' : '⬇️'}
+                                                </span>
+                                                {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                    ? 'Aumento na mensalidade'
+                                                    : 'Economia na mensalidade'
+                                                }
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -2262,6 +2333,17 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
                                                 <Separator className="my-4 bg-slate-700" />
                                                 <div className="space-y-2">
+                                                    {/* Valor Original do Cliente (se for cliente existente) */}
+                                                    {isExistingClient && previousMonthlyFee > 0 && (
+                                                        <>
+                                                            <div className="flex justify-between text-slate-300 bg-slate-800/50 p-2 rounded">
+                                                                <span className="font-medium">💰 Valor Original do Cliente:</span>
+                                                                <span className="font-bold">{formatCurrency(previousMonthlyFee)}</span>
+                                                            </div>
+                                                            <Separator className="my-2 bg-slate-700" />
+                                                        </>
+                                                    )}
+                                                    
                                                     <div className="flex justify-between">
                                                         <span>Valor Original (Mensal):</span>
                                                         <span>{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</span>
@@ -2286,6 +2368,34 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         <span>Total Mensal {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</span>
                                                         <span className="font-medium">{formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)))}</span>
                                                     </div>
+
+                                                    {/* Diferença de Valor (se for cliente existente) */}
+                                                    {isExistingClient && previousMonthlyFee > 0 && (
+                                                        <>
+                                                            <Separator className="my-2 bg-slate-700" />
+                                                            <div className={`flex justify-between p-3 rounded-lg ${
+                                                                applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                    ? 'bg-red-900/30 border border-red-700/50'
+                                                                    : 'bg-green-900/30 border border-green-700/50'
+                                                            }`}>
+                                                                <span className="font-bold text-white">📊 Diferença de Valor:</span>
+                                                                <span className={`font-bold text-lg ${
+                                                                    applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                        ? 'text-red-400'
+                                                                        : 'text-green-400'
+                                                                }`}>
+                                                                    {applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                    {formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-xs text-slate-400 text-center">
+                                                                {applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                    ? '⬆️ Aumento na mensalidade'
+                                                                    : '⬇️ Economia na mensalidade'
+                                                                }
+                                                            </div>
+                                                        </>
+                                                    )}
 
                                                     <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-700">
                                                         <span>Total Anual {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</span>
