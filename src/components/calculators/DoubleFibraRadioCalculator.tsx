@@ -2271,6 +2271,17 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
                                                 <Separator className="my-4 bg-slate-700" />
                                                 <div className="space-y-2">
+                                                    {/* Valor Original do Cliente (se for cliente existente) */}
+                                                    {isExistingClient && previousMonthlyFee > 0 && (
+                                                        <>
+                                                            <div className="flex justify-between text-slate-300 bg-slate-800/50 p-2 rounded">
+                                                                <span className="font-medium">💰 Valor Original do Cliente:</span>
+                                                                <span className="font-bold">{formatCurrency(previousMonthlyFee)}</span>
+                                                            </div>
+                                                            <Separator className="my-2 bg-slate-700" />
+                                                        </>
+                                                    )}
+                                                    
                                                     <div className="flex justify-between">
                                                         <span>Valor Original (Mensal):</span>
                                                         <span>{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</span>
@@ -2295,6 +2306,34 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                         <span>Total Mensal {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</span>
                                                         <span className="font-medium">{formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)))}</span>
                                                     </div>
+
+                                                    {/* Diferença de Valor (se for cliente existente) */}
+                                                    {isExistingClient && previousMonthlyFee > 0 && (
+                                                        <>
+                                                            <Separator className="my-2 bg-slate-700" />
+                                                            <div className={`flex justify-between p-3 rounded-lg ${
+                                                                applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                    ? 'bg-red-900/30 border border-red-700/50'
+                                                                    : 'bg-green-900/30 border border-green-700/50'
+                                                            }`}>
+                                                                <span className="font-bold text-white">📊 Diferença de Valor:</span>
+                                                                <span className={`font-bold text-lg ${
+                                                                    applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                        ? 'text-red-400'
+                                                                        : 'text-green-400'
+                                                                }`}>
+                                                                    {applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                    {formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-xs text-slate-400 text-center">
+                                                                {applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                    ? '⬆️ Aumento na mensalidade'
+                                                                    : '⬇️ Economia na mensalidade'
+                                                                }
+                                                            </div>
+                                                        </>
+                                                    )}
 
                                                     <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-700">
                                                         <span>Total Anual {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</span>
