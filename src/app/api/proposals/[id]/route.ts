@@ -164,7 +164,7 @@ export async function PUT(
      * - Manter histórico de descontos aplicados
      * - Calcular descontos corretamente na visualização
      */
-    if (body.metadata !== undefined || body.applySalespersonDiscount !== undefined || body.appliedDirectorDiscountPercentage !== undefined) {
+    if (body.metadata !== undefined || body.applySalespersonDiscount !== undefined || body.appliedDirectorDiscountPercentage !== undefined || body.isExistingClient !== undefined || body.previousMonthlyFee !== undefined) {
       const currentMetadata = existingProposal.metadata as any || {}
       dataToUpdate.metadata = {
         ...currentMetadata,
@@ -172,7 +172,9 @@ export async function PUT(
         applySalespersonDiscount: body.applySalespersonDiscount !== undefined ? body.applySalespersonDiscount : currentMetadata.applySalespersonDiscount,
         appliedDirectorDiscountPercentage: body.appliedDirectorDiscountPercentage !== undefined ? body.appliedDirectorDiscountPercentage : currentMetadata.appliedDirectorDiscountPercentage,
         baseTotalMonthly: body.baseTotalMonthly !== undefined ? body.baseTotalMonthly : currentMetadata.baseTotalMonthly,
-        changes: body.changes !== undefined ? body.changes : currentMetadata.changes
+        changes: body.changes !== undefined ? body.changes : currentMetadata.changes,
+        isExistingClient: body.isExistingClient !== undefined ? body.isExistingClient : currentMetadata.isExistingClient,
+        previousMonthlyFee: body.previousMonthlyFee !== undefined ? body.previousMonthlyFee : currentMetadata.previousMonthlyFee
       }
     }
 
@@ -197,14 +199,16 @@ export async function PUT(
 
     console.log('✅ Proposta atualizada:', updatedProposal.id)
 
-    // Extrair descontos do metadata para retornar
+    // Extrair descontos e dados de cliente existente do metadata para retornar
     const metadata = updatedProposal.metadata as any || {}
     const proposalWithDiscounts = {
       ...updatedProposal,
       applySalespersonDiscount: metadata.applySalespersonDiscount || false,
       appliedDirectorDiscountPercentage: metadata.appliedDirectorDiscountPercentage || 0,
       baseTotalMonthly: metadata.baseTotalMonthly || updatedProposal.total_monthly,
-      changes: metadata.changes || null
+      changes: metadata.changes || null,
+      isExistingClient: metadata.isExistingClient || false,
+      previousMonthlyFee: metadata.previousMonthlyFee || 0
     }
 
     return NextResponse.json({

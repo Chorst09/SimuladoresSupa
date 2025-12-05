@@ -1788,7 +1788,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                 })()}
                                 
                                 {/* Valor Original do Cliente (se for cliente existente) */}
-                                {currentProposal.isExistingClient && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
+                                {(currentProposal.isExistingClient || currentProposal.previousMonthlyFee) && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
                                     <>
                                         <div className="flex justify-between items-center py-3 border-b border-slate-600">
                                             <span className="text-base flex items-center">
@@ -1816,7 +1816,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                 </div>
 
                                 {/* Diferença de Valor (se for cliente existente) */}
-                                {currentProposal.isExistingClient && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
+                                {(currentProposal.isExistingClient || currentProposal.previousMonthlyFee) && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
                                     <>
                                         <div className={`mt-4 p-4 rounded-lg border-2 ${
                                             (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0

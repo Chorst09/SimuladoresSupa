@@ -108,7 +108,10 @@ export async function GET(request: NextRequest) {
         applySalespersonDiscount: metadata.applySalespersonDiscount || false,
         appliedDirectorDiscountPercentage: metadata.appliedDirectorDiscountPercentage || 0,
         baseTotalMonthly: metadata.baseTotalMonthly || p.total_monthly,
-        changes: metadata.changes || null
+        changes: metadata.changes || null,
+        // Incluir dados de cliente existente do metadata
+        isExistingClient: metadata.isExistingClient || false,
+        previousMonthlyFee: metadata.previousMonthlyFee || 0
       }
     })
 
@@ -203,13 +206,15 @@ export async function POST(request: NextRequest) {
       console.log('🆔 Novo base_id gerado:', finalBaseId)
     }
 
-    // Construir metadata com descontos
+    // Construir metadata com descontos e dados de cliente existente
     const metadataToSave = {
       ...(metadata || {}),
       applySalespersonDiscount: body.applySalespersonDiscount || false,
       appliedDirectorDiscountPercentage: body.appliedDirectorDiscountPercentage || 0,
       baseTotalMonthly: body.baseTotalMonthly || total_monthly || totalMonthly || 0,
-      changes: body.changes || null
+      changes: body.changes || null,
+      isExistingClient: body.isExistingClient || false,
+      previousMonthlyFee: body.previousMonthlyFee || 0
     }
     
     console.log('💾 Salvando metadata:', metadataToSave)
