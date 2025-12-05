@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
         baseTotalMonthly: metadata.baseTotalMonthly || p.total_monthly,
         changes: metadata.changes || null,
         // Incluir dados de cliente existente do metadata
-        isExistingClient: metadata.isExistingClient || false,
-        previousMonthlyFee: metadata.previousMonthlyFee || 0
+        isExistingClient: metadata.isExistingClient !== undefined ? metadata.isExistingClient : false,
+        previousMonthlyFee: metadata.previousMonthlyFee !== undefined ? metadata.previousMonthlyFee : 0
       }
     })
 
