@@ -1189,6 +1189,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    isExistingClient: isExistingClient,
+                    previousMonthlyFee: previousMonthlyFee,
                     userId: user.id,
                     changes: proposalChanges
                 };
@@ -1322,6 +1324,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    isExistingClient: isExistingClient,
+                    previousMonthlyFee: previousMonthlyFee,
                     changes: proposalChanges
                 };
 
@@ -1415,6 +1419,14 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         // Load status and changes
         setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
         setProposalChanges(proposal.changes || '');
+
+        // Carregar dados de cliente existente
+        if (proposal.isExistingClient !== undefined) {
+            setIsExistingClient(proposal.isExistingClient);
+        }
+        if (proposal.previousMonthlyFee !== undefined) {
+            setPreviousMonthlyFee(proposal.previousMonthlyFee);
+        }
 
         setViewMode('proposal-summary');
     };
@@ -1918,16 +1930,63 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 </div>
                             )}
 
-                            <div className="space-y-2 text-sm mb-4">
-                                <div className="flex justify-between">
-                                    <span><strong>Total de Instalação:</strong></span>
-                                    <span className="font-semibold">{formatCurrency(currentProposal.totalSetup || 0)}</span>
+                            {/* Seção de Resumo Financeiro com Cliente Existente */}
+                            {currentProposal?.isExistingClient && currentProposal?.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 ? (
+                                <div className="p-4 bg-slate-800 rounded-lg space-y-3 mb-4">
+                                    <div className="flex justify-between items-center pb-3 border-b border-slate-700">
+                                        <span className="font-bold text-white">💰 Valor Original do Cliente:</span>
+                                        <span className="font-bold text-2xl text-white">{formatCurrency(currentProposal.previousMonthlyFee)}</span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between text-white">
+                                        <span><strong>Valor Original (Mensal):</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between text-white">
+                                        <span><strong>Total de Instalação:</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal.totalSetup || 0)}</span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between text-white">
+                                        <span><strong>Total Mensal (com desconto):</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                    </div>
+                                    
+                                    <div className={`flex justify-between items-center p-3 rounded-lg mt-2 ${
+                                        (currentProposal?.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                            ? 'bg-red-900/40 border-2 border-red-600'
+                                            : 'bg-green-900/40 border-2 border-green-600'
+                                    }`}>
+                                        <span className="font-bold text-white">📊 Diferença de Valor:</span>
+                                        <span className={`font-bold text-2xl ${
+                                            (currentProposal?.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                ? 'text-red-400'
+                                                : 'text-green-400'
+                                        }`}>
+                                            {(currentProposal?.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '+' : ''}
+                                            {formatCurrency((currentProposal?.totalMonthly || 0) - currentProposal.previousMonthlyFee)}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 text-center">
+                                        {(currentProposal?.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                            ? '⬆️ Aumento na mensalidade'
+                                            : '⬇️ Economia na mensalidade'
+                                        }
+                                    </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span><strong>Total Mensal (com desconto):</strong></span>
-                                    <span className="font-semibold">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                            ) : (
+                                <div className="space-y-2 text-sm mb-4">
+                                    <div className="flex justify-between">
+                                        <span><strong>Total de Instalação:</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal.totalSetup || 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span><strong>Total Mensal (com desconto):</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
                         {/* Payback Info se disponível */}
@@ -2118,7 +2177,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 id="custoFibra"
                                                 type="text"
                                                 value={(result?.cost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                onChange={(e) => handleCustoManChange(e.target.value)}
+                                                onChange={(e) => handleCustoManChange(parseFloat(e.target.value.replace(/[^0-9,.]/g, '').replace(',', '.')) || 0)}
                                                 className="bg-slate-800 border-slate-700 text-white"
                                             />
                                         </div>
@@ -2361,6 +2420,17 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
                                                 <Separator className="my-4 bg-slate-700" />
                                                 <div className="space-y-2">
+                                                    {/* Valor Original do Cliente (se for cliente existente) */}
+                                                    {isExistingClient && previousMonthlyFee > 0 && (
+                                                        <>
+                                                            <div className="flex justify-between text-slate-300 bg-slate-800/50 p-2 rounded">
+                                                                <span className="font-medium">💰 Valor Original do Cliente:</span>
+                                                                <span className="font-bold">{formatCurrency(previousMonthlyFee)}</span>
+                                                            </div>
+                                                            <Separator className="my-2 bg-slate-700" />
+                                                        </>
+                                                    )}
+                                                    
                                                     <div className="flex justify-between">
                                                         <span>Valor Original (Mensal):</span>
                                                         <span>{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</span>
@@ -2385,6 +2455,34 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         <span>Total Mensal {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</span>
                                                         <span className="font-medium">{formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)))}</span>
                                                     </div>
+
+                                                    {/* Diferença de Valor (se for cliente existente) */}
+                                                    {isExistingClient && previousMonthlyFee > 0 && (
+                                                        <>
+                                                            <Separator className="my-2 bg-slate-700" />
+                                                            <div className={`flex justify-between p-3 rounded-lg ${
+                                                                applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                    ? 'bg-red-900/30 border border-red-700/50'
+                                                                    : 'bg-green-900/30 border border-green-700/50'
+                                                            }`}>
+                                                                <span className="font-bold text-white">📊 Diferença de Valor:</span>
+                                                                <span className={`font-bold text-lg ${
+                                                                    applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                        ? 'text-red-400'
+                                                                        : 'text-green-400'
+                                                                }`}>
+                                                                    {applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                    {formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-xs text-slate-400 text-center">
+                                                                {applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                    ? '⬆️ Aumento na mensalidade'
+                                                                    : '⬇️ Economia na mensalidade'
+                                                                }
+                                                            </div>
+                                                        </>
+                                                    )}
 
                                                     <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-700">
                                                         <span>Total Anual {(applySalespersonDiscount || appliedDirectorDiscountPercentage > 0) ? '(com desconto)' : ''}:</span>
@@ -2916,7 +3014,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 <Label htmlFor="simples-nacional-rate">Simples Nacional (%)</Label>
                                                 <Input
                                                     id="simples-nacional-rate"
-                                                    type="number" step="0.01"
+                                                    type="number"
                                                     step="0.01"
                                                     value={taxRates.simplesNacional.toFixed(2)}
                                                     onChange={(e) => {
@@ -2930,7 +3028,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 <Label htmlFor="banda-rate">Banda (%)</Label>
                                                 <Input
                                                     id="banda-rate"
-                                                    type="number" step="0.01"
+                                                    type="number"
                                                     step="0.01"
                                                     value={taxRates.banda.toFixed(2)}
                                                     onChange={(e) => {
@@ -2944,7 +3042,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 <Label htmlFor="custo-desp-rate">Custo/Desp (%)</Label>
                                                 <Input
                                                     id="custo-desp-rate"
-                                                    type="number" step="0.01"
+                                                    type="number"
                                                     step="0.01"
                                                     value={taxRates.custoDesp.toFixed(2)}
                                                     onChange={(e) => {
@@ -3147,7 +3245,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                                 <Input type="number" step="0.01" value={plan.installationCost || ''} onChange={(e) => handlePriceChange(index, 'installationCost', e.target.value)} placeholder="0.00" className="text-right bg-slate-800 border-slate-700" />
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input type="number" step="0.01" value={plan.cost || ''} onChange={(e) => handleCustoManChange(e.target.value)} placeholder="0.00" className="text-right bg-slate-800 border-slate-700" />
+                                                                <Input type="number" step="0.01" value={plan.cost || ''} onChange={(e) => handleCustoManChange(parseFloat(e.target.value) || 0)} placeholder="0.00" className="text-right bg-slate-800 border-slate-700" />
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}

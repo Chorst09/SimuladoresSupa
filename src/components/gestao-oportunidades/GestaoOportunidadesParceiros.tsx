@@ -702,11 +702,11 @@ function DetalhesModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-slate-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Detalhes da Oportunidade</h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">
+            <h2 className="text-2xl font-bold text-white">Detalhes da Oportunidade</h2>
+            <button onClick={onClose} className="text-gray-300 hover:text-white text-2xl">
               ×
             </button>
           </div>
@@ -714,20 +714,20 @@ function DetalhesModal({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-500">Fabricante</label>
-                <p className="font-medium">{oportunidade.nome_fabricante}</p>
+                <label className="block text-sm font-medium text-gray-400">Fabricante</label>
+                <p className="font-medium text-white">{oportunidade.nome_fabricante}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-500">Nº Oportunidade</label>
-                <p className="font-medium">{oportunidade.numero_oportunidade_ext}</p>
+                <label className="block text-sm font-medium text-gray-400">Nº Oportunidade</label>
+                <p className="font-medium text-white">{oportunidade.numero_oportunidade_ext}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-500">Cliente</label>
-                <p className="font-medium">{oportunidade.cliente_nome}</p>
+                <label className="block text-sm font-medium text-gray-400">Cliente</label>
+                <p className="font-medium text-white">{oportunidade.cliente_nome}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-500">Valor</label>
-                <p className="font-medium text-green-600">
+                <label className="block text-sm font-medium text-gray-400">Valor</label>
+                <p className="font-medium text-green-400">
                   {new Intl.NumberFormat('pt-BR', {
                     style: 'currency',
                     currency: 'BRL',
@@ -737,29 +737,29 @@ function DetalhesModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-500">Contato</label>
-              <p className="font-medium">{oportunidade.contato_nome}</p>
-              <p className="text-sm text-gray-500">{oportunidade.contato_email}</p>
+              <label className="block text-sm font-medium text-gray-400">Contato</label>
+              <p className="font-medium text-white">{oportunidade.contato_nome}</p>
+              <p className="text-sm text-gray-300">{oportunidade.contato_email}</p>
               {oportunidade.contato_telefone && (
-                <p className="text-sm text-gray-500">{oportunidade.contato_telefone}</p>
+                <p className="text-sm text-gray-300">{oportunidade.contato_telefone}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-500">Produto</label>
-              <p className="font-medium">{oportunidade.produto_descricao}</p>
+              <label className="block text-sm font-medium text-gray-400">Produto</label>
+              <p className="font-medium text-white">{oportunidade.produto_descricao}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-500">Data de Criação</label>
-                <p className="font-medium">
+                <label className="block text-sm font-medium text-gray-400">Data de Criação</label>
+                <p className="font-medium text-white">
                   {new Date(oportunidade.data_criacao).toLocaleDateString('pt-BR')}
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-500">Data de Expiração</label>
-                <p className="font-medium">
+                <label className="block text-sm font-medium text-gray-400">Data de Expiração</label>
+                <p className="font-medium text-white">
                   {new Date(oportunidade.data_expiracao).toLocaleDateString('pt-BR')}
                 </p>
               </div>
@@ -767,17 +767,17 @@ function DetalhesModal({
 
             {oportunidade.observacoes && (
               <div>
-                <label className="block text-sm font-medium text-gray-500">Observações</label>
-                <p className="font-medium">{oportunidade.observacoes}</p>
+                <label className="block text-sm font-medium text-gray-400">Observações</label>
+                <p className="font-medium text-white">{oportunidade.observacoes}</p>
               </div>
             )}
 
             {canEdit ? (
-              <div className="border-t pt-4">
-                <label className="block text-sm font-medium mb-2">Atualizar Status</label>
+              <div className="border-t border-slate-700 pt-4">
+                <label className="block text-sm font-medium text-white mb-2">Atualizar Status</label>
                 <div className="space-y-3">
                   <select
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
                     value={novoStatus}
                     onChange={(e) => setNovoStatus(e.target.value)}
                   >
@@ -788,7 +788,7 @@ function DetalhesModal({
                     ))}
                   </select>
                   <textarea
-                    className="w-full border rounded px-3 py-2"
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white placeholder-gray-400"
                     rows={2}
                     placeholder="Observações sobre a mudança de status"
                     value={observacoes}
@@ -797,16 +797,16 @@ function DetalhesModal({
                   <button
                     onClick={() => onAtualizarStatus(oportunidade.id, novoStatus, observacoes)}
                     disabled={novoStatus === oportunidade.status}
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
                   >
                     Atualizar Status
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="border-t pt-4">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                  <p className="text-sm text-yellow-800">
+              <div className="border-t border-slate-700 pt-4">
+                <div className="bg-yellow-900/30 border border-yellow-600 rounded-lg p-4 text-center">
+                  <p className="text-sm text-yellow-300">
                     ℹ️ Você não tem permissão para editar esta oportunidade
                   </p>
                 </div>
@@ -815,30 +815,30 @@ function DetalhesModal({
 
             {/* Histórico */}
             {oportunidade.historico && oportunidade.historico.length > 0 && (
-              <div className="border-t pt-4">
-                <label className="block text-sm font-medium mb-2">Histórico de Mudanças</label>
+              <div className="border-t border-slate-700 pt-4">
+                <label className="block text-sm font-medium text-white mb-2">Histórico de Mudanças</label>
                 <div className="space-y-2">
                   {oportunidade.historico.map((hist) => (
-                    <div key={hist.id} className="bg-gray-50 p-3 rounded text-sm">
-                      <p>
-                        <span className="font-medium">
+                    <div key={hist.id} className="bg-slate-700 p-3 rounded text-sm">
+                      <p className="text-white">
+                        <span className="font-medium text-blue-400">
                           {hist.usuario.profile?.full_name || hist.usuario.email}
                         </span>{' '}
                         alterou de{' '}
-                        <span className="font-medium">
+                        <span className="font-medium text-orange-400">
                           {hist.status_anterior
                             ? STATUS_MAP[hist.status_anterior as keyof typeof STATUS_MAP].label
                             : 'N/A'}
                         </span>{' '}
                         para{' '}
-                        <span className="font-medium">
+                        <span className="font-medium text-green-400">
                           {STATUS_MAP[hist.status_novo as keyof typeof STATUS_MAP].label}
                         </span>
                       </p>
-                      <p className="text-gray-500">
+                      <p className="text-gray-400">
                         {new Date(hist.created_at).toLocaleString('pt-BR')}
                       </p>
-                      {hist.observacoes && <p className="mt-1">{hist.observacoes}</p>}
+                      {hist.observacoes && <p className="mt-1 text-gray-300">{hist.observacoes}</p>}
                     </div>
                   ))}
                 </div>

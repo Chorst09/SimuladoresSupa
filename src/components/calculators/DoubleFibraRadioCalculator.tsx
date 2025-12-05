@@ -1068,6 +1068,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    isExistingClient: isExistingClient,
+                    previousMonthlyFee: previousMonthlyFee,
                     userId: user.id,
                     changes: proposalChanges
                 };
@@ -1201,6 +1203,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    isExistingClient: isExistingClient,
+                    previousMonthlyFee: previousMonthlyFee,
                     changes: proposalChanges
                 };
 
@@ -1298,6 +1302,14 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         // Load status and changes
         setSelectedStatus(proposal.status || 'Aguardando Aprovação do Cliente');
         setProposalChanges(proposal.changes || '');
+
+        // Carregar dados de cliente existente
+        if (proposal.isExistingClient !== undefined) {
+            setIsExistingClient(proposal.isExistingClient);
+        }
+        if (proposal.previousMonthlyFee !== undefined) {
+            setPreviousMonthlyFee(proposal.previousMonthlyFee);
+        }
 
         setViewMode('proposal-summary');
     };
@@ -1824,16 +1836,63 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                 </div>
                             )}
 
-                            <div className="space-y-2 text-sm mb-4">
-                                <div className="flex justify-between">
-                                    <span><strong>Total de Instalação:</strong></span>
-                                    <span className="font-semibold">{formatCurrency(currentProposal?.totalSetup || 0)}</span>
+                            {/* Seção de Resumo Financeiro com Cliente Existente */}
+                            {currentProposal?.isExistingClient && currentProposal?.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 ? (
+                                <div className="p-4 bg-slate-800 rounded-lg space-y-3 mb-4">
+                                    <div className="flex justify-between items-center pb-3 border-b border-slate-700">
+                                        <span className="font-bold text-white">💰 Valor Original do Cliente:</span>
+                                        <span className="font-bold text-2xl text-white">{formatCurrency(currentProposal.previousMonthlyFee)}</span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between text-white">
+                                        <span><strong>Valor Original (Mensal):</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal.baseTotalMonthly || currentProposal.totalMonthly || 0)}</span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between text-white">
+                                        <span><strong>Total de Instalação:</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal?.totalSetup || 0)}</span>
+                                    </div>
+                                    
+                                    <div className="flex justify-between text-white">
+                                        <span><strong>Total Mensal (com desconto):</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal?.totalMonthly || 0)}</span>
+                                    </div>
+                                    
+                                    <div className={`flex justify-between items-center p-3 rounded-lg mt-2 ${
+                                        (currentProposal?.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                            ? 'bg-red-900/40 border-2 border-red-600'
+                                            : 'bg-green-900/40 border-2 border-green-600'
+                                    }`}>
+                                        <span className="font-bold text-white">📊 Diferença de Valor:</span>
+                                        <span className={`font-bold text-2xl ${
+                                            (currentProposal?.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                ? 'text-red-400'
+                                                : 'text-green-400'
+                                        }`}>
+                                            {(currentProposal?.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '+' : ''}
+                                            {formatCurrency((currentProposal?.totalMonthly || 0) - currentProposal.previousMonthlyFee)}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 text-center">
+                                        {(currentProposal?.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                            ? '⬆️ Aumento na mensalidade'
+                                            : '⬇️ Economia na mensalidade'
+                                        }
+                                    </div>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span><strong>Total Mensal (com desconto):</strong></span>
-                                    <span className="font-semibold">{formatCurrency(currentProposal?.totalMonthly || 0)}</span>
+                            ) : (
+                                <div className="space-y-2 text-sm mb-4">
+                                    <div className="flex justify-between">
+                                        <span><strong>Total de Instalação:</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal?.totalSetup || 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span><strong>Total Mensal (com desconto):</strong></span>
+                                        <span className="font-semibold">{formatCurrency(currentProposal?.totalMonthly || 0)}</span>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
                         {/* Payback Info se disponível */}
@@ -2793,7 +2852,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                 <Label htmlFor="pis-rate">Simples Nacional (%)</Label>
                                                 <Input
                                                     id="pis-rate"
-                                                    type="number" step="0.01"
+                                                    type="number"
                                                     step="0.01"
                                                     value={taxRates.simplesNacional.toFixed(2)}
                                                     onChange={(e) => {
@@ -2807,7 +2866,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                 <Label htmlFor="banda-rate">Banda (%)</Label>
                                                 <Input
                                                     id="banda-rate"
-                                                    type="number" step="0.01"
+                                                    type="number"
                                                     step="0.01"
                                                     value={taxRates.banda.toFixed(2)}
                                                     onChange={(e) => {
@@ -2821,7 +2880,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                                 <Label htmlFor="custo-desp-rate">Custo/Desp (%)</Label>
                                                 <Input
                                                     id="custo-desp-rate"
-                                                    type="number" step="0.01"
+                                                    type="number"
                                                     step="0.01"
                                                     value={taxRates.custoDesp.toFixed(2)}
                                                     onChange={(e) => {
