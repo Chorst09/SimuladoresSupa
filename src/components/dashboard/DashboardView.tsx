@@ -7,7 +7,7 @@ import { Proposal, Partner } from '@/lib/types';
 import ProposalsView from '@/components/proposals/ProposalsView';
 import StatCard from './StatCard';
 import { Phone, Server, Wifi, Radio, Calculator, ChevronRight, TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface CalculatorCardProps {
   title: string;
@@ -80,7 +80,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Contar propostas por tipo
+  // Contar propostas por tipo (agrupando por baseId para contar versões como 1 proposta)
   const countProposalsByType = useMemo(() => {
     const counts = {
       pabx: 0,
@@ -94,20 +94,34 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
+    // Agrupar propostas por baseId (para contar versões como 1 proposta)
+    const uniqueBaseIds = new Set<string>();
+    
     proposals.forEach(proposal => {
       const proposalDate = new Date(proposal.date);
       if (proposalDate.getMonth() === currentMonth && proposalDate.getFullYear() === currentYear) {
-        if (proposal.baseId?.startsWith('Prop_PabxSip_')) {
+        // Usar baseId para identificar propostas únicas (independente da versão)
+        const baseId = proposal.baseId || proposal.id;
+        
+        // Se já contamos essa proposta (baseId), pular
+        if (uniqueBaseIds.has(baseId)) {
+          return;
+        }
+        
+        uniqueBaseIds.add(baseId);
+        
+        // Contar por tipo
+        if (baseId.startsWith('Prop_PabxSip_')) {
           counts.pabx++;
-        } else if (proposal.baseId?.startsWith('Prop_MV_')) {
+        } else if (baseId.startsWith('Prop_MV_')) {
           counts.maquinasVirtuais++;
-        } else if (proposal.baseId?.startsWith('Prop_InternetFibra_')) {
+        } else if (baseId.startsWith('Prop_InternetFibra_')) {
           counts.fibra++;
-        } else if (proposal.baseId?.startsWith('Prop_Double_')) {
+        } else if (baseId.startsWith('Prop_Double_')) {
           counts.doubleFibraRadio++;
-        } else if (proposal.baseId?.startsWith('Prop_ManFibra_')) {
+        } else if (baseId.startsWith('Prop_ManFibra_')) {
           counts.man++;
-        } else if (proposal.baseId?.startsWith('Prop_ManRadio_')) {
+        } else if (baseId.startsWith('Prop_ManRadio_')) {
           counts.manRadio++;
         }
       }
