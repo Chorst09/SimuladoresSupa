@@ -94,38 +94,66 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
+    console.log('📊 Contando propostas - Mês atual:', currentMonth, 'Ano:', currentYear);
+    console.log('📊 Total de propostas:', proposals.length);
+    
     // Agrupar propostas por baseId (para contar versões como 1 proposta)
     const uniqueBaseIds = new Set<string>();
     
     proposals.forEach(proposal => {
       const proposalDate = new Date(proposal.date);
-      if (proposalDate.getMonth() === currentMonth && proposalDate.getFullYear() === currentYear) {
+      const proposalMonth = proposalDate.getMonth();
+      const proposalYear = proposalDate.getFullYear();
+      
+      console.log('📅 Proposta:', proposal.baseId, 'Data:', proposal.date, 'Mês:', proposalMonth, 'Ano:', proposalYear);
+      
+      if (proposalMonth === currentMonth && proposalYear === currentYear) {
         // Usar baseId para identificar propostas únicas (independente da versão)
         const baseId = proposal.baseId || proposal.id;
         
+        console.log('✅ Proposta do mês atual:', baseId);
+        
         // Se já contamos essa proposta (baseId), pular
         if (uniqueBaseIds.has(baseId)) {
+          console.log('⏭️ Proposta já contada (versão duplicada):', baseId);
           return;
         }
         
         uniqueBaseIds.add(baseId);
         
-        // Contar por tipo
+        // Contar por tipo (aceitar múltiplos formatos de baseId)
         if (baseId.startsWith('Prop_PabxSip_')) {
           counts.pabx++;
+          console.log('📞 PABX/SIP:', counts.pabx);
         } else if (baseId.startsWith('Prop_MV_')) {
           counts.maquinasVirtuais++;
-        } else if (baseId.startsWith('Prop_InternetFibra_')) {
+          console.log('💻 Máquinas Virtuais:', counts.maquinasVirtuais);
+        } else if (baseId.startsWith('Prop_InternetFibra_') || baseId.startsWith('Prop_Inter_Fibra_')) {
           counts.fibra++;
-        } else if (baseId.startsWith('Prop_Double_')) {
+          console.log('🌐 Internet Fibra:', counts.fibra);
+        } else if (baseId.startsWith('Prop_Double_') || baseId.startsWith('Prop_Inter_Double_')) {
           counts.doubleFibraRadio++;
-        } else if (baseId.startsWith('Prop_ManFibra_')) {
+          console.log('📡 Double Fibra/Radio:', counts.doubleFibraRadio);
+        } else if (baseId.startsWith('Prop_ManFibra_') || baseId.startsWith('Prop_Inter_Man_')) {
           counts.man++;
-        } else if (baseId.startsWith('Prop_ManRadio_')) {
+          console.log('🔗 Man Fibra:', counts.man);
+        } else if (baseId.startsWith('Prop_ManRadio_') || baseId.startsWith('Prop_InterMan_Radio_')) {
           counts.manRadio++;
+          console.log('📻 Man Radio:', counts.manRadio);
+        } else if (baseId.startsWith('Prop_InternetRadio_') || baseId.startsWith('Prop_Inter_Radio_')) {
+          // Internet Radio não tinha categoria própria, vou adicionar ao contador de fibra por enquanto
+          // ou criar uma nova categoria se necessário
+          counts.fibra++;
+          console.log('📻 Internet Radio (contado como Fibra):', counts.fibra);
+        } else {
+          console.log('❓ Tipo não reconhecido:', baseId);
         }
+      } else {
+        console.log('❌ Proposta fora do mês atual');
       }
     });
+    
+    console.log('📊 Contagem final:', counts);
     
     return counts;
   }, [proposals]);
@@ -180,7 +208,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
             title: title,
             client: data.client || 'N/A',
             type: data.type || 'standard',
-            value: data.value || 0,
+            value: parseFloat(data.value) || 0,
             status: data.status || 'Rascunho',
             createdBy: data.createdBy || 'N/A',
             accountManager: data.accountManager || 'N/A',
