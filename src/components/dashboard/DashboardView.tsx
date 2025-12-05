@@ -158,6 +158,59 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
     return counts;
   }, [proposals]);
 
+  // Calcular valores totais por tipo de calculadora
+  const valuesByType = useMemo(() => {
+    const values = {
+      pabx: 0,
+      maquinasVirtuais: 0,
+      fibra: 0,
+      doubleFibraRadio: 0,
+      man: 0,
+      manRadio: 0
+    };
+    
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    // Agrupar por baseId para evitar contar versões duplicadas
+    const processedBaseIds = new Set<string>();
+    
+    proposals.forEach(proposal => {
+      const proposalDate = new Date(proposal.date);
+      if (proposalDate.getMonth() === currentMonth && proposalDate.getFullYear() === currentYear) {
+        const baseId = proposal.baseId || proposal.id;
+        
+        // Se já processamos essa proposta (baseId), pular
+        if (processedBaseIds.has(baseId)) {
+          return;
+        }
+        
+        processedBaseIds.add(baseId);
+        
+        const value = proposal.value || 0;
+        
+        // Somar valores por tipo
+        if (baseId.startsWith('Prop_PabxSip_')) {
+          values.pabx += value;
+        } else if (baseId.startsWith('Prop_MV_')) {
+          values.maquinasVirtuais += value;
+        } else if (baseId.startsWith('Prop_InternetFibra_') || baseId.startsWith('Prop_Inter_Fibra_') || baseId.startsWith('Prop_InternetRadio_') || baseId.startsWith('Prop_Inter_Radio_')) {
+          values.fibra += value;
+        } else if (baseId.startsWith('Prop_Double_') || baseId.startsWith('Prop_Inter_Double_')) {
+          values.doubleFibraRadio += value;
+        } else if (baseId.startsWith('Prop_ManFibra_') || baseId.startsWith('Prop_Inter_Man_')) {
+          values.man += value;
+        } else if (baseId.startsWith('Prop_ManRadio_') || baseId.startsWith('Prop_InterMan_Radio_')) {
+          values.manRadio += value;
+        }
+      }
+    });
+    
+    console.log('💰 Valores por tipo:', values);
+    
+    return values;
+  }, [proposals]);
+
   useEffect(() => {
     const fetchProposals = async () => {
       if (!user) return;
@@ -443,7 +496,7 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
           />
         </div>
 
-        {/* Gráficos */}
+        {/* Gráficos - Linha 1: Quantidade de Propostas */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Gráfico de Barras - Propostas por Tipo */}
           <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl border border-slate-700/50 p-6">
@@ -522,6 +575,93 @@ const DashboardView = ({ onNavigateToCalculator }: DashboardViewProps) => {
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px' }}
                   labelStyle={{ color: '#f1f5f9' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Gráficos - Linha 2: Valores por Calculadora */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Gráfico de Barras - Valores por Calculadora */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl border border-slate-700/50 p-6">
+            <div className="flex items-center mb-4">
+              <TrendingUp className="w-6 h-6 text-emerald-400 mr-2" />
+              <h3 className="text-xl font-bold text-white">Valores por Calculadora</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={[
+                { name: 'PABX/SIP', value: valuesByType.pabx, fill: '#3b82f6' },
+                { name: 'Máq. Virtuais', value: valuesByType.maquinasVirtuais, fill: '#a855f7' },
+                { name: 'Internet Fibra', value: valuesByType.fibra, fill: '#22c55e' },
+                { name: 'Double Fibra/Radio', value: valuesByType.doubleFibraRadio, fill: '#ef4444' },
+                { name: 'MAN Fibra', value: valuesByType.man, fill: '#06b6d4' },
+                { name: 'MAN Radio', value: valuesByType.manRadio, fill: '#f97316' },
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="name" stroke="#9ca3af" angle={-45} textAnchor="end" height={80} />
+                <YAxis stroke="#9ca3af" tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px' }}
+                  labelStyle={{ color: '#f1f5f9' }}
+                  formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Valor']}
+                />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  {[
+                    { name: 'PABX/SIP', value: valuesByType.pabx, fill: '#3b82f6' },
+                    { name: 'Máq. Virtuais', value: valuesByType.maquinasVirtuais, fill: '#a855f7' },
+                    { name: 'Internet Fibra', value: valuesByType.fibra, fill: '#22c55e' },
+                    { name: 'Double Fibra/Radio', value: valuesByType.doubleFibraRadio, fill: '#ef4444' },
+                    { name: 'MAN Fibra', value: valuesByType.man, fill: '#06b6d4' },
+                    { name: 'MAN Radio', value: valuesByType.manRadio, fill: '#f97316' },
+                  ].map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Gráfico de Pizza - Distribuição de Valores */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl border border-slate-700/50 p-6">
+            <div className="flex items-center mb-4">
+              <PieChartIcon className="w-6 h-6 text-emerald-400 mr-2" />
+              <h3 className="text-xl font-bold text-white">Distribuição de Valores</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'PABX/SIP', value: valuesByType.pabx, fill: '#3b82f6' },
+                    { name: 'Máq. Virtuais', value: valuesByType.maquinasVirtuais, fill: '#a855f7' },
+                    { name: 'Internet Fibra', value: valuesByType.fibra, fill: '#22c55e' },
+                    { name: 'Double Fibra/Radio', value: valuesByType.doubleFibraRadio, fill: '#ef4444' },
+                    { name: 'MAN Fibra', value: valuesByType.man, fill: '#06b6d4' },
+                    { name: 'MAN Radio', value: valuesByType.manRadio, fill: '#f97316' },
+                  ].filter(item => item.value > 0)}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent, value }) => `${name}: R$ ${(value / 1000).toFixed(0)}k (${(percent * 100).toFixed(0)}%)`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {[
+                    { name: 'PABX/SIP', value: valuesByType.pabx, fill: '#3b82f6' },
+                    { name: 'Máq. Virtuais', value: valuesByType.maquinasVirtuais, fill: '#a855f7' },
+                    { name: 'Internet Fibra', value: valuesByType.fibra, fill: '#22c55e' },
+                    { name: 'Double Fibra/Radio', value: valuesByType.doubleFibraRadio, fill: '#ef4444' },
+                    { name: 'MAN Fibra', value: valuesByType.man, fill: '#06b6d4' },
+                    { name: 'MAN Radio', value: valuesByType.manRadio, fill: '#f97316' },
+                  ].filter(item => item.value > 0).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px' }}
+                  labelStyle={{ color: '#f1f5f9' }}
+                  formatter={(value: number) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 />
               </PieChart>
             </ResponsiveContainer>
