@@ -1019,6 +1019,11 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     }
                 };
 
+                console.log('🔍 Estados antes de salvar:', {
+                    isExistingClient,
+                    previousMonthlyFee,
+                    metadata: proposalToSave.metadata
+                });
                 console.log('📤 Enviando proposta para API:', proposalToSave);
                 
                 const response = await fetch('/api/proposals', {
@@ -1239,17 +1244,36 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     };
 
     const viewProposal = (proposal: Proposal) => {
+        console.log('🔍 viewProposal - Proposta recebida:', {
+            id: proposal.id,
+            base_id: proposal.base_id,
+            isExistingClient: proposal.isExistingClient,
+            previousMonthlyFee: proposal.previousMonthlyFee,
+            metadata: (proposal as any).metadata
+        });
+        
         // Verificar se os dados estão no metadata
         const metadata = (proposal as any).metadata;
         if (metadata) {
+            console.log('📦 Metadata encontrado:', metadata);
             // Se os dados estiverem no metadata, mover para o nível principal
             if (metadata.isExistingClient !== undefined) {
                 proposal.isExistingClient = metadata.isExistingClient;
+                console.log('✅ Movendo isExistingClient:', metadata.isExistingClient);
             }
             if (metadata.previousMonthlyFee !== undefined) {
                 proposal.previousMonthlyFee = metadata.previousMonthlyFee;
+                console.log('✅ Movendo previousMonthlyFee:', metadata.previousMonthlyFee);
             }
+        } else {
+            console.log('⚠️ Metadata não encontrado');
         }
+        
+        console.log('✅ Proposta carregada - Diferença de Valor:', {
+            isExistingClient: proposal.isExistingClient,
+            previousMonthlyFee: proposal.previousMonthlyFee,
+            shouldShow: (proposal.isExistingClient || proposal.previousMonthlyFee) && proposal.previousMonthlyFee && proposal.previousMonthlyFee > 0
+        });
         
         setCurrentProposal(proposal);
 

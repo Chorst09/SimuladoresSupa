@@ -91,6 +91,14 @@ export async function GET(request: NextRequest) {
       // Extrair descontos do metadata  
       const metadata = p.metadata as any || {}
       
+      // Debug para propostas de Internet Fibra
+      if (p.type === 'FIBER' && p.base_id) {
+        console.log(`📊 Proposta ${p.base_id}:`, {
+          isExistingClient: metadata.isExistingClient,
+          previousMonthlyFee: metadata.previousMonthlyFee
+        });
+      }
+      
       return {
         ...p,
         baseId: p.base_id,
@@ -110,8 +118,10 @@ export async function GET(request: NextRequest) {
         baseTotalMonthly: metadata.baseTotalMonthly || p.total_monthly,
         changes: metadata.changes || null,
         // Incluir dados de cliente existente do metadata
-        isExistingClient: metadata.isExistingClient !== undefined ? metadata.isExistingClient : false,
-        previousMonthlyFee: metadata.previousMonthlyFee !== undefined ? metadata.previousMonthlyFee : 0
+        isExistingClient: metadata.isExistingClient || false,
+        previousMonthlyFee: metadata.previousMonthlyFee || null,
+        // Manter metadata original para compatibilidade
+        metadata: p.metadata
       }
     })
 
@@ -207,16 +217,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Construir metadata com descontos e dados de cliente existente
+    // Priorizar valores do metadata enviado, depois do body
     const metadataToSave = {
-      ...(metadata || {}),
-      applySalespersonDiscount: body.applySalespersonDiscount || false,
-      appliedDirectorDiscountPercentage: body.appliedDirectorDiscountPercentage || 0,
-      baseTotalMonthly: body.baseTotalMonthly || total_monthly || totalMonthly || 0,
-      changes: body.changes || null,
-      isExistingClient: body.isExistingClient || false,
-      previousMonthlyFee: body.previousMonthlyFee || 0
+      applySalespersonDiscount: metadata?.applySalespersonDiscount ?? body.applySalespersonDiscount ?? false,
+      appliedDirectorDiscountPercentage: metadata?.appliedDirectorDiscountPercentage ?? body.appliedDirectorDiscountPercentage ?? 0,
+      baseTotalMonthly: metadata?.baseTotalMonthly ?? body.baseTotalMonthly ?? total_monthly ?? totalMonthly ?? 0,
+      changes: metadata?.changes ?? body.changes ?? null,
+      isExistingClient: metadata?.isExistingClient ?? body.isExistingClient ?? false,
+      previousMonthlyFee: metadata?.previousMonthlyFee ?? body.previousMonthlyFee ?? 0
     }
     
+    console.log('💾 Metadata recebido:', metadata);
     console.log('💾 Salvando metadata:', metadataToSave)
 
     const dataToCreate = {

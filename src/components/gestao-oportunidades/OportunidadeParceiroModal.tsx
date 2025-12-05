@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 
 interface Produto {
@@ -44,6 +44,42 @@ export default function OportunidadeParceiroModal({
   
   const [loading, setLoading] = useState(false);
   
+  // Inicializar produtos quando estiver editando
+  useEffect(() => {
+    if (oportunidade && oportunidade.produto_descricao && oportunidade.valor) {
+      // Tentar parsear produtos da descrição
+      const descricoes = oportunidade.produto_descricao.split(';').map((d: string) => d.trim());
+      const valorPorProduto = oportunidade.valor / descricoes.length;
+      
+      const produtosIniciais = descricoes.map((desc: string) => {
+        // Tentar extrair quantidade da descrição (formato: "Produto (2x)")
+        const match = desc.match(/^(.+?)\s*\((\d+)x\)$/);
+        if (match) {
+          const quantidade = parseInt(match[2]);
+          const valor_unitario = valorPorProduto / quantidade;
+          return {
+            descricao: match[1].trim(),
+            quantidade,
+            valor_unitario,
+            valor_total: valorPorProduto
+          };
+        }
+        
+        // Se não tiver quantidade, assumir 1
+        return {
+          descricao: desc,
+          quantidade: 1,
+          valor_unitario: valorPorProduto,
+          valor_total: valorPorProduto
+        };
+      });
+      
+      setProdutos(produtosIniciais.length > 0 ? produtosIniciais : [
+        { descricao: '', quantidade: 1, valor_unitario: 0, valor_total: 0 }
+      ]);
+    }
+  }, [oportunidade]);
+  
   const calcularValorTotal = () => {
     return produtos.reduce((sum, p) => sum + p.valor_total, 0);
   };
@@ -86,26 +122,37 @@ export default function OportunidadeParceiroModal({
         .map(p => `${p.descricao} (${p.quantidade}x)`)
         .join('; ');
       
+      const valorTotal = calcularValorTotal();
+      
+      const payload = {
+        ...formData,
+        produto_descricao,
+        valor: valorTotal,
+        created_by: user?.id,
+      };
+      
+      console.log('📤 Enviando dados:', payload);
+      console.log('🔢 Valor total calculado:', valorTotal);
+      console.log('📦 Produtos:', produtos);
+      
       const response = await fetch(url, {
         method: oportunidade ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          produto_descricao,
-          valor: calcularValorTotal(),
-          created_by: user?.id,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Resposta do servidor:', result);
         onSuccess();
         onClose();
       } else {
         const error = await response.json();
+        console.error('❌ Erro do servidor:', error);
         alert(error.error || 'Erro ao salvar oportunidade');
       }
     } catch (error) {
-      console.error('Erro:', error);
+      console.error('❌ Erro na requisição:', error);
       alert('Erro ao salvar oportunidade');
     } finally {
       setLoading(false);

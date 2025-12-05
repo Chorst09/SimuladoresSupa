@@ -21,6 +21,9 @@ export async function PATCH(
 
     const { id } = params;
     const body = await request.json();
+    
+    console.log('📝 Atualizando oportunidade:', id);
+    console.log('📥 Dados recebidos:', JSON.stringify(body, null, 2));
 
     // Buscar a oportunidade existente
     const oportunidadeExistente = await prisma.oportunidadeParceiro.findUnique({
@@ -51,18 +54,20 @@ export async function PATCH(
     // Preparar dados para atualização
     const dataToUpdate: any = {};
     
-    if (body.nome_fabricante) dataToUpdate.nome_fabricante = body.nome_fabricante;
-    if (body.numero_oportunidade_ext) dataToUpdate.numero_oportunidade_ext = body.numero_oportunidade_ext;
-    if (body.cliente_nome) dataToUpdate.cliente_nome = body.cliente_nome;
-    if (body.contato_nome) dataToUpdate.contato_nome = body.contato_nome;
-    if (body.contato_email) dataToUpdate.contato_email = body.contato_email;
+    if (body.nome_fabricante !== undefined) dataToUpdate.nome_fabricante = body.nome_fabricante;
+    if (body.numero_oportunidade_ext !== undefined) dataToUpdate.numero_oportunidade_ext = body.numero_oportunidade_ext;
+    if (body.cliente_nome !== undefined) dataToUpdate.cliente_nome = body.cliente_nome;
+    if (body.contato_nome !== undefined) dataToUpdate.contato_nome = body.contato_nome;
+    if (body.contato_email !== undefined) dataToUpdate.contato_email = body.contato_email;
     if (body.contato_telefone !== undefined) dataToUpdate.contato_telefone = body.contato_telefone;
-    if (body.produto_descricao) dataToUpdate.produto_descricao = body.produto_descricao;
+    if (body.produto_descricao !== undefined) dataToUpdate.produto_descricao = body.produto_descricao;
     if (body.valor !== undefined) dataToUpdate.valor = body.valor;
-    if (body.status) dataToUpdate.status = body.status;
+    if (body.status !== undefined) dataToUpdate.status = body.status;
     if (body.gerente_contas !== undefined) dataToUpdate.gerente_contas = body.gerente_contas;
-    if (body.data_expiracao) dataToUpdate.data_expiracao = new Date(body.data_expiracao);
+    if (body.data_expiracao !== undefined) dataToUpdate.data_expiracao = new Date(body.data_expiracao);
     if (body.observacoes !== undefined) dataToUpdate.observacoes = body.observacoes;
+
+    console.log('💾 Dados que serão salvos:', JSON.stringify(dataToUpdate, null, 2));
 
     // Se o status mudou, criar registro no histórico
     if (body.status && body.status !== oportunidadeExistente.status) {
@@ -111,9 +116,12 @@ export async function PATCH(
       },
     });
 
+    console.log('✅ Oportunidade atualizada com sucesso:', oportunidadeAtualizada.id);
     return NextResponse.json(oportunidadeAtualizada);
   } catch (error: any) {
-    console.error('Erro ao atualizar oportunidade:', error);
+    console.error('❌ Erro ao atualizar oportunidade:', error);
+    console.error('Código do erro:', error.code);
+    console.error('Mensagem:', error.message);
     
     if (error.code === 'P2002') {
       return NextResponse.json(
