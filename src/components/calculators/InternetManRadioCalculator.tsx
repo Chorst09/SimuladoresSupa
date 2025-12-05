@@ -897,6 +897,8 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    isExistingClient: isExistingClient,
+                    previousMonthlyFee: previousMonthlyFee,
                     userId: user.id
                 };
 
@@ -949,6 +951,8 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    isExistingClient: isExistingClient,
+                    previousMonthlyFee: previousMonthlyFee,
                     userId: user.id,
                     changes: proposalChanges
                 };
@@ -1017,6 +1021,8 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                         baseTotalMonthly: baseTotalMonthly,
                         applySalespersonDiscount: applySalespersonDiscount,
                         appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                        isExistingClient: isExistingClient,
+                        previousMonthlyFee: previousMonthlyFee,
                         changes: proposalChanges
                     }
                 };
@@ -1090,6 +1096,8 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                     baseTotalMonthly: baseTotalMonthly,
                     applySalespersonDiscount: applySalespersonDiscount,
                     appliedDirectorDiscountPercentage: appliedDirectorDiscountPercentage,
+                    isExistingClient: isExistingClient,
+                    previousMonthlyFee: previousMonthlyFee,
                     changes: proposalChanges
                 };
                 
@@ -1298,6 +1306,16 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
         setApplySalespersonDiscount(finalSalespersonDiscount);
         setAppliedDirectorDiscountPercentage(finalDirectorDiscount);
         setDirectorDiscountPercentage(finalDirectorDiscount);
+
+        // CARREGAR DADOS DE CLIENTE EXISTENTE
+        if (proposal.isExistingClient !== undefined) {
+            setIsExistingClient(Boolean(proposal.isExistingClient));
+            console.log('✅ Cliente existente carregado:', proposal.isExistingClient);
+        }
+        if (proposal.previousMonthlyFee !== undefined) {
+            setPreviousMonthlyFee(Number(proposal.previousMonthlyFee) || 0);
+            console.log('✅ Mensalidade anterior carregada:', proposal.previousMonthlyFee);
+        }
 
         setViewMode('calculator');
     };
@@ -1696,6 +1714,21 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                         <div className="border-t pt-4 print:pt-2">
                             <h3 className="text-lg font-semibold text-gray-900 mb-3">Resumo Financeiro</h3>
 
+                            {/* Valor Original do Cliente (se for cliente existente) */}
+                            {currentProposal.isExistingClient && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
+                                <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-400 rounded-lg">
+                                    <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                                        💰 Valor Original do Cliente
+                                    </h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span><strong>Mensalidade Atual do Cliente:</strong></span>
+                                            <span className="font-bold text-lg text-blue-700">{formatCurrency(currentProposal.previousMonthlyFee)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Descontos Aplicados - Valores detalhados */}
                             {(currentProposal.applySalespersonDiscount || (currentProposal.appliedDirectorDiscountPercentage || 0) > 0) && (
                                 <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded">
@@ -1742,6 +1775,42 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                     <span className="font-semibold">{formatCurrency(currentProposal.totalMonthly || 0)}</span>
                                 </div>
                             </div>
+
+                            {/* Diferença de Valor (se for cliente existente) */}
+                            {currentProposal.isExistingClient && currentProposal.previousMonthlyFee && currentProposal.previousMonthlyFee > 0 && (
+                                <div className={`mb-4 p-4 rounded-lg border-2 ${
+                                    (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                        ? 'bg-red-50 border-red-400'
+                                        : 'bg-green-50 border-green-400'
+                                }`}>
+                                    <h4 className={`font-semibold mb-3 flex items-center ${
+                                        (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                            ? 'text-red-800'
+                                            : 'text-green-800'
+                                    }`}>
+                                        📊 Diferença de Valor
+                                    </h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between items-center">
+                                            <span><strong>Variação na Mensalidade:</strong></span>
+                                            <span className={`font-bold text-xl ${
+                                                (currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                    ? 'text-red-700'
+                                                    : 'text-green-700'
+                                            }`}>
+                                                {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0 ? '+' : ''}
+                                                {formatCurrency((currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee)}
+                                            </span>
+                                        </div>
+                                        <div className="text-center text-xs mt-2">
+                                            {(currentProposal.totalMonthly || 0) - currentProposal.previousMonthlyFee >= 0
+                                                ? '⬆️ Aumento na mensalidade'
+                                                : '⬇️ Economia na mensalidade'
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Payback Info se disponível */}
@@ -2150,6 +2219,17 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                 
                                                 {/* Resumo de Valores - Conforme Print */}
                                                 <div className="space-y-2">
+                                                    {/* Valor Original do Cliente (se for cliente existente) */}
+                                                    {isExistingClient && previousMonthlyFee > 0 && (
+                                                        <>
+                                                            <div className="flex justify-between text-slate-300 bg-slate-800/50 p-2 rounded">
+                                                                <span className="font-medium">💰 Valor Original do Cliente:</span>
+                                                                <span className="font-bold">{formatCurrency(previousMonthlyFee)}</span>
+                                                            </div>
+                                                            <Separator className="my-2 bg-slate-700" />
+                                                        </>
+                                                    )}
+                                                    
                                                     <div className="flex justify-between text-slate-300">
                                                         <span>Valor Original (Mensal):</span>
                                                         <span className="font-medium">{formatCurrency(addedProducts.reduce((sum, p) => sum + p.monthly, 0))}</span>
@@ -2180,6 +2260,34 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                         <span className="font-medium">Total Mensal (com desconto):</span>
                                                         <span className="font-bold">{formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)))}</span>
                                                     </div>
+
+                                                    {/* Diferença de Valor (se for cliente existente) */}
+                                                    {isExistingClient && previousMonthlyFee > 0 && (
+                                                        <>
+                                                            <Separator className="my-2 bg-slate-700" />
+                                                            <div className={`flex justify-between p-3 rounded-lg ${
+                                                                applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                    ? 'bg-red-900/30 border border-red-700/50'
+                                                                    : 'bg-green-900/30 border border-green-700/50'
+                                                            }`}>
+                                                                <span className="font-bold text-white">📊 Diferença de Valor:</span>
+                                                                <span className={`font-bold text-lg ${
+                                                                    applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                        ? 'text-red-400'
+                                                                        : 'text-green-400'
+                                                                }`}>
+                                                                    {applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0 ? '+' : ''}
+                                                                    {formatCurrency(applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee)}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-xs text-slate-400 text-center">
+                                                                {applyDiscounts(addedProducts.reduce((sum, p) => sum + p.monthly, 0)) - previousMonthlyFee >= 0
+                                                                    ? '⬆️ Aumento na mensalidade'
+                                                                    : '⬇️ Economia na mensalidade'
+                                                                }
+                                                            </div>
+                                                        </>
+                                                    )}
 
                                                     {/* Payback Information */}
                                                     {result && includeInstallation && (
@@ -2639,7 +2747,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                 <Label htmlFor="pis-rate">Simples Nacional (%)</Label>
                                                 <Input
                                                     id="pis-rate"
-                                                    type="number" step="0.01"
+                                                    type="number"
                                                     step="0.01"
                                                     value={taxRates.simplesNacional.toFixed(2)}
                                                     onChange={(e) => {
@@ -2653,7 +2761,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                 <Label htmlFor="banda-rate">Banda (%)</Label>
                                                 <Input
                                                     id="banda-rate"
-                                                    type="number" step="0.01"
+                                                    type="number"
                                                     step="0.01"
                                                     value={taxRates.banda.toFixed(2)}
                                                     onChange={(e) => {
@@ -2667,7 +2775,7 @@ const InternetManRadioCalculator: React.FC<InternetManRadioCalculatorProps> = ({
                                                 <Label htmlFor="custo-desp-rate">Custo/Desp (%)</Label>
                                                 <Input
                                                     id="custo-desp-rate"
-                                                    type="number" step="0.01"
+                                                    type="number"
                                                     step="0.01"
                                                     value={taxRates.custoDesp.toFixed(2)}
                                                     onChange={(e) => {

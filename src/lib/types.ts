@@ -73,6 +73,8 @@ export interface Proposal {
   includeInfluencerPartner?: boolean; // Adicionado
   baseTotalMonthly?: number; // Adicionado
   changes?: string; // Adicionado
+  isExistingClient?: boolean; // Adicionado - indica se é cliente da base
+  previousMonthlyFee?: number; // Adicionado - valor que o cliente paga atualmente
   details?: { // Adicionado para acomodar details de diferentes calculadoras
     speed?: number;
     contractTerm?: number;
