@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (action === 'approve' && user.profile?.role === 'pending') {
       // Atualizar o role no profile
       await prisma.profile.update({
-        where: { user_id: userId },
+        where: { id: userId },
         data: { role: 'user' }
       });
     }
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // Se estiver rejeitando, manter como 'pending' ou mudar para 'rejected'
     if (action === 'reject' && user.profile?.role === 'pending') {
       await prisma.profile.update({
-        where: { user_id: userId },
+        where: { id: userId },
         data: { role: 'pending' } // Manter como pending para poder aprovar depois
       });
     }

@@ -657,7 +657,7 @@ export default function GestaoOportunidadesParceiros() {
                 Nenhuma oportunidade encontrada
               </p>
               <p className="text-gray-400 dark:text-gray-500 text-sm">
-                Clique em "Nova Oportunidade" para começar
+                Clique em &quot;Nova Oportunidade&quot; para começar
               </p>
             </div>
           )}

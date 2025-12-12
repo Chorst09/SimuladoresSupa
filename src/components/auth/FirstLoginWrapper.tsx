@@ -31,8 +31,7 @@ export default function FirstLoginWrapper({ children }: FirstLoginWrapperProps) 
       <ChangePasswordModal
         isOpen={showChangePassword}
         onClose={handlePasswordChanged}
-        isFirstLogin={true}
-        userEmail={user?.email || ''}
+        userId={user?.id || ''}
       />
     </>
   );

@@ -5,8 +5,9 @@ import { getCurrentUser } from '@/lib/auth';
 // PATCH - Atualizar oportunidade de parceiro
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     // Obter usuário autenticado
     const token = request.cookies.get('auth-token')?.value;
@@ -141,8 +142,9 @@ export async function PATCH(
 // DELETE - Excluir oportunidade de parceiro
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     // Obter usuário autenticado
     const token = request.cookies.get('auth-token')?.value;
