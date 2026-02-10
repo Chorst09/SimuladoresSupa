@@ -1,9 +1,10 @@
 import { Pool, PoolClient } from 'pg';
 import { prisma } from './prisma';
+import { resolveDatabaseUrl } from './database-url';
 
 // Configuração do pool de conexões PostgreSQL (mantido para compatibilidade)
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres@localhost:5432/simuladores_db',
+  connectionString: resolveDatabaseUrl() || 'postgresql://postgres@localhost:5432/simuladores_db',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 20, // Máximo de conexões no pool
   idleTimeoutMillis: 30000,

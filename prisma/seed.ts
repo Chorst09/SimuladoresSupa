@@ -1,7 +1,32 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import fs from 'node:fs'
 
-const prisma = new PrismaClient()
+function resolveDatabaseUrl() {
+  const directUrl = process.env.DATABASE_URL
+
+  const host = process.env.DATABASE_HOST
+  const port = process.env.DATABASE_PORT
+  const user = process.env.DATABASE_USER
+  const password = process.env.DATABASE_PASSWORD
+  const name = process.env.DATABASE_NAME
+
+  const isContainerRuntime = fs.existsSync('/.dockerenv') || fs.existsSync('/run/.containerenv')
+  const looksLikeLocalhost =
+    !directUrl || directUrl.includes('@localhost:') || directUrl.includes('@127.0.0.1:')
+
+  if (isContainerRuntime && looksLikeLocalhost && host && port && user && password && name) {
+    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${name}`
+  }
+
+  return directUrl
+}
+
+const resolvedDatabaseUrl = resolveDatabaseUrl()
+
+const prisma = new PrismaClient(
+  resolvedDatabaseUrl ? { datasources: { db: { url: resolvedDatabaseUrl } } } : undefined
+)
 
 async function main() {
   console.log('🌱 Iniciando seed do banco de dados...')

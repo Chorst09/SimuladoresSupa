@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // Teste simples de conexão com o banco
-    await prisma.$connect();
-    
     // Teste de query simples
     const result = await prisma.$queryRaw`SELECT 1 as test`;
     
@@ -30,7 +25,5 @@ export async function GET() {
       },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
