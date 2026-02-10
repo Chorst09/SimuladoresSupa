@@ -5,8 +5,8 @@
 ```
 Servidor: 10.10.50.246
 Usuário: double
-Senha SSH: D0ubl3T3l3c0m
-Senha Sudo: D0ubl3T3l3c0m
+Senha SSH: <SENHA_DO_SERVIDOR>
+Senha Sudo: <SENHA_DO_SERVIDOR>
 Pasta: ~/simuladores
 ```
 
@@ -51,8 +51,8 @@ cp .env.example .env.development
 **Etapa 1 - No PC Local:**
 ```bash
 # Transferir tudo de uma vez
-./deploy.sh deploy-remote double@10.10.50.246 simuladores-app.tar.gz
-# Senha quando solicitado: D0ubl3T3l3c0m
+./deploy.sh deploy-remote double@10.10.50.246 image
+# Senha quando solicitado: <SENHA_DO_SERVIDOR>
 ```
 
 **Etapa 2 - No Servidor:**
@@ -64,7 +64,7 @@ ssh double@10.10.50.246
 # Entrar na pasta e instalar
 cd ~/simuladores
 sudo ./deploy.sh install-on-server
-# Senha sudo: D0ubl3T3l3c0m
+# Senha sudo: <SENHA_DO_SERVIDOR>
 # Responder 'y' quando perguntado
 ```
 
