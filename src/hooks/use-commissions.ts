@@ -77,11 +77,11 @@ const FALLBACK_CHANNEL_SELLER: CommissionChannelSeller = {
 
 const FALLBACK_CHANNEL_DIRECTOR: CommissionChannelDirector = {
   id: 'cd_default_001',
-  months_12: 0,
-  months_24: 0,
-  months_36: 0,
-  months_48: 0,
-  months_60: 0
+  months_12: 0.60,
+  months_24: 1.20,
+  months_36: 2.00,
+  months_48: 2.00,
+  months_60: 2.00
 };
 
 const FALLBACK_SELLER: CommissionSeller = {
@@ -123,29 +123,61 @@ export function useCommissions(): UseCommissionsResult {
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 2;
 
+  const parseNumber = (value: unknown): number => {
+    if (value === null || value === undefined) return NaN;
+    const n = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(n) ? n : NaN;
+  };
+
+  const toFiniteNumber = (value: unknown, fallback: number = 0): number => {
+    const n = parseNumber(value);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  const normalizeSingle = <T extends { id: string }>(raw: any): T => ({
+    ...raw,
+    months_12: toFiniteNumber(raw.months_12),
+    months_24: toFiniteNumber(raw.months_24),
+    months_36: toFiniteNumber(raw.months_36),
+    months_48: toFiniteNumber(raw.months_48),
+    months_60: toFiniteNumber(raw.months_60),
+  });
+
+  const normalizeRangeRow = <T extends { id: string }>(raw: any): T => ({
+    ...raw,
+    revenue_min: toFiniteNumber(raw.revenue_min),
+    revenue_max: toFiniteNumber(raw.revenue_max),
+    months_12: toFiniteNumber(raw.months_12),
+    months_24: toFiniteNumber(raw.months_24),
+    months_36: toFiniteNumber(raw.months_36),
+    months_48: toFiniteNumber(raw.months_48),
+    months_60: toFiniteNumber(raw.months_60),
+  });
+
   const validateCommissionData = (data: any, type: string): boolean => {
     if (!data) return false;
 
     if (type === 'array') {
       return Array.isArray(data) && data.length > 0 &&
         data.every(item =>
-          typeof item.months_12 === 'number' &&
-          typeof item.months_24 === 'number' &&
-          typeof item.months_36 === 'number' &&
-          typeof item.months_48 === 'number' &&
-          typeof item.months_60 === 'number'
+          Number.isFinite(parseNumber(item.months_12)) &&
+          Number.isFinite(parseNumber(item.months_24)) &&
+          Number.isFinite(parseNumber(item.months_36)) &&
+          Number.isFinite(parseNumber(item.months_48)) &&
+          Number.isFinite(parseNumber(item.months_60))
         );
     } else {
-      return typeof data.months_12 === 'number' &&
-        typeof data.months_24 === 'number' &&
-        typeof data.months_36 === 'number' &&
-        typeof data.months_48 === 'number' &&
-        typeof data.months_60 === 'number';
+      return Number.isFinite(parseNumber(data.months_12)) &&
+        Number.isFinite(parseNumber(data.months_24)) &&
+        Number.isFinite(parseNumber(data.months_36)) &&
+        Number.isFinite(parseNumber(data.months_48)) &&
+        Number.isFinite(parseNumber(data.months_60));
     }
   };
 
   const fetchData = useCallback(async (attempt = 0): Promise<void> => {
     try {
+      setIsLoading(true);
       setError(null);
 
       console.log(`🔄 useCommissions: Tentativa ${attempt + 1}/${maxRetries + 1} de carregamento das comissões`);
@@ -153,7 +185,6 @@ export function useCommissions(): UseCommissionsResult {
       // Se não há usuário, manter dados de fallback
       if (!user) {
         console.log('👤 useCommissions: Sem usuário autenticado, mantendo dados de fallback');
-        setIsLoading(false);
         return;
       }
 
@@ -176,35 +207,39 @@ export function useCommissions(): UseCommissionsResult {
 
       // Validar e atualizar dados se válidos
       if (data.channelSeller && validateCommissionData(data.channelSeller, 'single')) {
-        setChannelSeller(data.channelSeller);
+        setChannelSeller(normalizeSingle<CommissionChannelSeller>(data.channelSeller));
         console.log('✅ useCommissions: Canal/Vendedor carregado da API');
       } else {
         console.log('📋 useCommissions: Canal/Vendedor mantendo fallback');
       }
 
       if (data.channelDirector && validateCommissionData(data.channelDirector, 'single')) {
-        setChannelDirector(data.channelDirector);
+        setChannelDirector(normalizeSingle<CommissionChannelDirector>(data.channelDirector));
         console.log('✅ useCommissions: Canal/Diretor carregado da API');
       } else {
         console.log('📋 useCommissions: Canal/Diretor mantendo fallback');
       }
 
       if (data.seller && validateCommissionData(data.seller, 'single')) {
-        setSeller(data.seller);
+        setSeller(normalizeSingle<CommissionSeller>(data.seller));
         console.log('✅ useCommissions: Vendedor carregado da API');
       } else {
         console.log('📋 useCommissions: Vendedor mantendo fallback');
       }
 
       if (data.channelInfluencer && validateCommissionData(data.channelInfluencer, 'array')) {
-        setChannelInfluencer(data.channelInfluencer);
+        setChannelInfluencer(data.channelInfluencer.map((row: any) =>
+          normalizeRangeRow<CommissionChannelInfluencer>(row)
+        ));
         console.log('✅ useCommissions: Canal Influenciador carregado da API');
       } else {
         console.log('📋 useCommissions: Canal Influenciador mantendo fallback');
       }
 
       if (data.channelIndicator && validateCommissionData(data.channelIndicator, 'array')) {
-        setChannelIndicator(data.channelIndicator);
+        setChannelIndicator(data.channelIndicator.map((row: any) =>
+          normalizeRangeRow<CommissionChannelIndicator>(row)
+        ));
         console.log('✅ useCommissions: Canal Indicador carregado da API');
       } else {
         console.log('📋 useCommissions: Canal Indicador mantendo fallback');

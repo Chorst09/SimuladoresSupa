@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -13,18 +13,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { useCommissions } from '@/hooks/use-commissions';
 import { useCommissionsEditor } from '@/hooks/use-commissions-editor';
 import { EditableCell } from '@/components/ui/editable-cell';
 import { formatBrazilianNumber, formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { Edit, Save, X } from 'lucide-react';
 
 interface CommissionTablesUnifiedProps {
   className?: string;
   editable?: boolean;
 }
 
-export default function CommissionTablesUnified({ className, editable = false }: CommissionTablesUnifiedProps) {
+export default function CommissionTablesUnified({ className, editable: initialEditable = false }: CommissionTablesUnifiedProps) {
+  const [isEditing, setIsEditing] = useState(initialEditable);
   const { 
     channelSeller, 
     channelDirector, 
@@ -32,10 +35,11 @@ export default function CommissionTablesUnified({ className, editable = false }:
     channelInfluencer, 
     channelIndicator, 
     isLoading, 
-    error 
+    error,
+    refreshData,
   } = useCommissions();
   
-  const { updateCommission } = useCommissionsEditor();
+  const { updateCommission } = useCommissionsEditor({ onUpdated: refreshData });
 
   // Só mostrar loading se realmente estiver carregando e não tiver dados
   if (isLoading && !channelSeller && !seller && !channelInfluencer && !channelIndicator) {
@@ -57,6 +61,37 @@ export default function CommissionTablesUnified({ className, editable = false }:
 
   return (
     <div className={cn("space-y-6", className)}>
+      {/* Botões de Editar/Salvar */}
+      <div className="flex gap-2 mb-4">
+        {!isEditing ? (
+          <Button
+            onClick={() => setIsEditing(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Editar Comissões
+          </Button>
+        ) : (
+          <>
+            <Button
+              onClick={() => setIsEditing(false)}
+              className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Salvo
+            </Button>
+            <Button
+              onClick={() => setIsEditing(false)}
+              variant="outline"
+              className="text-white border-slate-600 hover:bg-slate-800 flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Cancelar
+            </Button>
+          </>
+        )}
+      </div>
+
       {/* First Row: Canal/Vendedor table at top */}
       <div className="w-full">
         <Card className="bg-slate-900/80 border-slate-800 text-white">
@@ -78,7 +113,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">12 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={channelSeller.months_12}
                               onSave={(value) => updateCommission({
@@ -96,7 +131,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">24 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={channelSeller.months_24}
                               onSave={(value) => updateCommission({
@@ -114,7 +149,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">36 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={channelSeller.months_36}
                               onSave={(value) => updateCommission({
@@ -132,7 +167,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">48 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={channelSeller.months_48}
                               onSave={(value) => updateCommission({
@@ -150,7 +185,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">60 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={channelSeller.months_60}
                               onSave={(value) => updateCommission({
@@ -199,7 +234,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                     <TableRow key={commission.id}>
                       <TableCell className="text-white text-sm">{commission.revenue_range}</TableCell>
                       <TableCell className="text-right">
-                        {editable ? (
+                        {isEditing ? (
                           <EditableCell
                             value={commission.months_12}
                             onSave={(value) => updateCommission({
@@ -214,7 +249,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {editable ? (
+                        {isEditing ? (
                           <EditableCell
                             value={commission.months_24}
                             onSave={(value) => updateCommission({
@@ -229,7 +264,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {editable ? (
+                        {isEditing ? (
                           <EditableCell
                             value={commission.months_36}
                             onSave={(value) => updateCommission({
@@ -244,7 +279,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {editable ? (
+                        {isEditing ? (
                           <EditableCell
                             value={commission.months_48}
                             onSave={(value) => updateCommission({
@@ -259,7 +294,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {editable ? (
+                        {isEditing ? (
                           <EditableCell
                             value={commission.months_60}
                             onSave={(value) => updateCommission({
@@ -304,7 +339,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                     <TableRow key={commission.id}>
                       <TableCell className="text-white text-sm">{commission.revenue_range}</TableCell>
                       <TableCell className="text-right">
-                        {editable ? (
+                        {isEditing ? (
                           <EditableCell
                             value={commission.months_12}
                             onSave={(value) => updateCommission({
@@ -319,7 +354,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {editable ? (
+                        {isEditing ? (
                           <EditableCell
                             value={commission.months_24}
                             onSave={(value) => updateCommission({
@@ -334,7 +369,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {editable ? (
+                        {isEditing ? (
                           <EditableCell
                             value={commission.months_36}
                             onSave={(value) => updateCommission({
@@ -349,7 +384,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {editable ? (
+                        {isEditing ? (
                           <EditableCell
                             value={commission.months_48}
                             onSave={(value) => updateCommission({
@@ -364,7 +399,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {editable ? (
+                        {isEditing ? (
                           <EditableCell
                             value={commission.months_60}
                             onSave={(value) => updateCommission({
@@ -409,7 +444,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">12 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={seller.months_12}
                               onSave={(value) => updateCommission({
@@ -427,7 +462,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">24 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={seller.months_24}
                               onSave={(value) => updateCommission({
@@ -445,7 +480,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">36 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={seller.months_36}
                               onSave={(value) => updateCommission({
@@ -463,7 +498,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">48 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={seller.months_48}
                               onSave={(value) => updateCommission({
@@ -481,7 +516,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">60 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={seller.months_60}
                               onSave={(value) => updateCommission({
@@ -524,7 +559,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">12 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={channelDirector.months_12}
                               onSave={(value) => updateCommission({
@@ -542,7 +577,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">24 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={channelDirector.months_24}
                               onSave={(value) => updateCommission({
@@ -560,7 +595,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">36 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={channelDirector.months_36}
                               onSave={(value) => updateCommission({
@@ -578,7 +613,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">48 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={channelDirector.months_48}
                               onSave={(value) => updateCommission({
@@ -596,7 +631,7 @@ export default function CommissionTablesUnified({ className, editable = false }:
                       <TableRow>
                         <TableCell className="text-white">60 meses</TableCell>
                         <TableCell className="text-right">
-                          {editable ? (
+                          {isEditing ? (
                             <EditableCell
                               value={channelDirector.months_60}
                               onSave={(value) => updateCommission({

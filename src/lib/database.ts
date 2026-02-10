@@ -152,58 +152,151 @@ export const crmService = {
 };
 
 // Funções de comissões usando Prisma
+const toFiniteNumber = (value: unknown): number => {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
 export const commissionService = {
   async getChannelSeller() {
-    return await prisma.commissionChannelSeller.findFirst();
+    const record = await prisma.commissionChannelSeller.findFirst();
+    if (!record) return null;
+
+    return {
+      ...record,
+      months_12: toFiniteNumber(record.months_12),
+      months_24: toFiniteNumber(record.months_24),
+      months_36: toFiniteNumber(record.months_36),
+      months_48: toFiniteNumber(record.months_48),
+      months_60: toFiniteNumber(record.months_60),
+    };
   },
 
   async getChannelDirector() {
-    return await prisma.commissionChannelDirector.findFirst();
+    const record = await prisma.commissionChannelDirector.findFirst();
+    if (!record) return null;
+
+    return {
+      ...record,
+      months_12: toFiniteNumber(record.months_12),
+      months_24: toFiniteNumber(record.months_24),
+      months_36: toFiniteNumber(record.months_36),
+      months_48: toFiniteNumber(record.months_48),
+      months_60: toFiniteNumber(record.months_60),
+    };
   },
 
   async getSeller() {
-    return await prisma.commissionSeller.findFirst();
+    const record = await prisma.commissionSeller.findFirst();
+    if (!record) return null;
+
+    return {
+      ...record,
+      months_12: toFiniteNumber(record.months_12),
+      months_24: toFiniteNumber(record.months_24),
+      months_36: toFiniteNumber(record.months_36),
+      months_48: toFiniteNumber(record.months_48),
+      months_60: toFiniteNumber(record.months_60),
+    };
   },
 
   async getChannelInfluencer() {
-    return await prisma.commissionChannelInfluencer.findMany({
+    const records = await prisma.commissionChannelInfluencer.findMany({
       orderBy: { revenue_min: 'asc' }
     });
+
+    return records.map((record) => ({
+      ...record,
+      revenue_min: toFiniteNumber(record.revenue_min),
+      revenue_max: toFiniteNumber(record.revenue_max),
+      months_12: toFiniteNumber(record.months_12),
+      months_24: toFiniteNumber(record.months_24),
+      months_36: toFiniteNumber(record.months_36),
+      months_48: toFiniteNumber(record.months_48),
+      months_60: toFiniteNumber(record.months_60),
+    }));
   },
 
   async getChannelIndicator() {
-    return await prisma.commissionChannelIndicator.findMany({
+    const records = await prisma.commissionChannelIndicator.findMany({
       orderBy: { revenue_min: 'asc' }
     });
+
+    return records.map((record) => ({
+      ...record,
+      revenue_min: toFiniteNumber(record.revenue_min),
+      revenue_max: toFiniteNumber(record.revenue_max),
+      months_12: toFiniteNumber(record.months_12),
+      months_24: toFiniteNumber(record.months_24),
+      months_36: toFiniteNumber(record.months_36),
+      months_48: toFiniteNumber(record.months_48),
+      months_60: toFiniteNumber(record.months_60),
+    }));
   },
 
   async updateCommissionTable(table: string, id: string, data: any) {
+    // Remover o id do data para evitar conflitos
+    const { id: _, ...updateData } = data;
+    
+    // Converter valores para Decimal (números)
+    const convertedData: any = {};
+    for (const [key, value] of Object.entries(updateData)) {
+      if (key.startsWith('months_') || key.startsWith('revenue_')) {
+        // Converter para número
+        convertedData[key] = parseFloat(String(value));
+      } else {
+        convertedData[key] = value;
+      }
+    }
+    
+    const normalizeSingle = (record: any) => ({
+      ...record,
+      months_12: toFiniteNumber(record.months_12),
+      months_24: toFiniteNumber(record.months_24),
+      months_36: toFiniteNumber(record.months_36),
+      months_48: toFiniteNumber(record.months_48),
+      months_60: toFiniteNumber(record.months_60),
+    });
+
+    const normalizeRange = (record: any) => ({
+      ...record,
+      revenue_min: toFiniteNumber(record.revenue_min),
+      revenue_max: toFiniteNumber(record.revenue_max),
+      months_12: toFiniteNumber(record.months_12),
+      months_24: toFiniteNumber(record.months_24),
+      months_36: toFiniteNumber(record.months_36),
+      months_48: toFiniteNumber(record.months_48),
+      months_60: toFiniteNumber(record.months_60),
+    });
+
     switch (table) {
       case 'channel_seller':
-        return await prisma.commissionChannelSeller.update({
+        return normalizeSingle(await prisma.commissionChannelSeller.update({
           where: { id },
-          data
-        });
+          data: convertedData
+        }));
       case 'channel_director':
-        return await prisma.commissionChannelDirector.update({
+        return normalizeSingle(await prisma.commissionChannelDirector.update({
           where: { id },
-          data
-        });
+          data: convertedData
+        }));
       case 'seller':
-        return await prisma.commissionSeller.update({
+        return normalizeSingle(await prisma.commissionSeller.update({
           where: { id },
-          data
-        });
+          data: convertedData
+        }));
       case 'channel_influencer':
-        return await prisma.commissionChannelInfluencer.update({
+        return normalizeRange(await prisma.commissionChannelInfluencer.update({
           where: { id },
-          data
-        });
+          data: convertedData
+        }));
       case 'channel_indicator':
-        return await prisma.commissionChannelIndicator.update({
+        return normalizeRange(await prisma.commissionChannelIndicator.update({
           where: { id },
-          data
-        });
+          data: convertedData
+        }));
       default:
         throw new Error('Tabela de comissão inválida');
     }

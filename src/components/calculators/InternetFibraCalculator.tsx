@@ -16,7 +16,7 @@ import { ClientData, AccountManagerData } from '@/lib/types';
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
-import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
+import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate, getDirectorCommissionRate } from '@/hooks/use-commissions';
 import { formatPercentage } from '@/lib/utils';
 import { generateNextProposalId } from '@/lib/proposal-id-generator';
 import {
@@ -148,96 +148,84 @@ const getMaxPaybackMonths = (contractTerm: number): number => {
 };
 
 const calculatePayback = (
-    installationFee: number,
-    fiberCost: number,
-    monthlyRevenue: number,
-    contractTerm: number,
-    applySalespersonDiscount: boolean = false,
-    appliedDirectorDiscountPercentage: number = 0
+    params: {
+        installationFee: number; // Receita no mes 0
+        manCost: number; // Investimento inicial (custo do projeto)
+        monthlyRevenue: number; // Receita mensal (mes 1..N)
+        contractTerm: number; // Quantidade de meses de mensalidade
+        speedMbps: number; // Usado para custo de banda (speed * banda)
+        simplesNacionalPct: number; // % sobre receita
+        custoDespPct: number; // % sobre receita
+        bandaCostPerMbps: number; // custo unitario por Mbps (ex: 2.09)
+        createLastMile: boolean;
+        lastMileMultiplier: number; // multiplicador sobre a mensalidade (ex: 1.75)
+        totalCommissions: number; // Comissoes (pagas no mes 1)
+    }
 ): number => {
-    if (monthlyRevenue <= 0) return contractTerm;
+    const {
+        installationFee,
+        manCost,
+        monthlyRevenue,
+        contractTerm,
+        speedMbps,
+        simplesNacionalPct,
+        custoDespPct,
+        bandaCostPerMbps,
+        createLastMile,
+        lastMileMultiplier,
+        totalCommissions
+    } = params;
 
-    // CORREÇÃO: Retornar valores específicos calculados para Internet Fibra
-    // Converter para número para garantir comparação correta
-    const term = Number(contractTerm);
+    const term = Math.max(0, Math.floor(Number(contractTerm) || 0));
+    const receitaMensal = Number(monthlyRevenue) || 0;
+    const setup = Number(installationFee) || 0;
+    const investimentoInicial = Number(manCost) || 0;
 
-    if (term === 12) {
-        return 6;  // 12 meses = 6 meses de payback
-    }
-    if (term === 24) {
-        return 10; // 24 meses = 10 meses de payback
-    }
-    if (term === 36) {
-        return 13; // 36 meses = 13 meses de payback
-    }
-    if (term === 48) {
-        return 13; // 48 meses = 13 meses de payback
-    }
-    if (term === 60) {
-        return 14; // 60 meses = 14 meses de payback
-    }
+    const simplesRate = (Number(simplesNacionalPct) || 0) / 100;
+    const custoDespRate = (Number(custoDespPct) || 0) / 100;
 
-    // Para outros prazos, usar cálculo real
+    // Mes 0: receita apenas da taxa de instalacao. Despesas: simples nacional + custo/despesas + investimento inicial.
+    let cumulativeBalance = -investimentoInicial;
+    const impostosMes0 = setup * simplesRate;
+    const custoDespMes0 = setup * custoDespRate;
+    cumulativeBalance += setup - impostosMes0 - custoDespMes0;
+    if (cumulativeBalance >= 0) return 0;
 
-    // Aplicar descontos no valor mensal
-    const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
-    const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
-    const discountedMonthlyRevenue = monthlyRevenue * salespersonDiscountFactor * directorDiscountFactor;
+    if (receitaMensal <= 0) return term;
 
-    // Investimento inicial (custo da fibra)
-    let cumulativeBalance = -fiberCost;
+    // Mes 1..N: receita mensal; despesas: banda OU last mile, simples nacional, comissoes (mes 1), custo/despesas.
+    for (let month = 1; month <= term; month++) {
+        const impostos = receitaMensal * simplesRate;
+        const custoDesp = receitaMensal * custoDespRate;
 
-    // Cálculo mês a mês para encontrar quando o saldo fica positivo
-    for (let month = 1; month <= contractTerm; month++) {
-        // Receita do mês
-        let monthlyRevenueCalc = discountedMonthlyRevenue;
+        const custoBandaOuLastMile = createLastMile
+            ? (() => {
+                const mult = Number(lastMileMultiplier) || 0;
+                if (mult <= 0) return 0;
+                const base = receitaMensal / mult; // receita sem last mile
+                return Math.max(0, receitaMensal - base); // custo de last mile como adicional (pass-through)
+            })()
+            : (Number(speedMbps) || 0) * (Number(bandaCostPerMbps) || 0);
 
-        // No primeiro mês, adicionar a receita da instalação
-        if (month === 1) {
-            monthlyRevenueCalc += installationFee;
-        }
+        const comissoes = month === 1 ? (Number(totalCommissions) || 0) : 0;
 
-        // Custos mensais baseados na lógica do DRE:
-        const monthlyBandCost = monthlyRevenueCalc * 0.0725; // 7.25% para fibra
-        const monthlyTaxes = monthlyRevenueCalc * 0.15; // 15%
-        const monthlyCommissions = discountedMonthlyRevenue * 0.02; // 2% genérico
-        const monthlyCustoDesp = monthlyRevenueCalc * 0.10; // 10%
+        const netFlow = receitaMensal - custoBandaOuLastMile - impostos - comissoes - custoDesp;
+        cumulativeBalance += netFlow;
 
-        // Fluxo líquido do mês
-        const monthlyNetFlow = monthlyRevenueCalc - monthlyBandCost - monthlyTaxes - monthlyCommissions - monthlyCustoDesp;
-
-        // Adicionar ao saldo acumulado
-        cumulativeBalance += monthlyNetFlow;
-
-        // Quando o saldo acumulado fica positivo, o payback foi atingido
-        if (cumulativeBalance >= 0) {
-            return month;
-        }
+        if (cumulativeBalance >= 0) return month;
     }
 
-    return contractTerm; // Se não conseguir recuperar no prazo
+    return term; // Se não conseguir recuperar no prazo
 };
 
 const validatePayback = (
-    installationFee: number,
-    fiberCost: number,
-    monthlyRevenue: number,
-    contractTerm: number,
-    applySalespersonDiscount: boolean = false,
-    appliedDirectorDiscountPercentage: number = 0
+    params: Parameters<typeof calculatePayback>[0]
 ): { isValid: boolean, actualPayback: number, maxPayback: number } => {
-    const actualPayback = calculatePayback(
-        installationFee,
-        fiberCost,
-        monthlyRevenue,
-        contractTerm,
-        applySalespersonDiscount,
-        appliedDirectorDiscountPercentage
-    );
-    const maxPayback = getMaxPaybackMonths(contractTerm);
+    const actualPayback = calculatePayback(params);
+    const maxPayback = getMaxPaybackMonths(params.contractTerm);
 
     return {
-        isValid: actualPayback <= maxPayback && actualPayback > 0,
+        isValid: actualPayback <= maxPayback && actualPayback >= 0,
         actualPayback,
         maxPayback
     };
@@ -281,7 +269,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     const [isExistingClient, setIsExistingClient] = useState(false);
     const [previousMonthlyFee, setPreviousMonthlyFee] = useState(0);
     const [createLastMile, setCreateLastMile] = useState(false);
-    const [lastMileCost, setLastMileCost] = useState(0);
+    const [lastMilePercentage, setLastMilePercentage] = useState(1.75);
     const [projectValue, setProjectValue] = useState<number>(0);
     const [directorDiscountPercentage, setDirectorDiscountPercentage] = useState<number>(0);
     const [appliedDirectorDiscountPercentage, setAppliedDirectorDiscountPercentage] = useState<number>(0);
@@ -297,7 +285,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     }, [selectedSpeed, contractTerm, includeInstallation, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeReferralPartner, includeInfluencerPartner, clientData, accountManagerData, currentProposal?.id]);
 
     // Hook para comissões editáveis
-    const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
+    const { channelIndicator, channelInfluencer, channelSeller, seller, channelDirector } = useCommissions();
 
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
     // Usa apenas o valor mensal para buscar o percentual na tabela de comissões
@@ -312,6 +300,60 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         if (!channelInfluencer || !includeInfluencerPartner) return 0;
         return getChannelInfluencerCommissionRate(channelInfluencer, monthlyRevenue, contractMonths) / 100;
     };
+
+    // Total de comissoes (pagas no mes 1 no calculo de payback)
+    const calculateTotalCommissions = useCallback((monthlyRevenue: number, contractMonths: number): number => {
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+
+        const baseParaComissao = isExistingClient
+            ? (monthlyRevenue - previousMonthlyFee)
+            : monthlyRevenue;
+
+        const baseParaComissaoContrato = isExistingClient && previousMonthlyFee > 0
+            ? Math.max(0, (monthlyRevenue - previousMonthlyFee) * contractMonths)
+            : monthlyRevenue * contractMonths;
+
+        let comissaoVendedor = 0;
+        if (baseParaComissaoContrato > 0) {
+            if (temParceiros && channelSeller) {
+                const percentualVendedor = getChannelSellerCommissionRate(channelSeller, contractMonths) / 100;
+                comissaoVendedor = baseParaComissaoContrato * percentualVendedor;
+            } else if (!temParceiros && seller) {
+                const percentualVendedor = getSellerCommissionRate(seller, contractMonths) / 100;
+                comissaoVendedor = baseParaComissaoContrato * percentualVendedor;
+            }
+        }
+
+        let comissaoParceiroIndicador = 0;
+        if (baseParaComissaoContrato > 0 && includeReferralPartner && channelIndicator) {
+            const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, baseParaComissao, contractMonths) / 100;
+            comissaoParceiroIndicador = baseParaComissaoContrato * percentualIndicador;
+        }
+
+	        let comissaoParceiroInfluenciador = 0;
+	        if (baseParaComissaoContrato > 0 && includeInfluencerPartner && channelInfluencer) {
+	            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, baseParaComissao, contractMonths) / 100;
+	            comissaoParceiroInfluenciador = baseParaComissaoContrato * percentualInfluenciador;
+	        }
+
+	        let comissaoDiretor = 0;
+	        if (baseParaComissaoContrato > 0 && channelDirector) {
+	            const percentualDiretor = getDirectorCommissionRate(channelDirector, contractMonths) / 100;
+	            comissaoDiretor = baseParaComissaoContrato * percentualDiretor;
+	        }
+
+	        return comissaoVendedor + comissaoDiretor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+	    }, [
+	        includeReferralPartner,
+	        includeInfluencerPartner,
+	        isExistingClient,
+	        previousMonthlyFee,
+	        channelSeller,
+	        seller,
+	        channelIndicator,
+	        channelInfluencer,
+	        channelDirector
+	    ]);
 
     // Estados para DRE e tributação
     const [isEditingTaxes, setIsEditingTaxes] = useState<boolean>(false);
@@ -403,22 +445,53 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             monthlyPrice = monthlyPrice * 1.20; // Acréscimo de 20%
         }
 
+        // Last Mile: multiplica a mensalidade pelo fator informado (padrao 1.75)
+        if (createLastMile) {
+            const rawMultiplier = Number(lastMilePercentage);
+            const multiplier = Number.isFinite(rawMultiplier) && rawMultiplier > 0 ? rawMultiplier : 1.75;
+            monthlyPrice = monthlyPrice * multiplier;
+        }
+
         return {
             ...plan,
             monthlyPrice,
             installationCost: plan.installationCost,
             baseCost: plan.baseCost,
             fiberCost: plan.fiberCost,
-            paybackValidation: validatePayback(
-                includeInstallation ? plan.installationCost : 0,
-                plan.fiberCost,
-                monthlyPrice,
-                debouncedContractTerm,
-                applySalespersonDiscount,
-                appliedDirectorDiscountPercentage
-            )
+            paybackValidation: (() => {
+                const totalCommissions = calculateTotalCommissions(monthlyPrice, contractTerm);
+                return validatePayback({
+                    installationFee: includeInstallation ? plan.installationCost : 0,
+                    manCost: plan.fiberCost,
+                    monthlyRevenue: monthlyPrice,
+                    contractTerm,
+                    speedMbps: plan.speed,
+                    simplesNacionalPct: taxRates.simplesNacional,
+                    custoDespPct: taxRates.custoDesp,
+                    bandaCostPerMbps: taxRates.banda,
+                    createLastMile,
+                    lastMileMultiplier: lastMilePercentage,
+                    totalCommissions
+                });
+            })()
         };
-    }, [selectedSpeed, fibraPlans, debouncedContractTerm, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage, includeInstallation]);
+    }, [
+        selectedSpeed,
+        fibraPlans,
+        debouncedContractTerm,
+        includeReferralPartner,
+        includeInfluencerPartner,
+        applySalespersonDiscount,
+        appliedDirectorDiscountPercentage,
+        includeInstallation,
+        createLastMile,
+        lastMilePercentage,
+        calculateTotalCommissions,
+        contractTerm,
+        taxRates.simplesNacional,
+        taxRates.custoDesp,
+        taxRates.banda
+    ]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
     const fetchProposals = React.useCallback(async () => {
@@ -597,19 +670,29 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         // CORREÇÃO: Receita mensal = valor mensal × número de meses do período
         // Ex: Para 12 meses = 12 × R$ 5.211,00 = R$ 62.532,00
         let monthlyValue = 0;
+        let baseMonthlyValue = 0;
         let totalRevenue = 0;
 
         if (result) {
             // Usar sempre o valor mensal do período selecionado atualmente (contractTerm) com descontos aplicados
             monthlyValue = applyDiscounts(getMonthlyPrice(result, contractTerm));
+
+            // Aplicar 20% de acréscimo se há parceiros (Indicador ou Influenciador)
+            if (includeReferralPartner || includeInfluencerPartner) {
+                monthlyValue = monthlyValue * 1.20;
+            }
+
+            baseMonthlyValue = monthlyValue;
+
+            // Last Mile: multiplica a mensalidade pelo fator informado (padrao 1.75)
+            if (createLastMile) {
+                const rawMultiplier = Number(lastMilePercentage);
+                const multiplier = Number.isFinite(rawMultiplier) && rawMultiplier > 0 ? rawMultiplier : 1.75;
+                monthlyValue = monthlyValue * multiplier;
+            }
+
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
-
-            // NOVA LÓGICA: Aplicar 20% a mais quando há Parceiro Indicador ou Influenciador
-            if (includeReferralPartner || includeInfluencerPartner) {
-                totalRevenue = totalRevenue * 1.20; // Adicionar 20%
-                monthlyValue = monthlyValue * 1.20; // Atualizar valor mensal também para cálculos de comissão
-            }
         }
 
         const receitaInstalacao = taxaInstalacao;
@@ -625,7 +708,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const custoFibraCalculadora = custoFibra;
 
         const fundraising = 0; // Conforme tabela
-        const lastMile = createLastMile ? lastMileCost : 0; // Incluir custo Last Mile quando selecionado
+        // Last Mile como custo mensal adicional (pass-through): (mensalidade_com_last_mile - mensalidade_base) * meses
+        const lastMile = createLastMile ? Math.max(0, (monthlyValue - baseMonthlyValue) * months) : 0;
 
         // CORREÇÃO: Impostos baseados na receita total (incluindo taxa de instalação)
         const simplesNacionalRate = taxRates.simplesNacional / 100;
@@ -651,60 +735,80 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const temParceiros = includeReferralPartner || includeInfluencerPartner;
 
         // CORREÇÃO: Calcular base para comissões
-        // Se "Já é cliente da Base?" está marcado, usar diferença de valores
+        // Se "Já é cliente da Base?" está marcado, usar diferença de valores (apenas se positiva)
         // Senão, usar valor mensal total
-        const baseParaComissao = isExistingClient
-            ? (monthlyValue - previousMonthlyFee) // Diferença de valores
+        const baseParaComissao = isExistingClient && previousMonthlyFee > 0
+            ? Math.max(0, monthlyValue - previousMonthlyFee) // Diferença de valores (mínimo 0)
             : monthlyValue; // Valor total
 
+        // Base para cálculo de comissões no DRE: usar diferença de valores do contrato total
+        // CORREÇÃO: Usar result.monthlyPrice para consistência com o resumo da proposta
+        const baseParaComissaoContrato = isExistingClient && previousMonthlyFee > 0 && result
+            ? Math.max(0, (result.monthlyPrice - previousMonthlyFee) * months) // Diferença de valores do contrato (mínimo 0)
+            : result ? result.monthlyPrice * months : monthlyValue * months; // Valor total do contrato
+
         // Calcular comissão do vendedor/canal
-        // CORREÇÃO: Usar sempre o valor mensal total para comissões do vendedor/canal
+        // CORREÇÃO: Usar baseParaComissaoContrato para comissões (baseado na diferença de valores do contrato)
         let comissaoVendedor = 0;
-        if (temParceiros && channelSeller) {
-            // Com parceiros: usar canal/vendedor - calcular sobre valor mensal total
-            const percentualVendedor = getChannelSellerCommissionRate(channelSeller, contractTerm) / 100;
-            comissaoVendedor = monthlyValue * percentualVendedor * contractTerm;
-        } else if (!temParceiros && seller) {
-            // Sem parceiros: usar vendedor - calcular sobre valor mensal total
-            const percentualVendedor = getSellerCommissionRate(seller, contractTerm) / 100;
-            comissaoVendedor = monthlyValue * percentualVendedor * contractTerm;
+        if (baseParaComissaoContrato > 0) {
+            if (temParceiros && channelSeller) {
+                // Com parceiros: usar canal/vendedor
+                const percentualVendedor = getChannelSellerCommissionRate(channelSeller, contractTerm) / 100;
+                comissaoVendedor = baseParaComissaoContrato * percentualVendedor;
+            } else if (!temParceiros && seller) {
+                // Sem parceiros: usar vendedor
+                const percentualVendedor = getSellerCommissionRate(seller, contractTerm) / 100;
+                comissaoVendedor = baseParaComissaoContrato * percentualVendedor;
+            }
         }
 
         // Calcular comissão do parceiro indicador (apenas se marcado)
-        // CORREÇÃO: Usar valor mensal para buscar na tabela e calcular comissão
+        // CORREÇÃO: Usar baseParaComissao para buscar na tabela e baseParaComissaoContrato para calcular comissão
         let comissaoParceiroIndicador = 0;
-        if (includeReferralPartner && channelIndicator) {
-            const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, monthlyValue, contractTerm) / 100;
-            comissaoParceiroIndicador = monthlyValue * percentualIndicador * contractTerm;
+        if (baseParaComissaoContrato > 0 && includeReferralPartner && channelIndicator) {
+            const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, baseParaComissao, contractTerm) / 100;
+            comissaoParceiroIndicador = baseParaComissaoContrato * percentualIndicador;
         }
 
         // Calcular comissão do parceiro influenciador (apenas se marcado)
-        // CORREÇÃO: Usar valor mensal para buscar na tabela e calcular comissão
-        let comissaoParceiroInfluenciador = 0;
-        if (includeInfluencerPartner && channelInfluencer) {
-            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, monthlyValue, contractTerm) / 100;
-            comissaoParceiroInfluenciador = monthlyValue * percentualInfluenciador * contractTerm;
-        }
+        // CORREÇÃO: Usar baseParaComissao para buscar na tabela e baseParaComissaoContrato para calcular comissão
+	        let comissaoParceiroInfluenciador = 0;
+	        if (baseParaComissaoContrato > 0 && includeInfluencerPartner && channelInfluencer) {
+	            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, baseParaComissao, contractTerm) / 100;
+	            comissaoParceiroInfluenciador = baseParaComissaoContrato * percentualInfluenciador;
+	        }
 
-        // Total de comissões
-        const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+	        // Comissão Diretor (conforme tabela Comissão Diretor e prazo contratual selecionado)
+	        let comissaoDiretor = 0;
+	        if (baseParaComissaoContrato > 0 && channelDirector) {
+	            const percentualDiretor = getDirectorCommissionRate(channelDirector, contractTerm) / 100;
+	            comissaoDiretor = baseParaComissaoContrato * percentualDiretor;
+	        }
 
-        // Custo/Despesa: 10% sobre receita total (incluindo taxa de instalação)
-        const custoDespesa = receitaTotalPrimeiromes * 0.10;
+	        // Total de comissões
+	        const totalComissoes = comissaoVendedor + comissaoDiretor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+
+        // Custo/Despesa: percentual configurado sobre receita total (incluindo taxa de instalação)
+        const custoDespesa = receitaTotalPrimeiromes * ((taxRates.custoDesp || 0) / 100);
 
         // Balance (Lucro Líquido) conforme planilha
         // Balance = Receita Total - Custo do Projeto - Custo de banda - PIS - Comissões - Custo/Despesa
-        const balance = receitaTotalPrimeiromes - custoFibraCalculadora - custoBanda - simplesNacional - totalComissoes - custoDespesa;
+        const balance = receitaTotalPrimeiromes - custoFibraCalculadora - custoBanda - lastMile - simplesNacional - totalComissoes - custoDespesa;
 
-        // Payback Calculation usando a função padronizada
-        const paybackMonths = calculatePayback(
-            receitaInstalacao,
-            custoFibraCalculadora,
-            monthlyValue,
-            contractTerm,
-            applySalespersonDiscount,
-            appliedDirectorDiscountPercentage
-        );
+        // Payback Calculation usando a lógica padronizada
+        const paybackMonths = calculatePayback({
+            installationFee: receitaInstalacao,
+            manCost: custoFibraCalculadora,
+            monthlyRevenue: monthlyValue,
+            contractTerm: months,
+            speedMbps: velocidade,
+            simplesNacionalPct: taxRates.simplesNacional,
+            custoDespPct: taxRates.custoDesp,
+            bandaCostPerMbps: taxRates.banda,
+            createLastMile,
+            lastMileMultiplier: lastMilePercentage,
+            totalCommissions: totalComissoes
+        });
 
         // Cálculos financeiros corretos:
 
@@ -731,9 +835,9 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         const markup = totalCost > 0 ? ((receitaTotalPrimeiromes - totalCost) / totalCost) * 100 : 0;
 
         // Calcular diferença de valores contrato para clientes existentes
-        // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
-        const diferencaMensal = isExistingClient && previousMonthlyFee > 0
-            ? (monthlyValue - previousMonthlyFee)
+        // CORREÇÃO: Usar o mesmo cálculo que o resumo da proposta
+        const diferencaMensal = isExistingClient && previousMonthlyFee > 0 && result
+            ? (result.monthlyPrice - previousMonthlyFee)
             : 0;
         const diferencaValoresContrato = diferencaMensal * months;
 
@@ -747,6 +851,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             lastMile,
             simplesNacional,
             comissaoVendedor,
+            comissaoDiretor,
             comissaoParceiroIndicador,
             comissaoParceiroInfluenciador,
             totalComissoes,
@@ -764,12 +869,13 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         taxaInstalacao,
         custoFibra,
         taxRates.simplesNacional,
+        taxRates.custoDesp,
         taxRates.banda,
 
         includeReferralPartner,
         includeInfluencerPartner,
         createLastMile,
-        lastMileCost,
+        lastMilePercentage,
         isExistingClient,
         previousMonthlyFee,
         contractTerm,
@@ -778,6 +884,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         channelIndicator,
         channelInfluencer,
         channelSeller,
+        channelDirector,
         seller,
         applyDiscounts
     ]);
@@ -799,37 +906,32 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             // CORREÇÃO: Valores corretos para resumo executivo
             receitaBruta: dre12.receitaMensal / 12, // Receita mensal real
             receitaLiquida: (dre12.receitaMensal - dre12.simplesNacional) / 12, // Receita líquida mensal
-            custoServico: dre12.custoFibra,
-            custoBanda: dre12.custoBanda,
-            taxaInstalacao: dre12.receitaInstalacao,
-            comissaoVendedor: dre12.comissaoVendedor,
-            comissaoParceiroIndicador: dre12.comissaoParceiroIndicador,
-            comissaoParceiroInfluenciador: dre12.comissaoParceiroInfluenciador,
-            totalComissoes: dre12.totalComissoes,
+	            custoServico: dre12.custoFibra,
+	            custoBanda: dre12.custoBanda,
+	            taxaInstalacao: dre12.receitaInstalacao,
+	            comissaoVendedor: dre12.comissaoVendedor,
+	            comissaoDiretor: dre12.comissaoDiretor,
+	            comissaoParceiroIndicador: dre12.comissaoParceiroIndicador,
+	            comissaoParceiroInfluenciador: dre12.comissaoParceiroInfluenciador,
+	            totalComissoes: dre12.totalComissoes,
             totalImpostos: dre12.simplesNacional,
             lucroOperacional: dre12.balance,
             lucroLiquido: dre12.balance / 12, // Lucro líquido mensal
             rentabilidade: dre12.rentabilidade,
             lucratividade: dre12.lucratividade,
-            paybackMeses: calculatePayback(
-                dre12.receitaInstalacao,
-                result?.fiberCost || 0,
-                dre12.receitaMensal / 12, // Usar receita mensal real
-                12,
-                applySalespersonDiscount,
-                appliedDirectorDiscountPercentage
-            ),
+            paybackMeses: result?.paybackValidation.actualPayback ?? 0,
         } as {
             [key: number]: any;
             receitaBruta: number;
             receitaLiquida: number;
             custoServico: number;
-            custoBanda: number;
-            taxaInstalacao: number;
-            comissaoVendedor: number;
-            comissaoParceiroIndicador: number;
-            comissaoParceiroInfluenciador: number;
-            totalComissoes: number;
+	            custoBanda: number;
+	            taxaInstalacao: number;
+	            comissaoVendedor: number;
+	            comissaoDiretor: number;
+	            comissaoParceiroIndicador: number;
+	            comissaoParceiroInfluenciador: number;
+	            totalComissoes: number;
             totalImpostos: number;
             lucroOperacional: number;
             lucroLiquido: number;
@@ -837,7 +939,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             lucratividade: number;
             paybackMeses: number;
         };
-    }, [calculateDREForPeriod, appliedDirectorDiscountPercentage, applySalespersonDiscount, result?.fiberCost]);
+    }, [calculateDREForPeriod, result?.paybackValidation.actualPayback]);
 
     const handleSavePrices = () => {
         // Save the prices to local storage
@@ -1929,41 +2031,31 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                             <div className="border-t pt-4 print:pt-2">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Análise de Payback</h3>
                                 {(() => {
-                                    const totalSetup = currentProposal.totalSetup;
                                     const totalMonthly = currentProposal.totalMonthly;
+                                    const contractTerm = currentProposal.contractPeriod || 12;
 
-                                    // Usar a nova lógica de payback se houver produtos
-                                    const firstProduct = (currentProposal.items || currentProposal.products || [])[0] as any;
+                                    const plan = fibraPlans.find(p => p.speed === currentProposal.selectedSpeed);
                                     let paybackMonths = 0;
 
-                                    if (firstProduct && totalSetup > 0) {
-                                        paybackMonths = calculatePayback(
-                                            totalSetup,
-                                            firstProduct.fiberCost || 0,
-                                            totalMonthly,
+                                    if (plan) {
+                                        const totalCommissions = calculateTotalCommissions(totalMonthly ?? 0, contractTerm);
+                                        paybackMonths = calculatePayback({
+                                            installationFee: currentProposal.includeInstallation ? plan.installationCost : 0,
+                                            manCost: plan.fiberCost,
+                                            monthlyRevenue: totalMonthly ?? 0,
                                             contractTerm,
-                                            currentProposal.applySalespersonDiscount || false,
-                                            currentProposal.appliedDirectorDiscountPercentage || 0
-                                        );
-                                    } else {
-                                        // Usar a função calculatePayback correta
-                                        const plan = fibraPlans.find(p => p.speed === currentProposal.selectedSpeed);
-                                        if (plan) {
-                                            paybackMonths = calculatePayback(
-                                                currentProposal.includeInstallation ? plan.installationCost : 0,
-                                                plan.fiberCost,
-                                                totalMonthly,
-                                                contractTerm,
-                                                currentProposal.applySalespersonDiscount || false,
-                                                currentProposal.appliedDirectorDiscountPercentage || 0
-                                            );
-                                        } else {
-                                            paybackMonths = 0;
-                                        }
+                                            speedMbps: plan.speed,
+                                            simplesNacionalPct: taxRates.simplesNacional,
+                                            custoDespPct: taxRates.custoDesp,
+                                            bandaCostPerMbps: taxRates.banda,
+                                            createLastMile,
+                                            lastMileMultiplier: lastMilePercentage,
+                                            totalCommissions
+                                        });
                                     }
 
                                     const maxPayback = getMaxPaybackMonths(contractTerm);
-                                    const isValid = paybackMonths <= maxPayback && paybackMonths > 0;
+                                    const isValid = paybackMonths <= maxPayback;
 
                                     return (
                                         <div className="text-sm">
@@ -2007,14 +2099,12 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     </div>
 
                     <Tabs defaultValue="calculator" className="w-full">
-                        <TabsList className={`grid w-full ${user?.role === 'admin' ? 'grid-cols-5' : 'grid-cols-2'} bg-slate-800`}>
+                        <TabsList className={`grid w-full grid-cols-5 bg-slate-800`}>
                             <TabsTrigger value="calculator">Calculadora</TabsTrigger>
                             {user?.role === 'admin' && (
                                 <TabsTrigger value="prices">Tabela de Preços</TabsTrigger>
                             )}
-                            {user?.role === 'admin' && (
-                                <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
-                            )}
+                            <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
                             {user?.role === 'admin' && (
                                 <TabsTrigger value="dre">DRE</TabsTrigger>
                             )}
@@ -2117,20 +2207,34 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                 <Checkbox
                                                     id="createLastMile"
                                                     checked={createLastMile}
-                                                    onCheckedChange={(checked) => setCreateLastMile(!!checked)}
+                                                    onCheckedChange={(checked) => {
+                                                        const enabled = !!checked;
+                                                        setCreateLastMile(enabled);
+                                                        if (enabled && (!Number.isFinite(lastMilePercentage) || lastMilePercentage <= 0)) {
+                                                            setLastMilePercentage(1.75);
+                                                        }
+                                                    }}
                                                 />
                                                 <Label htmlFor="createLastMile">Criar Last Mile?</Label>
                                             </div>
                                         </div>
                                         {createLastMile && (
                                             <div className="space-y-2">
-                                                <Label htmlFor="lastMileCost">Custo (Last Mile)</Label>
-                                                <CurrencyInput
-                                                    id="lastMileCost"
-                                                    value={lastMileCost}
-                                                    onChange={setLastMileCost}
-                                                    placeholder="0,00"
-                                                    className="bg-slate-800"
+                                                <Label htmlFor="lastMilePercentage">Fator Last Mile (ex: 1,75)</Label>
+                                                <Input
+                                                    id="lastMilePercentage"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    max="100"
+                                                    value={lastMilePercentage}
+                                                    onChange={(e) => {
+                                                        const raw = Number(e.target.value);
+                                                        const value = Number.isFinite(raw) ? raw : 0;
+                                                        setLastMilePercentage(Math.min(100, Math.max(0, value)));
+                                                    }}
+                                                    placeholder="1.75"
+                                                    className="bg-slate-800 border-slate-700 text-white"
                                                 />
                                             </div>
                                         )}
@@ -2583,20 +2687,26 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                         ))}
                                                     </TableRow>
                                                 )}
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">
-                                                        {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
-                                                    </TableCell>
-                                                    {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].comissaoVendedor)}</TableCell>
-                                                    ))}
-                                                </TableRow>
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Custo / Despesa</TableCell>
-                                                    {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
-                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].custoDespesa)}</TableCell>
-                                                    ))}
-                                                </TableRow>
+	                                                <TableRow className="border-slate-800">
+	                                                    <TableCell className="text-white">
+	                                                        {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
+	                                                    </TableCell>
+	                                                    {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
+	                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].comissaoVendedor)}</TableCell>
+	                                                    ))}
+	                                                </TableRow>
+	                                                <TableRow className="border-slate-800">
+	                                                    <TableCell className="text-white">Comissão Diretor</TableCell>
+	                                                    {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
+	                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].comissaoDiretor)}</TableCell>
+	                                                    ))}
+	                                                </TableRow>
+	                                                <TableRow className="border-slate-800">
+	                                                    <TableCell className="text-white">Custo / Despesa</TableCell>
+	                                                    {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
+	                                                        <TableCell key={period} className="text-right text-white">{formatCurrency(dreCalculations[period].custoDespesa)}</TableCell>
+	                                                    ))}
+	                                                </TableRow>
                                                 <TableRow className="border-slate-800">
                                                     <TableCell className="text-white">Total de Custos</TableCell>
                                                     {[12, 24, 36, 48, 60].filter(period => period <= contractTerm).map(period => (
@@ -2745,21 +2855,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     <h4 className="text-sm font-medium text-slate-300 mb-2">Payback Calculado</h4>
                                                     <div className="text-xl font-bold text-purple-400">
                                                         {(() => {
-                                                            console.log('Debug Payback - contractTerm:', contractTerm);
-                                                            console.log('Debug Payback - dreCalculations[contractTerm]:', dreCalculations[contractTerm]);
-                                                            console.log('Debug Payback - result?.fiberCost:', result?.fiberCost);
-                                                            console.log('Debug Payback - applySalespersonDiscount:', applySalespersonDiscount);
-                                                            console.log('Debug Payback - appliedDirectorDiscountPercentage:', appliedDirectorDiscountPercentage);
-
-                                                            const currentPayback = calculatePayback(
-                                                                dreCalculations[contractTerm].receitaInstalacao,
-                                                                result?.fiberCost || 0,
-                                                                dreCalculations[contractTerm].receitaMensal,
-                                                                contractTerm,
-                                                                applySalespersonDiscount,
-                                                                appliedDirectorDiscountPercentage
-                                                            );
-                                                            console.log('Debug Payback - resultado:', currentPayback);
+                                                            const currentPayback = dreCalculations[contractTerm]?.paybackMonths ?? 0;
                                                             return currentPayback > 0 ? `${currentPayback} meses` : '0 meses';
                                                         })()}
                                                     </div>
@@ -2825,15 +2921,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
 
                                                     // Verificar payback alto
                                                     const highPaybackPeriods = periods.filter(p => {
-                                                        const payback = calculatePayback(
-                                                            dreCalculations[p].receitaInstalacao,
-                                                            result?.fiberCost || 0,
-                                                            dreCalculations[p].receitaMensal,
-                                                            p,
-                                                            applySalespersonDiscount,
-                                                            appliedDirectorDiscountPercentage
-                                                        );
-                                                        return payback > 12;
+                                                        return (dreCalculations[p]?.paybackMonths ?? 0) > 12;
                                                     });
                                                     if (highPaybackPeriods.length > 0) {
                                                         alerts.push({
@@ -2973,16 +3061,20 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                                     <span className="text-gray-300">Banda:</span>
                                                     <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.custoBanda)}</span>
                                                 </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-300">Comissão Vendedor:</span>
-                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoVendedor)}</span>
-                                                </div>
-                                                {includeReferralPartner && (
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-300">Comissão P. Indicador:</span>
-                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</span>
-                                                    </div>
-                                                )}
+	                                                <div className="flex justify-between text-sm">
+	                                                    <span className="text-gray-300">Comissão Vendedor:</span>
+	                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoVendedor)}</span>
+	                                                </div>
+	                                                <div className="flex justify-between text-sm">
+	                                                    <span className="text-gray-300">Comissão Diretor:</span>
+	                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoDiretor)}</span>
+	                                                </div>
+	                                                {includeReferralPartner && (
+	                                                    <div className="flex justify-between text-sm">
+	                                                        <span className="text-gray-300">Comissão P. Indicador:</span>
+	                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</span>
+	                                                    </div>
+	                                                )}
                                                 {includeInfluencerPartner && (
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-300">Comissão P. Influenciador:</span>

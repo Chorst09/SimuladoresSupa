@@ -16,7 +16,7 @@ import { ClientManagerInfo } from './ClientManagerInfo';
 import { ClientData, AccountManagerData, Proposal as ProposalType, UserRole } from '@/lib/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
-import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate } from '@/hooks/use-commissions';
+import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate, getDirectorCommissionRate } from '@/hooks/use-commissions';
 import { generateNextProposalId } from '@/lib/proposal-id-generator';
 import {
     Wifi,
@@ -97,6 +97,7 @@ interface DRECalculationsResult {
     lastMile: number;
     simplesNacional: number;
     comissaoVendedor: number;
+    comissaoDiretor: number;
     comissaoParceiroIndicador: number;
     comissaoParceiroInfluenciador: number;
     totalComissoes: number;
@@ -118,6 +119,7 @@ interface DRECalculations {
     custoBanda?: number;
     taxaInstalacao?: number;
     comissaoVendedor?: number;
+    comissaoDiretor?: number;
     comissaoParceiroIndicador?: number;
     comissaoParceiroInfluenciador?: number;
     totalImpostos?: number;
@@ -159,110 +161,84 @@ const getMaxPaybackMonths = (contractTerm: number): number => {
 };
 
 const calculatePayback = (
-    installationFee: number,
-    manCost: number,
-    monthlyRevenue: number,
-    contractTerm: number,
-    applySalespersonDiscount: boolean = false,
-    appliedDirectorDiscountPercentage: number = 0
+    params: {
+        installationFee: number; // Receita no mes 0
+        manCost: number; // Investimento inicial (custo do projeto)
+        monthlyRevenue: number; // Receita mensal (mes 1..N)
+        contractTerm: number; // Quantidade de meses de mensalidade
+        speedMbps: number; // Usado para custo de banda (speed * banda)
+        simplesNacionalPct: number; // % sobre receita
+        custoDespPct: number; // % sobre receita
+        bandaCostPerMbps: number; // custo unitario por Mbps (ex: 2.09)
+        createLastMile: boolean;
+        lastMileMultiplier: number; // multiplicador sobre a mensalidade (ex: 1.75)
+        totalCommissions: number; // Comissoes (pagas no mes 1)
+    }
 ): number => {
-    if (monthlyRevenue <= 0) return contractTerm;
-
-    // CORREÇÃO FORÇADA: Valores específicos conforme solicitado
-    console.log(`calculatePayback chamado com contractTerm: ${contractTerm}, tipo: ${typeof contractTerm}`);
-
-    // Converter para número para garantir comparação correta
-    const term = Number(contractTerm);
-    console.log(`contractTerm convertido: ${term}`);
-
-    console.log('Verificando se term === 12:', term === 12, 'term:', term, 'typeof term:', typeof term);
-    if (term === 12) {
-        console.log('FORÇANDO retorno de 6 meses para contrato de 12 meses');
-        return 6;
-    }
-    if (term === 24) {
-        console.log('FORÇANDO retorno de 10 meses para contrato de 24 meses');
-        return 10;
-    }
-    if (term === 36) {
-        console.log('FORÇANDO retorno de 13 meses para contrato de 36 meses');
-        return 13;
-    }
-    if (term === 48) {
-        console.log('FORÇANDO retorno de 13 meses para contrato de 48 meses');
-        return 13;
-    }
-    if (term === 60) {
-        console.log('FORÇANDO retorno de 14 meses para contrato de 60 meses');
-        return 14;
-    }
-
-    // Para outros prazos, usar cálculo real
-    console.log('Usando cálculo real para prazo não padrão:', term);
-    // Para outros prazos, usar cálculo real
-    const salespersonDiscountFactor = applySalespersonDiscount ? 0.95 : 1;
-    const directorDiscountFactor = 1 - (appliedDirectorDiscountPercentage / 100);
-    const discountedMonthlyRevenue = monthlyRevenue * salespersonDiscountFactor * directorDiscountFactor;
-
-    // Investimento inicial (custo do projeto)
-    let cumulativeBalance = -manCost;
-
-    // Cálculo mês a mês para encontrar quando o saldo fica positivo
-    for (let month = 1; month <= contractTerm; month++) {
-        // Receita do mês
-        let monthlyRevenueCalc = discountedMonthlyRevenue;
-
-        // No primeiro mês, adicionar a receita da instalação
-        if (month === 1) {
-            monthlyRevenueCalc += installationFee;
-        }
-
-        // Custos mensais baseados na lógica do DRE:
-        const monthlyBandCost = monthlyRevenueCalc * 0.0209; // 2.09%
-        const monthlyTaxes = monthlyRevenueCalc * 0.15; // 15%
-        const monthlyCommissions = discountedMonthlyRevenue * 0.02; // 2% genérico
-        const monthlyCustoDesp = monthlyRevenueCalc * 0.10; // 10%
-
-        // Fluxo líquido do mês
-        const monthlyNetFlow = monthlyRevenueCalc - monthlyBandCost - monthlyTaxes - monthlyCommissions - monthlyCustoDesp;
-
-        // Adicionar ao saldo acumulado
-        cumulativeBalance += monthlyNetFlow;
-
-        // Quando o saldo acumulado fica positivo, o payback foi atingido
-        if (cumulativeBalance >= 0) {
-            console.log(`CÁLCULO REAL: Retornando payback de ${month} meses para contractTerm ${contractTerm}`);
-            return month;
-        }
-    }
-
-    console.log(`CÁLCULO REAL: Não conseguiu recuperar, retornando ${contractTerm}`);
-    return contractTerm; // Se não conseguir recuperar no prazo
-};
-
-const validatePayback = (
-    installationFee: number,
-    manCost: number,
-    monthlyRevenue: number,
-    contractTerm: number,
-    applySalespersonDiscount: boolean = false,
-    appliedDirectorDiscountPercentage: number = 0
-): { isValid: boolean, actualPayback: number, maxPayback: number } => {
-    console.log(`validatePayback chamado com contractTerm: ${contractTerm}`);
-    const actualPayback = calculatePayback(
+    const {
         installationFee,
         manCost,
         monthlyRevenue,
         contractTerm,
-        applySalespersonDiscount,
-        appliedDirectorDiscountPercentage
-    );
-    const maxPayback = getMaxPaybackMonths(contractTerm);
+        speedMbps,
+        simplesNacionalPct,
+        custoDespPct,
+        bandaCostPerMbps,
+        createLastMile,
+        lastMileMultiplier,
+        totalCommissions
+    } = params;
 
-    console.log(`validatePayback resultado: actualPayback=${actualPayback}, maxPayback=${maxPayback}`);
+    const term = Math.max(0, Math.floor(Number(contractTerm) || 0));
+    const receitaMensal = Number(monthlyRevenue) || 0;
+    const setup = Number(installationFee) || 0;
+    const investimentoInicial = Number(manCost) || 0;
+
+    const simplesRate = (Number(simplesNacionalPct) || 0) / 100;
+    const custoDespRate = (Number(custoDespPct) || 0) / 100;
+
+    // Mes 0: receita apenas da taxa de instalacao. Despesas: simples nacional + custo/despesas + investimento inicial.
+    let cumulativeBalance = -investimentoInicial;
+    const impostosMes0 = setup * simplesRate;
+    const custoDespMes0 = setup * custoDespRate;
+    cumulativeBalance += setup - impostosMes0 - custoDespMes0;
+    if (cumulativeBalance >= 0) return 0;
+
+    if (receitaMensal <= 0) return term;
+
+    // Mes 1..N: receita mensal; despesas: banda OU last mile, simples nacional, comissoes (mes 1), custo/despesas.
+    for (let month = 1; month <= term; month++) {
+        const impostos = receitaMensal * simplesRate;
+        const custoDesp = receitaMensal * custoDespRate;
+
+        const custoBandaOuLastMile = createLastMile
+            ? (() => {
+                const mult = Number(lastMileMultiplier) || 0;
+                if (mult <= 0) return 0;
+                const base = receitaMensal / mult; // receita sem last mile
+                return Math.max(0, receitaMensal - base); // custo de last mile como adicional (pass-through)
+            })()
+            : (Number(speedMbps) || 0) * (Number(bandaCostPerMbps) || 0);
+
+        const comissoes = month === 1 ? (Number(totalCommissions) || 0) : 0;
+
+        const netFlow = receitaMensal - custoBandaOuLastMile - impostos - comissoes - custoDesp;
+        cumulativeBalance += netFlow;
+
+        if (cumulativeBalance >= 0) return month;
+    }
+
+    return term; // Se não conseguir recuperar no prazo
+};
+
+const validatePayback = (
+    params: Parameters<typeof calculatePayback>[0]
+): { isValid: boolean, actualPayback: number, maxPayback: number } => {
+    const actualPayback = calculatePayback(params);
+    const maxPayback = getMaxPaybackMonths(params.contractTerm);
 
     return {
-        isValid: actualPayback <= maxPayback && actualPayback > 0,
+        isValid: actualPayback <= maxPayback && actualPayback >= 0,
         actualPayback,
         maxPayback
     };
@@ -307,7 +283,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     const [isExistingClient, setIsExistingClient] = useState(false);
     const [previousMonthlyFee, setPreviousMonthlyFee] = useState(0);
     const [createLastMile, setCreateLastMile] = useState(false);
-    const [lastMileCost, setLastMileCost] = useState(0);
+    const [lastMilePercentage, setLastMilePercentage] = useState(1.75);
     const [projectValue, setProjectValue] = useState<number>(0);
     const [directorDiscountPercentage, setDirectorDiscountPercentage] = useState<number>(0);
     const [appliedDirectorDiscountPercentage, setAppliedDirectorDiscountPercentage] = useState<number>(0);
@@ -316,7 +292,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
     const [includeInfluencerPartner, setIncludeInfluencerPartner] = useState<boolean>(false);
 
     // Hook para comissões editáveis
-    const { channelIndicator, channelInfluencer, channelSeller, seller } = useCommissions();
+    const { channelIndicator, channelInfluencer, channelSeller, seller, channelDirector } = useCommissions();
 
     // Função para obter taxa de comissão do Parceiro Indicador usando as tabelas editáveis
     // Usa apenas o valor mensal para buscar o percentual na tabela de comissões
@@ -430,6 +406,60 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         return discountedTotal;
     }, [applySalespersonDiscount, appliedDirectorDiscountPercentage]);
 
+    // Total de comissoes (pagas no mes 1 no calculo de payback)
+    const calculateTotalCommissions = useCallback((monthlyRevenue: number, contractMonths: number): number => {
+        const temParceiros = includeReferralPartner || includeInfluencerPartner;
+
+        const baseParaComissao = isExistingClient
+            ? (monthlyRevenue - previousMonthlyFee)
+            : monthlyRevenue;
+
+        const baseParaComissaoContrato = isExistingClient && previousMonthlyFee > 0
+            ? Math.max(0, (monthlyRevenue - previousMonthlyFee) * contractMonths)
+            : monthlyRevenue * contractMonths;
+
+        let comissaoVendedor = 0;
+        if (baseParaComissaoContrato > 0) {
+            if (temParceiros && channelSeller) {
+                const percentualVendedor = getChannelSellerCommissionRate(channelSeller, contractMonths) / 100;
+                comissaoVendedor = baseParaComissaoContrato * percentualVendedor;
+            } else if (!temParceiros && seller) {
+                const percentualVendedor = getSellerCommissionRate(seller, contractMonths) / 100;
+                comissaoVendedor = baseParaComissaoContrato * percentualVendedor;
+            }
+        }
+
+        let comissaoParceiroIndicador = 0;
+        if (baseParaComissaoContrato > 0 && includeReferralPartner && channelIndicator) {
+            const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, baseParaComissao, contractMonths) / 100;
+            comissaoParceiroIndicador = baseParaComissaoContrato * percentualIndicador;
+        }
+
+	        let comissaoParceiroInfluenciador = 0;
+	        if (baseParaComissaoContrato > 0 && includeInfluencerPartner && channelInfluencer) {
+	            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, baseParaComissao, contractMonths) / 100;
+	            comissaoParceiroInfluenciador = baseParaComissaoContrato * percentualInfluenciador;
+	        }
+
+	        let comissaoDiretor = 0;
+	        if (baseParaComissaoContrato > 0 && channelDirector) {
+	            const percentualDiretor = getDirectorCommissionRate(channelDirector, contractMonths) / 100;
+	            comissaoDiretor = baseParaComissaoContrato * percentualDiretor;
+	        }
+
+	        return comissaoVendedor + comissaoDiretor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+	    }, [
+	        includeReferralPartner,
+	        includeInfluencerPartner,
+	        isExistingClient,
+	        previousMonthlyFee,
+	        channelSeller,
+	        seller,
+	        channelIndicator,
+	        channelInfluencer,
+	        channelDirector
+	    ]);
+
     // Partner indicator ranges handled by getPartnerIndicatorRate
 
     // Calculate the selected MAN plan based on the chosen speed (usando debounced value)
@@ -450,6 +480,13 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             console.log('Acréscimo de 20% aplicado no result.monthlyPrice - InternetMan:', monthlyPrice);
         }
 
+        // Last Mile: multiplica a mensalidade pelo fator informado (padrao 1.75)
+        if (createLastMile) {
+            const rawMultiplier = Number(lastMilePercentage);
+            const multiplier = Number.isFinite(rawMultiplier) && rawMultiplier > 0 ? rawMultiplier : 1.75;
+            monthlyPrice = monthlyPrice * multiplier;
+        }
+
         return {
             ...plan,
             monthlyPrice,
@@ -457,26 +494,40 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             baseCost: plan.cost,
             fiberCost: plan.cost,
             paybackValidation: (() => {
-                console.log(`=== CALCULANDO PAYBACK VALIDATION ===`);
-                console.log(`contractTerm: ${contractTerm}`);
-                console.log(`includeInstallation: ${includeInstallation}`);
-                console.log(`plan.installationCost: ${plan.installationCost}`);
-                console.log(`plan.cost: ${plan.cost}`);
-                console.log(`monthlyPrice: ${monthlyPrice}`);
-
-                const validation = validatePayback(
-                    includeInstallation ? plan.installationCost : 0,
-                    plan.cost,
-                    monthlyPrice,
-                    contractTerm, // Usar contractTerm diretamente em vez de debouncedContractTerm
-                    applySalespersonDiscount,
-                    appliedDirectorDiscountPercentage
-                );
-                console.log(`=== RESULTADO FINAL PAYBACK VALIDATION ===`, validation);
-                return validation;
+                const totalCommissions = calculateTotalCommissions(monthlyPrice, contractTerm);
+                return validatePayback({
+                    installationFee: includeInstallation ? plan.installationCost : 0,
+                    manCost: plan.cost,
+                    monthlyRevenue: monthlyPrice,
+                    contractTerm, // Usar contractTerm diretamente (sem debounce) para validar o prazo selecionado
+                    speedMbps: plan.speed,
+                    simplesNacionalPct: taxRates.simplesNacional,
+                    custoDespPct: taxRates.custoDesp,
+                    bandaCostPerMbps: taxRates.banda,
+                    createLastMile,
+                    lastMileMultiplier: lastMilePercentage,
+                    totalCommissions
+                });
             })()
         };
-    }, [selectedSpeed, manPlans, contractTerm, includeInstallation, includeReferralPartner, includeInfluencerPartner, applySalespersonDiscount, appliedDirectorDiscountPercentage, applyDiscounts, debouncedContractTerm]);
+    }, [
+        selectedSpeed,
+        manPlans,
+        contractTerm,
+        includeInstallation,
+        includeReferralPartner,
+        includeInfluencerPartner,
+        applySalespersonDiscount,
+        appliedDirectorDiscountPercentage,
+        applyDiscounts,
+        debouncedContractTerm,
+        calculateTotalCommissions,
+        taxRates.simplesNacional,
+        taxRates.custoDesp,
+        taxRates.banda,
+        createLastMile,
+        lastMilePercentage
+    ]);
 
     // Cálculo detalhado de custos e margens (DRE)
     const {
@@ -792,6 +843,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         // CORREÇÃO: Receita mensal = valor mensal × número de meses do período
         // Ex: Para 12 meses = 12 × R$ 5.211,00 = R$ 62.532,00
         let monthlyValue = 0;
+        let baseMonthlyValue = 0;
         let totalRevenue = 0;
 
         if (result) {
@@ -816,8 +868,18 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                 });
             }
 
+            baseMonthlyValue = monthlyValue;
+
+            // Last Mile: multiplica a mensalidade pelo fator informado (padrao 1.75)
+            if (createLastMile) {
+                const rawMultiplier = Number(lastMilePercentage);
+                const multiplier = Number.isFinite(rawMultiplier) && rawMultiplier > 0 ? rawMultiplier : 1.75;
+                monthlyValue = monthlyValue * multiplier;
+            }
+
             // Calcular receita total do período: valor mensal × meses
             totalRevenue = monthlyValue * months;
+
         }
 
         const receitaInstalacao = taxaInstalacao;
@@ -833,7 +895,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         const custoManCalculadora = custoDoubleFiberRadio;
 
         const fundraising = 0; // Conforme tabela
-        const lastMile = createLastMile ? lastMileCost : 0; // Incluir custo Last Mile quando selecionado
+        // Last Mile como custo mensal adicional (pass-through): (mensalidade_com_last_mile - mensalidade_base) * meses
+        const lastMile = createLastMile ? Math.max(0, (monthlyValue - baseMonthlyValue) * months) : 0;
 
         // CORREÇÃO: Impostos baseados na receita total (incluindo taxa de instalação)
         const simplesNacionalRate = taxRates.simplesNacional / 100;
@@ -859,53 +922,58 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             ? (monthlyValue - previousMonthlyFee) // Diferença de valores
             : monthlyValue; // Valor total
 
+        // Base para cálculo de comissões no DRE: usar diferença de valores do contrato total
+        // CORREÇÃO: Usar result.monthlyPrice para consistência com o resumo da proposta
+        const baseParaComissaoContrato = isExistingClient && previousMonthlyFee > 0 && result
+            ? Math.max(0, (result.monthlyPrice - previousMonthlyFee) * months) // Diferença de valores do contrato (mínimo 0)
+            : result ? result.monthlyPrice * months : monthlyValue * months; // Valor total do contrato
+
         console.log(`Base para comissão: ${baseParaComissao} (isExistingClient: ${isExistingClient}, monthlyValue: ${monthlyValue}, previousMonthlyFee: ${previousMonthlyFee})`);
 
         // Calcular comissão do vendedor/canal
         let comissaoVendedor = 0;
-        if (temParceiros && channelSeller) {
-            // Com parceiros: usar canal/vendedor
-            const percentualVendedor = getChannelSellerCommissionRate(channelSeller, contractTerm) / 100;
-            comissaoVendedor = baseParaComissao * percentualVendedor * contractTerm;
-        } else if (!temParceiros && seller) {
-            // Sem parceiros: usar vendedor
-            const percentualVendedor = getSellerCommissionRate(seller, contractTerm) / 100;
-            comissaoVendedor = baseParaComissao * percentualVendedor * contractTerm;
+        if (baseParaComissaoContrato > 0) {
+            if (temParceiros && channelSeller) {
+                // Com parceiros: usar canal/vendedor
+                const percentualVendedor = getChannelSellerCommissionRate(channelSeller, contractTerm) / 100;
+                comissaoVendedor = baseParaComissaoContrato * percentualVendedor;
+            } else if (!temParceiros && seller) {
+                // Sem parceiros: usar vendedor
+                const percentualVendedor = getSellerCommissionRate(seller, contractTerm) / 100;
+                comissaoVendedor = baseParaComissaoContrato * percentualVendedor;
+            }
         }
 
         // Calcular comissão do parceiro indicador (apenas se marcado)
         let comissaoParceiroIndicador = 0;
-        if (includeReferralPartner && channelIndicator) {
+        if (baseParaComissaoContrato > 0 && includeReferralPartner && channelIndicator) {
             const percentualIndicador = getChannelIndicatorCommissionRate(channelIndicator, baseParaComissao, contractTerm) / 100;
-            comissaoParceiroIndicador = baseParaComissao * percentualIndicador * contractTerm;
+            comissaoParceiroIndicador = baseParaComissaoContrato * percentualIndicador;
         }
 
         // Calcular comissão do parceiro influenciador (apenas se marcado)
-        let comissaoParceiroInfluenciador = 0;
-        if (includeInfluencerPartner && channelInfluencer) {
-            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, baseParaComissao, contractTerm) / 100;
-            comissaoParceiroInfluenciador = baseParaComissao * percentualInfluenciador * contractTerm;
-        }
+	        let comissaoParceiroInfluenciador = 0;
+	        if (baseParaComissaoContrato > 0 && includeInfluencerPartner && channelInfluencer) {
+	            const percentualInfluenciador = getChannelInfluencerCommissionRate(channelInfluencer, baseParaComissao, contractTerm) / 100;
+	            comissaoParceiroInfluenciador = baseParaComissaoContrato * percentualInfluenciador;
+	        }
 
-        // Total de comissões
-        const totalComissoes = comissaoVendedor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+	        // Comissão Diretor (conforme tabela Comissão Diretor e prazo contratual selecionado)
+	        let comissaoDiretor = 0;
+	        if (baseParaComissaoContrato > 0 && channelDirector) {
+	            const percentualDiretor = getDirectorCommissionRate(channelDirector, contractTerm) / 100;
+	            comissaoDiretor = baseParaComissaoContrato * percentualDiretor;
+	        }
 
-        // Custo/Despesa: 10% sobre receita total (incluindo taxa de instalação)
-        const custoDespesa = receitaTotalPrimeiromes * 0.10;
+	        // Total de comissões
+	        const totalComissoes = comissaoVendedor + comissaoDiretor + comissaoParceiroIndicador + comissaoParceiroInfluenciador;
+
+        // Custo/Despesa: percentual configurado sobre receita total (incluindo taxa de instalação)
+        const custoDespesa = receitaTotalPrimeiromes * ((taxRates.custoDesp || 0) / 100);
 
         // Balance (Lucro Líquido) conforme planilha
         // Balance = Receita Total - Custo do Projeto - Custo de banda - PIS - Comissões - Custo/Despesa
-        const balance = receitaTotalPrimeiromes - custoManCalculadora - custoBanda - simplesNacional - totalComissoes - custoDespesa;
-
-        // Payback Calculation usando a função padronizada
-        const paybackMonths = calculatePayback(
-            receitaInstalacao,
-            custoManCalculadora,
-            monthlyValue,
-            contractTerm,
-            applySalespersonDiscount,
-            appliedDirectorDiscountPercentage
-        );
+        const balance = receitaTotalPrimeiromes - custoManCalculadora - custoBanda - lastMile - simplesNacional - totalComissoes - custoDespesa;
 
 
         // Cálculos financeiros conforme planilha:
@@ -924,9 +992,9 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         const markup = totalCost > 0 ? ((receitaTotalPrimeiromes - totalCost) / totalCost) * 100 : 0;
 
         // Calcular diferença de valores contrato para clientes existentes
-        // Usar o valor mensal com descontos aplicados (monthlyValue) menos a mensalidade anterior
-        const diferencaMensal = isExistingClient && previousMonthlyFee > 0
-            ? (monthlyValue - previousMonthlyFee)
+        // CORREÇÃO: Usar result.monthlyPrice para consistência com o resumo da proposta
+        const diferencaMensal = isExistingClient && previousMonthlyFee > 0 && result
+            ? (result.monthlyPrice - previousMonthlyFee)
             : 0;
         const diferencaValoresContrato = diferencaMensal * months;
 
@@ -940,6 +1008,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             lastMile,
             simplesNacional,
             comissaoVendedor,
+            comissaoDiretor,
             comissaoParceiroIndicador,
             comissaoParceiroInfluenciador,
             totalComissoes,
@@ -949,7 +1018,6 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             lucratividade,
             margemLiquida,
             markup,
-            paybackMonths, // Adicionando o payback
             diferencaValoresContrato // Novo campo para DRE
         };
     }, [
@@ -957,11 +1025,12 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         taxaInstalacao,
         custoDoubleFiberRadio,
         taxRates.simplesNacional,
+        taxRates.custoDesp,
 
         includeReferralPartner,
         includeInfluencerPartner,
         createLastMile,
-        lastMileCost,
+        lastMilePercentage,
         isExistingClient,
         previousMonthlyFee,
         appliedDirectorDiscountPercentage,
@@ -970,6 +1039,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
         channelIndicator,
         channelInfluencer,
         channelSeller,
+        channelDirector,
         contractTerm,
         seller,
         taxRates.banda
@@ -996,6 +1066,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             custoBanda: dre12.custoBanda,
             taxaInstalacao: dre12.receitaInstalacao,
             comissaoVendedor: dre12.comissaoVendedor,
+            comissaoDiretor: dre12.comissaoDiretor,
             comissaoParceiroIndicador: dre12.comissaoParceiroIndicador,
             comissaoParceiroInfluenciador: dre12.comissaoParceiroInfluenciador,
             totalComissoes: dre12.totalComissoes,
@@ -1004,18 +1075,11 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
             lucroLiquido: dre12.balance / 12, // Lucro líquido mensal
             rentabilidade: dre12.rentabilidade,
             lucratividade: dre12.lucratividade,
-            paybackMeses: calculatePayback(
-                dre12.receitaInstalacao,
-                result?.cost || 0,
-                dre12.receitaMensal / 12, // Usar receita mensal real
-                contractTerm, // CORREÇÃO: Usar contractTerm real em vez de 12 fixo
-                applySalespersonDiscount,
-                appliedDirectorDiscountPercentage
-            ),
+            paybackMeses: result?.paybackValidation.actualPayback ?? 0,
             margemLiquida: dre12.margemLiquida,
             markup: dre12.markup
         };
-    }, [calculateDREForPeriod, appliedDirectorDiscountPercentage, applySalespersonDiscount, contractTerm, result?.cost]);
+    }, [calculateDREForPeriod, result?.paybackValidation.actualPayback]);
 
     const handleSavePrices = () => {
         // Use the already calculated price breakdown
@@ -2002,14 +2066,20 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                     const plan = manPlans.find(p => p.speed === currentProposal.selectedSpeed);
                                     let paybackMonths = 0;
                                     if (plan) {
-                                        paybackMonths = calculatePayback(
-                                            currentProposal.includeInstallation ? plan.installationCost : 0,
-                                            plan.cost,
-                                            totalMonthly ?? 0,
+                                        const totalCommissions = calculateTotalCommissions(totalMonthly ?? 0, contractTerm);
+                                        paybackMonths = calculatePayback({
+                                            installationFee: currentProposal.includeInstallation ? plan.installationCost : 0,
+                                            manCost: plan.cost,
+                                            monthlyRevenue: totalMonthly ?? 0,
                                             contractTerm,
-                                            currentProposal.applySalespersonDiscount || false,
-                                            currentProposal.appliedDirectorDiscountPercentage ?? 0
-                                        );
+                                            speedMbps: plan.speed,
+                                            simplesNacionalPct: taxRates.simplesNacional,
+                                            custoDespPct: taxRates.custoDesp,
+                                            bandaCostPerMbps: taxRates.banda,
+                                            createLastMile,
+                                            lastMileMultiplier: lastMilePercentage,
+                                            totalCommissions
+                                        });
                                     }
 
                                     const maxPayback = getMaxPaybackMonths(contractTerm);
@@ -2056,14 +2126,12 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     </div>
 
                     <Tabs defaultValue="calculator" className="w-full">
-                        <TabsList className={`grid w-full ${user?.role === 'admin' ? 'grid-cols-4' : 'grid-cols-1'} bg-slate-800`}>
+                        <TabsList className={`grid w-full grid-cols-4 bg-slate-800`}>
                             <TabsTrigger value="calculator">Calculadora</TabsTrigger>
                             {user?.role === 'admin' && (
                                 <TabsTrigger value="prices">Tabela de Preços</TabsTrigger>
                             )}
-                            {user?.role === 'admin' && (
-                                <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
-                            )}
+                            <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
                             {user?.role === 'admin' && (
                                 <TabsTrigger value="dre">DRE</TabsTrigger>
                             )}
@@ -2158,29 +2226,37 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                 <Checkbox
                                                     id="createLastMile"
                                                     checked={createLastMile}
-                                                    onCheckedChange={(checked) => setCreateLastMile(!!checked)}
+                                                    onCheckedChange={(checked) => {
+                                                        const enabled = !!checked;
+                                                        setCreateLastMile(enabled);
+                                                        if (enabled && (!Number.isFinite(lastMilePercentage) || lastMilePercentage <= 0)) {
+                                                            setLastMilePercentage(1.75);
+                                                        }
+                                                    }}
                                                 />
                                                 <Label htmlFor="createLastMile">Criar Last Mile?</Label>
                                             </div>
                                         </div>
                                         {createLastMile && (
                                             <div className="space-y-2">
-                                                <Label htmlFor="lastMileCost">Custo (Last Mile)</Label>
-                                                <CurrencyInput id="lastMileCost" value={lastMileCost} onChange={setLastMileCost} placeholder="0,00" className="bg-slate-800" />
+                                                <Label htmlFor="lastMilePercentage">Fator Last Mile (ex: 1,75)</Label>
+                                                <Input
+                                                    id="lastMilePercentage"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    max="100"
+                                                    value={lastMilePercentage}
+                                                    onChange={(e) => {
+                                                        const raw = Number(e.target.value);
+                                                        const value = Number.isFinite(raw) ? raw : 0;
+                                                        setLastMilePercentage(Math.min(100, Math.max(0, value)));
+                                                    }}
+                                                    placeholder="1.75"
+                                                    className="bg-slate-800 border-slate-700 text-white"
+                                                />
                                             </div>
                                         )}
-
-                                        {/* Custo Fibra */}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="custoFibra">Custo Fibra (R$)</Label>
-                                            <Input
-                                                id="custoFibra"
-                                                type="text"
-                                                value={(result?.cost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                onChange={(e) => handleCustoManChange(parseFloat(e.target.value.replace(/[^0-9,.]/g, '').replace(',', '.')) || 0)}
-                                                className="bg-slate-800 border-slate-700 text-white"
-                                            />
-                                        </div>
 
                                         <div className="space-y-2">
                                             <div className="flex items-center space-x-2">
@@ -2698,30 +2774,41 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                         })}
                                                     </TableRow>
                                                 )}
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">
-                                                        {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
-                                                    </TableCell>
-                                                    {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
-                                                        const months = (i + 1) * 12;
-                                                        return (
-                                                            <TableCell key={months} className="text-right text-white">
-                                                                {formatCurrency(dreCalculations[months].comissaoVendedor)}
-                                                            </TableCell>
-                                                        );
-                                                    })}
-                                                </TableRow>
-                                                <TableRow className="border-slate-800">
-                                                    <TableCell className="text-white">Custo / Despesa</TableCell>
-                                                    {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
-                                                        const months = (i + 1) * 12;
-                                                        return (
-                                                            <TableCell key={months} className="text-right text-white">
-                                                                {formatCurrency(dreCalculations[months].custoDespesa)}
-                                                            </TableCell>
-                                                        );
-                                                    })}
-                                                </TableRow>
+	                                                <TableRow className="border-slate-800">
+	                                                    <TableCell className="text-white">
+	                                                        {(includeReferralPartner || includeInfluencerPartner) ? 'Comissão Canal/Vendedor' : 'Comissão Vendedor'}
+	                                                    </TableCell>
+	                                                    {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
+	                                                        const months = (i + 1) * 12;
+	                                                        return (
+	                                                            <TableCell key={months} className="text-right text-white">
+	                                                                {formatCurrency(dreCalculations[months].comissaoVendedor)}
+	                                                            </TableCell>
+	                                                        );
+	                                                    })}
+	                                                </TableRow>
+	                                                <TableRow className="border-slate-800">
+	                                                    <TableCell className="text-white">Comissão Diretor</TableCell>
+	                                                    {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
+	                                                        const months = (i + 1) * 12;
+	                                                        return (
+	                                                            <TableCell key={months} className="text-right text-white">
+	                                                                {formatCurrency(dreCalculations[months].comissaoDiretor)}
+	                                                            </TableCell>
+	                                                        );
+	                                                    })}
+	                                                </TableRow>
+	                                                <TableRow className="border-slate-800">
+	                                                    <TableCell className="text-white">Custo / Despesa</TableCell>
+	                                                    {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
+	                                                        const months = (i + 1) * 12;
+	                                                        return (
+	                                                            <TableCell key={months} className="text-right text-white">
+	                                                                {formatCurrency(dreCalculations[months].custoDespesa)}
+	                                                            </TableCell>
+	                                                        );
+	                                                    })}
+	                                                </TableRow>
                                                 <TableRow className="border-slate-800 bg-green-900/50">
                                                     <TableCell className="text-white font-bold">Balance</TableCell>
                                                     {Array.from({ length: Math.floor(contractTerm / 12) }, (_, i) => {
@@ -2873,14 +2960,21 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     <div className="text-xl font-bold text-purple-400">
                                                         {(() => {
                                                             const avgPayback = [12, 24, 36, 48, 60].reduce((sum, period) => {
-                                                                const payback = calculatePayback(
-                                                                    dreCalculations[period].receitaInstalacao,
-                                                                    result?.cost || 0,
-                                                                    dreCalculations[period].receitaMensal,
-                                                                    period,
-                                                                    applySalespersonDiscount,
-                                                                    appliedDirectorDiscountPercentage
-                                                                );
+                                                                const monthlyRevenue = (dreCalculations[period].receitaMensal || 0) / period;
+                                                                const totalCommissions = calculateTotalCommissions(monthlyRevenue, period);
+                                                                const payback = calculatePayback({
+                                                                    installationFee: dreCalculations[period].receitaInstalacao,
+                                                                    manCost: result?.cost || 0,
+                                                                    monthlyRevenue,
+                                                                    contractTerm: period,
+                                                                    speedMbps: velocidade,
+                                                                    simplesNacionalPct: taxRates.simplesNacional,
+                                                                    custoDespPct: taxRates.custoDesp,
+                                                                    bandaCostPerMbps: taxRates.banda,
+                                                                    createLastMile,
+                                                                    lastMileMultiplier: lastMilePercentage,
+                                                                    totalCommissions
+                                                                });
                                                                 return sum + payback;
                                                             }, 0) / 5;
                                                             return avgPayback > 0 ? `${Math.round(avgPayback)} meses` : '0 meses';
@@ -2948,14 +3042,21 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
                                                     // Verificar payback alto
                                                     const highPaybackPeriods = periods.filter(p => {
-                                                        const payback = calculatePayback(
-                                                            dreCalculations[p].receitaInstalacao,
-                                                            result?.cost || 0,
-                                                            dreCalculations[p].receitaMensal,
-                                                            p,
-                                                            applySalespersonDiscount,
-                                                            appliedDirectorDiscountPercentage
-                                                        );
+                                                        const monthlyRevenue = (dreCalculations[p].receitaMensal || 0) / p;
+                                                        const totalCommissions = calculateTotalCommissions(monthlyRevenue, p);
+                                                        const payback = calculatePayback({
+                                                            installationFee: dreCalculations[p].receitaInstalacao,
+                                                            manCost: result?.cost || 0,
+                                                            monthlyRevenue,
+                                                            contractTerm: p,
+                                                            speedMbps: velocidade,
+                                                            simplesNacionalPct: taxRates.simplesNacional,
+                                                            custoDespPct: taxRates.custoDesp,
+                                                            bandaCostPerMbps: taxRates.banda,
+                                                            createLastMile,
+                                                            lastMileMultiplier: lastMilePercentage,
+                                                            totalCommissions
+                                                        });
                                                         return payback > 12;
                                                     });
                                                     if (highPaybackPeriods.length > 0) {
@@ -3096,16 +3197,20 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                                     <span className="text-gray-300">Banda:</span>
                                                     <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.custoBanda)}</span>
                                                 </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-300">Comissão Vendedor:</span>
-                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoVendedor)}</span>
-                                                </div>
-                                                {includeReferralPartner && (
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-300">Comissão P. Indicador:</span>
-                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</span>
-                                                    </div>
-                                                )}
+	                                                <div className="flex justify-between text-sm">
+	                                                    <span className="text-gray-300">Comissão Vendedor:</span>
+	                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoVendedor)}</span>
+	                                                </div>
+	                                                <div className="flex justify-between text-sm">
+	                                                    <span className="text-gray-300">Comissão Diretor:</span>
+	                                                    <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoDiretor ?? 0)}</span>
+	                                                </div>
+	                                                {includeReferralPartner && (
+	                                                    <div className="flex justify-between text-sm">
+	                                                        <span className="text-gray-300">Comissão P. Indicador:</span>
+	                                                        <span className="text-red-300 font-semibold">{formatCurrency(dreCalculations.comissaoParceiroIndicador)}</span>
+	                                                    </div>
+	                                                )}
                                                 {includeInfluencerPartner && (
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-300">Comissão P. Influenciador:</span>

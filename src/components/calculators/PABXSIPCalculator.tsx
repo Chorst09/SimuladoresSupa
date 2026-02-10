@@ -2256,14 +2256,12 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             </div>
 
             <Tabs defaultValue="calculator" className="w-full">
-                <TabsList className={`grid w-full ${currentUser?.role === 'admin' ? 'grid-cols-4' : 'grid-cols-1'} bg-slate-800 text-slate-400`}>
+                <TabsList className={`grid w-full grid-cols-4 bg-slate-800 text-slate-400`}>
                     <TabsTrigger value="calculator">Calculadora</TabsTrigger>
                     {currentUser?.role === 'admin' && (
                         <TabsTrigger value="list-price">Tabela de Preços</TabsTrigger>
                     )}
-                    {currentUser?.role === 'admin' && (
-                        <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
-                    )}
+                    <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
                     {currentUser?.role === 'admin' && (
                         <TabsTrigger value="dre">DRE</TabsTrigger>
                     )}
@@ -3193,7 +3191,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                 <div className="w-16 h-16 mx-auto bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-lg mb-2">
                                                     {plan}
                                                 </div>
-                                                <p className="text-xs text-slate-400">{data.credits.toLocaleString()} Créditos de Interação</p>
+                                                <p className="text-xs text-slate-400">{data?.credits?.toLocaleString?.() ?? '0'} Créditos de Interação</p>
                                             </div>
 
                                             <div className="space-y-2 text-xs text-slate-300 mb-4">
@@ -3386,7 +3384,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                                                         {isEditingSIP ? (
                                                             <Input type="number" step="1" value={minutes} onChange={(e) => setSipConfig(prev => ({ ...prev, includedMinutes: { ...prev.includedMinutes, [plan]: parseFloat(e.target.value) || 0 } }))} className="bg-slate-800 text-center" />
                                                         ) : (
-                                                            `${minutes.toLocaleString()}<br/>Minutos`
+                                                            <div dangerouslySetInnerHTML={{ __html: `${minutes?.toLocaleString?.() ?? '0'}<br/>Minutos` }} />
                                                         )}
                                                     </TableCell>
                                                 ))}
