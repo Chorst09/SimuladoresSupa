@@ -147,11 +147,11 @@ async function main() {
     update: {},
     create: {
       id: '00000000-0000-0000-0000-000000000002',
-      months_12: 0,
-      months_24: 0,
-      months_36: 0,
-      months_48: 0,
-      months_60: 0
+      months_12: 0.60,
+      months_24: 1.20,
+      months_36: 1.50,
+      months_48: 2.00,
+      months_60: 2.00
     }
   })
 
