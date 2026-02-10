@@ -66,3 +66,7 @@ simuladores.tar.gz
 install-remote.sh
 install-on-server.sh
 limpar-servidor.sh
+
+# Logs locais de deploy (nao versionar)
+deploy_final.log
+deploy_final_output.log

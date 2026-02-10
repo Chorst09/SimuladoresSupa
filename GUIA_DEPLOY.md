@@ -5,8 +5,8 @@
 ```
 Servidor: 10.10.50.246
 Usuário: double
-Senha SSH: <SENHA_DO_SERVIDOR>
-Senha Sudo: <SENHA_DO_SERVIDOR>
+Senha SSH: D0ubl3T3l3c0m
+Senha Sudo: D0ubl3T3l3c0m
 Pasta: ~/simuladores
 ```
 
@@ -52,19 +52,19 @@ cp .env.example .env.development
 ```bash
 # Transferir tudo de uma vez
 ./deploy.sh deploy-remote double@10.10.50.246 simuladores-app.tar.gz
-# Senha quando solicitado: <SENHA_DO_SERVIDOR>
+# Senha quando solicitado: D0ubl3T3l3c0m
 ```
 
 **Etapa 2 - No Servidor:**
 ```bash
 # Conectar ao servidor
 ssh double@10.10.50.246
-# Senha: <SENHA_DO_SERVIDOR>
+# Senha: <REMOVIDA - use gerenciador de senhas / nao comitar credenciais>
 
 # Entrar na pasta e instalar
 cd ~/simuladores
 sudo ./deploy.sh install-on-server
-# Senha sudo: <SENHA_DO_SERVIDOR>
+# Senha sudo: D0ubl3T3l3c0m
 # Responder 'y' quando perguntado
 ```
 
@@ -93,7 +93,7 @@ docker save simuladores-app:latest | gzip > simuladores-app.tar.gz
 ```bash
 # Transferir imagem
 scp simuladores-app.tar.gz double@10.10.50.246:~/
-# Senha: <SENHA_DO_SERVIDOR>
+# Senha: <REMOVIDA - use gerenciador de senhas / nao comitar credenciais>
 
 # Transferir configurações
 scp .env.production double@10.10.50.246:~/simuladores/
@@ -107,7 +107,7 @@ scp deploy.sh double@10.10.50.246:~/simuladores/
 ```bash
 # Conectar via SSH
 ssh double@10.10.50.246
-# Senha: <SENHA_DO_SERVIDOR>
+# Senha: <REMOVIDA - use gerenciador de senhas / nao comitar credenciais>
 
 # Entrar na pasta do projeto
 cd ~/simuladores
@@ -146,7 +146,7 @@ URL: http://10.10.50.246:3009
 
 Login padrão:
 - Email: admin@sistema.com
-- Senha: admin123
+- Senha: <REMOVIDA - use gerenciador de senhas / nao comitar credenciais>
 ```
 
 ---
@@ -301,7 +301,7 @@ sudo ./deploy.sh restart
 **Sempre conectar primeiro via SSH:**
 ```bash
 ssh double@10.10.50.246
-# Senha: <SENHA_DO_SERVIDOR>
+# Senha: <REMOVIDA - use gerenciador de senhas / nao comitar credenciais>
 ```
 
 **Depois executar os comandos:**
