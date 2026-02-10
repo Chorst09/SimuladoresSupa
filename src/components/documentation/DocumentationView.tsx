@@ -309,8 +309,8 @@ export default function DocumentationView({
             <ul className="list-disc pl-5 space-y-1">
               <li>Crie uma Nova Proposta ou edite uma proposta existente.</li>
               <li>Preencha Cliente e Gerente (dados aparecem no topo).</li>
-              <li>Configure os parâmetros na aba "Calculadora".</li>
-              <li>Use "Adicionar Produto" ou "Adicionar à Proposta" para montar o resumo.</li>
+              <li>Configure os parâmetros na aba &quot;Calculadora&quot;.</li>
+              <li>Use &quot;Adicionar Produto&quot; ou &quot;Adicionar à Proposta&quot; para montar o resumo.</li>
               <li>Revise o resumo, ajuste o status, e então salve/baixe a proposta.</li>
             </ul>
           </div>
