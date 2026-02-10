@@ -348,7 +348,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         rate: 0.05,
         margem: 0.30,
         banda: 2.09,
-        custoDesp: 49.28
+        // Base padrao alinhada com as demais calculadoras: 10% (Custo/Despesa no DRE)
+        custoDesp: 10.00
     });
 
     // Estados para regime tributário
