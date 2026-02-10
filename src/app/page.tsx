@@ -8,7 +8,7 @@ import { useAdmin } from "@/hooks/use-admin";
 import {
     Loader2, LogOut, User, Briefcase, BarChart, Calculator,
     Server, Phone, Wifi, CheckSquare, BarChart3, ClipboardList,
-    ChevronDown, Moon, Sun, Users, Shield, MapPin, KeyRound
+    ChevronDown, Moon, Sun, Users, Shield, MapPin, KeyRound, BookOpen
 } from 'lucide-react';
 
 // Importe seus componentes de UI
@@ -40,6 +40,7 @@ const PhysicalVirtualConversion = lazy(() => import('@/components/tools/Physical
 const UserManagement = lazy(() => import('@/components/admin/UserManagement'));
 // const AdminSetup = lazy(() => import('@/components/admin/AdminSetup')); // Unused import
 const PendingApproval = lazy(() => import('@/components/auth/PendingApproval'));
+const DocumentationView = lazy(() => import('@/components/documentation/DocumentationView'));
 
 
 
@@ -112,6 +113,11 @@ export default function App() {
                 { id: 'it-assessment', label: 'Assessment de TI', icon: <BarChart3 className="h-4 w-4" /> },
                 { id: 'poc', label: 'Provas de Conceito (POC)', icon: <ClipboardList className="h-4 w-4" /> }
             ]
+        },
+        {
+            id: 'documentation',
+            label: 'Documentação',
+            icon: <BookOpen className="h-4 w-4" />
         },
         // Adicionar gerenciamento de usuários apenas para administradores
         ...(user?.role === 'admin' ? [{
@@ -218,6 +224,12 @@ export default function App() {
                 return (
                     <Suspense fallback={<LoadingSpinner />}>
                         <PhysicalVirtualConversion />
+                    </Suspense>
+                );
+            case 'documentation':
+                return (
+                    <Suspense fallback={<LoadingSpinner />}>
+                        <DocumentationView onNavigateToCalculator={(tabId) => setActiveTab(tabId)} />
                     </Suspense>
                 );
             case 'site-survey':
