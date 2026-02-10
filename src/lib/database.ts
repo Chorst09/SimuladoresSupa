@@ -237,7 +237,7 @@ export const commissionService = {
     }));
   },
 
-  async updateCommissionTable(table: string, id: string, data: any) {
+  async updateCommissionTable(table: string, id: string | undefined, data: any) {
     // Remover o id do data para evitar conflitos
     const { id: _, ...updateData } = data;
     
@@ -272,28 +272,67 @@ export const commissionService = {
       months_60: toFiniteNumber(record.months_60),
     });
 
+    const isUuid = (value: unknown): value is string =>
+      typeof value === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
     switch (table) {
       case 'channel_seller':
-        return normalizeSingle(await prisma.commissionChannelSeller.update({
-          where: { id },
-          data: convertedData
-        }));
+        if (isUuid(id)) {
+          return normalizeSingle(await prisma.commissionChannelSeller.update({
+            where: { id },
+            data: convertedData
+          }));
+        }
+        {
+          const updated = await prisma.commissionChannelSeller.updateMany({ data: convertedData });
+          if (updated.count === 0) {
+            return normalizeSingle(await prisma.commissionChannelSeller.create({ data: convertedData }));
+          }
+          const record = await prisma.commissionChannelSeller.findFirst({ orderBy: { created_at: 'asc' } });
+          if (!record) throw new Error('Tabela channel_seller está vazia');
+          return normalizeSingle(record);
+        }
       case 'channel_director':
-        return normalizeSingle(await prisma.commissionChannelDirector.update({
-          where: { id },
-          data: convertedData
-        }));
+        if (isUuid(id)) {
+          return normalizeSingle(await prisma.commissionChannelDirector.update({
+            where: { id },
+            data: convertedData
+          }));
+        }
+        {
+          const updated = await prisma.commissionChannelDirector.updateMany({ data: convertedData });
+          if (updated.count === 0) {
+            return normalizeSingle(await prisma.commissionChannelDirector.create({ data: convertedData }));
+          }
+          const record = await prisma.commissionChannelDirector.findFirst({ orderBy: { created_at: 'asc' } });
+          if (!record) throw new Error('Tabela channel_director está vazia');
+          return normalizeSingle(record);
+        }
       case 'seller':
-        return normalizeSingle(await prisma.commissionSeller.update({
-          where: { id },
-          data: convertedData
-        }));
+        if (isUuid(id)) {
+          return normalizeSingle(await prisma.commissionSeller.update({
+            where: { id },
+            data: convertedData
+          }));
+        }
+        {
+          const updated = await prisma.commissionSeller.updateMany({ data: convertedData });
+          if (updated.count === 0) {
+            return normalizeSingle(await prisma.commissionSeller.create({ data: convertedData }));
+          }
+          const record = await prisma.commissionSeller.findFirst({ orderBy: { created_at: 'asc' } });
+          if (!record) throw new Error('Tabela seller está vazia');
+          return normalizeSingle(record);
+        }
       case 'channel_influencer':
+        if (!isUuid(id)) throw new Error('ID inválido para channel_influencer');
         return normalizeRange(await prisma.commissionChannelInfluencer.update({
           where: { id },
           data: convertedData
         }));
       case 'channel_indicator':
+        if (!isUuid(id)) throw new Error('ID inválido para channel_indicator');
         return normalizeRange(await prisma.commissionChannelIndicator.update({
           where: { id },
           data: convertedData

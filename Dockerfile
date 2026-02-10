@@ -150,4 +150,6 @@ HEALTHCHECK --interval=60s --timeout=15s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:${PORT:-3000}/api/health || exit 1
 
 # Comando de execução para produção
-CMD ["dumb-init", "sh", "-c", "echo '🔧 Inicializando banco...' && npx prisma db push && (npx prisma db seed || echo '⚠️ Seed falhou') && echo '🚀 Iniciando app...' && node server.js"]
+# Next.js standalone usa `process.env.HOSTNAME` para bind; em containers isso costuma ser o ID do container,
+# o que quebra o healthcheck via `localhost`. Forçamos bind em 0.0.0.0.
+CMD ["dumb-init", "sh", "-c", "echo '🔧 Inicializando banco...' && npx prisma db push && (npx prisma db seed || echo '⚠️ Seed falhou') && echo '🚀 Iniciando app...' && HOSTNAME=0.0.0.0 node server.js"]
