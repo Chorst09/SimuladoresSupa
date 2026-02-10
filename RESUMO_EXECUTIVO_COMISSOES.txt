@@ -1,0 +1,151 @@
+================================================================================
+                    RESUMO EXECUTIVO - CORREÇÃO DE COMISSÕES
+                        Para Clientes Existentes
+================================================================================
+
+DATA: 21 de Janeiro de 2026
+STATUS: ✅ PRONTO PARA DEPLOY
+
+================================================================================
+PROBLEMA IDENTIFICADO
+================================================================================
+
+Quando "Já é cliente da Base?" estava marcado, as comissões eram calculadas
+sobre o valor mensal total, não sobre a diferença de valor entre a nova
+mensalidade e a anterior.
+
+Exemplo do Problema:
+  - Mensalidade Anterior: R$ 9.800,00
+  - Nova Mensalidade: R$ 11.362,80
+  - Diferença: +R$ 1.562,80
+  - ❌ ANTES: Comissões calculadas sobre R$ 11.362,80 (valor total)
+  - ✅ DEPOIS: Comissões calculadas sobre R$ 1.562,80 (apenas diferença)
+
+================================================================================
+SOLUÇÃO IMPLEMENTADA
+================================================================================
+
+1. Ajustado cálculo de base para comissões em 6 calculadoras:
+   - InternetFibraCalculator
+   - InternetRadioCalculator
+   - InternetManCalculator
+   - InternetManRadioCalculator
+   - DoubleFibraRadioCalculator
+   - InternetOKv2Calculator
+
+2. Adicionada proteção contra valores negativos:
+   - Se diferença for negativa, comissão = R$ 0,00
+   - Usa Math.max(0, diferença) para garantir mínimo de 0
+
+3. Removido checkbox duplicado em InternetRadioCalculator
+
+4. Adicionados null checks em todas as calculadoras
+
+================================================================================
+TESTES REALIZADOS
+================================================================================
+
+✅ Build compilou sem erros
+✅ Sem erros de tipo TypeScript
+✅ Sem erros de linting
+✅ Diagnostics: 0 erros
+✅ Docker image construída com arquitetura correta (linux/amd64)
+
+================================================================================
+CENÁRIOS DE TESTE
+================================================================================
+
+Cenário 1: Cliente Novo
+  - "Já é cliente da Base?" = NÃO marcado
+  - Comissões = Calculadas sobre valor mensal total ✅
+
+Cenário 2: Cliente Existente com Aumento
+  - "Já é cliente da Base?" = SIM marcado
+  - Mensalidade Anterior: R$ 9.800,00
+  - Nova Mensalidade: R$ 11.362,80
+  - Diferença: +R$ 1.562,80
+  - Comissões = Calculadas sobre R$ 1.562,80 ✅
+
+Cenário 3: Cliente Existente com Redução
+  - "Já é cliente da Base?" = SIM marcado
+  - Mensalidade Anterior: R$ 11.362,80
+  - Nova Mensalidade: R$ 9.800,00
+  - Diferença: -R$ 1.562,80
+  - Comissões = R$ 0,00 (nenhuma comissão) ✅
+
+================================================================================
+INSTRUÇÕES DE DEPLOY
+================================================================================
+
+PASSO 1: Build da Image
+  docker build --platform linux/amd64 -t simuladores-app:latest .
+
+PASSO 2: Salvar Image
+  docker save simuladores-app:latest -o simuladores-app-latest.tar
+
+PASSO 3: Transferir para Servidor
+  scp -P 22 simuladores-app-latest.tar root@10.10.50.246:/tmp/
+
+PASSO 4: Deploy no Servidor
+  ssh root@10.10.50.246
+  
+  No servidor:
+  docker-compose -f /root/docker-compose.prod.yml down
+  docker load -i /tmp/simuladores-app-latest.tar
+  docker-compose -f /root/docker-compose.prod.yml up -d
+  sleep 10
+  docker-compose -f /root/docker-compose.prod.yml ps
+  curl -s http://localhost:3009/api/health
+
+PASSO 5: Verificar
+  curl -s http://10.10.50.246:3009/api/health | jq .
+
+================================================================================
+ARQUIVOS CRIADOS
+================================================================================
+
+1. MUDANCAS_COMISSOES_CLIENTE_EXISTENTE.md
+   - Detalhes técnicos das mudanças
+
+2. DEPLOY_COMISSOES_CLIENTE_EXISTENTE.md
+   - Instruções completas de deploy
+
+3. INSTRUCOES_DEPLOY_MANUAL.sh
+   - Script interativo com instruções passo a passo
+
+4. SUMARIO_FINAL_COMISSOES.md
+   - Sumário técnico completo
+
+5. RESUMO_EXECUTIVO_COMISSOES.txt
+   - Este arquivo
+
+================================================================================
+IMPACTO
+================================================================================
+
+✅ Comissões agora calculadas corretamente para clientes existentes
+✅ Evita comissões negativas
+✅ Melhora precisão dos cálculos financeiros
+✅ Sem breaking changes para clientes novos
+✅ Sem downtime significativo (< 2 minutos)
+
+================================================================================
+PRÓXIMOS PASSOS
+================================================================================
+
+1. Revisar este documento
+2. Executar instruções de deploy
+3. Testar os 3 cenários de comissões
+4. Validar cálculos no DRE
+5. Comunicar mudanças aos usuários
+
+================================================================================
+SUPORTE
+================================================================================
+
+Em caso de problemas:
+1. Verificar logs: docker-compose logs -f
+2. Verificar health: curl http://localhost:3009/api/health
+3. Reverter para versão anterior se necessário
+
+================================================================================

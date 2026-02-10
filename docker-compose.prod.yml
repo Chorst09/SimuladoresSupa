@@ -5,11 +5,7 @@
 services:
   # Banco de dados PostgreSQL (Produção)
   db:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: postgres
-    image: simuladores-postgres:prod
+    image: docker.io/library/postgres:16-alpine
     container_name: simuladores_db_prod
     restart: always
     env_file:
@@ -19,6 +15,7 @@ services:
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      TZ: America/Sao_Paulo
     volumes:
       - simuladores_postgres_prod_data:/var/lib/postgresql/data
       # Backup automático (opcional)
@@ -50,7 +47,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production
-    image: simuladores-app:prod
+    image: simuladores-app:latest
     container_name: simuladores_app_prod
     restart: always
     env_file:

@@ -211,8 +211,8 @@ simuladores/
 ```
 Servidor: 10.10.50.246
 Usuário: double
-Senha SSH: D0ubl3T3l3c0m
-Senha Sudo: D0ubl3T3l3c0m
+Senha SSH: <SENHA_DO_SERVIDOR>
+Senha Sudo: <SENHA_DO_SERVIDOR>
 Pasta do Projeto: ~/simuladores
 ```
 
@@ -294,7 +294,7 @@ scp docker-compose.yml double@10.10.50.246:~/simuladores/
 scp docker-compose.prod.yml double@10.10.50.246:~/simuladores/
 scp deploy.sh double@10.10.50.246:~/simuladores/
 
-# Senha quando solicitado: D0ubl3T3l3c0m
+# Senha quando solicitado: <SENHA_DO_SERVIDOR>
 ```
 
 **Ou usar o script automatizado:**
@@ -309,7 +309,7 @@ scp deploy.sh double@10.10.50.246:~/simuladores/
 ```bash
 # Conectar ao servidor
 ssh double@10.10.50.246
-# Senha: D0ubl3T3l3c0m
+# Senha: <SENHA_DO_SERVIDOR>
 
 # Verificar conexão
 whoami
@@ -364,7 +364,7 @@ chmod +x deploy.sh
 **Se precisar de sudo:**
 
 ```bash
-# Executar com sudo (senha: D0ubl3T3l3c0m)
+# Executar com sudo (senha: <SENHA_DO_SERVIDOR>)
 sudo ./deploy.sh install-on-server
 ```
 
