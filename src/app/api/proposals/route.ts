@@ -160,11 +160,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   let body: any
+  let currentUser: any = null
   
   try {
     // Obter usuário autenticado
     const token = request.cookies.get('auth-token')?.value;
-    const currentUser = await getCurrentUser(token);
+    currentUser = await getCurrentUser(token);
 
     if (!currentUser) {
       return NextResponse.json(

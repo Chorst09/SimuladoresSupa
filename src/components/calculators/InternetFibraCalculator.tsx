@@ -1053,10 +1053,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
             } else {
                 // Mapear propostas para o formato esperado pelo gerador
                 console.log('📊 Total de propostas carregadas:', fibraProposals.length);
-                console.log('📋 Propostas:', fibraProposals.map(p => ({ id: p.id, base_id: p.base_id, baseId: p.baseId, type: p.type })));
+                console.log('📋 Propostas:', fibraProposals.map(p => ({ id: p.id, baseId: p.baseId, type: p.type })));
                 
                 const proposalsWithBaseId = fibraProposals.map(p => ({
-                    base_id: p.base_id || p.baseId || ''
+                    base_id: p.baseId || ''
                 }));
                 
                 console.log('🔄 Propostas mapeadas:', proposalsWithBaseId);
@@ -1715,7 +1715,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredProposals.map((p: Proposal) => (
+                                    {filteredProposals.map((p) => (
                                         <TableRow key={p.id} className="border-slate-800">
                                             <TableCell>{p.baseId || p.id}</TableCell>
                                             <TableCell>{typeof p.client === 'string' ? p.client : p.client?.name || 'Cliente não informado'} (v{p.version})</TableCell>

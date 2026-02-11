@@ -2,22 +2,9 @@ import { useState, useCallback } from 'react';
 import { useAuth } from './use-auth';
 import { getPermissionsForRole } from '@/lib/permissions';
 
-export interface Proposal {
-  id: string;
-  baseId?: string;
-  base_id?: string;
-  title: string;
-  status: string;
-  type: string;
-  value: number;
-  created_at?: string;
-  createdAt?: string;
-  [key: string]: any;
-}
-
 export function useProposalsWithPermissions() {
   const { user } = useAuth();
-  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [proposals, setProposals] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
