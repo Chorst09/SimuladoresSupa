@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getPermissionsForRole } from '@/lib/permissions'
+import { getCurrentUser } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -161,11 +162,24 @@ export async function POST(request: NextRequest) {
   let body: any
   
   try {
+    // Obter usuário autenticado
+    const token = request.cookies.get('auth-token')?.value;
+    const currentUser = await getCurrentUser(token);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: 'Não autenticado' },
+        { status: 401 }
+      )
+    }
+
     body = await request.json()
     
     console.log('📥 Recebendo proposta:', {
       type: body.type,
       title: body.title,
+      userId: currentUser.id,
+      userRole: currentUser.role,
       hasAccountManager: !!body.accountManager,
       accountManagerType: typeof body.accountManager,
       applySalespersonDiscount: body.applySalespersonDiscount,
@@ -258,7 +272,8 @@ export async function POST(request: NextRequest) {
       products: products || [],
       items_data: items_data || itemsData || [],
       client_data: client_data || clientData || null,
-      metadata: metadataToSave
+      metadata: metadataToSave,
+      created_by: currentUser.id  // Adicionar o ID do usuário que está criando
     }
     
     const proposal = await prisma.proposal.create({
@@ -315,7 +330,8 @@ export async function POST(request: NextRequest) {
             products: body.products || [],
             items_data: body.items_data || body.itemsData || [],
             client_data: body.client_data || body.clientData || null,
-            metadata: body.metadata || {}
+            metadata: body.metadata || {},
+            created_by: currentUser.id  // Adicionar o ID do usuário que está criando
           },
           include: {
             creator: {

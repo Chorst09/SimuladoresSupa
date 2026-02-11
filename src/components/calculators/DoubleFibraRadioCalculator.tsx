@@ -17,6 +17,8 @@ import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate, getDirectorCommissionRate } from '@/hooks/use-commissions';
+import { useProposalsWithPermissions } from '@/hooks/use-proposals-with-permissions';
+import { getPermissionsForRole } from '@/lib/permissions';
 import { generateNextProposalId } from '@/lib/proposal-id-generator';
 
 import {
@@ -263,10 +265,12 @@ interface DoubleFibraRadioCalculatorProps {
 const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({ onBackToDashboard }) => {
     // Estados principais
     const [viewMode, setViewMode] = useState<'search' | 'client-form' | 'calculator' | 'proposal-summary'>('search');
-    const [proposals, setProposals] = useState<Proposal[]>([]);
-    const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [hasChanged, setHasChanged] = useState<boolean>(false);
+
+    // Hook para buscar propostas com permissões
+    const { proposals, loading: loadingProposals, error: proposalsError, fetchProposals, setProposals } = useProposalsWithPermissions();
+    const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
 
     // Estados do cliente
     const [clientData, setClientData] = useState<ClientData>({ name: '', contact: '', projectName: '', email: '', phone: '' });
@@ -377,6 +381,10 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
 
     // Hooks
     const { user } = useAuth();
+
+    // Verificar permissões do usuário
+    const userPermissions = user?.role ? getPermissionsForRole(user.role as any) : null;
+    const canEditCommissions = userPermissions?.canEditCommissions || false;
 
     // Estado para debounce do contractTerm
     const [debouncedContractTerm, setDebouncedContractTerm] = useState(contractTerm);
@@ -574,44 +582,6 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
     ]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
-    const fetchProposals = React.useCallback(async () => {
-        if (!user || !user.role) {
-            setProposals([]);
-            return;
-        }
-
-        try {
-            // Buscar TODAS as propostas para evitar IDs duplicados
-            const response = await fetch('/api/proposals?all=true', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user.token}`,
-                },
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                // Filter for Double Fibra Radio proposals
-                if (result.success && result.data && result.data.proposals) {
-                    const doubleProposals = result.data.proposals.filter((p: any) =>
-                        p.type === 'DOUBLE' || p.base_id?.startsWith('Prop_Inter_Double_')
-                    );
-                    console.log(`📊 Total de propostas DOUBLE carregadas: ${doubleProposals.length}`);
-                    setProposals(doubleProposals);
-                } else {
-                    setProposals([]);
-                }
-            } else {
-                console.error('Erro ao buscar propostas:', response.statusText);
-                setProposals([]);
-            }
-        } catch (error) {
-            console.error("Erro ao buscar propostas: ", error);
-            setProposals([]);
-        }
-    }, [user]);
-
     useEffect(() => {
         // Carregar do localStorage se existir, caso contrário usar valores iniciais
         const storedPrices = localStorage.getItem('doubleFiberRadioLinkPrices');
@@ -629,7 +599,14 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         return () => {
             // any cleanup
         };
-    }, [fetchProposals]); // Dependência em fetchProposals para buscar propostas quando o componente monta
+    }, []); // Dependência em fetchProposals para buscar propostas quando o componente monta
+
+    // Filter proposals for DOUBLE type
+    const doubleProposals = React.useMemo(() => {
+        return proposals.filter((p: any) =>
+            p.type === 'DOUBLE' || p.base_id?.startsWith('Prop_Inter_Double_')
+        );
+    }, [proposals]);
 
     // 🔥 CORREÇÃO: useEffect para carregar descontos quando editar proposta
     useEffect(() => {
@@ -1128,7 +1105,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 }
             } else {
                 // Mapear propostas para o formato esperado pelo gerador
-                const proposalsWithBaseId = proposals.map((p: any) => ({
+                const proposalsWithBaseId = doubleProposals.map((p: any) => ({
                     base_id: p.base_id || p.baseId || ''
                 }));
                 
@@ -1267,7 +1244,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                 }
                 
                 const { generateNewVersion } = await import('@/lib/proposal-id-generator');
-                const proposalsWithBaseId = proposals.map((p: any) => ({
+                const proposalsWithBaseId = doubleProposals.map((p: any) => ({
                     base_id: p.base_id || p.baseId || ''
                 }));
                 const newBaseId = generateNewVersion(baseIdToUse, proposalsWithBaseId);
@@ -1528,7 +1505,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
         }
     };
 
-    const filteredProposals = proposals.filter(p => {
+    const filteredProposals = doubleProposals.filter(p => {
         const clientName = typeof p.client === 'string' ? p.client : p.client?.name || '';
         return clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase());
@@ -2078,11 +2055,13 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                     <Tabs defaultValue="calculator" className="w-full">
                         <TabsList className={`grid w-full grid-cols-4 bg-slate-800`}>
                             <TabsTrigger value="calculator">Calculadora</TabsTrigger>
-                            {user?.role === 'admin' && (
+                            {canEditCommissions && (
                                 <TabsTrigger value="prices">Tabela de Preços</TabsTrigger>
                             )}
+                            {canEditCommissions && (
                             <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
-                            {user?.role === 'admin' && (
+                            )}
+                            {canEditCommissions && (
                                 <TabsTrigger value="dre">DRE</TabsTrigger>
                             )}
                         </TabsList>
@@ -2567,6 +2546,7 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                 </Card>
                             </div>
                         </TabsContent>
+                        {canEditCommissions && (
                         <TabsContent value="dre">
                             <div className="space-y-6 mt-6">
 
@@ -3156,7 +3136,8 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                 </CardContent>
                             </Card>
                         </TabsContent>
-                        {user?.role === 'admin' && (
+                        )}
+                        {canEditCommissions && (
                             <TabsContent value="prices">
                                 <Card className="bg-slate-900/80 border-slate-800 text-white mt-4">
                                     <CardHeader>
@@ -3230,9 +3211,11 @@ const DoubleFibraRadioCalculator: React.FC<DoubleFibraRadioCalculatorProps> = ({
                                 </Card>
                             </TabsContent>
                         )}
+                        {canEditCommissions && (
                         <TabsContent value="commissions-table">
                             <CommissionTablesUnified />
                         </TabsContent>
+                        )}
                     </Tabs>
                 </>
             )}

@@ -17,6 +17,8 @@ import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate, getDirectorCommissionRate } from '@/hooks/use-commissions';
+import { useProposalsWithPermissions } from '@/hooks/use-proposals-with-permissions';
+import { getPermissionsForRole } from '@/lib/permissions';
 import { formatPercentage } from '@/lib/utils';
 import { generateNextProposalId } from '@/lib/proposal-id-generator';
 import {
@@ -247,10 +249,12 @@ interface InternetFibraCalculatorProps {
 const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBackToDashboard }) => {
     // Estados principais
     const [viewMode, setViewMode] = useState<'search' | 'client-form' | 'calculator' | 'proposal-summary'>('search');
-    const [proposals, setProposals] = useState<Proposal[]>([]);
-    const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [hasChanged, setHasChanged] = useState<boolean>(false);
+
+    // Hook para buscar propostas com permissões
+    const { proposals, loading: loadingProposals, error: proposalsError, fetchProposals, setProposals } = useProposalsWithPermissions();
+    const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
 
     // Estados do cliente
     const [clientData, setClientData] = useState<ClientData>({ name: '', contact: '', projectName: '', email: '', phone: '' });
@@ -400,6 +404,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     // Hooks
     const { user } = useAuth();
 
+    // Verificar permissões do usuário
+    const userPermissions = user?.role ? getPermissionsForRole(user.role as any) : null;
+    const canEditCommissions = userPermissions?.canEditCommissions || false;
+
     // Estado para debounce do contractTerm
     const [debouncedContractTerm, setDebouncedContractTerm] = useState(contractTerm);
     // Key única para forçar re-mount quando necessário
@@ -494,47 +502,6 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
     ]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
-    const fetchProposals = React.useCallback(async () => {
-        if (!user || !user.role) {
-            setProposals([]);
-            return;
-        }
-
-        try {
-            // Buscar TODAS as propostas para evitar IDs duplicados
-            const response = await fetch('/api/proposals?all=true', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user.token}`,
-                },
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                
-                // Verificar se a resposta tem a estrutura esperada
-                if (result.success && result.data && result.data.proposals) {
-                    // Filter for Fibra Internet proposals
-                    const fibraProposals = result.data.proposals.filter((p: any) =>
-                        p.type === 'FIBER' || p.base_id?.startsWith('Prop_Inter_Fibra_')
-                    );
-                    console.log(`📊 Total de propostas FIBER carregadas: ${fibraProposals.length}`);
-                    setProposals(fibraProposals);
-                } else {
-                    console.error('Formato de resposta inesperado:', result);
-                    setProposals([]);
-                }
-            } else {
-                console.error('Erro ao buscar propostas:', response.statusText);
-                setProposals([]);
-            }
-        } catch (error) {
-            console.error("Erro ao buscar propostas: ", error);
-            setProposals([]);
-        }
-    }, [user]);
-
     useEffect(() => {
         const initialFibraPlans: FibraPlan[] = [
             { speed: 25, price12: 720.00, price24: 474.00, price36: 421.00, price48: 421.00, price60: 421.00, installationCost: 998.00, description: "25 Mbps", baseCost: 1580.00, fiberCost: 3500.00 },
@@ -561,7 +528,14 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         localStorage.setItem('fibraLinkPrices', JSON.stringify(initialFibraPlans));
 
         fetchProposals();
-    }, [fetchProposals]);
+    }, []);
+
+    // Filter proposals for FIBER type
+    const fibraProposals = React.useMemo(() => {
+        return proposals.filter((p: any) =>
+            p.type === 'FIBER' || p.base_id?.startsWith('Prop_Inter_Fibra_')
+        );
+    }, [proposals]);
 
     // 🔥 CORREÇÃO: useEffect para carregar descontos quando editar proposta
     useEffect(() => {
@@ -1078,10 +1052,10 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 }
             } else {
                 // Mapear propostas para o formato esperado pelo gerador
-                console.log('📊 Total de propostas carregadas:', proposals.length);
-                console.log('📋 Propostas:', proposals.map(p => ({ id: p.id, base_id: p.base_id, baseId: p.baseId, type: p.type })));
+                console.log('📊 Total de propostas carregadas:', fibraProposals.length);
+                console.log('📋 Propostas:', fibraProposals.map(p => ({ id: p.id, base_id: p.base_id, baseId: p.baseId, type: p.type })));
                 
-                const proposalsWithBaseId = proposals.map(p => ({
+                const proposalsWithBaseId = fibraProposals.map(p => ({
                     base_id: p.base_id || p.baseId || ''
                 }));
                 
@@ -1218,7 +1192,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                 }
                 
                 const { generateNewVersion } = await import('@/lib/proposal-id-generator');
-                const proposalsWithBaseId = proposals.map((p: any) => ({
+                const proposalsWithBaseId = fibraProposals.map((p: any) => ({
                     base_id: p.base_id || p.baseId || ''
                 }));
                 const newBaseId = generateNewVersion(baseIdToUse, proposalsWithBaseId);
@@ -1573,7 +1547,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
         }
     };
 
-    const filteredProposals = proposals.filter(p => {
+    const filteredProposals = fibraProposals.filter(p => {
         const clientName = typeof p.client === 'string' ? p.client : p.client?.name || '';
         return clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase());
@@ -2101,20 +2075,21 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                     <Tabs defaultValue="calculator" className="w-full">
                         <TabsList className={`grid w-full grid-cols-5 bg-slate-800`}>
                             <TabsTrigger value="calculator">Calculadora</TabsTrigger>
-                            {user?.role === 'admin' && (
+                            {canEditCommissions && (
                                 <TabsTrigger value="prices">Tabela de Preços</TabsTrigger>
                             )}
-                            <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
-                            {user?.role === 'admin' && (
+                            {canEditCommissions && (
+                                <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
+                            )}
+                            {canEditCommissions && (
                                 <TabsTrigger value="dre">DRE</TabsTrigger>
                             )}
-                            <TabsTrigger value="proposal">Proposta</TabsTrigger>
 
                         </TabsList>
                         <TabsContent value="calculator" key={`calculator-${componentKey}`}>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader><CardTitle className="flex items-center"><Calculator className="mr-2" />Calculadora</CardTitle></CardHeader>
+                                    <CardHeader><CardTitle>Calculadora</CardTitle></CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <ContractTermSelector
@@ -2319,7 +2294,7 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 </Card>
 
                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader><CardTitle className="flex items-center"><FileText className="mr-2" />Resumo da Proposta</CardTitle></CardHeader>
+                                    <CardHeader><CardTitle>Resumo da Proposta</CardTitle></CardHeader>
                                     <CardContent>
                                         <div className="mb-4">
                                             <Label htmlFor="proposal-status" className="mb-2 block">Status da Proposta</Label>
@@ -2587,16 +2562,17 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 </Card>
                             </div>
                         </TabsContent>
-                        <TabsContent value="dre">
-                            <div className="space-y-6 mt-6">
+                        {canEditCommissions && (
+                            <TabsContent value="dre">
+                                <div className="space-y-6 mt-6">
 
-                                {/* DRE - Demonstrativo de Resultado do Exercício */}
-                                <Card className="bg-slate-900/80 border-slate-800 text-white">
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center">
-                                            <div className="w-4 h-4 bg-blue-500 mr-2"></div>
-                                            DRE - Demonstrativo de Resultado do Exercício
-                                        </CardTitle>
+                                    {/* DRE - Demonstrativo de Resultado do Exercício */}
+                                    <Card className="bg-slate-900/80 border-slate-800 text-white">
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center">
+                                                <div className="w-4 h-4 bg-blue-500 mr-2"></div>
+                                                DRE - Demonstrativo de Resultado do Exercício
+                                            </CardTitle>
                                         <CardDescription>Internet Fibra {velocidade} Mbps - Análise por Período de Contrato</CardDescription>
                                     </CardHeader>
                                     <CardContent className="overflow-x-auto">
@@ -3169,7 +3145,8 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 </CardContent>
                             </Card>
                         </TabsContent>
-                        {user?.role === 'admin' && (
+                        )}
+                        {canEditCommissions && (
                             <TabsContent value="prices">
                                 <Card className="bg-slate-900/80 border-slate-800 text-white mt-4">
                                     <CardHeader>
@@ -3292,9 +3269,11 @@ const InternetFibraCalculator: React.FC<InternetFibraCalculatorProps> = ({ onBac
                                 </Card>
                             </TabsContent>
                         )}
-                        <TabsContent value="commissions-table">
-                            <CommissionTablesUnified />
-                        </TabsContent>
+                        {canEditCommissions && (
+                            <TabsContent value="commissions-table">
+                                <CommissionTablesUnified />
+                            </TabsContent>
+                        )}
                     </Tabs>
                 </>
             )}

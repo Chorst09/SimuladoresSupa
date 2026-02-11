@@ -141,6 +141,7 @@ interface Proposal {
 
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
+import { getPermissionsForRole } from '@/lib/permissions';
 import { toast } from 'sonner';
 
 
@@ -153,6 +154,10 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
     const auth = useAuth();
     const currentUser = auth?.user;
     console.log("User role:", currentUser?.role);
+
+    // Verificar permissões do usuário
+    const userPermissions = currentUser?.role ? getPermissionsForRole(currentUser.role as any) : null;
+    const canEditCommissions = userPermissions?.canEditCommissions || false;
 
     // Estados de gerenciamento de propostas
     const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -2440,11 +2445,13 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                                         <TabsList className={`grid w-full grid-cols-4 bg-slate-800`}>
                                             <TabsTrigger value="calculator">Calculadora VM</TabsTrigger>
-                                            {currentUser?.role === 'admin' && (
+                                            {canEditCommissions && (
                                                 <TabsTrigger value="list-price">Tabela de Preços VM/Configurações</TabsTrigger>
                                             )}
+                                            {canEditCommissions && (
                                             <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
-                                            {currentUser?.role === 'admin' && (
+                                            )}
+                                            {canEditCommissions && (
                                                 <TabsTrigger value="dre">DRE</TabsTrigger>
                                             )}
                                         </TabsList>
@@ -2904,6 +2911,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                             </div>
                                         </TabsContent>
 
+                                        {canEditCommissions && (
                                         <TabsContent value="commissions-table">
                                             <div className="space-y-6 mt-6">
                                                 <Card className="bg-slate-900/80 border-slate-800 text-white">
@@ -2919,6 +2927,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                 </Card>
                                             </div>
                                         </TabsContent>
+                                        )}
+                                        {canEditCommissions && (
                                         <TabsContent value="dre">
                                             <div className="space-y-6 mt-6">
                                                 {/* Análise Financeira */}
@@ -3220,6 +3230,8 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
                                                 </Card>
                                             </div>
                                         </TabsContent>
+                                        )}
+                                        {canEditCommissions && (
                                         <TabsContent value="list-price">
                                             <div className="space-y-6 mt-6">
 
@@ -4456,6 +4468,7 @@ const MaquinasVirtuaisCalculator = ({ onBackToDashboard }: MaquinasVirtuaisCalcu
 
                                             </div>
                                         </TabsContent>
+                                        )}
 
                                         <TabsContent value="proposal">
                                             <div className="space-y-6 mt-6">

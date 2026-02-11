@@ -17,6 +17,7 @@ import { ClientData, AccountManagerData, Proposal as ProposalType, UserRole } fr
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate, getDirectorCommissionRate } from '@/hooks/use-commissions';
+import { getPermissionsForRole } from '@/lib/permissions';
 import { generateNextProposalId } from '@/lib/proposal-id-generator';
 import {
     Wifi,
@@ -356,6 +357,10 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
 
     // Hooks
     const { user } = useAuth();
+
+    // Verificar permissões do usuário
+    const userPermissions = user?.role ? getPermissionsForRole(user.role as any) : null;
+    const canEditCommissions = userPermissions?.canEditCommissions || false;
 
     // Estado para debounce do contractTerm
     const [debouncedContractTerm, setDebouncedContractTerm] = useState(contractTerm);
@@ -2128,11 +2133,13 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                     <Tabs defaultValue="calculator" className="w-full">
                         <TabsList className={`grid w-full grid-cols-4 bg-slate-800`}>
                             <TabsTrigger value="calculator">Calculadora</TabsTrigger>
-                            {user?.role === 'admin' && (
+                            {canEditCommissions && (
                                 <TabsTrigger value="prices">Tabela de Preços</TabsTrigger>
                             )}
+                            {canEditCommissions && (
                             <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
-                            {user?.role === 'admin' && (
+                            )}
+                            {canEditCommissions && (
                                 <TabsTrigger value="dre">DRE</TabsTrigger>
                             )}
                         </TabsList>
@@ -2616,6 +2623,7 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 </Card>
                             </div>
                         </TabsContent>
+                        {canEditCommissions && (
                         <TabsContent value="dre">
                             <div className="space-y-6 mt-6">
 
@@ -3305,7 +3313,8 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 </CardContent>
                             </Card>
                         </TabsContent>
-                        {user?.role === 'admin' && (
+                        )}
+                        {canEditCommissions && (
                             <TabsContent value="prices">
                                 <Card className="bg-slate-900/80 border-slate-800 text-white mt-4">
                                     <CardHeader>
@@ -3379,9 +3388,11 @@ const InternetManCalculator: React.FC<InternetManCalculatorProps> = ({ onBackToD
                                 </Card>
                             </TabsContent>
                         )}
+                        {canEditCommissions && (
                         <TabsContent value="commissions-table">
                             <CommissionTablesUnified />
                         </TabsContent>
+                        )}
                     </Tabs>
                 </>
             )}

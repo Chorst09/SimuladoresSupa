@@ -16,6 +16,8 @@ import { ClientManagerInfo } from './ClientManagerInfo';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getCommissionRate, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate, getDirectorCommissionRate } from '@/hooks/use-commissions';
+import { useProposalsWithPermissions } from '@/hooks/use-proposals-with-permissions';
+import { getPermissionsForRole } from '@/lib/permissions';
 import { Proposal, UserProfile, ClientData, AccountManagerData } from '@/lib/types'; // Importar a interface Proposal, UserProfile, ClientData e AccountManagerData do arquivo centralizado
 import { generateNextProposalId } from '@/lib/proposal-id-generator';
 import {
@@ -256,10 +258,12 @@ interface InternetRadioCalculatorProps {
 const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBackToDashboard }) => {
     // Estados principais
     const [viewMode, setViewMode] = useState<'search' | 'client-form' | 'calculator' | 'proposal-summary'>('search');
-    const [proposals, setProposals] = useState<Proposal[]>([]);
-    const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [hasChanged, setHasChanged] = useState<boolean>(false);
+
+    // Hook para buscar propostas com permissões
+    const { proposals, loading: loadingProposals, error: proposalsError, fetchProposals, setProposals } = useProposalsWithPermissions();
+    const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
 
     // Estados do cliente
     const [clientData, setClientData] = useState<ClientData>({ name: '', contact: '', projectName: '', email: '', phone: '' });
@@ -374,6 +378,10 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
 
     // Hooks
     const { user }: { user: UserProfile | null } = useAuth();
+
+    // Verificar permissões do usuário
+    const userPermissions = user?.role ? getPermissionsForRole(user.role as any) : null;
+    const canEditCommissions = userPermissions?.canEditCommissions || false;
 
     // Estado para debounce do contractTerm
     const [debouncedContractTerm, setDebouncedContractTerm] = useState(contractTerm);
@@ -537,44 +545,6 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
     ]);
 
     // Calculate the selected fiber plan based on the chosen speed (usando debounced value)
-    const fetchProposals = React.useCallback(async () => {
-        if (!user || !user.role) {
-            setProposals([]);
-            return;
-        }
-
-        try {
-            // Buscar TODAS as propostas para evitar IDs duplicados
-            const response = await fetch('/api/proposals?all=true', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user.token}`,
-                },
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                // Filter for Radio Internet proposals
-                if (result.success && result.data && result.data.proposals) {
-                    const radioProposals = result.data.proposals.filter((p: any) =>
-                        p.type === 'RADIO' || p.base_id?.startsWith('Prop_Inter_Radio_')
-                    );
-                    console.log(`📊 Total de propostas RADIO carregadas: ${radioProposals.length}`);
-                    setProposals(radioProposals);
-                } else {
-                    setProposals([]);
-                }
-            } else {
-                console.error('Erro ao buscar propostas:', response.statusText);
-                setProposals([]);
-            }
-        } catch (error) {
-            console.error("Erro ao buscar propostas: ", error);
-            setProposals([]);
-        }
-    }, [user]);
-
     useEffect(() => {
         const initialRadioPlans: RadioPlan[] = [
             { speed: 25, price12: 720.00, price24: 527.00, price36: 474.00, price48: 474.00, price60: 474.00, installationCost: 998.00, description: "25 Mbps", baseCost: 1580.00, radioCost: 3580.00 },
@@ -601,7 +571,14 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         localStorage.setItem('radioLinkPrices', JSON.stringify(initialRadioPlans));
 
         fetchProposals();
-    }, [fetchProposals]);
+    }, []);
+
+    // Filter proposals for RADIO type
+    const radioProposals = React.useMemo(() => {
+        return proposals.filter((p: any) =>
+            p.type === 'RADIO' || p.base_id?.startsWith('Prop_Inter_Radio_')
+        );
+    }, [proposals]);
 
     // Removed debug useEffect to prevent unnecessary re-renders
 
@@ -1057,10 +1034,10 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 }
             } else {
                 // Mapear propostas para o formato esperado pelo gerador
-                console.log('📊 Total de propostas:', proposals.length);
-                console.log('📋 Propostas:', proposals);
+                console.log('📊 Total de propostas:', radioProposals.length);
+                console.log('📋 Propostas:', radioProposals);
                 
-                const proposalsWithBaseId = proposals.map((p: any) => ({
+                const proposalsWithBaseId = radioProposals.map((p: any) => ({
                     base_id: p.base_id || p.baseId || ''
                 }));
                 
@@ -1214,7 +1191,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                 console.log('📦 Produtos atualizados com descontos:', productsWithUpdatedDiscounts);
                 
                 const { generateNewVersion } = await import('@/lib/proposal-id-generator');
-                const proposalsWithBaseId = proposals.map((p: any) => ({
+                const proposalsWithBaseId = radioProposals.map((p: any) => ({
                     base_id: p.base_id || p.baseId || ''
                 }));
                 const baseIdToUse = currentProposal.baseId || (currentProposal as any).base_id;
@@ -1504,7 +1481,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
         }
     };
 
-    const filteredProposals = proposals.filter(p =>
+    const filteredProposals = radioProposals.filter(p =>
         (typeof p.client === 'object' ? p.client.name : p.client)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.baseId || p.id).toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -2039,11 +2016,13 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                     <Tabs defaultValue="calculator" className="w-full">
                         <TabsList className={`grid w-full grid-cols-4 bg-slate-800`}>
                             <TabsTrigger value="calculator">Calculadora</TabsTrigger>
-                            {user?.role === 'admin' && (
+                            {canEditCommissions && (
                                 <TabsTrigger value="prices">Tabela de Preços</TabsTrigger>
                             )}
-                            <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
-                            {user?.role === 'admin' && (
+                            {canEditCommissions && (
+                                <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
+                            )}
+                            {canEditCommissions && (
                                 <TabsTrigger value="dre">DRE</TabsTrigger>
                             )}
                         </TabsList>
@@ -3284,7 +3263,7 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                 </CardContent>
                             </Card>
                         </TabsContent>
-                        {user?.role === 'admin' && (
+                        {canEditCommissions && (
                             <TabsContent value="prices">
                                 <Card className="bg-slate-900/80 border-slate-800 text-white mt-4">
                                     <CardHeader>
@@ -3358,9 +3337,11 @@ const InternetRadioCalculator: React.FC<InternetRadioCalculatorProps> = ({ onBac
                                 </Card>
                             </TabsContent>
                         )}
-                        <TabsContent value="commissions-table">
-                            <CommissionTablesUnified />
-                        </TabsContent>
+                        {canEditCommissions && (
+                            <TabsContent value="commissions-table">
+                                <CommissionTablesUnified />
+                            </TabsContent>
+                        )}
                     </Tabs>
                 </>
             )}

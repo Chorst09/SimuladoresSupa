@@ -37,6 +37,8 @@ interface AccountManagerData {
 import { ClientManagerInfo } from './ClientManagerInfo';
 import { useAuth } from '@/hooks/use-auth';
 import { useCommissions, getChannelIndicatorCommissionRate, getChannelInfluencerCommissionRate, getChannelSellerCommissionRate, getSellerCommissionRate, getDirectorCommissionRate } from '@/hooks/use-commissions';
+import { useProposalsWithPermissions } from '@/hooks/use-proposals-with-permissions';
+import { getPermissionsForRole } from '@/lib/permissions';
 import { generateNextProposalId } from '@/lib/proposal-id-generator';
 
 // Interfaces
@@ -111,10 +113,12 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     // Estado para controlar a tela atual
     const [currentView, setCurrentView] = useState<'search' | 'client-form' | 'calculator' | 'proposal-summary'>('search');
     const [searchTerm, setSearchTerm] = useState<string>('');
-    const [savedProposals, setSavedProposals] = useState<Proposal[]>([]);
-    const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
     const [hasChanged, setHasChanged] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    // Hook para buscar propostas com permissões
+    const { proposals: savedProposals, loading: loadingProposals, error: proposalsError, fetchProposals, setProposals: setSavedProposals } = useProposalsWithPermissions();
+    const [currentProposal, setCurrentProposal] = useState<Proposal | null>(null);
 
     // Estados dos dados do cliente e gerente
     const [clientData, setClientData] = useState<ClientData>({
@@ -165,6 +169,10 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     const [proposalChanges, setProposalChanges] = useState<string>('');
 
     const { user: currentUser } = useAuth();
+
+    // Verificar permissões do usuário
+    const userPermissions = currentUser?.role ? getPermissionsForRole(currentUser.role as any) : null;
+    const canEditCommissions = userPermissions?.canEditCommissions || false;
 
     // Commission data removido - usando tabelas editáveis do hook useCommissions
     /*
@@ -1340,7 +1348,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             } else {
                 // Criar nova proposta
                 // Mapear propostas para o formato esperado pelo gerador
-                const proposalsWithBaseId = savedProposals.map((p: any) => ({
+                const proposalsWithBaseId = pabxProposals.map((p: any) => ({
                     base_id: p.base_id || p.baseId || ''
                 }));
                 
@@ -1414,47 +1422,16 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
     };
 
     // Carregar propostas e preços do localStorage
-    const fetchProposals = useCallback(async () => {
-        if (!currentUser || !currentUser.role) {
-            setSavedProposals([]);
-            return;
-        }
-
-        try {
-            // Buscar TODAS as propostas para evitar IDs duplicados
-            const response = await fetch('/api/proposals?all=true', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentUser.token}`,
-                },
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                // Filter for PABX proposals
-                if (result.success && result.data && result.data.proposals) {
-                    const pabxProposals = result.data.proposals.filter((p: any) =>
-                        p.type === 'PABX' || p.base_id?.startsWith('Prop_PabxSip_')
-                    );
-                    console.log(`📊 Total de propostas PABX carregadas: ${pabxProposals.length}`);
-                    setSavedProposals(pabxProposals);
-                } else {
-                    setSavedProposals([]);
-                }
-            } else {
-                console.error('Erro ao buscar propostas:', response.statusText);
-                setSavedProposals([]);
-            }
-        } catch (error) {
-            console.error("Erro ao buscar propostas: ", error);
-            setSavedProposals([]);
-        }
-    }, [currentUser]);
-
     useEffect(() => {
         fetchProposals();
-    }, [fetchProposals]);
+    }, []);
+
+    // Filter proposals for PABX type
+    const pabxProposals = React.useMemo(() => {
+        return savedProposals.filter((p: any) =>
+            p.type === 'PABX' || p.base_id?.startsWith('Prop_PabxSip_')
+        );
+    }, [savedProposals]);
 
     // 🔥 CORREÇÃO: useEffect para carregar descontos quando editar proposta
     useEffect(() => {
@@ -1605,7 +1582,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                 }
                 
                 const { generateNewVersion } = await import('@/lib/proposal-id-generator');
-                const proposalsWithBaseId = savedProposals.map((p: any) => ({
+                const proposalsWithBaseId = pabxProposals.map((p: any) => ({
                     base_id: p.base_id || p.baseId || ''
                 }));
                 const newBaseId = generateNewVersion(baseIdToUse, proposalsWithBaseId);
@@ -1704,7 +1681,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
         }
     };
 
-    const filteredProposals = savedProposals.filter(p => {
+    const filteredProposals = pabxProposals.filter(p => {
         const clientName = typeof p.client === 'string' ? p.client : p.client?.name || '';
         const proposalId = p.id || '';
         const searchTermLower = searchTerm.toLowerCase();
@@ -2258,11 +2235,13 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
             <Tabs defaultValue="calculator" className="w-full">
                 <TabsList className={`grid w-full grid-cols-4 bg-slate-800 text-slate-400`}>
                     <TabsTrigger value="calculator">Calculadora</TabsTrigger>
-                    {currentUser?.role === 'admin' && (
+                    {canEditCommissions && (
                         <TabsTrigger value="list-price">Tabela de Preços</TabsTrigger>
                     )}
-                    <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
-                    {currentUser?.role === 'admin' && (
+                    {canEditCommissions && (
+                        <TabsTrigger value="commissions-table">Tabela Comissões</TabsTrigger>
+                    )}
+                    {canEditCommissions && (
                         <TabsTrigger value="dre">DRE</TabsTrigger>
                     )}
                 </TabsList>
@@ -2924,10 +2903,13 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                     )}
                 </TabsContent>
 
+                {canEditCommissions && (
                 <TabsContent value="commissions-table">
                     <CommissionTablesUnified />
                 </TabsContent>
+                )}
 
+                {canEditCommissions && (
                 <TabsContent value="dre">
                     {(() => {
                         const dreMonthlyRevenue = (pabxResult?.totalMonthly || 0) + (sipResult?.monthly || 0);
@@ -3165,7 +3147,9 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
                         );
                     })()}
                 </TabsContent>
+                )}
 
+                {canEditCommissions && (
                 <TabsContent value="list-price">
                     <div className="mt-6 space-y-6">
                         {/* Tabela de Preços Agente IA */}
@@ -3937,6 +3921,7 @@ export const PABXSIPCalculator: React.FC<PABXSIPCalculatorProps> = ({ onBackToDa
 
                     </div>
                 </TabsContent>
+                )}
 
 
             </Tabs>
