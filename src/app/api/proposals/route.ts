@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getPermissionsForRole } from '@/lib/permissions'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,11 +11,21 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const type = searchParams.get('type')
     const search = searchParams.get('search')
+    const userRole = searchParams.get('userRole') || 'user'
+    const userId = searchParams.get('userId')
 
     const skip = (page - 1) * limit
 
     // Construir filtros
     const where: any = {}
+    
+    // Aplicar filtro de permissões baseado na função do usuário
+    const permissions = getPermissionsForRole(userRole as any)
+    
+    // Se o usuário NÃO pode visualizar todas as propostas, filtrar apenas as suas
+    if (!permissions.canViewAllProposals && userId) {
+      where.created_by = userId
+    }
     
     if (status) {
       where.status = status
